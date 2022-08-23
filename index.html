@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Scout Master</title>
+<link rel="icon" href="favicon.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<body style="font-size:5vw;"><center>
+
+<iframe name="dummyFrame" id="dummyFrame" style="display: none;"></iframe>
+  
+<h1>Scout Master</h1>
+  
+<form onsubmit="return false;" method="post" action="https://script.google.com/macros/s/AKfycbyah_PdjcrHvynX_TvRybLykrJy0qhcTfS4PA9EhV3DkEErFIrVMOCFNfWERjwIZvVVAw/exec" id="scoutForm" target="dummyFrame">
+
+  
+  <h2>Prematch</h2>
+  <label for="initials">Scouter Initials:</label><br>
+  <input type="text" id="initials" class="texter" name="Initials" value=""><br><br>
+  <label for="teamNum">Team Number:</label><br>
+  <input type="number" id="teamNum" class="texter" name="Team Number" value=""><br><br>
+  <label for="matchNum">Match Number:</label><br>
+  <input type="number" id="matchNum" class="texter" name="Match Number" value=""><br><br>
+  <label for="robotPosition">Robot:</label><br>
+  <select name="Robot Position" id="robotPosition">
+    <option value="Red 1">Red 1</option>
+    <option value="Red 2">Red 2</option>
+    <option value="Red 3">Red 3</option>
+    <option value="Blue 1">Blue 1</option>
+    <option value="Blue 2">Blue 2</option>
+    <option value="Blue 3">Blue 3</option>
+  </select><br><br>
+  <label for="startingLocation">Starting Location:</label><br>
+  <select name="Starting Location" id="startingLocation">
+    <option value="Left">Left</option>
+    <option value="Middle">Middle</option>
+    <option value="Right">Right</option>
+  </select><br><br>
+  <label for="noShow">No Show:</label><br>
+  <input type="checkbox" class="checkbox" name="No Show" value="Yes"><br>
+
+  
+  <h2>Auto</h2>
+  <label for="taxied">Taxied:</label><br>
+  <input type="checkbox" class="checkbox" name="Taxied" value="Yes" checked><br><br>
+  
+  <label for="UHS">Upper Hub Scored:</label><br>
+  <table><tr>
+    <td><input type="button" class="button" id="input" onclick="UHS--;update('upperHubS', 'upperHubSs',UHS);" value="-"></td>
+    <td><input name="Upper Hub Scored" value="0" id="upperHubSs"  hidden><p id="upperHubS" name="Upper Hub Scored">0</p></input></td>
+    <td><input type="button" class="button" id="input" onclick="UHS++;update('upperHubS', 'upperHubSs',UHS);" value="+"></td>
+  </tr></table>
+
+  <label for="UHM">Upper Hub Missed:</label><br>
+  <table><tr>
+    <td><input type="button" class="button" id="input" onclick="UHM--;update('upperHubM', 'upperHubMm',UHM);" value="-"></td>
+    <td><input name="Upper Hub Missed" value="0" id="upperHubMm" hidden><p id="upperHubM" name="Upper Hub Missed" value="UHM">0</p></input></td>
+    <td><input type="button" class="button" id="input" onclick="UHM++;update('upperHubM', 'upperHubMm',UHM);" value="+"></td>
+  </tr></table>
+
+  <label for="LHS">Lower Hub Scored:</label><br>
+  <table><tr>
+    <td><input type="button" class="button" id="input" onclick="LHS--;update('lowerHubS', 'lowerHubSs',LHS);" value="-"></td>
+    <td><input name="Lower Hub Scored" value="0" id="lowerHubSs" hidden><p id="lowerHubS" name="Lower Hub Scored" value="LHS">0</p></input></td>
+    <td><input type="button" class="button" id="input" onclick="LHS++;update('lowerHubS', 'lowerHubSs',LHS);" value="+"></td>
+  </tr></table>
+  
+  
+  
+  <h2>Teleop</h2>
+
+  <label for="UHSt">Upper Hub Scored:</label><br>
+  <table><tr>
+    <td><input type="button" class="button" id="input" onclick="UHSt--;update('upperHubSt', 'upperHubSst',UHSt);" value="-"></td>
+    <td><input name="Upper Hub Scored" value="0" id="upperHubSst"  hidden><p id="upperHubSt" name="Upper Hub Scored">0</p></input></td>
+    <td><input type="button" class="button" id="input" onclick="UHSt++;update('upperHubSt', 'upperHubSst',UHSt);" value="+"></td>
+  </tr></table>
+
+  <label for="LHSt">Lower Hub Scored:</label><br>
+  <table><tr>
+    <td><input type="button" class="button" id="input" onclick="LHSt--;update('lowerHubSt', 'lowerHubSst',LHSt);" value="-"></td>
+    <td><input name="Lower Hub Scored" value="0" id="lowerHubSst" hidden><p id="lowerHubSt" name="Lower Hub Scored" value="LHSt">0</p></input></td>
+    <td><input type="button" class="button" id="input" onclick="LHSt++;update('lowerHubSt', 'lowerHubSst',LHSt);" value="+"></td>
+  </tr></table>
+
+  <label for="wasDefended">Was Defended:</label><br>
+  <input type="checkbox" class="checkbox" name="Was Defended" value="Yes"><br>
+
+  
+  <h2>Endgame</h2>
+
+  <label for="climb">Climb:</label><br>
+  <select name="Climb" id="climb">
+    <option value="NA">Not Attempted</option>
+    <option value="Failed">Attempted but Failed</option>
+    <option value="Low">Low</option>
+    <option value="Medium">Medium</option>
+    <option value="High">High</option>
+    <option value="Traversal">Traversal</option>
+  </select><br><br>
+
+  <label for="startedClimb">Started Climb with Time Remaining:</label><br>
+  <input type="number" id="startedClimb" class="texter" name="Started Climb At" value=""><br>
+
+  
+  <h2>Postmatch</h2>
+
+  <label for="defense%">Played Defense for %:</label><br>
+  <input type="number" id="defense%" class="texter" name="Defense %" min="0" max="100" value="0"><br><br>
+
+  
+
+  <label for="disabled%">Disabled for %:</label><br>
+  <input type="number" id="disabled%" class="texter" name="Disabled %" min="0" max="100" value="0"><br><br>
+
+  <label for="comments">Comments:</label><br>
+  <input type="text" id="comments" class="commenter" name="Comments" value="" contenteditable><br><br>
+
+
+</form>
+<button onclick="submit();">Submit</button>
+<button onclick="reset();">Reset</button>
+
+<p style="font-size:2vw"><b>WARNING: </b>This page is intended for Team 401 and will be sent to a database only accesable by Team 401 members.</p>
+
+<script>
+
+function update(type1, type2, value) {
+  document.getElementById(type1).innerHTML = value;
+  document.getElementById(type2).value = value;
+}
+
+function reset() {
+  var UHS = 0;
+  var UHM = 0;
+  var LHS = 0;
+  var UHSt = 0;
+  var LHSt = 0;
+  update('upperHubS', 'upperHubSs', UHS);
+  update('upperHubM', 'upperHubMm', UHM);
+  update('lowerHubS', 'lowerHubSs', LHS);
+  update('upperHubSt', 'upperHubSst', UHSt);
+  update('lowerHubSt', 'lowerHubSst', LHSt);
+  document.getElementById('scoutForm').reset();
+}
+
+function submit() {
+  document.forms["scoutForm"].submit();
+  reset();
+}
+
+var UHS = 0;
+var UHM = 0;
+var LHS = 0;
+var UHSt = 0; 
+var LHSt = 0;
+
+</script>
+
+
+</center></body>
+</html>
+

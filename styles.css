@@ -1,0 +1,47 @@
+select {
+  height:10vw;
+  font-size:5vw;
+}
+
+input {
+  height:5vw;
+  width:5vw;
+  font-size:5vw;
+}
+
+input.texter {
+  height:5vw;
+  width:15vw;
+  font-size:5vw;
+}
+
+input.checkbox {
+  height:5vw;
+  width:5vw;
+}
+
+input.commenter {
+  height:auto;
+  width:80vw;
+  font-size:5vw;
+}
+
+input.button {
+  height:10vw;
+  width:10vw;
+}
+
+button {
+  font-size:5vw;
+}
+
+body {
+  background-color: maroon;
+  color:orange;
+  font-family: 'Akshar', sans-serif;
+  padding: 1vw;
+}
+
+p {
+  padding: 1vw;
+}
