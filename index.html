@@ -13,7 +13,7 @@
   
 <h1>Scout Master</h1>
   
-<form onsubmit="return false;" method="post" action="https://script.google.com/macros/s/AKfycbyah_PdjcrHvynX_TvRybLykrJy0qhcTfS4PA9EhV3DkEErFIrVMOCFNfWERjwIZvVVAw/exec" id="scoutForm" target="dummyFrame">
+<form onsubmit="return false;" method="post" action="https://script.google.com/macros/s/AKfycbztBPDxn8ZhXKcGTHqdQ2Xt-SpP9c92QHNMO4igNpGfsNb-WKN6SgCOVLzvkr-gghCx/exec" id="scoutForm" target="dummyFrame">
 
   
   <h2>Prematch</h2>
@@ -44,26 +44,26 @@
   
   <h2>Auto</h2>
   <label for="taxied">Taxied:</label><br>
-  <input type="checkbox" class="checkbox" name="Taxied" value="Yes" checked><br><br>
+  <input type="checkbox" class="checkbox" name="Taxied" value="Yes"><br><br>
   
   <label for="UHS">Upper Hub Scored:</label><br>
   <table><tr>
     <td><input type="button" class="button" id="input" onclick="UHS--;update('upperHubS', 'upperHubSs',UHS);" value="-"></td>
-    <td><input name="Upper Hub Scored" value="0" id="upperHubSs"  hidden><p id="upperHubS" name="Upper Hub Scored">0</p></input></td>
+    <td><input name="Auto Upper Hub Scored" value="0" id="upperHubSs"  hidden><p id="upperHubS" name="Upper Hub Scored">0</p></input></td>
     <td><input type="button" class="button" id="input" onclick="UHS++;update('upperHubS', 'upperHubSs',UHS);" value="+"></td>
   </tr></table>
 
   <label for="UHM">Upper Hub Missed:</label><br>
   <table><tr>
     <td><input type="button" class="button" id="input" onclick="UHM--;update('upperHubM', 'upperHubMm',UHM);" value="-"></td>
-    <td><input name="Upper Hub Missed" value="0" id="upperHubMm" hidden><p id="upperHubM" name="Upper Hub Missed" value="UHM">0</p></input></td>
+    <td><input name="Auto Upper Hub Missed" value="0" id="upperHubMm" hidden><p id="upperHubM" name="Upper Hub Missed" value="UHM">0</p></input></td>
     <td><input type="button" class="button" id="input" onclick="UHM++;update('upperHubM', 'upperHubMm',UHM);" value="+"></td>
   </tr></table>
 
   <label for="LHS">Lower Hub Scored:</label><br>
   <table><tr>
     <td><input type="button" class="button" id="input" onclick="LHS--;update('lowerHubS', 'lowerHubSs',LHS);" value="-"></td>
-    <td><input name="Lower Hub Scored" value="0" id="lowerHubSs" hidden><p id="lowerHubS" name="Lower Hub Scored" value="LHS">0</p></input></td>
+    <td><input name="Auto Lower Hub Scored" value="0" id="lowerHubSs" hidden><p id="lowerHubS" name="Lower Hub Scored" value="LHS">0</p></input></td>
     <td><input type="button" class="button" id="input" onclick="LHS++;update('lowerHubS', 'lowerHubSs',LHS);" value="+"></td>
   </tr></table>
   
@@ -101,19 +101,17 @@
     <option value="Traversal">Traversal</option>
   </select><br><br>
 
-  <label for="startedClimb">Started Climb with Time Remaining:</label><br>
-  <input type="number" id="startedClimb" class="texter" name="Started Climb At" value=""><br>
+  <!-- <label for="startedClimb">Started Climb with Time Remaining:</label><br>
+  <input type="number" id="startedClimb" class="texter" name="Started Climb At" value=""><br> -->
 
   
   <h2>Postmatch</h2>
 
-  <label for="defense%">Played Defense for %:</label><br>
-  <input type="number" id="defense%" class="texter" name="Defense %" min="0" max="100" value="0"><br><br>
+  <!-- <label for="defense%">Played Defense for %:</label><br>
+  <input type="number" id="defense%" class="texter" name="Defense %" min="0" max="100" value="0"><br><br> -->
 
-  
-
-  <label for="disabled%">Disabled for %:</label><br>
-  <input type="number" id="disabled%" class="texter" name="Disabled %" min="0" max="100" value="0"><br><br>
+  <label for="robotDisabled">Robot Disabled?:</label><br>
+  <input type="checkbox" class="checkbox" name="Robot Disabled?" value="Yes"><br>
 
   <label for="comments">Comments:</label><br>
   <input type="text" id="comments" class="commenter" name="Comments" value="" contenteditable><br><br>
@@ -121,6 +119,11 @@
 
 </form>
 <button onclick="submit();">Submit</button>
+<br></br>
+<br></br>
+<br></br>
+<br></br>
+<br></br>
 <button onclick="reset();">Reset</button>
 
 <p style="font-size:2vw"><b>WARNING: </b>This page is intended for Team 401 and will be sent to a database only accessible by Team 401 members.</p>
@@ -147,6 +150,7 @@ function reset() {
 }
 
 function submit() {
+  console.log(document.forms['scoutForm'])
   document.forms["scoutForm"].submit();
   reset();
 }
