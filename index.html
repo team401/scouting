@@ -39,12 +39,12 @@
     <option value="Right">Right</option>
   </select><br><br>
   <label for="noShow">No Show:</label><br>
-  <input type="checkbox" class="checkbox" name="No Show" value="Yes"><br>
+  <input type="checkbox" class="checkbox" name="No Show" value="TRUE", placeholder="FALSE"><br>
 
   
   <h2>Auto</h2>
   <label for="taxied">Taxied:</label><br>
-  <input type="checkbox" class="checkbox" name="Taxied" value="Yes"><br><br>
+  <input type="checkbox" class="checkbox" name="Taxied" value="TRUE", placeholder="FALSE"><br><br>
   
   <label for="UHS">Upper Hub Scored:</label><br>
   <table><tr>
@@ -86,7 +86,7 @@
   </tr></table>
 
   <label for="wasDefended">Was Defended:</label><br>
-  <input type="checkbox" class="checkbox" name="Was Defended" value="Yes"><br>
+  <input type="checkbox" class="checkbox" name="Was Defended" value="TRUE", placeholder="FALSE"><br>
 
   
   <h2>Endgame</h2>
@@ -111,7 +111,8 @@
   <input type="number" id="defense%" class="texter" name="Defense %" min="0" max="100" value="0"><br><br> -->
 
   <label for="robotDisabled">Robot Disabled?:</label><br>
-  <input type="checkbox" class="checkbox" name="Robot Disabled?" value="Yes"><br>
+  <input type='hidden' value='FALSE' name='selfdestruct'>
+  <input type="checkbox" class="checkbox" name="Robot Disabled?" value="TRUE", placeholder="FALSE"F><br>
 
   <label for="comments">Comments:</label><br>
   <input type="text" id="comments" class="commenter" name="Comments" value="" contenteditable><br><br>
