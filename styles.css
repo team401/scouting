@@ -1,3 +1,12 @@
+@font-face {
+  font-family: SpaceGrotesk;
+  src: url(SpaceGrotesk-VariableFont_wght.ttf);
+}
+
+* {
+  font-family: SpaceGrotesk;
+}
+
 select {
   height:10vw;
   font-size:5vw;
@@ -13,35 +22,45 @@ input.texter {
   height:5vw;
   width:15vw;
   font-size:5vw;
+  touch-action: manipulation;
 }
 
 input.checkbox {
   height:5vw;
   width:5vw;
+  touch-action: manipulation;
 }
 
 input.commenter {
   height:auto;
   width:80vw;
   font-size:5vw;
+  touch-action: manipulation;
 }
 
 input.button {
   height:10vw;
   width:10vw;
+  touch-action: manipulation;
 }
 
-button {
+.button {
   font-size:5vw;
+  touch-action: manipulation;
+  border-radius: 50%;
 }
 
 body {
   background-color: maroon;
   color:orange;
-  font-family: 'Akshar', sans-serif;
+  /*font-family: 'Akshar', sans-serif;*/
   padding: 1vw;
 }
 
 p {
   padding: 1vw;
+}
+
+h2 {
+  text-decoration: underline;
 }
