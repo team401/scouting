@@ -50,6 +50,12 @@ input.button {
   border-radius: 50%;
 }
 
+.final {
+  font-size:5vw;
+  touch-action: manipulation;
+  border-radius: 10%;
+}
+
 body {
   background-color: maroon;
   color:orange;
