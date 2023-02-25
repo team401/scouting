@@ -32,57 +32,58 @@
     <option value="Blue 2">Blue 2</option>
     <option value="Blue 3">Blue 3</option>
   </select><br><br>
-  <label for="startingLocation">Starting Location:</label><br>
-  <select name="Starting Location" id="startingLocation">
-    <option value="Left">Left</option>
-    <option value="Middle">Middle</option>
-    <option value="Right">Right</option>
-  </select><br><br>
   <label for="noShow">No Show:</label><br>
   <input type="checkbox" class="checkbox" name="No Show" value="TRUE", placeholder="FALSE"><br>
 
   
   <h2>Auto</h2>
-  <label for="taxied">Taxied:</label><br>
-  <input type="checkbox" class="checkbox" name="Taxied" value="TRUE", placeholder="FALSE"><br><br>
+  <label for="taxied">Exited Community:</label><br>
+  <input type="checkbox" class="checkbox" name="Exit Community" value="TRUE", placeholder="FALSE"><br><br>
   
-  <label for="UHS">Upper Hub Scored:</label><br>
+  <label for="TSA">Top Scored:</label><br>
   <table><tr>
-    <td><input type="button" class="button" id="input" onclick="UHS--;update('upperHubS', 'upperHubSs',UHS);" value="-"></td>
-    <td><input name="Auto Upper Hub Scored" value="0" id="upperHubSs"  hidden><p id="upperHubS" name="Upper Hub Scored">0</p></input></td>
-    <td><input type="button" class="button" id="input" onclick="UHS++;update('upperHubS', 'upperHubSs',UHS);" value="+"></td>
+    <td><input type="button" class="button" id="input" onclick="TSA--;update('autoTop', 'autoTops',TSA);" value="-"></td>
+    <td><input name="Auto Top Scored" value="0" id="autoTops"  hidden><p id="autoTop" name="Top Scored">0</p></input></td>
+    <td><input type="button" class="button" id="input" onclick="TSA++;update('autoTop', 'autoTops',TSA);" value="+"></td>
   </tr></table>
 
-  <label for="UHM">Upper Hub Missed:</label><br>
+  <label for="MSA">Mid Scored:</label><br>
   <table><tr>
-    <td><input type="button" class="button" id="input" onclick="UHM--;update('upperHubM', 'upperHubMm',UHM);" value="-"></td>
-    <td><input name="Auto Upper Hub Missed" value="0" id="upperHubMm" hidden><p id="upperHubM" name="Upper Hub Missed" value="UHM">0</p></input></td>
-    <td><input type="button" class="button" id="input" onclick="UHM++;update('upperHubM', 'upperHubMm',UHM);" value="+"></td>
+    <td><input type="button" class="button" id="input" onclick="MSA--;update('autoMid', 'autoMids',MSA);" value="-"></td>
+    <td><input name="Auto Mid Scored" value="0" id="autoMids" hidden><p id="autoMid" name="Mid Scored" value="MSA">0</p></input></td>
+    <td><input type="button" class="button" id="input" onclick="MSA++;update('autoMid', 'autoMids',MSA);" value="+"></td>
   </tr></table>
 
-  <label for="LHS">Lower Hub Scored:</label><br>
+  <label for="LSA">Low Scored:</label><br>
   <table><tr>
-    <td><input type="button" class="button" id="input" onclick="LHS--;update('lowerHubS', 'lowerHubSs',LHS);" value="-"></td>
-    <td><input name="Auto Lower Hub Scored" value="0" id="lowerHubSs" hidden><p id="lowerHubS" name="Lower Hub Scored" value="LHS">0</p></input></td>
-    <td><input type="button" class="button" id="input" onclick="LHS++;update('lowerHubS', 'lowerHubSs',LHS);" value="+"></td>
+    <td><input type="button" class="button" id="input" onclick="LSA--;update('autoLow', 'autoLows',LSA);" value="-"></td>
+    <td><input name="Auto Low Scored" value="0" id="autoLows" hidden><p id="autoLow" name="Low Scored" value="LSA">0</p></input></td>
+    <td><input type="button" class="button" id="input" onclick="LSA++;update('autoLow', 'autoLows',LSA);" value="+"></td>
   </tr></table>
   
   
   
   <h2>Teleop</h2>
 
-  <label for="UHSt">Upper Hub Scored:</label><br>
+  <label for="TST">Top Scored:</label><br>
   <table><tr>
-    <td><input type="button" class="button" id="input" onclick="UHSt--;update('upperHubSt', 'upperHubSst',UHSt);" value="-"></td>
-    <td><input name="Upper Hub Scored" value="0" id="upperHubSst"  hidden><p id="upperHubSt" name="Upper Hub Scored">0</p></input></td>
-    <td><input type="button" class="button" id="input" onclick="UHSt++;update('upperHubSt', 'upperHubSst',UHSt);" value="+"></td>
+    <td><input type="button" class="button" id="input" onclick="TST--;update('teleopTop', 'teleopTops',TST);" value="-"></td>
+    <td><input name="Top Scored" value="0" id="teleopTops"  hidden><p id="teleopTop" name="Top Scored">0</p></input></td>
+    <td><input type="button" class="button" id="input" onclick="TST++;update('teleopTop', 'teleopTops',TST);" value="+"></td>
   </tr></table>
 
-  <label for="LHSt">Lower Hub Scored:</label><br>
+  <label for="TSM">Mid Scored:</label><br>
   <table><tr>
-    <td><input type="button" class="button" id="input" onclick="LHSt--;update('lowerHubSt', 'lowerHubSst',LHSt);" value="-"></td>
-    <td><input name="Lower Hub Scored" value="0" id="lowerHubSst" hidden><p id="lowerHubSt" name="Lower Hub Scored" value="LHSt">0</p></input></td>
-    <td><input type="button" class="button" id="input" onclick="LHSt++;update('lowerHubSt', 'lowerHubSst',LHSt);" value="+"></td>
+    <td><input type="button" class="button" id="input" onclick="TSM--;update('teleopMid', 'teleopMids',TSM);" value="-"></td>
+    <td><input name="Mid Scored" value="0" id="teleopMids" hidden><p id="teleopMid" name="Mid Scored" value="TSM">0</p></input></td>
+    <td><input type="button" class="button" id="input" onclick="TSM++;update('teleopMid', 'teleopMids',TSM);" value="+"></td>
+  </tr></table>
+
+  <label for="TSL">Low Scored:</label><br>
+  <table><tr>
+    <td><input type="button" class="button" id="input" onclick="TSL--;update('teleopLow', 'teleopLows',TSL);" value="-"></td>
+    <td><input name="Low Scored" value="0" id="teleoLows" hidden><p id="teleopLow" name="Low Scored" value="TSL">0</p></input></td>
+    <td><input type="button" class="button" id="input" onclick="TSL++;update('teleopLow', 'teleopLows',TSL);" value="+"></td>
   </tr></table>
 
   <label for="wasDefended">Was Defended:</label><br>
@@ -137,16 +138,17 @@ function update(type1, type2, value) {
 }
 
 function reset() {
-  UHS = 0;
-  UHM = 0;
-  LHS = 0;
-  UHSt = 0;
-  LHSt = 0;
-  update('upperHubS', 'upperHubSs', UHS);
-  update('upperHubM', 'upperHubMm', UHM);
-  update('lowerHubS', 'lowerHubSs', LHS);
-  update('upperHubSt', 'upperHubSst', UHSt);
-  update('lowerHubSt', 'lowerHubSst', LHSt);
+  TSA = 0;
+  MSA = 0;
+  LSA = 0;
+  TST = 0;
+  TSM = 0;
+  update('autoTop', 'autoTops', TSA);
+  update('autoMid', 'autoMids', MSA);
+  update('autoLow', 'autoLows', LSA);
+  update('teleopTop', 'teleopTops', TST);
+  update('teleopMid', 'teleopMids', TSM);
+  update('teleopLow', 'teleopLows', TSL);
   document.getElementById('scoutForm').reset();
 }
 
@@ -156,11 +158,12 @@ function submit() {
   reset();
 }
 
-var UHS = 0;
-var UHM = 0;
-var LHS = 0;
-var UHSt = 0; 
-var LHSt = 0;
+var TSA = 0;
+var MSA = 0;
+var LSA = 0;
+var TST = 0; 
+var TSM = 0;
+var TSL = 0;
 
 </script>
 

@@ -52,7 +52,6 @@ input.button {
 
 .final {
   font-size:5vw;
-  touch-action: manipulation;
   border-radius: 10%;
 }
 
