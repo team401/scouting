@@ -60,6 +60,8 @@
     <td><input name="Auto Low Scored" value="0" id="autoLows" hidden><p id="autoLow" name="Low Scored" value="LSA">0</p></input></td>
     <td><input type="button" class="button" id="input" onclick="LSA++;update('autoLow', 'autoLows',LSA);" value="+"></td>
   </tr></table>
+
+
   
   
   
@@ -92,14 +94,12 @@
   
   <h2>Endgame</h2>
 
-  <label for="climb">Climb:</label><br>
+  <label for="climb">Charge Station:</label><br>
   <select name="Climb" id="climb">
     <option value="NA">Not Attempted</option>
     <option value="Failed">Attempted but Failed</option>
-    <option value="Low">Low</option>
-    <option value="Medium">Medium</option>
-    <option value="High">High</option>
-    <option value="Traversal">Traversal</option>
+    <option value="docked">Docked but not Engaged</option>
+    <option value="engages">Engaged and Docked</option>
   </select><br><br>
 
   <!-- <label for="startedClimb">Started Climb with Time Remaining:</label><br>
