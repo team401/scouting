@@ -39,6 +39,12 @@
   <h2>Auto</h2>
   <label for="taxied">Exited Community:</label><br>
   <input type="checkbox" class="checkbox" name="Exit Community" value="TRUE", placeholder="FALSE"><br><br>
+
+  <label for="preload">Preload:</label><br>
+  <select name="preload" id="preload">
+    <option value="Cube">Cube</option>
+    <option value="Cone">Cone</option>
+  </select><br><br>
   
   <label for="TSA">Top Scored:</label><br>
   <table><tr>
@@ -99,7 +105,7 @@
     <option value="NA">Not Attempted</option>
     <option value="Failed">Attempted but Failed</option>
     <option value="docked">Docked but not Engaged</option>
-    <option value="engages">Engaged and Docked</option>
+    <option value="engaged">Engaged and Docked</option>
   </select><br><br>
 
   <!-- <label for="startedClimb">Started Climb with Time Remaining:</label><br>
@@ -110,6 +116,9 @@
 
   <!-- <label for="defense%">Played Defense for %:</label><br>
   <input type="number" id="defense%" class="texter" name="Defense %" min="0" max="100" value="0"><br><br> -->
+
+  <label for="susBonus">Sustainability Bonus:</label><br>
+  <input type="checkbox" class="checkbox" name="susBonus" value="TRUE", placeholder="FALSE"><br><br>
 
   <label for="robotDisabled">Robot Disabled?:</label><br>
   <input type='hidden' value='FALSE' name='selfdestruct'>
