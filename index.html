@@ -128,18 +128,20 @@
   <input type="text" id="comments" class="commenter" name="Comments" value="" contenteditable><br><br>
 
 
-</form>
 <button onclick="submit();">Submit</button>
 <br></br>
 <br></br>
 <br></br>
 <br></br>
 <br></br>
-<button onclick="reset();">Reset</button>
+<button type='reset'>Reset</button>
+
+</form>
 
 <p style="font-size:2vw"><b>WARNING: </b>This page is intended for Team 401 and will be sent to a database only accessible by Team 401 members.</p>
 
 <script>
+ 
 
 function update(type1, type2, value) {
   document.getElementById(type1).innerHTML = value;
