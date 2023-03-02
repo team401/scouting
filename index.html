@@ -46,14 +46,31 @@
     <td><input type="button" class="button" id="atsPlusBtn" value="+"></td>
   </tr></table>
 
+  <label for="MSA">Mid Scored:</label><br>
+  <table>
+    <tr>
+      <td><input type="button" class="button" id="amsSubBtn" value="-"></td>
+      <td><input name="Auto Mid Scored" value='0' id="autoMids" hidden><p id="autoMid" name="Mid Scored">0</p></td>
+      <td><input type="button" class="button" id="amsPlusBtn" value="+"></td>
+    </tr>
+  </table>
+
   <script>
     var autoTopPlusButton = document.getElementById("atsPlusBtn"),
         autoTopSubButton = document.getElementById("atsSubBtn"),
         autoTopDisplay = document.getElementById("autoTop"),
         autoTopValue = document.getElementById("autoTops");
+
+   var autoMidPlusButton = document.getElementById("amsPlusBtn"),
+       autoMidSubButton = document.getElementById("amsSubBtn"),
+       autoMidDisplay = document.getElementById("autoMid"),
+       autoMidValue = document.getElementById("autoMids");
+    
         
     autoTopPlusButton.addEventListener('click', function(){addCount(autoTopDisplay, autoTopValue);});
     autoTopSubButton.addEventListener('click', function(){subCount(autoTopDisplay, autoTopValue);});
+    autoMidPlusButton.addEventListener('click', function(){addCount(autoMidDisplay, autoMidValue);});
+    autoMidSubButton.addEventListener('click', function(){subCount(autoMidDisplay, autoMidValue);});
       
     function addCount(data_display, data_value_storage){
       count = Number(data_value_storage.value);
@@ -73,13 +90,6 @@
     };
       
   </script>
-
-  <label for="MSA">Mid Scored:</label><br>
-  <table><tr>
-    <td><input type="button" class="button" id="input" onclick="MSA--;update('autoMid', 'autoMids',MSA);" value="-"></td>
-    <td><input name="Auto Mid Scored" value="0" id="autoMids" hidden><p id="autoMid" name="Mid Scored" value="MSA">0</p></input></td>
-    <td><input type="button" class="button" id="input" onclick="MSA++;update('autoMid', 'autoMids',MSA);" value="+"></td>
-  </tr></table>
 
   <label for="LSA">Low Scored:</label><br>
   <table><tr>
