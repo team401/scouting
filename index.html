@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Scout Master</title>
+<title>Snake Scout</title>
 <link rel="icon" href="favicon.png">
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -11,9 +11,9 @@
 
 <iframe name="dummyFrame" id="dummyFrame" style="display: none;"></iframe>
   
-<h1>S c o u t  M a s t e r</h1>
+<h1>SNAKE SCOUT</h1>
   
-<form onsubmit="return false;" method="post" action="https://script.google.com/macros/s/AKfycbyah_PdjcrHvynX_TvRybLykrJy0qhcTfS4PA9EhV3DkEErFIrVMOCFNfWERjwIZvVVAw/exec" id="scoutForm" target="dummyFrame">
+<form onsubmit="return false;" method="post" action="https://script.google.com/macros/s/AKfycbxRASQDZc2A_wK8EhfN6t6rfFdaA7SEaRidUIid0ZIipZJFbxxociexKhVnDDDM3MAB/exec" id="scoutForm" target="dummyFrame">
 
   
   <h2>Prematch</h2>
@@ -34,7 +34,6 @@
   </select><br><br>
   <label for="noShow">No Show:</label><br>
   <input type="checkbox" class="checkbox" name="No Show" value="TRUE", placeholder="FALSE"><br>
-
   
   <h2>Auto</h2>
   <label for="taxied">Exited Community:</label><br>
@@ -42,10 +41,38 @@
   
   <label for="TSA">Top Scored:</label><br>
   <table><tr>
-    <td><input type="button" class="button" id="input" onclick="TSA--;update('autoTop', 'autoTops',TSA);" value="-"></td>
-    <td><input name="Auto Top Scored" value="0" id="autoTops"  hidden><p id="autoTop" name="Top Scored">0</p></input></td>
-    <td><input type="button" class="button" id="input" onclick="TSA++;update('autoTop', 'autoTops',TSA);" value="+"></td>
+    <td><input type="button" class="button" id="atsSubBtn" value="-"></td>
+    <td><input name="Auto Top Scored" value='0' id="autoTops" hidden><p id="autoTop" name="Top Scored">0</p></td>
+    <td><input type="button" class="button" id="atsPlusBtn" value="+"></td>
   </tr></table>
+
+  <script>
+    var autoTopPlusButton = document.getElementById("atsPlusBtn"),
+        autoTopSubButton = document.getElementById("atsSubBtn"),
+        autoTopDisplay = document.getElementById("autoTop"),
+        autoTopValue = document.getElementById("autoTops");
+        
+    autoTopPlusButton.addEventListener('click', function(){addCount(autoTopDisplay, autoTopValue);});
+    autoTopSubButton.addEventListener('click', function(){subCount(autoTopDisplay, autoTopValue);});
+      
+    function addCount(data_display, data_value_storage){
+      count = Number(data_value_storage.value);
+      count++;
+      data_display.innerHTML = count;
+      data_value_storage.value = count;
+    };
+
+    function subCount(data_display, data_value_storage) {
+      count = Number(data_value_storage.value);
+      if (count > 0) { 
+
+      count -= 1;
+      data_display.innerHTML = count;
+      data_value_storage.value = count;
+      }
+    };
+      
+  </script>
 
   <label for="MSA">Mid Scored:</label><br>
   <table><tr>
@@ -119,22 +146,42 @@
   <input type="text" id="comments" class="commenter" name="Comments" value="" contenteditable><br><br>
 
 
+<button type="submit">Submit</button>
+<br></br>
+<br></br>
+<br></br>
+<br></br>
+<br></br>
+<button type="reset">Reset</button>
 </form>
-<button onclick="submit();">Submit</button>
-<br></br>
-<br></br>
-<br></br>
-<br></br>
-<br></br>
-<button onclick="reset();">Reset</button>
 
 <p style="font-size:2vw"><b>WARNING: </b>This page is intended for Team 401 and will be sent to a database only accessible by Team 401 members.</p>
 
 <script>
 
-function update(type1, type2, value) {
-  document.getElementById(type1).innerHTML = value;
-  document.getElementById(type2).value = value;
+var TSA = 0;
+var MSA = 0;
+var LSA = 0;
+var TST = 0;
+var TSM = 0;
+var TSL = 0;
+
+function add(num) {
+  num++;
+}
+
+
+function subtract(num) {
+  num--;
+}
+
+function update(id, hidden_id, value) {
+  document.getElementById(hidden_id).innerHTML = value;
+  document.getElementById(id).value = value;
+}
+
+function update_no_inner_html(id, value) {
+  document.getElementById(id).value = value;
 }
 
 function reset() {
@@ -143,6 +190,9 @@ function reset() {
   LSA = 0;
   TST = 0;
   TSM = 0;
+  TSL = 0;
+  update_no_inner_html('teamNum', '');
+  uncheckAll();
   update('autoTop', 'autoTops', TSA);
   update('autoMid', 'autoMids', MSA);
   update('autoLow', 'autoLows', LSA);
@@ -152,18 +202,15 @@ function reset() {
   document.getElementById('scoutForm').reset();
 }
 
-function submit() {
-  //console.log(document.forms['scoutForm'])
-  document.forms["scoutForm"].submit();
-  reset();
-}
+  const scriptURL = 'https://script.google.com/macros/s/AKfycbxRASQDZc2A_wK8EhfN6t6rfFdaA7SEaRidUIid0ZIipZJFbxxociexKhVnDDDM3MAB/exec'
+  const form = document.forms['scoutForm']
 
-var TSA = 0;
-var MSA = 0;
-var LSA = 0;
-var TST = 0; 
-var TSM = 0;
-var TSL = 0;
+  form.addEventListener('submit', e => {
+    e.preventDefault()
+    fetch(scriptURL, { method: 'POST', body: new FormData(form) })
+      .then(response => console.log('Success!', response))
+      .catch(error => console.error('Error!', error.message))
+  })
 
 </script>
 
