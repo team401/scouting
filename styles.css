@@ -56,8 +56,8 @@ input.button {
 }
 
 body {
-  background-color: maroon;
-  color:orange;
+  background-color: rgb(128, 45, 45);
+  color:rgb(236, 127, 26);
   /*font-family: 'Akshar', sans-serif;*/
   padding: 1vw;
 }
@@ -68,4 +68,17 @@ p {
 
 h2 {
   text-decoration: underline;
+}
+
+#submitBtn {
+  height: 7vw;
+  width: 20vw;
+  font-size: 5vw
+}
+
+
+#resetBtn {
+  height: 4vw;
+  width: 13vw;
+  font-size: 3vw
 }
