@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
+
 <title>Snake Scout</title>
 <link rel="icon" href="favicon.ico">
+
 <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -38,6 +40,12 @@
   <h2>Auto</h2>
   <label for="taxied">Exited Community:</label><br>
   <input type="checkbox" class="checkbox" name="Exit Community" value="TRUE", placeholder="FALSE"><br><br>
+
+  <label for="preload">Preload:</label><br>
+  <select name="preload" id="preload">
+    <option value="Cube">Cube</option>
+    <option value="Cone">Cone</option>
+  </select><br><br>
   
   <label for="TSA">Top Scored:</label><br>
   <table><tr>
@@ -171,7 +179,7 @@
     <option value="NA">Not Attempted</option>
     <option value="Failed">Attempted but Failed</option>
     <option value="docked">Docked but not Engaged</option>
-    <option value="engages">Engaged and Docked</option>
+    <option value="engaged">Engaged and Docked</option>
   </select><br><br>
   
   <h2>Postmatch</h2>
@@ -183,19 +191,21 @@
   <label for="comments">Comments:</label><br>
   <input type="text" id="comments" class="commenter" name="Comments" value="" contenteditable><br><br>
 
-
 <button type="submit" id="submitBtn">Submit</button>
+
 <br></br>
 <br></br>
 <br></br>
 <br></br>
 <br></br>
 <button type="reset" id="resetBtn">Reset</button>
+
 </form>
 
 <p style="font-size:2vw"><b>WARNING: </b>This page is intended for Team 401 and will be sent to a database only accessible by Team 401 members.</p>
 
 <script>
+ 
 
   var resetButton = document.getElementById("resetBtn");
   var submitButton = document.getElementById("submitBtn");
