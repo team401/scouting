@@ -6,6 +6,9 @@
 <link rel="icon" href="favicon.ico">
 
 <link rel="stylesheet" href="styles.css">
+<!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"
+  integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous"> -->
+
 </head>
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,10 +17,13 @@
 <iframe name="dummyFrame" id="dummyFrame" style="display: none;"></iframe>
   
 <h1>SNAKE SCOUT</h1>
+
+<h4>FRC Team 401 Copperhead Robotics</h4>
   
 <form onsubmit="return false;" method="post" action="https://script.google.com/macros/s/AKfycbxRASQDZc2A_wK8EhfN6t6rfFdaA7SEaRidUIid0ZIipZJFbxxociexKhVnDDDM3MAB/exec" id="scoutForm" target="dummyFrame">
 
   
+<div id="preDiv">
   <h2>Prematch</h2>
   <label for="initials">Scouter Initials:</label><br>
   <input type="text" id="initials" class="texter" name="Initials" value=""><br><br>
@@ -36,7 +42,9 @@
   </select><br><br>
   <label for="noShow">No Show:</label><br>
   <input type="checkbox" class="checkbox" name="No Show" value="TRUE", placeholder="FALSE"><br>
-  
+  </div>
+
+  <div id="autoDiv">
   <h2>Auto</h2>
   <label for="taxied">Exited Community:</label><br>
   <input type="checkbox" class="checkbox" name="Exit Community" value="TRUE", placeholder="FALSE"><br><br>
@@ -72,7 +80,16 @@
     </tr>
   </table>
 
+  <label for="climb">End of Auto Charge Station:</label><br>
+  <select name="End of Auto" id="autoEnd">
+    <option value="NA">Not Attempted</option>
+    <option value="Failed">Attempted but Failed</option>
+    <option value="docked">Docked but not Engaged</option>
+    <option value="engaged">Engaged and Docked</option>
+  </select><br><br>
+  </div>
 
+  <div id="teleDiv">
   <h2>Teleop</h2>
 
   <label for="TST">Top Scored:</label><br>
@@ -175,21 +192,27 @@
   <h2>Endgame</h2>
 
   <label for="climb">Charge Station:</label><br>
-  <select name="Climb" id="climb">
+  <select name="Charge Station" id="climb">
     <option value="NA">Not Attempted</option>
     <option value="Failed">Attempted but Failed</option>
     <option value="docked">Docked but not Engaged</option>
     <option value="engaged">Engaged and Docked</option>
   </select><br><br>
+  </div>
   
+  <div id="postDiv">
   <h2>Postmatch</h2>
 
-  <label for="robotDisabled">Robot Disabled?:</label><br>
+  <label for="robotDisabled">Robot Disabled?</label><br>
   <input type='hidden' value='FALSE' name='selfdestruct'>
   <input type="checkbox" class="checkbox" name="Robot Disabled?" value="TRUE", placeholder="FALSE"F><br>
 
   <label for="comments">Comments:</label><br>
-  <input type="text" id="comments" class="commenter" name="Comments" value="" contenteditable><br><br>
+  <textarea id="comments" name="Comments" rows="4" cols="20"></textarea>
+</div>
+
+<br></br>
+<br></br>
 
 <button type="submit" id="submitBtn">Submit</button>
 
@@ -200,9 +223,10 @@
 <br></br>
 <button type="reset" id="resetBtn">Reset</button>
 
-</form>
+<br></br>
+<br></br>
 
-<p style="font-size:2vw"><b>WARNING: </b>This page is intended for Team 401 and will be sent to a database only accessible by Team 401 members.</p>
+</form>
 
 <script>
  

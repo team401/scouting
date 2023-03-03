@@ -55,11 +55,23 @@ input.button {
   border-radius: 10%;
 }
 
+h1, h4 {
+  color: rgb(236, 127, 26);
+}
+
 body {
   background-color: rgb(128, 45, 45);
-  color:rgb(236, 127, 26);
+  color: black;
   /*font-family: 'Akshar', sans-serif;*/
   padding: 1vw;
+}
+
+#preDiv, #teleDiv {
+  background-color: rgb(204, 204, 204);
+}
+
+#autoDiv, #postDiv {
+  background-color: rgb(204, 204, 204);
 }
 
 p {
@@ -68,17 +80,27 @@ p {
 
 h2 {
   text-decoration: underline;
+  padding-top: 1em;
 }
 
 #submitBtn {
-  height: 7vw;
-  width: 20vw;
-  font-size: 5vw
+  height: 2.5em;
+  width: 4.5em;
+  font-size: 2em;
 }
 
 
 #resetBtn {
-  height: 4vw;
-  width: 13vw;
-  font-size: 3vw
+  height: 3em,;
+  width: 4em;
+  font-size: 1em;
+}
+
+textarea {
+  width: 75vw;
+  height: 20vw;
+  font-size: 1em;
+  font-weight: bold;
+  border: 1px solid black;
+  margin-bottom: 4em;
 }
