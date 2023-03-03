@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>SNAKE SCOUT</title>
-<link rel="icon" href="favicon.png">
+
+<title>Snake Scout</title>
+<link rel="icon" href="favicon.ico">
+
 <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -13,7 +15,7 @@
   
 <h1>SNAKE SCOUT</h1>
   
-<form onsubmit="return false;" method="post" action="https://script.google.com/macros/s/AKfycbyah_PdjcrHvynX_TvRybLykrJy0qhcTfS4PA9EhV3DkEErFIrVMOCFNfWERjwIZvVVAw/exec" id="scoutForm" target="dummyFrame">
+<form onsubmit="return false;" method="post" action="https://script.google.com/macros/s/AKfycbxRASQDZc2A_wK8EhfN6t6rfFdaA7SEaRidUIid0ZIipZJFbxxociexKhVnDDDM3MAB/exec" id="scoutForm" target="dummyFrame">
 
   
   <h2>Prematch</h2>
@@ -34,7 +36,6 @@
   </select><br><br>
   <label for="noShow">No Show:</label><br>
   <input type="checkbox" class="checkbox" name="No Show" value="TRUE", placeholder="FALSE"><br>
-
   
   <h2>Auto</h2>
   <label for="taxied">Exited Community:</label><br>
@@ -48,55 +49,128 @@
   
   <label for="TSA">Top Scored:</label><br>
   <table><tr>
-    <td><input type="button" class="button" id="input" onclick="TSA--;update('autoTop', 'autoTops',TSA);" value="-"></td>
-    <td><input name="Auto Top Scored" value="0" id="autoTops"  hidden><p id="autoTop" name="Top Scored">0</p></input></td>
-    <td><input type="button" class="button" id="input" onclick="TSA++;update('autoTop', 'autoTops',TSA);" value="+"></td>
+    <td><input type="button" class="button" id="atsSubBtn" value="-"></td>
+    <td><input name="Auto Top Scored" value='0' id="autoTops" hidden><p id="autoTop" name="Top Scored">0</p></td>
+    <td><input type="button" class="button" id="atsPlusBtn" value="+"></td>
   </tr></table>
 
   <label for="MSA">Mid Scored:</label><br>
-  <table><tr>
-    <td><input type="button" class="button" id="input" onclick="MSA--;update('autoMid', 'autoMids',MSA);" value="-"></td>
-    <td><input name="Auto Mid Scored" value="0" id="autoMids" hidden><p id="autoMid" name="Mid Scored" value="MSA">0</p></input></td>
-    <td><input type="button" class="button" id="input" onclick="MSA++;update('autoMid', 'autoMids',MSA);" value="+"></td>
-  </tr></table>
+  <table>
+    <tr>
+      <td><input type="button" class="button" id="amsSubBtn" value="-"></td>
+      <td><input name="Auto Mid Scored" value='0' id="autoMids" hidden><p id="autoMid" name="Mid Scored">0</p></td>
+      <td><input type="button" class="button" id="amsPlusBtn" value="+"></td>
+    </tr>
+  </table>
 
   <label for="LSA">Low Scored:</label><br>
-  <table><tr>
-    <td><input type="button" class="button" id="input" onclick="LSA--;update('autoLow', 'autoLows',LSA);" value="-"></td>
-    <td><input name="Auto Low Scored" value="0" id="autoLows" hidden><p id="autoLow" name="Low Scored" value="LSA">0</p></input></td>
-    <td><input type="button" class="button" id="input" onclick="LSA++;update('autoLow', 'autoLows',LSA);" value="+"></td>
-  </tr></table>
+  <table>
+    <tr>
+      <td><input type="button" class="button" id="alsSubBtn" value="-"></td>
+      <td><input name="Auto Low Scored" value='0' id="autoLows" hidden><p id="autoLow" name="Low Scored">0</p></td>
+      <td><input type="button" class="button" id="alsPlusBtn" value="+"></td>
+    </tr>
+  </table>
 
 
-  
-  
-  
   <h2>Teleop</h2>
 
   <label for="TST">Top Scored:</label><br>
-  <table><tr>
-    <td><input type="button" class="button" id="input" onclick="TST--;update('teleopTop', 'teleopTops',TST);" value="-"></td>
-    <td><input name="Top Scored" value="0" id="teleopTops"  hidden><p id="teleopTop" name="Top Scored">0</p></input></td>
-    <td><input type="button" class="button" id="input" onclick="TST++;update('teleopTop', 'teleopTops',TST);" value="+"></td>
-  </tr></table>
+  <table>
+    <tr>
+      <td><input type="button" class="button" id="ttsSubBtn" value="-"></td>
+      <td><input name="Teleop Top Scored" value='0' id="teleTops" hidden>
+        <p id="teleTop" name="Top Scored">0</p>
+      </td>
+      <td><input type="button" class="button" id="ttsPlusBtn" value="+"></td>
+    </tr>
+  </table>
 
   <label for="TSM">Mid Scored:</label><br>
-  <table><tr>
-    <td><input type="button" class="button" id="input" onclick="TSM--;update('teleopMid', 'teleopMids',TSM);" value="-"></td>
-    <td><input name="Mid Scored" value="0" id="teleopMids" hidden><p id="teleopMid" name="Mid Scored" value="TSM">0</p></input></td>
-    <td><input type="button" class="button" id="input" onclick="TSM++;update('teleopMid', 'teleopMids',TSM);" value="+"></td>
-  </tr></table>
+  <table>
+    <tr>
+      <td><input type="button" class="button" id="tmsSubBtn" value="-"></td>
+      <td><input name="Teleop Mid Scored" value='0' id="teleMids" hidden><p id="teleMid" name="Mid Scored">0</p></td>
+      <td><input type="button" class="button" id="tmsPlusBtn" value="+"></td>
+    </tr>
+  </table>
 
   <label for="TSL">Low Scored:</label><br>
-  <table><tr>
-    <td><input type="button" class="button" id="input" onclick="TSL--;update('teleopLow', 'teleopLows',TSL);" value="-"></td>
-    <td><input name="Low Scored" value="0" id="teleoLows" hidden><p id="teleopLow" name="Low Scored" value="TSL">0</p></input></td>
-    <td><input type="button" class="button" id="input" onclick="TSL++;update('teleopLow', 'teleopLows',TSL);" value="+"></td>
-  </tr></table>
+  <table>
+    <tr>
+      <td><input type="button" class="button" id="tlsSubBtn" value="-"></td>
+      <td><input name="Teleop Low Scored" value='0' id="teleLows" hidden><p id="teleLow" name="Low Scored">0</p></td>
+      <td><input type="button" class="button" id="tlsPlusBtn" value="+"></td>
+    </tr>
+  </table>
 
-  <label for="wasDefended">Was Defended:</label><br>
-  <input type="checkbox" class="checkbox" name="Was Defended" value="TRUE", placeholder="FALSE"><br>
+  <script>
+  var autoTopPlusButton = document.getElementById("atsPlusBtn"),
+      autoTopSubButton = document.getElementById("atsSubBtn"),
+      autoTopDisplay = document.getElementById("autoTop"),
+      autoTopValue = document.getElementById("autoTops");
 
+   var autoMidPlusButton = document.getElementById("amsPlusBtn"),
+       autoMidSubButton = document.getElementById("amsSubBtn"),
+       autoMidDisplay = document.getElementById("autoMid"),
+       autoMidValue = document.getElementById("autoMids");
+
+   var autoLowPlusButton = document.getElementById("alsPlusBtn"),
+       autoLowSubButton = document.getElementById("alsSubBtn"),
+       autoLowDisplay = document.getElementById("autoLow"),
+       autoLowValue = document.getElementById("autoLows"); 
+
+   var teleTopPlusButton = document.getElementById("ttsPlusBtn"),
+       teleTopSubButton = document.getElementById("ttsSubBtn"),
+       teleTopDisplay = document.getElementById("teleTop"),
+       teleTopValue = document.getElementById("teleTops"); 
+
+   var teleMidPlusButton = document.getElementById("tmsPlusBtn"),
+       teleMidSubButton = document.getElementById("tmsSubBtn"),
+       teleMidDisplay = document.getElementById("teleMid"),
+       teleMidValue = document.getElementById("teleMids");
+   
+   var teleLowPlusButton = document.getElementById("tlsPlusBtn"),
+       teleLowSubButton = document.getElementById("tlsSubBtn"),
+       teleLowDisplay = document.getElementById("teleLow"),
+       teleLowValue = document.getElementById("teleLows");
+      
+    autoTopPlusButton.addEventListener('click', function(){addCount(autoTopDisplay, autoTopValue);});
+    autoTopSubButton.addEventListener('click', function(){subCount(autoTopDisplay, autoTopValue);});
+
+    autoMidPlusButton.addEventListener('click', function(){addCount(autoMidDisplay, autoMidValue);});
+    autoMidSubButton.addEventListener('click', function(){subCount(autoMidDisplay, autoMidValue);});
+
+    autoLowPlusButton.addEventListener('click', function(){addCount(autoLowDisplay, autoLowValue);});
+    autoLowSubButton.addEventListener('click', function(){subCount(autoLowDisplay, autoLowValue);});
+    
+    teleTopPlusButton.addEventListener('click', function(){addCount(teleTopDisplay, teleTopValue);});
+    teleTopSubButton.addEventListener('click', function(){subCount(teleTopDisplay, teleTopValue);});
+   
+    teleMidPlusButton.addEventListener('click', function(){addCount(teleMidDisplay, teleMidValue);});
+    teleMidSubButton.addEventListener('click', function(){subCount(teleMidDisplay, teleMidValue);});
+    
+    teleLowPlusButton.addEventListener('click', function(){addCount(teleLowDisplay, teleLowValue);});
+    teleLowSubButton.addEventListener('click', function(){subCount(teleLowDisplay, teleLowValue);});
+      
+    function addCount(data_display, data_value_storage){
+      count = Number(data_value_storage.value);
+      count++;
+      data_display.innerHTML = count;
+      data_value_storage.value = count;
+    };
+
+    function subCount(data_display, data_value_storage) {
+      count = Number(data_value_storage.value);
+      if (count > 0) { 
+
+      count -= 1;
+      data_display.innerHTML = count;
+      data_value_storage.value = count;
+      }
+    };
+      
+  </script>
   
   <h2>Endgame</h2>
 
@@ -107,18 +181,8 @@
     <option value="docked">Docked but not Engaged</option>
     <option value="engaged">Engaged and Docked</option>
   </select><br><br>
-
-  <!-- <label for="startedClimb">Started Climb with Time Remaining:</label><br>
-  <input type="number" id="startedClimb" class="texter" name="Started Climb At" value=""><br> -->
-
   
   <h2>Postmatch</h2>
-
-  <!-- <label for="defense%">Played Defense for %:</label><br>
-  <input type="number" id="defense%" class="texter" name="Defense %" min="0" max="100" value="0"><br><br> -->
-
-  <label for="susBonus">Sustainability Bonus:</label><br>
-  <input type="checkbox" class="checkbox" name="susBonus" value="TRUE", placeholder="FALSE"><br><br>
 
   <label for="robotDisabled">Robot Disabled?:</label><br>
   <input type='hidden' value='FALSE' name='selfdestruct'>
@@ -127,14 +191,14 @@
   <label for="comments">Comments:</label><br>
   <input type="text" id="comments" class="commenter" name="Comments" value="" contenteditable><br><br>
 
+<button type="submit" id="submitBtn">Submit</button>
 
-<button onclick="submit();">Submit</button>
 <br></br>
 <br></br>
 <br></br>
 <br></br>
 <br></br>
-<button onclick='reset();' type='reset'>Reset</button>
+<button type="reset" id="resetBtn">Reset</button>
 
 </form>
 
@@ -143,38 +207,47 @@
 <script>
  
 
-function update(type1, type2, value) {
-  document.getElementById(type1).innerHTML = value;
-  document.getElementById(type2).value = value;
-}
+  var resetButton = document.getElementById("resetBtn");
+  var submitButton = document.getElementById("submitBtn");
 
-function reset() {
-  TSA = 0;
-  MSA = 0;
-  LSA = 0;
-  TST = 0;
-  TSM = 0;
-  update('autoTop', 'autoTops', TSA);
-  update('autoMid', 'autoMids', MSA);
-  update('autoLow', 'autoLows', LSA);
-  update('teleopTop', 'teleopTops', TST);
-  update('teleopMid', 'teleopMids', TSM);
-  update('teleopLow', 'teleopLows', TSL);
-  document.getElementById('scoutForm').reset();
-}
+  resetButton.addEventListener('click', function(){resetCounters();});
+  
+  function resetCounters() {
+ 
+    autoTopDisplay.innerHTML = 0;
+    autoTopValue.value = 0;
 
-function submit() {
-  //console.log(document.forms['scoutForm'])
-  document.forms["scoutForm"].submit();
-  reset();
-}
+    autoMidDisplay.innerHTML = 0;
+    autoMidValue.value = 0;
 
-var TSA = 0;
-var MSA = 0;
-var LSA = 0;
-var TST = 0; 
-var TSM = 0;
-var TSL = 0;
+    autoLowDisplay.innerHTML = 0;
+    autoLowValue.value = 0;
+
+    teleTopDisplay.innerHTML = 0;
+    teleTopValue.value = 0;
+
+    teleMidDisplay.innerHTML = 0;
+    teleMidValue.value = 0;
+
+    teleLowDisplay.innerHTML = 0;
+    teleLowValue.value = 0;
+
+  }
+
+  const scriptURL = 'https://script.google.com/macros/s/AKfycbxRASQDZc2A_wK8EhfN6t6rfFdaA7SEaRidUIid0ZIipZJFbxxociexKhVnDDDM3MAB/exec'
+  const form = document.forms['scoutForm']
+
+  form.addEventListener('submit', e => {
+    e.preventDefault()
+    fetch(scriptURL, { method: 'POST', body: new FormData(form) })
+      .then(response => console.log('Success!', response))
+      .catch(error => console.error('Error!', error.message))
+      .then(resetCounters())
+      .then(document.getElementById('scoutForm').reset())
+
+  })
+
+
 
 </script>
 
