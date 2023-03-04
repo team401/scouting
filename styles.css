@@ -48,6 +48,7 @@ input.button {
   font-size:5vw;
   touch-action: manipulation;
   border-radius: 50%;
+  padding: 20px;
 }
 
 .final {
@@ -103,4 +104,14 @@ textarea {
   font-weight: bold;
   border: 1px solid black;
   margin-bottom: 4em;
+}
+
+.cubes {
+  color: purple;
+  font-weight: bold;
+}
+
+.cones {
+  color: rgb(223, 223, 12);
+  font-weight: bold;
 }

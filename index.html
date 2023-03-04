@@ -55,30 +55,58 @@
     <option value="Cone">Cone</option>
   </select><br><br>
   
-  <label for="TSA">Top Scored:</label><br>
+  <label class="cubes">Top Cubes Scored:</label><br>
   <table><tr>
-    <td><input type="button" class="button" id="atsSubBtn" value="-"></td>
-    <td><input name="Auto Top Scored" value='0' id="autoTops" hidden><p id="autoTop" name="Top Scored">0</p></td>
-    <td><input type="button" class="button" id="atsPlusBtn" value="+"></td>
+    <td><input type="button" class="button" id="atCubesSubBtn" value="-"></td>
+    <td><input name="Auto Top Cubes Scored" value='0' id="autoTopCubesHidden" hidden><p id="autoTopCubes" name="Top Cubes Scored">0</p></td>
+    <td><input type="button" class="button" id="atCubesPlusBtn" value="+"></td>
   </tr></table>
 
-  <label for="MSA">Mid Scored:</label><br>
+  <label class="cones">Top Cones Scored:</label><br>
   <table>
     <tr>
-      <td><input type="button" class="button" id="amsSubBtn" value="-"></td>
-      <td><input name="Auto Mid Scored" value='0' id="autoMids" hidden><p id="autoMid" name="Mid Scored">0</p></td>
-      <td><input type="button" class="button" id="amsPlusBtn" value="+"></td>
+      <td><input type="button" class="button" id="atConesSubBtn" value="-"></td>
+      <td><input name="Auto Top Cones Scored" value='0' id="autoTopConesHidden" hidden><p id="autoTopCones" name="Top Cones Scored">0</p></td>
+      <td><input type="button" class="button" id="atConesPlusBtn" value="+"></td>
     </tr>
   </table>
 
-  <label for="LSA">Low Scored:</label><br>
+  <label class="cubes">Mid Cubes Scored:</label><br>
   <table>
     <tr>
-      <td><input type="button" class="button" id="alsSubBtn" value="-"></td>
-      <td><input name="Auto Low Scored" value='0' id="autoLows" hidden><p id="autoLow" name="Low Scored">0</p></td>
-      <td><input type="button" class="button" id="alsPlusBtn" value="+"></td>
+      <td><input type="button" class="button" id="amCubesSubBtn" value="-"></td>
+      <td><input name="Auto Mid Cubes Scored" value='0' id="autoMidCubesHidden" hidden><p id="autoMidCubes" name="Mid Cubes Scored">0</p></td>
+      <td><input type="button" class="button" id="amCubesPlusBtn" value="+"></td>
     </tr>
   </table>
+
+  <label class="cones">Mid Cones Scored:</label><br>
+  <table>
+    <tr>
+      <td><input type="button" class="button" id="amConesSubBtn" value="-"></td>
+      <td><input name="Auto Mid Cones Scored" value='0' id="autoMidConesHidden" hidden><p id="autoMidCones" name="Mid Cones Scored">0</p></td>
+      <td><input type="button" class="button" id="amConesPlusBtn" value="+"></td>
+    </tr>
+  </table>
+
+  <label class="cubes">Low Cubes Scored:</label><br>
+  <table>
+    <tr>
+      <td><input type="button" class="button" id="alCubesSubBtn" value="-"></td>
+      <td><input name="Auto Low Cubes Scored" value='0' id="autoLowCubesHidden" hidden><p id="autoLowCubes" name="Low Cubes Scored">0</p></td>
+      <td><input type="button" class="button" id="alCubesPlusBtn" value="+"></td>
+    </tr>
+  </table>
+
+  <label class="cones">Low Cones Scored:</label><br>
+  <table>
+    <tr>
+      <td><input type="button" class="button" id="alConesSubBtn" value="-"></td>
+      <td><input name="Auto Low Cones Scored" value='0' id="autoLowConesHidden" hidden><p id="autoLowCones" name="Low Cones Scored">0</p></td>
+      <td><input type="button" class="button" id="alConesPlusBtn" value="+"></td>
+    </tr>
+  </table>
+
 
   <label for="climb">End of Auto Charge Station:</label><br>
   <select name="End of Auto" id="autoEnd">
@@ -92,83 +120,158 @@
   <div id="teleDiv">
   <h2>Teleop</h2>
 
-  <label for="TST">Top Scored:</label><br>
+  <label class="cubes">Top Cubes Scored:</label><br>
   <table>
     <tr>
-      <td><input type="button" class="button" id="ttsSubBtn" value="-"></td>
-      <td><input name="Teleop Top Scored" value='0' id="teleTops" hidden>
-        <p id="teleTop" name="Top Scored">0</p>
-      </td>
-      <td><input type="button" class="button" id="ttsPlusBtn" value="+"></td>
+      <td><input type="button" class="button" id="ttCubesSubBtn" value="-"></td>
+      <td><input name="Teleop Top Cubes Scored" value='0' id="teleTopCubesHidden" hidden><p id="teleTopCubes" name="Top Cubes Scored">0</p></td>
+      <td><input type="button" class="button" id="ttCubesPlusBtn" value="+"></td>
     </tr>
   </table>
 
-  <label for="TSM">Mid Scored:</label><br>
+  <label class="cones">Top Cones Scored:</label><br>
   <table>
     <tr>
-      <td><input type="button" class="button" id="tmsSubBtn" value="-"></td>
-      <td><input name="Teleop Mid Scored" value='0' id="teleMids" hidden><p id="teleMid" name="Mid Scored">0</p></td>
-      <td><input type="button" class="button" id="tmsPlusBtn" value="+"></td>
+      <td><input type="button" class="button" id="ttConesSubBtn" value="-"></td>
+      <td><input name="Teleop Top Cones Scored" value='0' id="teleTopConesHidden" hidden><p id="teleTopCones" name="Top Cones Scored">0</p></td>
+      <td><input type="button" class="button" id="ttConesPlusBtn" value="+"></td>
     </tr>
   </table>
 
-  <label for="TSL">Low Scored:</label><br>
+  <label class="cubes">Mid Cubes Scored:</label><br>
   <table>
     <tr>
-      <td><input type="button" class="button" id="tlsSubBtn" value="-"></td>
-      <td><input name="Teleop Low Scored" value='0' id="teleLows" hidden><p id="teleLow" name="Low Scored">0</p></td>
-      <td><input type="button" class="button" id="tlsPlusBtn" value="+"></td>
+      <td><input type="button" class="button" id="tmCubesSubBtn" value="-"></td>
+      <td><input name="Teleop Mid Cubes Scored" value='0' id="teleMidCubesHidden" hidden><p id="teleMidCubes" name="Mid Cubes Scored">0</p></td>
+      <td><input type="button" class="button" id="tmCubesPlusBtn" value="+"></td>
+    </tr>
+  </table>
+
+  <label class="cones">Mid Cones Scored:</label><br>
+  <table>
+    <tr>
+      <td><input type="button" class="button" id="tmConesSubBtn" value="-"></td>
+      <td><input name="Teleop Mid Cones Scored" value='0' id="teleMidConesHidden" hidden><p id="teleMidCones" name="Mid Cones Scored">0</p></td>
+      <td><input type="button" class="button" id="tmConesPlusBtn" value="+"></td>
+    </tr>
+  </table>
+
+  <label class="cubes">Low Cubes Scored:</label><br>
+  <table>
+    <tr>
+      <td><input type="button" class="button" id="tlCubesSubBtn" value="-"></td>
+      <td><input name="Teleop Low Cubes Scored" value='0' id="teleLowCubesHidden" hidden><p id="teleLowCubes" name="Low Cubes Scored">0</p></td>
+      <td><input type="button" class="button" id="tlCubesPlusBtn" value="+"></td>
+    </tr>
+  </table>
+
+  <label class="cones">Low Cones Scored:</label><br>
+  <table>
+    <tr>
+      <td><input type="button" class="button" id="tlConesSubBtn" value="-"></td>
+      <td><input name="Teleop Low Cones Scored" value='0' id="teleLowConesHidden" hidden><p id="teleLowCones" name="Low Cones Scored">0</p></td>
+      <td><input type="button" class="button" id="tlConesPlusBtn" value="+"></td>
     </tr>
   </table>
 
   <script>
-  var autoTopPlusButton = document.getElementById("atsPlusBtn"),
-      autoTopSubButton = document.getElementById("atsSubBtn"),
-      autoTopDisplay = document.getElementById("autoTop"),
-      autoTopValue = document.getElementById("autoTops");
+  var autoTopCubesPlusButton = document.getElementById("atCubesPlusBtn"),
+      autoTopCubesSubButton = document.getElementById("atCubesSubBtn"),
+      autoTopCubesDisplay = document.getElementById("autoTopCubes"),
+      autoTopCubesValue = document.getElementById("autoTopCubesHidden");
 
-   var autoMidPlusButton = document.getElementById("amsPlusBtn"),
-       autoMidSubButton = document.getElementById("amsSubBtn"),
-       autoMidDisplay = document.getElementById("autoMid"),
-       autoMidValue = document.getElementById("autoMids");
+  var autoTopConesPlusButton = document.getElementById("atConesPlusBtn"),
+      autoTopConesSubButton = document.getElementById("atConesSubBtn"),
+      autoTopConesDisplay = document.getElementById("autoTopCones"),
+      autoTopConesValue = document.getElementById("autoTopConesHidden");
 
-   var autoLowPlusButton = document.getElementById("alsPlusBtn"),
-       autoLowSubButton = document.getElementById("alsSubBtn"),
-       autoLowDisplay = document.getElementById("autoLow"),
-       autoLowValue = document.getElementById("autoLows"); 
+   var autoMidCubesPlusButton = document.getElementById("amCubesPlusBtn"),
+       autoMidCubesSubButton = document.getElementById("amCubesSubBtn"),
+       autoMidCubesDisplay = document.getElementById("autoMidCubes"),
+       autoMidCubesValue = document.getElementById("autoMidCubesHidden");
 
-   var teleTopPlusButton = document.getElementById("ttsPlusBtn"),
-       teleTopSubButton = document.getElementById("ttsSubBtn"),
-       teleTopDisplay = document.getElementById("teleTop"),
-       teleTopValue = document.getElementById("teleTops"); 
+  var autoMidConesPlusButton = document.getElementById("amConesPlusBtn"),
+      autoMidConesSubButton = document.getElementById("amConesSubBtn"),
+      autoMidConesDisplay = document.getElementById("autoMidCones"),
+      autoMidConesValue = document.getElementById("autoMidConesHidden");
 
-   var teleMidPlusButton = document.getElementById("tmsPlusBtn"),
-       teleMidSubButton = document.getElementById("tmsSubBtn"),
-       teleMidDisplay = document.getElementById("teleMid"),
-       teleMidValue = document.getElementById("teleMids");
+  var autoLowCubesPlusButton = document.getElementById("alCubesPlusBtn"),
+      autoLowCubesSubButton = document.getElementById("alCubesSubBtn"),
+      autoLowCubesDisplay = document.getElementById("autoLowCubes"),
+      autoLowCubesValue = document.getElementById("autoLowCubesHidden"); 
+
+  var autoLowConesPlusButton = document.getElementById("alConesPlusBtn"),
+      autoLowConesSubButton = document.getElementById("alConesSubBtn"),
+      autoLowConesDisplay = document.getElementById("autoLowCones"),
+      autoLowConesValue = document.getElementById("autoLowConesHidden"); 
+
+  var teleTopCubesPlusButton = document.getElementById("ttCubesPlusBtn"),
+      teleTopCubesSubButton = document.getElementById("ttCubesSubBtn"),
+      teleTopCubesDisplay = document.getElementById("teleTopCubes"),
+      teleTopCubesValue = document.getElementById("teleTopCubesHidden"); 
+
+  var teleTopConesPlusButton = document.getElementById("ttConesPlusBtn"),
+      teleTopConesSubButton = document.getElementById("ttConesSubBtn"),
+      teleTopConesDisplay = document.getElementById("teleTopCones"),
+      teleTopConesValue = document.getElementById("teleTopConesHidden"); 
+
+  var teleMidCubesPlusButton = document.getElementById("tmCubesPlusBtn"),
+      teleMidCubesSubButton = document.getElementById("tmCubesSubBtn"),
+      teleMidCubesDisplay = document.getElementById("teleMidCubes"),
+      teleMidCubesValue = document.getElementById("teleMidCubesHidden");
+  
+  var teleMidConesPlusButton = document.getElementById("tmConesPlusBtn"),
+      teleMidConesSubButton = document.getElementById("tmConesSubBtn"),
+      teleMidConesDisplay = document.getElementById("teleMidCones"),
+      teleMidConesValue = document.getElementById("teleMidConesHidden");
    
-   var teleLowPlusButton = document.getElementById("tlsPlusBtn"),
-       teleLowSubButton = document.getElementById("tlsSubBtn"),
-       teleLowDisplay = document.getElementById("teleLow"),
-       teleLowValue = document.getElementById("teleLows");
+   var teleLowCubesPlusButton = document.getElementById("tlCubesPlusBtn"),
+       teleLowCubesSubButton = document.getElementById("tlCubesSubBtn"),
+       teleLowCubesDisplay = document.getElementById("teleLowCubes"),
+       teleLowCubesValue = document.getElementById("teleLowCubesHidden");
+
+   var teleLowConesPlusButton = document.getElementById("tlConesPlusBtn"),
+       teleLowConesSubButton = document.getElementById("tlConesSubBtn"),
+       teleLowConesDisplay = document.getElementById("teleLowCones"),
+       teleLowConesValue = document.getElementById("teleLowConesHidden");
       
-    autoTopPlusButton.addEventListener('click', function(){addCount(autoTopDisplay, autoTopValue);});
-    autoTopSubButton.addEventListener('click', function(){subCount(autoTopDisplay, autoTopValue);});
-
-    autoMidPlusButton.addEventListener('click', function(){addCount(autoMidDisplay, autoMidValue);});
-    autoMidSubButton.addEventListener('click', function(){subCount(autoMidDisplay, autoMidValue);});
-
-    autoLowPlusButton.addEventListener('click', function(){addCount(autoLowDisplay, autoLowValue);});
-    autoLowSubButton.addEventListener('click', function(){subCount(autoLowDisplay, autoLowValue);});
+    autoTopCubesPlusButton.addEventListener('click', function(){addCount(autoTopCubesDisplay, autoTopCubesValue);});
+    autoTopCubesSubButton.addEventListener('click', function(){subCount(autoTopCubesDisplay, autoTopCubesValue);});
     
-    teleTopPlusButton.addEventListener('click', function(){addCount(teleTopDisplay, teleTopValue);});
-    teleTopSubButton.addEventListener('click', function(){subCount(teleTopDisplay, teleTopValue);});
+    autoTopConesPlusButton.addEventListener('click', function(){addCount(autoTopConesDisplay, autoTopConesValue);});
+    autoTopConesSubButton.addEventListener('click', function(){subCount(autoTopConesDisplay, autoTopConesValue);});
+
+    autoMidCubesPlusButton.addEventListener('click', function(){addCount(autoMidCubesDisplay, autoMidCubesValue);});
+    autoMidCubesSubButton.addEventListener('click', function(){subCount(autoMidCubesDisplay, autoMidCubesValue);});
+    
+    autoMidConesPlusButton.addEventListener('click', function(){addCount(autoMidConesDisplay, autoMidConesValue);});
+    autoMidConesSubButton.addEventListener('click', function(){subCount(autoMidConesDisplay, autoMidConesValue);});
+
+    autoLowCubesPlusButton.addEventListener('click', function(){addCount(autoLowCubesDisplay, autoLowCubesValue);});
+    autoLowCubesSubButton.addEventListener('click', function(){subCount(autoLowCubesDisplay, autoLowCubesValue);});
+    
+    autoLowConesPlusButton.addEventListener('click', function(){addCount(autoLowConesDisplay, autoLowConesValue);});
+    autoLowConesSubButton.addEventListener('click', function(){subCount(autoLowConesDisplay, autoLowConesValue);});
+    
+
+
+    teleTopCubesPlusButton.addEventListener('click', function(){addCount(teleTopCubesDisplay, teleTopCubesValue);});
+    teleTopCubesSubButton.addEventListener('click', function(){subCount(teleTopCubesDisplay, teleTopCubesValue);});
+    
+    teleTopConesPlusButton.addEventListener('click', function(){addCount(teleTopConesDisplay, teleTopConesValue);});
+    teleTopConesSubButton.addEventListener('click', function(){subCount(teleTopConesDisplay, teleTopConesValue);});
    
-    teleMidPlusButton.addEventListener('click', function(){addCount(teleMidDisplay, teleMidValue);});
-    teleMidSubButton.addEventListener('click', function(){subCount(teleMidDisplay, teleMidValue);});
+    teleMidCubesPlusButton.addEventListener('click', function(){addCount(teleMidCubesDisplay, teleMidCubesValue);});
+    teleMidCubesSubButton.addEventListener('click', function(){subCount(teleMidCubesDisplay, teleMidCubesValue);});
     
-    teleLowPlusButton.addEventListener('click', function(){addCount(teleLowDisplay, teleLowValue);});
-    teleLowSubButton.addEventListener('click', function(){subCount(teleLowDisplay, teleLowValue);});
+    teleMidConesPlusButton.addEventListener('click', function(){addCount(teleMidConesDisplay, teleMidConesValue);});
+    teleMidConesSubButton.addEventListener('click', function(){subCount(teleMidConesDisplay, teleMidConesValue);});
+    
+    teleLowCubesPlusButton.addEventListener('click', function(){addCount(teleLowCubesDisplay, teleLowCubesValue);});
+    teleLowCubesSubButton.addEventListener('click', function(){subCount(teleLowCubesDisplay, teleLowCubesValue);});
+    
+    teleLowConesPlusButton.addEventListener('click', function(){addCount(teleLowConesDisplay, teleLowConesValue);});
+    teleLowConesSubButton.addEventListener('click', function(){subCount(teleLowConesDisplay, teleLowConesValue);});
       
     function addCount(data_display, data_value_storage){
       count = Number(data_value_storage.value);
@@ -203,7 +306,7 @@
   <div id="postDiv">
   <h2>Postmatch</h2>
 
-  <label for="robotDisabled">Robot Disabled?</label><br>
+  <label for="robotDisabled">Robot Disabled?:</label><br>
   <input type='hidden' value='FALSE' name='selfdestruct'>
   <input type="checkbox" class="checkbox" name="Robot Disabled?" value="TRUE", placeholder="FALSE"F><br>
 
@@ -238,27 +341,35 @@
   
   function resetCounters() {
  
-    autoTopDisplay.innerHTML = 0;
-    autoTopValue.value = 0;
+    autoTopCubesDisplay.innerHTML = 0;
+    autoTopCubesValue.value = 0;
+    autoMidCubesDisplay.innerHTML = 0;
+    autoMidCubesValue.value = 0;
+    autoLowCubesDisplay.innerHTML = 0;
+    autoLowCubesValue.value = 0;
+    teleTopCubesDisplay.innerHTML = 0;
+    teleTopCubesValue.value = 0;
+    teleMidCubesDisplay.innerHTML = 0;
+    teleMidCubesValue.value = 0;
+    teleLowCubesDisplay.innerHTML = 0;
+    teleLowCubesValue.value = 0;
 
-    autoMidDisplay.innerHTML = 0;
-    autoMidValue.value = 0;
-
-    autoLowDisplay.innerHTML = 0;
-    autoLowValue.value = 0;
-
-    teleTopDisplay.innerHTML = 0;
-    teleTopValue.value = 0;
-
-    teleMidDisplay.innerHTML = 0;
-    teleMidValue.value = 0;
-
-    teleLowDisplay.innerHTML = 0;
-    teleLowValue.value = 0;
+    autoTopConesDisplay.innerHTML = 0;
+    autoTopConesValue.value = 0;
+    autoMidConesDisplay.innerHTML = 0;
+    autoMidConesValue.value = 0;
+    autoLowConesDisplay.innerHTML = 0;
+    autoLowConesValue.value = 0;
+    teleTopConesDisplay.innerHTML = 0;
+    teleTopConesValue.value = 0;
+    teleMidConesDisplay.innerHTML = 0;
+    teleMidConesValue.value = 0;
+    teleLowConesDisplay.innerHTML = 0;
+    teleLowConesValue.value = 0;
 
   }
 
-  const scriptURL = 'https://script.google.com/macros/s/AKfycbxRASQDZc2A_wK8EhfN6t6rfFdaA7SEaRidUIid0ZIipZJFbxxociexKhVnDDDM3MAB/exec'
+  const scriptURL = 'https://script.google.com/macros/s/AKfycbw6diWUnZYxn9A2-Y_v9KKRdpgc5fGY8u8iJ1uQjgRMcsMx5lvWU0QDqjklkQ4LCfMJ/exec'
   const form = document.forms['scoutForm']
 
   form.addEventListener('submit', e => {
