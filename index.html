@@ -54,37 +54,13 @@
     <option value="Cube">Cube</option>
     <option value="Cone">Cone</option>
   </select><br><br>
-    
- <div class="row">
- <div class="column">
- 
+  
   <label class="cubes">Top Cubes Scored:</label><br>
   <table><tr>
     <td><input type="button" class="button" id="atCubesSubBtn" value="-"></td>
     <td><input name="Auto Top Cubes Scored" value='0' id="autoTopCubesHidden" hidden><p id="autoTopCubes" name="Top Cubes Scored">0</p></td>
     <td><input type="button" class="button" id="atCubesPlusBtn" value="+"></td>
   </tr></table>
-
- <label class="cubes">Mid Cubes Scored:</label><br>
-  <table>
-    <tr>
-      <td><input type="button" class="button" id="amCubesSubBtn" value="-"></td>
-      <td><input name="Auto Mid Cubes Scored" value='0' id="autoMidCubesHidden" hidden><p id="autoMidCubes" name="Mid Cubes Scored">0</p></td>
-      <td><input type="button" class="button" id="amCubesPlusBtn" value="+"></td>
-    </tr>
-  </table>
- <label class="cubes">Low Cubes Scored:</label><br>
-  <table>
-    <tr>
-      <td><input type="button" class="button" id="alCubesSubBtn" value="-"></td>
-      <td><input name="Auto Low Cubes Scored" value='0' id="autoLowCubesHidden" hidden><p id="autoLowCubes" name="Low Cubes Scored">0</p></td>
-      <td><input type="button" class="button" id="alCubesPlusBtn" value="+"></td>
-    </tr>
-  </table>
-  </div>
-
-  <div class="column">
-  
 
   <label class="cones">Top Cones Scored:</label><br>
   <table>
@@ -95,7 +71,14 @@
     </tr>
   </table>
 
- 
+  <label class="cubes">Mid Cubes Scored:</label><br>
+  <table>
+    <tr>
+      <td><input type="button" class="button" id="amCubesSubBtn" value="-"></td>
+      <td><input name="Auto Mid Cubes Scored" value='0' id="autoMidCubesHidden" hidden><p id="autoMidCubes" name="Mid Cubes Scored">0</p></td>
+      <td><input type="button" class="button" id="amCubesPlusBtn" value="+"></td>
+    </tr>
+  </table>
 
   <label class="cones">Mid Cones Scored:</label><br>
   <table>
@@ -106,7 +89,14 @@
     </tr>
   </table>
 
- 
+  <label class="cubes">Low Cubes Scored:</label><br>
+  <table>
+    <tr>
+      <td><input type="button" class="button" id="alCubesSubBtn" value="-"></td>
+      <td><input name="Auto Low Cubes Scored" value='0' id="autoLowCubesHidden" hidden><p id="autoLowCubes" name="Low Cubes Scored">0</p></td>
+      <td><input type="button" class="button" id="alCubesPlusBtn" value="+"></td>
+    </tr>
+  </table>
 
   <label class="cones">Low Cones Scored:</label><br>
   <table>
@@ -116,8 +106,7 @@
       <td><input type="button" class="button" id="alConesPlusBtn" value="+"></td>
     </tr>
   </table>
-</div>
-</div>
+
 
   <label for="climb">End of Auto Charge Station:</label><br>
   <select name="End of Auto" id="autoEnd">
@@ -131,9 +120,6 @@
   <div id="teleDiv">
   <h2>Teleop</h2>
 
- <div class="row">
-  <div class="column">
-
   <label class="cubes">Top Cubes Scored:</label><br>
   <table>
     <tr>
@@ -143,26 +129,6 @@
     </tr>
   </table>
 
-   <label class="cubes">Mid Cubes Scored:</label><br>
-  <table>
-    <tr>
-      <td><input type="button" class="button" id="tmCubesSubBtn" value="-"></td>
-      <td><input name="Teleop Mid Cubes Scored" value='0' id="teleMidCubesHidden" hidden><p id="teleMidCubes" name="Mid Cubes Scored">0</p></td>
-      <td><input type="button" class="button" id="tmCubesPlusBtn" value="+"></td>
-    </tr>
-  </table>
-
-   <label class="cubes">Low Cubes Scored:</label><br>
-  <table>
-    <tr>
-      <td><input type="button" class="button" id="tlCubesSubBtn" value="-"></td>
-      <td><input name="Teleop Low Cubes Scored" value='0' id="teleLowCubesHidden" hidden><p id="teleLowCubes" name="Low Cubes Scored">0</p></td>
-      <td><input type="button" class="button" id="tlCubesPlusBtn" value="+"></td>
-    </tr>
-  </table>
-  </div>
- 
-<div class="column">
   <label class="cones">Top Cones Scored:</label><br>
   <table>
     <tr>
@@ -172,7 +138,14 @@
     </tr>
   </table>
 
- 
+  <label class="cubes">Mid Cubes Scored:</label><br>
+  <table>
+    <tr>
+      <td><input type="button" class="button" id="tmCubesSubBtn" value="-"></td>
+      <td><input name="Teleop Mid Cubes Scored" value='0' id="teleMidCubesHidden" hidden><p id="teleMidCubes" name="Mid Cubes Scored">0</p></td>
+      <td><input type="button" class="button" id="tmCubesPlusBtn" value="+"></td>
+    </tr>
+  </table>
 
   <label class="cones">Mid Cones Scored:</label><br>
   <table>
@@ -183,7 +156,14 @@
     </tr>
   </table>
 
- 
+  <label class="cubes">Low Cubes Scored:</label><br>
+  <table>
+    <tr>
+      <td><input type="button" class="button" id="tlCubesSubBtn" value="-"></td>
+      <td><input name="Teleop Low Cubes Scored" value='0' id="teleLowCubesHidden" hidden><p id="teleLowCubes" name="Low Cubes Scored">0</p></td>
+      <td><input type="button" class="button" id="tlCubesPlusBtn" value="+"></td>
+    </tr>
+  </table>
 
   <label class="cones">Low Cones Scored:</label><br>
   <table>
@@ -193,9 +173,6 @@
       <td><input type="button" class="button" id="tlConesPlusBtn" value="+"></td>
     </tr>
   </table>
-
- </div>
- </div>
 
   <script>
   var autoTopCubesPlusButton = document.getElementById("atCubesPlusBtn"),
