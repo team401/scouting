@@ -60,7 +60,7 @@ input.button {
   border-radius: 50%;
   background-color: rgb(250, 237, 62);
   border-color: rgb(250, 237, 62);
-  margin: 10px;
+  margin: 5%;
 }
 
 .buttonCube {
@@ -71,7 +71,7 @@ input.button {
   border-radius: 50%;
   background-color: rgb(107, 66, 201);
   border-color: rgb(107, 66, 201);
-  margin: 10px;
+  margin: 7%;
 }
 
 .final {
