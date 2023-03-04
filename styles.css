@@ -45,10 +45,33 @@ input.button {
 }
 
 .button {
+  height: 60px;
+  width: 60px;
   font-size:5vw;
   touch-action: manipulation;
   border-radius: 50%;
-  padding: 20px;
+}
+
+.buttonCone {
+  height: 60px;
+  width: 60px;
+  font-size:5vw;
+  touch-action: manipulation;
+  border-radius: 50%;
+  background-color: rgb(250, 237, 62);
+  border-color: rgb(250, 237, 62);
+  margin: 10px;
+}
+
+.buttonCube {
+  height: 60px;
+  width: 60px;
+  font-size: 5vm;
+  touch-action: manipulation;
+  border-radius: 50%;
+  background-color: rgb(107, 66, 201);
+  border-color: rgb(107, 66, 201);
+  margin: 10px;
 }
 
 .final {
@@ -68,11 +91,11 @@ body {
 }
 
 #preDiv, #teleDiv {
-  background-color: rgb(204, 204, 204);
+  background-color: rgb(255, 255, 255);
 }
 
 #autoDiv, #postDiv {
-  background-color: rgb(204, 204, 204);
+  background-color: rgb(255, 255, 255);
 }
 
 p {
@@ -85,16 +108,18 @@ h2 {
 }
 
 #submitBtn {
-  height: 2.5em;
-  width: 4.5em;
+  height: 5%;
+  width: 50%;
   font-size: 2em;
+  background-color: white;
 }
 
 
 #resetBtn {
-  height: 3em,;
-  width: 4em;
+  height: 5%;
+  width: 25%;
   font-size: 1em;
+  background-color: white;
 }
 
 textarea {
@@ -104,24 +129,4 @@ textarea {
   font-weight: bold;
   border: 1px solid black;
   margin-bottom: 4em;
-}
-
-.cubes {
-  color: purple;
-  font-weight: bold;
-}
-
-.cones {
-  color: rgb(226, 160, 8);
-  font-weight: bold;
-}
-
-.row {
-  display: flex;
-}
-
-.column {
-  flex: 50%;
-  border-right: 0.25px solid black;
-  border-left: 0.25px solid black;
 }
