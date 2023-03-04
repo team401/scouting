@@ -108,16 +108,16 @@ h2 {
 }
 
 #submitBtn {
-  height: 200px;
-  width: 400px;
+  height: 5%;
+  width: 50%;
   font-size: 2em;
   background-color: white;
 }
 
 
 #resetBtn {
-  height: 30px,;
-  width: 100px;
+  height: 5%;
+  width: 25%;
   font-size: 1em;
   background-color: white;
 }
