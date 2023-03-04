@@ -112,6 +112,16 @@ textarea {
 }
 
 .cones {
-  color: rgb(223, 223, 12);
+  color: rgb(226, 160, 8);
   font-weight: bold;
+}
+
+.row {
+  display: flex;
+}
+
+.column {
+  flex: 50%;
+  border-right: 0.25px solid black;
+  border-left: 0.25px solid black;
 }
