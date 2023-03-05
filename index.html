@@ -350,6 +350,11 @@
   var submitButton = document.getElementById("submitBtn");
 
   resetButton.addEventListener('click', function(){resetCounters();});
+  submitButton.addEventListener('click', funtion(){submitButtonColorFunct();});
+
+  function submitButtonColorFunct() {
+    submitBtnColor.style.setProperty('--color', 'orange');
+  }
   
   function resetCounters() {
  
@@ -391,7 +396,6 @@
   var submitBtnColor = document.querySelector('#submitBtn');
 
   form.addEventListener('submit', e => {
-    submitBtnColor.style.setProperty('--color', 'orange');
     e.preventDefault()
     fetch(scriptURL, { method: 'POST', body: new FormData(form) })
       .then(response => console.log('Success!', response))
