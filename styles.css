@@ -108,11 +108,13 @@ h2 {
 }
 
 #submitBtn {
+  --color: white;
   height: 5%;
   width: 50%;
   font-size: 2em;
   color: black;
-  background-color: white;
+  background-color: var(--color);
+  border-color: var(--color);
 }
 
 
