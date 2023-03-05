@@ -61,9 +61,6 @@
     <option value="3361">3361</option>
     <option value="3373">3373</option>
     <option value="3939">3939</option>
-    <option value="3361">3361</option>
-    <option value="3373">3373</option>
-    <option value="3939">3939</option>
     <option value="4456">4456</option>
     <option value="4464">4464</option>
     <option value="4505">4505</option>
@@ -93,13 +90,13 @@
     <option value="Blue 3">Blue 3</option>
   </select><br><br>
   <label for="noShow">No Show:</label><br>
-  <input type="checkbox" class="checkbox" name="No Show" value="TRUE", placeholder="FALSE"><br>
+  <input type="checkbox" class="checkbox" name="No Show" value="TRUE" placeholder="FALSE" id="noShow"><br>
   </div>
 
   <div id="autoDiv">
   <h2>Auto</h2>
   <label for="taxied">Exited Community:</label><br>
-  <input type="checkbox" class="checkbox" name="Exit Community" value="TRUE", placeholder="FALSE"><br><br>
+  <input type="checkbox" class="checkbox" name="Exit Community" value="TRUE" placeholder="FALSE" id="exitCommunity"><br><br>
 
   <label for="preload">Preload:</label><br>
   <select name="preload" id="preload">
@@ -319,8 +316,7 @@
   <h2>Postmatch</h2>
 
   <label for="robotDisabled">Robot Disabled?</label><br>
-  <input type='hidden' value='FALSE' name='selfdestruct'>
-  <input type="checkbox" class="checkbox" name="Robot Disabled?" value="TRUE", placeholder="FALSE"F><br>
+  <input type="checkbox" class="checkbox" name="Robot Disabled?" value="TRUE" placeholder="FALSE" id="robotDisabled"><br>
 
   <label for="comments">Comments:</label><br>
   <textarea id="comments" name="Comments" rows="4" cols="20"></textarea>
@@ -388,17 +384,78 @@
   const scriptURL = 'https://script.google.com/macros/s/AKfycbw6diWUnZYxn9A2-Y_v9KKRdpgc5fGY8u8iJ1uQjgRMcsMx5lvWU0QDqjklkQ4LCfMJ/exec'
   const form = document.forms['scoutForm']
 
-  var submitBtnColor = document.querySelector('#submitBtn');
-
   form.addEventListener('submit', e => {
-    submitBtnColor.style.setProperty('--color', 'orange');
     e.preventDefault()
     fetch(scriptURL, { method: 'POST', body: new FormData(form) })
       .then(response => console.log('Success!', response))
       .catch(error => console.error('Error!', error.message))
+      .then(saveFile())
       .then(resetCounters())
       .then(document.getElementById('scoutForm').reset())
+
   })
+
+
+
+  let saveFile = () => {
+     const yourTeam = document.getElementById("yourTeam").value;
+     const initials = document.getElementById("initials").value;
+     const teamNum = document.getElementById("teamNum").value;
+     const matchNum = document.getElementById("matchNum").value;
+     const robotPosition = document.getElementById("robotPosition").value;
+     const noShow = document.getElementById("noShow").value;
+     const exitCommunity = document.getElementById("exitCommunity").value;
+     const preload = document.getElementById("preload").value;
+
+     const autoTopsCone = document.getElementById("autoTopsCone").value;
+     const autoTopsCube = document.getElementById("autoTopsCube").value;
+     
+     const autoMidsCone = document.getElementById("autoMidsCone").value;
+     const autoMidsCube = document.getElementById("autoMidsCube").value;
+
+     const autoLowsCone = document.getElementById("autoLowsCone").value;
+     const autoLowsCube = document.getElementById("autoLowsCube").value;
+     
+     const autoEnd = document.getElementById("autoEnd").value;
+
+     const teleTopsCone = document.getElementById("teleTopsCone").value;
+     const teleTopsCube = document.getElementById("teleTopsCube").value;
+
+     const teleMidsCone = document.getElementById("teleMidsCone").value;
+     const teleMidsCube = document.getElementById("teleMidsCube").value;
+
+     const teleLowsCone = document.getElementById("teleLowsCone").value;
+     const teleLowsCube = document.getElementById("teleLowsCube").value;
+     
+     const climb = document.getElementById("climb").value;
+     
+     const robotDisabled = document.getElementById("robotDisabled").value;
+     const comments = document.getElementById("comments").value;
+     
+
+  
+     // This variable stores all the data.
+     let data = yourTeam + "," + initials + "," + teamNum + "," + matchNum + "," + robotPosition + "," + noShow + "," + exitCommunity + "," + preload + "," +
+         autoTopsCone + "," + autoTopsCube + "," + autoMidsCone + "," + autoMidsCube + "," + autoLowsCone + "," + autoLowsCube + "," + autoEnd + "," +
+         teleTopsCone + "," + teleTopsCube + "," + teleMidsCone + "," + teleMidsCube + "," + teleLowsCone + "," + teleLowsCube + "," +
+         climb + "," + robotDisabled + "," + comments;
+     console.log(data); //printing form data into the console
+     // Convert the text to BLOB.
+     const textToBLOB = new Blob([data], { type: "text/plain" });
+     var filename = new Date();
+     
+     const sFileName = filename; // The file to save the data.
+     let newLink = document.createElement("a");
+     newLink.download = yourTeam + "-Team " + teamNum + "-Match" + matchNum + "-" + robotPosition;
+     if (window.webkitURL != null) {
+       newLink.href = window.webkitURL.createObjectURL(textToBLOB);
+     } else {
+       newLink.href = window.URL.createObjectURL(textToBLOB);
+       newLink.style.display = "none";
+       document.body.appendChild(newLink);
+     }
+     newLink.click();
+   };
 
 </script>
 
