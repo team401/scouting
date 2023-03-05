@@ -346,6 +346,11 @@
   var submitButton = document.getElementById("submitBtn");
 
   resetButton.addEventListener('click', function(){resetCounters();});
+  submitButton.addEventListener('click', function(){submitButtonColorFunct();});
+
+  function submitButtonColorFunct() {
+    submitBtnColor.style.setProperty('--color', 'orange');
+  }
   
   function resetCounters() {
  
