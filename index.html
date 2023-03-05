@@ -388,17 +388,17 @@
   const scriptURL = 'https://script.google.com/macros/s/AKfycbw6diWUnZYxn9A2-Y_v9KKRdpgc5fGY8u8iJ1uQjgRMcsMx5lvWU0QDqjklkQ4LCfMJ/exec'
   const form = document.forms['scoutForm']
 
+  var submitBtnColor = document.querySelector('#submitBtn');
+
   form.addEventListener('submit', e => {
+    submitBtnColor.style.setProperty('--color', 'orange');
     e.preventDefault()
     fetch(scriptURL, { method: 'POST', body: new FormData(form) })
       .then(response => console.log('Success!', response))
       .catch(error => console.error('Error!', error.message))
       .then(resetCounters())
       .then(document.getElementById('scoutForm').reset())
-
   })
-
-
 
 </script>
 
