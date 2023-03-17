@@ -1,257 +1,372 @@
 <!DOCTYPE html>
-<html>
-<head>
+<html lang="en">
+  <head>
+    <title>Snake Scout</title>
+    <link rel="icon" href="favicon.ico">
 
-<title>Snake Scout</title>
-<link rel="icon" href="favicon.ico">
+    <link rel="stylesheet" href="styles.css">
 
-<link rel="stylesheet" href="styles.css">
-<!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"
-  integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous"> -->
-
-</head>
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<body style="font-size:5vw;"><center>
-
-<iframe name="dummyFrame" id="dummyFrame" style="display: none;"></iframe>
-  
-<h1>SNAKE SCOUT</h1>
-
-<h4>FRC Team 401 Copperhead Robotics</h4>
-  
-<form onsubmit="return false;" method="post" action="https://script.google.com/macros/s/AKfycbxRASQDZc2A_wK8EhfN6t6rfFdaA7SEaRidUIid0ZIipZJFbxxociexKhVnDDDM3MAB/exec" id="scoutForm" target="dummyFrame">
-
-  
-<div id="preDiv">
-  <h2>Prematch</h2>
-  <label for="yourTeam">What Team Are You On? (401 or 422):</label><br>
-  <select name="Scouter's Team" id="yourTeam">
-    <option value="401">401</option>
-    <option value="422">422</option>
-  </select><br><br>
-
-  <label for="initials">Scouter Initials:</label><br>
-  <input type="text" id="initials" class="texter" name="Initials" value=""><br><br>
-
-
-  <label for="teamNum">Team Number:</label><br>
-  <select name="Team Num" id="teamNum">
-    <option value="122">122</option>
-    <option value="346">346</option>
-    <option value="401">401</option>
-    <option value="404">404</option>
-    <option value="422">422</option>
-    <option value="540">540</option>
-    <option value="619">619</option>
-    <option value="623">623</option>
-    <option value="977">977</option>
-    <option value="1086">1086</option>
-    <option value="1262">1262</option>
-    <option value="1598">1598</option>
-    <option value="1629">1629</option>
-    <option value="1731">1731</option>
-    <option value="1885">1885</option>
-    <option value="1915">1915</option>
-    <option value="2028">2028</option>
-    <option value="2106">2106</option>
-    <option value="2363">2363</option>
-    <option value="3136">3136</option>
-    <option value="3359">3359</option>
-    <option value="3361">3361</option>
-    <option value="3373">3373</option>
-    <option value="3939">3939</option>
-    <option value="4456">4456</option>
-    <option value="4464">4464</option>
-    <option value="4505">4505</option>
-    <option value="5724">5724</option>
-    <option value="6194">6194</option>
-    <option value="6504">6504</option>
-    <option value="6802">6802</option>
-    <option value="8230">8230</option>
-    <option value="8592">8592</option>
-    <option value="9003">9003</option>
-    <option value="9033">9033</option>
-    <option value="9179">9179</option>
-    <option value="9214">9214</option>
-    <option value="9235">9235</option>
-  </select><br>
-
-  <label for="matchNum">Match Number:</label><br>
-  <input type="number" id="matchNum" class="texter" name="Match Number" value=""><br><br>
-  
-  <label for="robotPosition">Robot:</label><br>
-  <select name="Robot Position" id="robotPosition">
-    <option value="Red 1">Red 1</option>
-    <option value="Red 2">Red 2</option>
-    <option value="Red 3">Red 3</option>
-    <option value="Blue 1">Blue 1</option>
-    <option value="Blue 2">Blue 2</option>
-    <option value="Blue 3">Blue 3</option>
-  </select><br><br>
-  <label for="noShow">No Show:</label><br>
-  <input type="checkbox" class="checkbox" name="No Show" value="TRUE" placeholder="FALSE" id="noShow"><br>
-  </div>
-
-  <div id="autoDiv">
-  <h2>Auto</h2>
-  <label for="taxied">Exited Community:</label><br>
-  <input type="checkbox" class="checkbox" name="Exit Community" value="TRUE" placeholder="FALSE" id="exitCommunity"><br><br>
-
-  <label for="preload">Preload:</label><br>
-  <select name="preload" id="preload">
-    <option value="Cube">Cube</option>
-    <option value="Cone">Cone</option>
-    <option value="None">None</option>
-  </select><br><br>
-  
-  <label for="TSA">Top Scored:</label><br>
-  <table><tr>
-      <td><input type="button" class="buttonCone" id="atsSubBtnCone" value="-"></td>
-      <td><input name="Auto Top Cones Scored" value='0' id="autoTopsCone" hidden><p id="autoTopCone" name="Top Scored Cone">0</p></td>
-      <td><input type="button" class="buttonCone" id="atsPlusBtnCone" value="+"></td>
-
-      <td><input type="button" class="buttonCube" id="atsSubBtnCube" value="-"></td>
-      <td><input name="Auto Top Cubes Scored" value='0' id="autoTopsCube" hidden><p id="autoTopCube" name="Top Scored Cube">0</p></td>
-      <td><input type="button" class="buttonCube" id="atsPlusBtnCube" value="+"></td>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;700&display=swap"
+      rel="stylesheet"
+    />
+    <!--<script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Poppins", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>-->
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
+      integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script src="js/script.js" defer></script>
+  </head>
+  <body style="font-size:5vw;">
+    <header class="p-4 mb-10 bg-orange-500">
+      <div class="center">
+        <div style="background-color: orange;color:white;text-align:center; padding: 1em;">Snake Scout: RC Team 401 Copperhead Robotics</div>
+      </div>
+    </header>
+    <main>
+      <center>
     
-  </tr></table>
-
-  <label for="MSA">Mid Scored:</label><br>
-  <table>
-    <tr>
-      <td><input type="button" class="buttonCone" id="amsSubBtnCone" value="-"></td>
-      <td><input name="Auto Mid Cones Scored" value='0' id="autoMidsCone" hidden><p id="autoMidCone" name="Mid Scored Cone">0</p></td>
-      <td><input type="button" class="buttonCone" id="amsPlusBtnCone" value="+"></td>
-
-      <td><input type="button" class="buttonCube" id="amsSubBtnCube" value="-"></td>
-      <td><input name="Auto Mid Cubes Scored" value='0' id="autoMidsCube" hidden><p id="autoMidCube" name="Mid Scored Cube">0</p></td>
-      <td><input type="button" class="buttonCube" id="amsPlusBtnCube" value="+"></td>
-    </tr>
-  </table>
-
-  <label for="LSA">Low Scored:</label><br>
-  <table>
-    <tr>
-      <td><input type="button" class="buttonCone" id="alsSubBtnCone" value="-"></td>
-      <td><input name="Auto Low Cones Scored" value='0' id="autoLowsCone" hidden><p id="autoLowCone" name="Low Scored Cone">0</p></td>
-      <td><input type="button" class="buttonCone" id="alsPlusBtnCone" value="+"></td>
-
-      <td><input type="button" class="buttonCube" id="alsSubBtnCube" value="-"></td>
-      <td><input name="Auto Low Cubes Scored" value='0' id="autoLowsCube" hidden><p id="autoLowCube" name="Low Scored Cube">0</p></td>
-      <td><input type="button" class="buttonCube" id="alsPlusBtnCube" value="+"></td>
-    </tr>
-  </table>
-
-  <label for="climb">End of Auto Charge Station:</label><br>
-  <select name="End of Auto" id="autoEnd">
-    <option value="NA">Not Attempted</option>
-    <option value="Failed">Attempted but Failed</option>
-    <option value="docked">Docked but not Engaged</option>
-    <option value="engaged">Engaged and Docked</option>
-  </select><br><br>
-  </div>
-
-  <div id="teleDiv">
-  <h2>Teleop</h2>
-
-  <label for="TST">Top Scored:</label><br>
-  <table>
-    <tr>
-      <td><input type="button" class="buttonCone" id="ttsSubBtnCone" value="-"></td>
-      <td><input name="Teleop Top Cones Scored" value='0' id="teleTopsCone" hidden>
-        <p id="teleTopCone" name="Top Scored">0</p>
-      </td>
-      <td><input type="button" class="buttonCone" id="ttsPlusBtnCone" value="+"></td>
-
-      <td><input type="button" class="buttonCube" id="ttsSubBtnCube" value="-"></td>
-      <td><input name="Teleop Top Cubes Scored" value='0' id="teleTopsCube" hidden>
-        <p id="teleTopCube" name="Top Scored">0</p></td>
-      <td><input type="button" class="buttonCube" id="ttsPlusBtnCube" value="+"></td>
-    </tr>
-  </table>
-
-  <label for="TSM">Mid Scored:</label><br>
-  <table>
-    <tr>
-      <td><input type="button" class="buttonCone" id="tmsSubBtnCone" value="-"></td>
-      <td><input name="Teleop Mid Cones Scored" value='0' id="teleMidsCone" hidden><p id="teleMidCone" name="Mid Scored Cone">0</p></td>
-      <td><input type="button" class="buttonCone" id="tmsPlusBtnCone" value="+"></td>
-
-      <td><input type="button" class="buttonCube" id="tmsSubBtnCube" value="-"></td>
-      <td><input name="Teleop Mid Cubes Scored" value='0' id="teleMidsCube" hidden><p id="teleMidCube" name="Mid Scored Cube">0</p></td>
-      <td><input type="button" class="buttonCube" id="tmsPlusBtnCube" value="+"></td>
-    </tr>
-  </table>
-
-  <label for="TSL">Low Scored:</label><br>
-  <table>
-    <tr>
-      <td><input type="button" class="buttonCone" id="tlsSubBtnCone" value="-"></td>
-      <td><input name="Teleop Low Cones Scored" value='0' id="teleLowsCone" hidden><p id="teleLowCone" name="Low Scored Cone">0</p></td>
-      <td><input type="button" class="buttonCone" id="tlsPlusBtnCone" value="+"></td>
-
-      <td><input type="button" class="buttonCube" id="tlsSubBtnCube" value="-"></td>
-      <td><input name="Teleop Low Cubes Scored" value='0' id="teleLowsCube" hidden><p id="teleLowCube" name="Low Scored Cube">0</p></td>
-      <td><input type="button" class="buttonCube" id="tlsPlusBtnCube" value="+"></td>
-    </tr>
-  </table>
-
-  <script>
-  var autoTopPlusButtonCone = document.getElementById("atsPlusBtnCone"),
-      autoTopSubButtonCone = document.getElementById("atsSubBtnCone"),
-      autoTopDisplayCone = document.getElementById("autoTopCone"),
-      autoTopValueCone = document.getElementById("autoTopsCone"),
-      autoTopPlusButtonCube = document.getElementById("atsPlusBtnCube"),
-      autoTopSubButtonCube = document.getElementById("atsSubBtnCube"),
-      autoTopDisplayCube = document.getElementById("autoTopCube"),
-      autoTopValueCube = document.getElementById("autoTopsCube");
-
-   var autoMidPlusButtonCone = document.getElementById("amsPlusBtnCone"),
-       autoMidSubButtonCone = document.getElementById("amsSubBtnCone"),
-       autoMidDisplayCone = document.getElementById("autoMidCone"),
-       autoMidValueCone = document.getElementById("autoMidsCone"),
-       autoMidPlusButtonCube = document.getElementById("amsPlusBtnCube"),
-       autoMidSubButtonCube = document.getElementById("amsSubBtnCube"),
-       autoMidDisplayCube = document.getElementById("autoMidCube"),
-       autoMidValueCube = document.getElementById("autoMidsCube");
-
-   var autoLowPlusButtonCone = document.getElementById("alsPlusBtnCone"),
-       autoLowSubButtonCone = document.getElementById("alsSubBtnCone"),
-       autoLowDisplayCone = document.getElementById("autoLowCone"),
-       autoLowValueCone = document.getElementById("autoLowsCone"),
-       autoLowPlusButtonCube = document.getElementById("alsPlusBtnCube"),
-       autoLowSubButtonCube = document.getElementById("alsSubBtnCube"),
-       autoLowDisplayCube = document.getElementById("autoLowCube"),
-       autoLowValueCube = document.getElementById("autoLowsCube"); 
-
-   var teleTopPlusButtonCone = document.getElementById("ttsPlusBtnCone"),
-       teleTopSubButtonCone = document.getElementById("ttsSubBtnCone"),
-       teleTopDisplayCone = document.getElementById("teleTopCone"),
-       teleTopValueCone = document.getElementById("teleTopsCone"),
-       teleTopPlusButtonCube = document.getElementById("ttsPlusBtnCube"),
-       teleTopSubButtonCube = document.getElementById("ttsSubBtnCube"),
-       teleTopDisplayCube = document.getElementById("teleTopCube"),
-       teleTopValueCube = document.getElementById("teleTopsCube"); 
-
-   var teleMidPlusButtonCone = document.getElementById("tmsPlusBtnCone"),
-       teleMidSubButtonCone = document.getElementById("tmsSubBtnCone"),
-       teleMidDisplayCone = document.getElementById("teleMidCone"),
-       teleMidValueCone = document.getElementById("teleMidsCone"),
-       teleMidPlusButtonCube = document.getElementById("tmsPlusBtnCube"),
-       teleMidSubButtonCube = document.getElementById("tmsSubBtnCube"),
-       teleMidDisplayCube = document.getElementById("teleMidCube"),
-       teleMidValueCube = document.getElementById("teleMidsCube");
-   
-   var teleLowPlusButtonCone = document.getElementById("tlsPlusBtnCone"),
-       teleLowSubButtonCone = document.getElementById("tlsSubBtnCone"),
-       teleLowDisplayCone = document.getElementById("teleLowCone"),
-       teleLowValueCone = document.getElementById("teleLowsCone");
-       teleLowPlusButtonCube = document.getElementById("tlsPlusBtnCube"),
-       teleLowSubButtonCube = document.getElementById("tlsSubBtnCube"),
-       teleLowDisplayCube = document.getElementById("teleLowCube"),
-       teleLowValueCube = document.getElementById("teleLowsCube");
+      <iframe name="dummyFrame" id="dummyFrame" style="display: none;"></iframe>
+        
+      <div id="preDiv">
+        <h2>Prematch</h2>
+        <label for="yourTeam">What Team Are You On? (401 or 422):</label><br>
+        <select name="Scouter's Team" id="yourTeam">
+          <option value="401" selected>401</option>
+          <option value="422">422</option>
+        </select><br><br>
       
+        <label for="initials">Scouter Initials:</label>
+        <br>
+        <input type="text" id="initials" class="texter" name="Initials" value="">
+        <br>
+        <br>
+      
+      
+        <label for="teamNum">Team Number:</label><br>
+        <select name="Team Num" id="teamNum">
+          <option value="122" selected>122</option>
+          <option value="346">346</option>
+          <option value="401">401</option>
+          <option value="404">404</option>
+          <option value="422">422</option>
+          <option value="540">540</option>
+          <option value="619">619</option>
+          <option value="623">623</option>
+          <option value="977">977</option>
+          <option value="1086">1086</option>
+          <option value="1262">1262</option>
+          <option value="1598">1598</option>
+          <option value="1629">1629</option>
+          <option value="1731">1731</option>
+          <option value="1885">1885</option>
+          <option value="1915">1915</option>
+          <option value="2028">2028</option>
+          <option value="2106">2106</option>
+          <option value="2363">2363</option>
+          <option value="3136">3136</option>
+          <option value="3359">3359</option>
+          <option value="3361">3361</option>
+          <option value="3373">3373</option>
+          <option value="3939">3939</option>
+          <option value="4456">4456</option>
+          <option value="4464">4464</option>
+          <option value="4505">4505</option>
+          <option value="5724">5724</option>
+          <option value="6194">6194</option>
+          <option value="6504">6504</option>
+          <option value="6802">6802</option>
+          <option value="8230">8230</option>
+          <option value="8592">8592</option>
+          <option value="9003">9003</option>
+          <option value="9033">9033</option>
+          <option value="9179">9179</option>
+          <option value="9214">9214</option>
+          <option value="9235">9235</option>
+        </select>
+        <br>
+      
+        <label for="matchNum">Match Number:</label>
+        <br>
+        <input type="number" id="matchNum" class="texter" name="Match Number" value=""><br><br>
+        
+        <label for="robotPosition">Robot:</label><br>
+        <select name="Robot Position" id="robotPosition">
+          <option value="Red 1">Red 1</option>
+          <option value="Red 2">Red 2</option>
+          <option value="Red 3">Red 3</option>
+          <option value="Blue 1">Blue 1</option>
+          <option value="Blue 2">Blue 2</option>
+          <option value="Blue 3">Blue 3</option>
+        </select>
+        <br>
+        <br>
+        <label for="noShow">No Show:</label>
+        <br>
+        <input type="checkbox" class="checkbox" name="No Show" value="TRUE" placeholder="FALSE" id="noShow"><br>
+        </div>
+      
+        <div id="autoDiv">
+        <h2>Auto</h2>
+        <label for="taxied">Exited Community:</label><br>
+        <input type="checkbox" class="checkbox" name="Exit Community" value="TRUE" placeholder="FALSE" id="exitCommunity">
+        <br>
+        <br>
+      
+        <label for="preload">Preload:</label><br>
+        <select name="preload" id="preload">
+          <option value="Cube">Cube</option>
+          <option value="Cone">Cone</option>
+          <option value="None">None</option>
+        </select><br><br>
+        
+        <label for="TSA">Top Scored:</label><br>
+        <table>
+          <tr>
+            <td><input type="button" class="buttonCone" id="atsSubBtnCone" value="-"></td>
+            <td><input name="Auto Top Cones Scored" value='0' id="autoTopsCone" hidden><p id="autoTopCone" name="Top Scored Cone">0</p></td>
+            <td><input type="button" class="buttonCone" id="atsPlusBtnCone" value="+"></td>
+      
+            <td><input type="button" class="buttonCube" id="atsSubBtnCube" value="-"></td>
+            <td><input name="Auto Top Cubes Scored" value='0' id="autoTopsCube" hidden><p id="autoTopCube" name="Top Scored Cube">0</p></td>
+            <td><input type="button" class="buttonCube" id="atsPlusBtnCube" value="+"></td>
+          </tr>
+        </table>
+      
+        <label for="MSA">Mid Scored:</label><br>
+        <table>
+          <tr>
+            <td><input type="button" class="buttonCone" id="amsSubBtnCone" value="-"></td>
+            <td><input name="Auto Mid Cones Scored" value='0' id="autoMidsCone" hidden><p id="autoMidCone" name="Mid Scored Cone">0</p></td>
+            <td><input type="button" class="buttonCone" id="amsPlusBtnCone" value="+"></td>
+      
+            <td><input type="button" class="buttonCube" id="amsSubBtnCube" value="-"></td>
+            <td><input name="Auto Mid Cubes Scored" value='0' id="autoMidsCube" hidden><p id="autoMidCube" name="Mid Scored Cube">0</p></td>
+            <td><input type="button" class="buttonCube" id="amsPlusBtnCube" value="+"></td>
+          </tr>
+        </table>
+      
+        <label for="LSA">Low Scored:</label><br>
+        <table>
+          <tr>
+            <td><input type="button" class="buttonCone" id="alsSubBtnCone" value="-"></td>
+            <td><input name="Auto Low Cones Scored" value='0' id="autoLowsCone" hidden><p id="autoLowCone" name="Low Scored Cone">0</p></td>
+            <td><input type="button" class="buttonCone" id="alsPlusBtnCone" value="+"></td>
+      
+            <td><input type="button" class="buttonCube" id="alsSubBtnCube" value="-"></td>
+            <td><input name="Auto Low Cubes Scored" value='0' id="autoLowsCube" hidden><p id="autoLowCube" name="Low Scored Cube">0</p></td>
+            <td><input type="button" class="buttonCube" id="alsPlusBtnCube" value="+"></td>
+          </tr>
+        </table>
+      
+        <label for="climb">End of Auto Charge Station:</label><br>
+        <select name="End of Auto" id="autoEnd">
+          <option value="NA">Not Attempted</option>
+          <option value="Failed">Attempted but Failed</option>
+          <option value="docked">Docked but not Engaged</option>
+          <option value="engaged">Engaged and Docked</option>
+        </select>
+        <br>
+        <br>
+        </div>
+      
+        <div id="teleDiv">
+        <h2>Teleop</h2>
+      
+        <label for="TST">Top Scored:</label>
+        <br>
+        <table>
+          <tr>
+            <td><input type="button" class="buttonCone" id="ttsSubBtnCone" value="-"></td>
+            <td><input name="Teleop Top Cones Scored" value='0' id="teleTopsCone" hidden>
+              <p id="teleTopCone" name="Top Scored">0</p>
+            </td>
+            <td><input type="button" class="buttonCone" id="ttsPlusBtnCone" value="+"></td>
+      
+            <td><input type="button" class="buttonCube" id="ttsSubBtnCube" value="-"></td>
+            <td><input name="Teleop Top Cubes Scored" value='0' id="teleTopsCube" hidden>
+              <p id="teleTopCube" name="Top Scored">0</p></td>
+            <td><input type="button" class="buttonCube" id="ttsPlusBtnCube" value="+"></td>
+          </tr>
+        </table>
+      
+        <label for="TSM">Mid Scored:</label>
+        <br>
+        <table>
+          <tr>
+            <td><input type="button" class="buttonCone" id="tmsSubBtnCone" value="-"></td>
+            <td><input name="Teleop Mid Cones Scored" value='0' id="teleMidsCone" hidden><p id="teleMidCone" name="Mid Scored Cone">0</p></td>
+            <td><input type="button" class="buttonCone" id="tmsPlusBtnCone" value="+"></td>
+      
+            <td><input type="button" class="buttonCube" id="tmsSubBtnCube" value="-"></td>
+            <td><input name="Teleop Mid Cubes Scored" value='0' id="teleMidsCube" hidden><p id="teleMidCube" name="Mid Scored Cube">0</p></td>
+            <td><input type="button" class="buttonCube" id="tmsPlusBtnCube" value="+"></td>
+          </tr>
+        </table>
+      
+        <label for="TSL">Low Scored:</label>
+        <br>
+        <table>
+          <tr>
+            <td><input type="button" class="buttonCone" id="tlsSubBtnCone" value="-"></td>
+            <td><input name="Teleop Low Cones Scored" value='0' id="teleLowsCone" hidden><p id="teleLowCone" name="Low Scored Cone">0</p></td>
+            <td><input type="button" class="buttonCone" id="tlsPlusBtnCone" value="+"></td>
+      
+            <td><input type="button" class="buttonCube" id="tlsSubBtnCube" value="-"></td>
+            <td><input name="Teleop Low Cubes Scored" value='0' id="teleLowsCube" hidden><p id="teleLowCube" name="Low Scored Cube">0</p></td>
+            <td><input type="button" class="buttonCube" id="tlsPlusBtnCube" value="+"></td>
+          </tr>
+        </table>
+        
+        <h2>Endgame</h2>
+      
+        <label for="climb">Charge Station:</label>
+        <br>
+        <select name="Charge Station" id="climb">
+          <option value="NA">Not Attempted</option>
+          <option value="Failed">Attempted but Failed</option>
+          <option value="docked">Docked but not Engaged</option>
+          <option value="engaged">Engaged and Docked</option>
+        </select>
+        <br>
+        <br>
+        </div>
+        
+        <div id="postDiv">
+        <h2>Postmatch</h2>
+      
+        <label for="robotDisabled">Robot Disabled?</label>
+        <br>
+        <input type="checkbox" class="checkbox" name="Robot Disabled?" value="TRUE" placeholder="FALSE" id="robotDisabled"><br>
+      
+        <label for="comments">Comments:</label><br>
+        <textarea id="comments" name="Comments" rows="4" cols="20"></textarea>
+      
+
+      <form id="generate-form" style="margin:20px;">
+        <button
+          style="width:80%; height:200px; background-color: orange; border-color: orange;"
+          type="submit">
+          <p style="font-size: 5vw; color:white;">
+          Generate QR Code</p>
+        </button>
+      </form>
+      <div>
+        <img
+          class="w-1/2 m-auto mb-10 md:w-full"
+          src="img/qr-code.svg"
+          alt=""/>
+      </div>
+      
+      <div id="generated"></div>
+
+      <div id="qrcode" class="m-auto"></div>
+
+      </div>
+
+      <br></br>
+      <br></br>
+      <br></br>
+      <br></br>
+      <br></br>
+      <button type="reset" id="resetBtn">Reset</button>
+
+      <br></br>
+      <br></br>
+
+      </form>
+    </div>
+
+      </center>
+    </main>
+
+    <script>
+    var autoTopPlusButtonCone = document.getElementById("atsPlusBtnCone"),
+        autoTopSubButtonCone = document.getElementById("atsSubBtnCone"),
+        autoTopDisplayCone = document.getElementById("autoTopCone"),
+        autoTopValueCone = document.getElementById("autoTopsCone"),
+        autoTopPlusButtonCube = document.getElementById("atsPlusBtnCube"),
+        autoTopSubButtonCube = document.getElementById("atsSubBtnCube"),
+        autoTopDisplayCube = document.getElementById("autoTopCube"),
+        autoTopValueCube = document.getElementById("autoTopsCube");
+
+    var autoMidPlusButtonCone = document.getElementById("amsPlusBtnCone"),
+        autoMidSubButtonCone = document.getElementById("amsSubBtnCone"),
+        autoMidDisplayCone = document.getElementById("autoMidCone"),
+        autoMidValueCone = document.getElementById("autoMidsCone"),
+        autoMidPlusButtonCube = document.getElementById("amsPlusBtnCube"),
+        autoMidSubButtonCube = document.getElementById("amsSubBtnCube"),
+        autoMidDisplayCube = document.getElementById("autoMidCube"),
+        autoMidValueCube = document.getElementById("autoMidsCube");
+
+    var autoLowPlusButtonCone = document.getElementById("alsPlusBtnCone"),
+        autoLowSubButtonCone = document.getElementById("alsSubBtnCone"),
+        autoLowDisplayCone = document.getElementById("autoLowCone"),
+        autoLowValueCone = document.getElementById("autoLowsCone"),
+        autoLowPlusButtonCube = document.getElementById("alsPlusBtnCube"),
+        autoLowSubButtonCube = document.getElementById("alsSubBtnCube"),
+        autoLowDisplayCube = document.getElementById("autoLowCube"),
+        autoLowValueCube = document.getElementById("autoLowsCube"); 
+
+    var teleTopPlusButtonCone = document.getElementById("ttsPlusBtnCone"),
+        teleTopSubButtonCone = document.getElementById("ttsSubBtnCone"),
+        teleTopDisplayCone = document.getElementById("teleTopCone"),
+        teleTopValueCone = document.getElementById("teleTopsCone"),
+        teleTopPlusButtonCube = document.getElementById("ttsPlusBtnCube"),
+        teleTopSubButtonCube = document.getElementById("ttsSubBtnCube"),
+        teleTopDisplayCube = document.getElementById("teleTopCube"),
+        teleTopValueCube = document.getElementById("teleTopsCube"); 
+
+    var teleMidPlusButtonCone = document.getElementById("tmsPlusBtnCone"),
+        teleMidSubButtonCone = document.getElementById("tmsSubBtnCone"),
+        teleMidDisplayCone = document.getElementById("teleMidCone"),
+        teleMidValueCone = document.getElementById("teleMidsCone"),
+        teleMidPlusButtonCube = document.getElementById("tmsPlusBtnCube"),
+        teleMidSubButtonCube = document.getElementById("tmsSubBtnCube"),
+        teleMidDisplayCube = document.getElementById("teleMidCube"),
+        teleMidValueCube = document.getElementById("teleMidsCube");
+
+    var teleLowPlusButtonCone = document.getElementById("tlsPlusBtnCone"),
+        teleLowSubButtonCone = document.getElementById("tlsSubBtnCone"),
+        teleLowDisplayCone = document.getElementById("teleLowCone"),
+        teleLowValueCone = document.getElementById("teleLowsCone"),
+        teleLowPlusButtonCube = document.getElementById("tlsPlusBtnCube"),
+        teleLowSubButtonCube = document.getElementById("tlsSubBtnCube"),
+        teleLowDisplayCube = document.getElementById("teleLowCube"),
+        teleLowValueCube = document.getElementById("teleLowsCube");
+
+    var teamNum = document.getElementById("teamNum").value,
+        yourTeam = document.getElementById("yourTeam").value,
+        initials = document.getElementById("initials").value,
+        matchNum = document.getElementById("matchNum").value,
+        robotPosition = document.getElementById("robotPosition").value,
+        noShow = document.getElementById("noShow").value,
+        exitCommunity = document.getElementById("exitCommunity").value,
+        preload = document.getElementById("preload").value,
+        climb = document.getElementById("climb").value,
+        robotDisabled = document.getElementById("robotDisabled").value,
+        comments = document.getElementById("comments").value;
+
+        
     autoTopPlusButtonCone.addEventListener('click', function(){addCount(autoTopDisplayCone, autoTopValueCone);});
     autoTopSubButtonCone.addEventListener('click', function(){subCount(autoTopDisplayCone, autoTopValueCone);});
     autoTopPlusButtonCube.addEventListener('click', function(){addCount(autoTopDisplayCube, autoTopValueCube);});
@@ -266,204 +381,163 @@
     autoLowSubButtonCone.addEventListener('click', function(){subCount(autoLowDisplayCone, autoLowValueCone);});
     autoLowPlusButtonCube.addEventListener('click', function(){addCount(autoLowDisplayCube, autoLowValueCube);});
     autoLowSubButtonCube.addEventListener('click', function(){subCount(autoLowDisplayCube, autoLowValueCube);});
-    
+
     teleTopPlusButtonCone.addEventListener('click', function(){addCount(teleTopDisplayCone, teleTopValueCone);});
     teleTopSubButtonCone.addEventListener('click', function(){subCount(teleTopDisplayCone, teleTopValueCone);});
     teleTopPlusButtonCube.addEventListener('click', function(){addCount(teleTopDisplayCube, teleTopValueCube);});
     teleTopSubButtonCube.addEventListener('click', function(){subCount(teleTopDisplayCube, teleTopValueCube);});
-   
+
     teleMidPlusButtonCone.addEventListener('click', function(){addCount(teleMidDisplayCone, teleMidValueCone);});
     teleMidSubButtonCone.addEventListener('click', function(){subCount(teleMidDisplayCone, teleMidValueCone);});
     teleMidPlusButtonCube.addEventListener('click', function(){addCount(teleMidDisplayCube, teleMidValueCube);});
     teleMidSubButtonCube.addEventListener('click', function(){subCount(teleMidDisplayCube, teleMidValueCube);});
-    
+
     teleLowPlusButtonCone.addEventListener('click', function(){addCount(teleLowDisplayCone, teleLowValueCone);});
     teleLowSubButtonCone.addEventListener('click', function(){subCount(teleLowDisplayCone, teleLowValueCone);});
     teleLowPlusButtonCube.addEventListener('click', function(){addCount(teleLowDisplayCube, teleLowValueCube);});
     teleLowSubButtonCube.addEventListener('click', function(){subCount(teleLowDisplayCube, teleLowValueCube);});
-      
+        
     function addCount(data_display, data_value_storage){
-      count = Number(data_value_storage.value);
-      count++;
-      data_display.innerHTML = count;
-      data_value_storage.value = count;
+        count = Number(data_value_storage.value);
+        count++;
+        data_display.innerHTML = count;
+        data_value_storage.value = count;
     };
 
     function subCount(data_display, data_value_storage) {
-      count = Number(data_value_storage.value);
-      if (count > 0) { 
+        count = Number(data_value_storage.value);
+        if (count > 0) { 
 
-      count -= 1;
-      data_display.innerHTML = count;
-      data_value_storage.value = count;
+        count -= 1;
+        data_display.innerHTML = count;
+        data_value_storage.value = count;
+        }
+    };
+
+    var resetButton = document.getElementById("resetBtn");
+
+    resetButton.addEventListener('click', function(){resetCounters();});
+      
+    function resetCounters() {
+  
+      autoTopDisplayCone.innerHTML = 0;
+      autoTopValueCone.value = 0;
+      autoTopDisplayCube.innerHTML = 0;
+      autoTopValueCube.value = 0;
+
+      autoMidDisplayCone.innerHTML = 0;
+      autoMidValueCone.value = 0;
+      autoMidDisplayCube.innerHTML = 0;
+      autoMidValueCube.value = 0;
+
+      autoLowDisplayCone.innerHTML = 0;
+      autoLowValueCone.value = 0;
+      autoLowDisplayCube.innerHTML = 0;
+      autoLowValueCube.value = 0;
+
+      teleTopDisplayCone.innerHTML = 0;
+      teleTopValueCone.value = 0;
+      teleTopDisplayCube.innerHTML = 0;
+      teleTopValueCube.value = 0;
+
+      teleMidDisplayCone.innerHTML = 0;
+      teleMidValueCone.value = 0;
+      teleMidDisplayCube.innerHTML = 0;
+      teleMidValueCube.value = 0;
+
+      teleLowDisplayCone.innerHTML = 0;
+      teleLowValueCone.value = 0;
+      teleLowDisplayCube.innerHTML = 0;
+      teleLowValueCube.value = 0;
+    }
+
+    const form = document.getElementById('generate-form');
+    const qr = document.getElementById('qrcode');
+
+    // Button submit
+    const onGenerateSubmit = (e) => {
+      e.preventDefault();
+
+      clearUI();
+
+      //const url = document.getElementById('url').value;
+      //const data = document.getElementById('data').value;
+      const yourTeam = document.getElementById("yourTeam").value;
+      const initials = document.getElementById("initials").value;
+      const teamNum = document.getElementById("teamNum").value;
+      const matchNum = document.getElementById("matchNum").value;
+      const robotPosition = document.getElementById("robotPosition").value;
+      const noShow = document.getElementById("noShow").value;
+      const exitCommunity = document.getElementById("exitCommunity").value;
+      const preload = document.getElementById("preload").value;
+
+      const autoTopsCone = document.getElementById("autoTopsCone").value;
+      const autoTopsCube = document.getElementById("autoTopsCube").value;
+      
+      const autoMidsCone = document.getElementById("autoMidsCone").value;
+      const autoMidsCube = document.getElementById("autoMidsCube").value;
+
+      const autoLowsCone = document.getElementById("autoLowsCone").value;
+      const autoLowsCube = document.getElementById("autoLowsCube").value;
+      
+      const autoEnd = document.getElementById("autoEnd").value;
+
+      const teleTopsCone = document.getElementById("teleTopsCone").value;
+      const teleTopsCube = document.getElementById("teleTopsCube").value;
+
+      const teleMidsCone = document.getElementById("teleMidsCone").value;
+      const teleMidsCube = document.getElementById("teleMidsCube").value;
+
+      const teleLowsCone = document.getElementById("teleLowsCone").value;
+      const teleLowsCube = document.getElementById("teleLowsCube").value;
+      
+      const climb = document.getElementById("climb").value;
+
+      setTimeout(() => {
+        generateQRCode(teamNum, yourTeam, initials, matchNum, robotPosition, exitCommunity, preload, climb, robotDisabled, comments);
+
+        // Generate the save button after the qr code image src is ready
+        setTimeout(() => {
+          // Get save url
+          const saveUrl = qr.querySelector('img').src;
+          // Create save button
+          createSaveBtn(saveUrl);
+        }, 50);
+      }, 1000);
+    };
+
+    // Generate QR code
+    const generateQRCode = (teamNum, yourTeam, initials, matchNum, robotPosition, exitCommunity, preload, climb, robotDisabled, comments) => {
+      const qrcode = new QRCode('qrcode', {
+        text: teamNum.concat(" ", yourTeam , " " , initials , " " , matchNum , " " , robotPosition , " " , exitCommunity , " " + preload , " " + climb , " " , robotDisabled , " " , comments),
+        width: 300,
+        height: 300,
+      });
+    };
+
+    // Clear QR code and save button
+    const clearUI = () => {
+      qr.innerHTML = '';
+      const saveBtn = document.getElementById('save-link');
+      if (saveBtn) {
+        saveBtn.remove();
       }
     };
-      
-  </script>
-  
-  <h2>Endgame</h2>
 
-  <label for="climb">Charge Station:</label><br>
-  <select name="Charge Station" id="climb">
-    <option value="NA">Not Attempted</option>
-    <option value="Failed">Attempted but Failed</option>
-    <option value="docked">Docked but not Engaged</option>
-    <option value="engaged">Engaged and Docked</option>
-  </select><br><br>
-  </div>
-  
-  <div id="postDiv">
-  <h2>Postmatch</h2>
+    // Create save button to download QR code as image
+    const createSaveBtn = (saveUrl) => {
+      const link = document.createElement('a');
+      link.id = 'save-link';
+      link.classList =
+        'bg-red-500 hover:bg-red-700 text-white font-bold py-2 rounded w-1/3 m-auto my-5';
+      link.href = saveUrl;
+      link.download = 'qrcode';
+      link.innerHTML = 'Save Image';
+      document.getElementById('generated').appendChild(link);
+    };
 
-  <label for="robotDisabled">Robot Disabled?</label><br>
-  <input type="checkbox" class="checkbox" name="Robot Disabled?" value="TRUE" placeholder="FALSE" id="robotDisabled"><br>
+    form.addEventListener('submit', onGenerateSubmit);
 
-  <label for="comments">Comments:</label><br>
-  <textarea id="comments" name="Comments" rows="4" cols="20"></textarea>
-</div>
-
-<br></br>
-<br></br>
-
-<button type="submit" id="submitBtn">Submit</button>
-
-<br></br>
-<br></br>
-<br></br>
-<br></br>
-<br></br>
-<button type="reset" id="resetBtn">Reset</button>
-
-<br></br>
-<br></br>
-
-</form>
-
-<script>
- 
-
-  var resetButton = document.getElementById("resetBtn");
-  var submitButton = document.getElementById("submitBtn");
-
-  resetButton.addEventListener('click', function(){resetCounters();});
-  submitButton.addEventListener('click', function(){submitButtonColorFunct();});
-
-  function submitButtonColorFunct() {
-    submitBtnColor.style.setProperty('--color', 'orange');
-  }
-  
-  function resetCounters() {
- 
-    autoTopDisplayCone.innerHTML = 0;
-    autoTopValueCone.value = 0;
-    autoTopDisplayCube.innerHTML = 0;
-    autoTopValueCube.value = 0;
-
-    autoMidDisplayCone.innerHTML = 0;
-    autoMidValueCone.value = 0;
-    autoMidDisplayCube.innerHTML = 0;
-    autoMidValueCube.value = 0;
-
-    autoLowDisplayCone.innerHTML = 0;
-    autoLowValueCone.value = 0;
-    autoLowDisplayCube.innerHTML = 0;
-    autoLowValueCube.value = 0;
-
-    teleTopDisplayCone.innerHTML = 0;
-    teleTopValueCone.value = 0;
-    teleTopDisplayCube.innerHTML = 0;
-    teleTopValueCube.value = 0;
-
-    teleMidDisplayCone.innerHTML = 0;
-    teleMidValueCone.value = 0;
-    teleMidDisplayCube.innerHTML = 0;
-    teleMidValueCube.value = 0;
-
-    teleLowDisplayCone.innerHTML = 0;
-    teleLowValueCone.value = 0;
-    teleLowDisplayCube.innerHTML = 0;
-    teleLowValueCube.value = 0;
-
-  }
-
-  const scriptURL = 'https://script.google.com/macros/s/AKfycbw6diWUnZYxn9A2-Y_v9KKRdpgc5fGY8u8iJ1uQjgRMcsMx5lvWU0QDqjklkQ4LCfMJ/exec'
-  const form = document.forms['scoutForm']
-
-  form.addEventListener('submit', e => {
-    e.preventDefault()
-    fetch(scriptURL, { method: 'POST', body: new FormData(form) })
-      .then(response => console.log('Success!', response))
-      .catch(error => console.error('Error!', error.message))
-      .then(saveFile())
-      .then(resetCounters())
-      .then(document.getElementById('scoutForm').reset())
-
-  })
-
-
-
-  let saveFile = () => {
-     const yourTeam = document.getElementById("yourTeam").value;
-     const initials = document.getElementById("initials").value;
-     const teamNum = document.getElementById("teamNum").value;
-     const matchNum = document.getElementById("matchNum").value;
-     const robotPosition = document.getElementById("robotPosition").value;
-     const noShow = document.getElementById("noShow").value;
-     const exitCommunity = document.getElementById("exitCommunity").value;
-     const preload = document.getElementById("preload").value;
-
-     const autoTopsCone = document.getElementById("autoTopsCone").value;
-     const autoTopsCube = document.getElementById("autoTopsCube").value;
-     
-     const autoMidsCone = document.getElementById("autoMidsCone").value;
-     const autoMidsCube = document.getElementById("autoMidsCube").value;
-
-     const autoLowsCone = document.getElementById("autoLowsCone").value;
-     const autoLowsCube = document.getElementById("autoLowsCube").value;
-     
-     const autoEnd = document.getElementById("autoEnd").value;
-
-     const teleTopsCone = document.getElementById("teleTopsCone").value;
-     const teleTopsCube = document.getElementById("teleTopsCube").value;
-
-     const teleMidsCone = document.getElementById("teleMidsCone").value;
-     const teleMidsCube = document.getElementById("teleMidsCube").value;
-
-     const teleLowsCone = document.getElementById("teleLowsCone").value;
-     const teleLowsCube = document.getElementById("teleLowsCube").value;
-     
-     const climb = document.getElementById("climb").value;
-     
-     const robotDisabled = document.getElementById("robotDisabled").value;
-     const comments = document.getElementById("comments").value;
-     
-
-  
-     // This variable stores all the data.
-     let data = yourTeam + "," + initials + "," + teamNum + "," + matchNum + "," + robotPosition + "," + noShow + "," + exitCommunity + "," + preload + "," +
-         autoTopsCone + "," + autoTopsCube + "," + autoMidsCone + "," + autoMidsCube + "," + autoLowsCone + "," + autoLowsCube + "," + autoEnd + "," +
-         teleTopsCone + "," + teleTopsCube + "," + teleMidsCone + "," + teleMidsCube + "," + teleLowsCone + "," + teleLowsCube + "," +
-         climb + "," + robotDisabled + "," + comments;
-     console.log(data); //printing form data into the console
-     // Convert the text to BLOB.
-     const textToBLOB = new Blob([data], { type: "text/plain" });
-     var filename = new Date();
-     
-     const sFileName = filename; // The file to save the data.
-     let newLink = document.createElement("a");
-     newLink.download = yourTeam + "-Team " + teamNum + "-Match" + matchNum + "-" + robotPosition;
-     if (window.webkitURL != null) {
-       newLink.href = window.webkitURL.createObjectURL(textToBLOB);
-     } else {
-       newLink.href = window.URL.createObjectURL(textToBLOB);
-       newLink.style.display = "none";
-       document.body.appendChild(newLink);
-     }
-     newLink.click();
-   };
-
-</script>
-
-
-</center></body>
+    </script>
+  </body>
 </html>
