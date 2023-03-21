@@ -39,7 +39,7 @@
   <body style="font-size:5vw;">
     <header class="p-4 mb-10 bg-orange-500">
       <div class="center">
-        <div style="background-color: orange;color:white;text-align:center; padding: 1em;">Snake Scout: RC Team 401 Copperhead Robotics</div>
+        <div style="background-color: orange;color:white;text-align:center; padding: 1em;">Snake Scout: FRC Team 401 Copperhead Robotics</div>
       </div>
     </header>
     <main>
@@ -47,6 +47,8 @@
     
       <iframe name="dummyFrame" id="dummyFrame" style="display: none;"></iframe>
         
+
+      <form>
       <div id="preDiv">
         <h2>Prematch</h2>
         <label for="yourTeam">What Team Are You On? (401 or 422):</label><br>
@@ -63,46 +65,65 @@
       
       
         <label for="teamNum">Team Number:</label><br>
-        <select name="Team Num" id="teamNum">
-          <option value="122" selected>122</option>
-          <option value="346">346</option>
-          <option value="401">401</option>
-          <option value="404">404</option>
-          <option value="422">422</option>
-          <option value="540">540</option>
-          <option value="619">619</option>
-          <option value="623">623</option>
-          <option value="977">977</option>
-          <option value="1086">1086</option>
-          <option value="1262">1262</option>
-          <option value="1598">1598</option>
-          <option value="1629">1629</option>
-          <option value="1731">1731</option>
-          <option value="1885">1885</option>
-          <option value="1915">1915</option>
-          <option value="2028">2028</option>
-          <option value="2106">2106</option>
-          <option value="2363">2363</option>
-          <option value="3136">3136</option>
-          <option value="3359">3359</option>
-          <option value="3361">3361</option>
-          <option value="3373">3373</option>
-          <option value="3939">3939</option>
-          <option value="4456">4456</option>
-          <option value="4464">4464</option>
-          <option value="4505">4505</option>
-          <option value="5724">5724</option>
-          <option value="6194">6194</option>
-          <option value="6504">6504</option>
-          <option value="6802">6802</option>
-          <option value="8230">8230</option>
-          <option value="8592">8592</option>
-          <option value="9003">9003</option>
-          <option value="9033">9033</option>
-          <option value="9179">9179</option>
-          <option value="9214">9214</option>
-          <option value="9235">9235</option>
+        <select name="Team Num" id="teamNum" onclick=generate_dropdown_items();>
+          <option value="0000" selected>Choose a Team</option>
         </select>
+        <script>
+
+          var elmts = ["339",
+                       "346",
+                       "384",
+                       "401",
+                       "422",
+                       "449",
+                       "539",
+                       "540",
+                       "611",
+                       "612",
+                       "617",
+                       "619",
+                       "977",
+                       "1086",
+                       "1123",
+                       "1262",
+                       "1522",
+                       "1598",
+                       "1599",
+                       "1610",
+                       "1793",
+                       "2068",
+                       "2106",
+                       "2890",
+                       "2988",
+                       "2998",
+                       "3939",
+                       "4286",
+                       "4472",
+                       "5243",
+                       "5724",
+                       "5804",
+                       "5954",
+                       "6189",
+                       "6802",
+                       "6882",
+                       "7429",
+                       "8590",
+                       "9003",
+                       "9010",];
+          var select = document.getElementById("teamNum");
+
+          function generate_dropdown_items() {
+              for (var i = 0; i < elmts.length; i++) {
+                var optn = elmts[i];
+                var el = document.createElement("option");
+                el.textContent = optn;
+                el.value = optn;
+                select.appendChild(el);
+              }
+            }
+        </script>
+
+        <br>
         <br>
       
         <label for="matchNum">Match Number:</label>
@@ -120,14 +141,20 @@
         </select>
         <br>
         <br>
+        <script>
+          var noShowValue = 'FALSE'
+        </script>
         <label for="noShow">No Show:</label>
         <br>
-        <input type="checkbox" class="checkbox" name="No Show" value="TRUE" placeholder="FALSE" id="noShow"><br>
+        <input type="checkbox" id="noShow"=>
+        <!-- <input type="hidden" name='No Show' value="FALSE"> -->
+        <br>
         </div>
       
         <div id="autoDiv">
         <h2>Auto</h2>
         <label for="taxied">Exited Community:</label><br>
+        <!-- <p><i><h6>bumpers fully leave community at any point during auto</h6></i></p> -->
         <input type="checkbox" class="checkbox" name="Exit Community" value="TRUE" placeholder="FALSE" id="exitCommunity">
         <br>
         <br>
@@ -254,13 +281,23 @@
         <div id="postDiv">
         <h2>Postmatch</h2>
       
+        <label for="defended">Was Defended (By Another Robot)?</label><br>
+        <!-- <p><i><h6>bumpers fully leave community at any point during auto</h6></i></p> -->
+        <input type="checkbox" class="checkbox" name="defended" value="TRUE" placeholder="FALSE" id="wasDefended">
+          <br>
+          <br>
         <label for="robotDisabled">Robot Disabled?</label>
         <br>
         <input type="checkbox" class="checkbox" name="Robot Disabled?" value="TRUE" placeholder="FALSE" id="robotDisabled"><br>
       
         <label for="comments">Comments:</label><br>
-        <textarea id="comments" name="Comments" rows="4" cols="20"></textarea>
+        <textarea id="comments" name="Comments" rows="4" cols="20" maxlength="50"></textarea>
       
+        <br>
+        <button type="reset" id="resetBtn">Reset</button>
+        
+        <br></br>
+        <br></br>
 
       <form id="generate-form" style="margin:20px;">
         <button
@@ -270,6 +307,7 @@
           Generate QR Code</p>
         </button>
       </form>
+      
       <div>
         <img
           class="w-1/2 m-auto mb-10 md:w-full"
@@ -280,6 +318,10 @@
       <div id="generated"></div>
 
       <div id="qrcode" class="m-auto"></div>
+      <br></br>
+      <div id="qrlabel"></div>
+      <br></br>
+      <br></br>
 
       </div>
 
@@ -288,12 +330,9 @@
       <br></br>
       <br></br>
       <br></br>
-      <button type="reset" id="resetBtn">Reset</button>
 
-      <br></br>
-      <br></br>
-
-      </form>
+    
+    </form>
     </div>
 
       </center>
@@ -352,21 +391,22 @@
         teleLowPlusButtonCube = document.getElementById("tlsPlusBtnCube"),
         teleLowSubButtonCube = document.getElementById("tlsSubBtnCube"),
         teleLowDisplayCube = document.getElementById("teleLowCube"),
-        teleLowValueCube = document.getElementById("teleLowsCube");
+        teleLowValueCube = document.getElementById("teleLowsCube")
+        noShow = document.getElementById("noShow");
 
     var teamNum = document.getElementById("teamNum").value,
         yourTeam = document.getElementById("yourTeam").value,
         initials = document.getElementById("initials").value,
         matchNum = document.getElementById("matchNum").value,
         robotPosition = document.getElementById("robotPosition").value,
-        noShow = document.getElementById("noShow").value,
         exitCommunity = document.getElementById("exitCommunity").value,
         preload = document.getElementById("preload").value,
         climb = document.getElementById("climb").value,
         robotDisabled = document.getElementById("robotDisabled").value,
         comments = document.getElementById("comments").value;
 
-        
+    noShow.addEventListener('click', function(){noShowValue='TRUE'})    
+
     autoTopPlusButtonCone.addEventListener('click', function(){addCount(autoTopDisplayCone, autoTopValueCone);});
     autoTopSubButtonCone.addEventListener('click', function(){subCount(autoTopDisplayCone, autoTopValueCone);});
     autoTopPlusButtonCube.addEventListener('click', function(){addCount(autoTopDisplayCube, autoTopValueCube);});
@@ -449,6 +489,8 @@
       teleLowValueCone.value = 0;
       teleLowDisplayCube.innerHTML = 0;
       teleLowValueCube.value = 0;
+
+      //noShowValue = 'FALSE';
     }
 
     const form = document.getElementById('generate-form');
@@ -467,7 +509,7 @@
       const teamNum = document.getElementById("teamNum").value;
       const matchNum = document.getElementById("matchNum").value;
       const robotPosition = document.getElementById("robotPosition").value;
-      const noShow = document.getElementById("noShow").value;
+      //const noShow = document.getElementById("noShow").value;
       const exitCommunity = document.getElementById("exitCommunity").value;
       const preload = document.getElementById("preload").value;
 
@@ -491,10 +533,34 @@
       const teleLowsCone = document.getElementById("teleLowsCone").value;
       const teleLowsCube = document.getElementById("teleLowsCube").value;
       
+      const wasDefended = document.getElementById("wasDefended").value;
+      
       const climb = document.getElementById("climb").value;
 
+      const comments = document.getElementById("comments").value;
+
       setTimeout(() => {
-        generateQRCode(teamNum, yourTeam, initials, matchNum, robotPosition, exitCommunity, preload, climb, robotDisabled, comments);
+        generateQRCode(yourTeam, initials, teamNum, matchNum, robotPosition, noShowValue, exitCommunity, preload,
+                       autoTopsCone, 
+                       autoTopsCube, 
+                       autoMidsCone,
+                       autoMidsCube,
+                       autoLowsCone,
+                       autoLowsCube,
+                       autoEnd,
+                       teleTopsCone,
+                       teleTopsCube,
+                       teleMidsCone,
+                       teleMidsCube,
+                       teleLowsCone,
+                       teleLowsCube,
+                       wasDefended,
+                       climb, robotDisabled, comments);
+
+        qrLabel = document.getElementById('qrlabel')
+        //console.log(initials)
+        //console.log(initials.concat(" ", String(matchNum), " ", robotPosition))
+        qrLabel.innerHTML = initials.concat(" Match ", String(matchNum), " ", robotPosition)
 
         // Generate the save button after the qr code image src is ready
         setTimeout(() => {
@@ -506,10 +572,27 @@
       }, 1000);
     };
 
+    const sep = ","
     // Generate QR code
-    const generateQRCode = (teamNum, yourTeam, initials, matchNum, robotPosition, exitCommunity, preload, climb, robotDisabled, comments) => {
+    const generateQRCode = (yourTeam, initials, teamNum, matchNum, robotPosition, noShowValue, exitCommunity, preload, autoTopsCone,
+                            autoTopsCube,
+                            autoMidsCone,
+                            autoMidsCube,
+                            autoLowsCone,
+                            autoLowsCube,
+                            autoEnd,
+                            teleTopsCone,
+                            teleTopsCube,
+                            teleMidsCone,
+                            teleMidsCube,
+                            teleLowsCone,
+                            teleLowsCube, climb, robotDisabled, comments) => {
+
       const qrcode = new QRCode('qrcode', {
-        text: teamNum.concat(" ", yourTeam , " " , initials , " " , matchNum , " " , robotPosition , " " , exitCommunity , " " + preload , " " + climb , " " , robotDisabled , " " , comments),
+        text: 'qm'.concat(sep, yourTeam , sep , initials , sep, teamNum, sep, matchNum , sep , robotPosition , sep , noShowValue, sep, exitCommunity , sep + preload , sep + 
+              autoTopsCone, sep + autoTopsCube, sep + autoMidsCone, sep + autoMidsCube, sep + autoLowsCone, sep + autoLowsCube, sep + autoEnd, sep + 
+              teleTopsCone, sep + teleTopsCube, sep + teleMidsCone, sep + teleMidsCube, sep + teleLowsCone, sep + teleLowsCube, sep +
+              sep + climb , sep , robotDisabled , sep , comments),
         width: 300,
         height: 300,
       });
