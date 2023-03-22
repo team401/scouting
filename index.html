@@ -64,7 +64,7 @@
       
         <label for="teamNum">Team Number:</label><br>
         <select name="Team Num" id="teamNum" onclick=generate_dropdown_items();>
-          <option value="0000" selected>Choose a Team</option>
+          <option value="0000" selected>Select Team</option>
         </select>
         <script>
 
@@ -130,7 +130,7 @@
         
         <label for="robotPosition">Robot:</label><br>
         <select name="Robot Position" id="robotPosition" required>
-          <option value="SELECT TEAM" selected>Choose a Team</option>
+          <option value="Select Option" selected>Select Position</option>
           <option value="Red 1">Red 1</option>
           <option value="Red 2">Red 2</option>
           <option value="Red 3">Red 3</option>
@@ -166,6 +166,7 @@
       
         <label for="preload">Preload:</label><br>
         <select name="preload" id="preload">
+          <option value="Select Option" selected>Select Preload</option>
           <option value="Cube">Cube</option>
           <option value="Cone">Cone</option>
           <option value="None">None</option>
@@ -212,6 +213,7 @@
       
         <label for="climb">End of Auto Charge Station:</label><br>
         <select name="End of Auto" id="autoEnd">
+          <option value="Choose Option" selected>Select Option</option>
           <option value="NA">Not Attempted</option>
           <option value="Failed">Attempted but Failed</option>
           <option value="docked">Docked but not Engaged</option>
@@ -274,6 +276,7 @@
         <label for="climb">Charge Station:</label>
         <br>
         <select name="Charge Station" id="climb">
+          <option value="Select Option" selected>Select Option</option>
           <option value="NA">Not Attempted</option>
           <option value="Failed">Attempted but Failed</option>
           <option value="docked">Docked but not Engaged</option>
@@ -293,10 +296,10 @@
           <br>
         <label for="robotDisabled">Robot Disabled?</label>
         <br>
-        <input type="checkbox" class="checkbox" name="Robot Disabled?" value="TRUE" placeholder="FALSE" id="robotDisabled"><br>
+        <input type="checkbox" class="checkbox" name="Robot Disabled?" id="robotDisabled"><br>
       
         <label for="comments">Comments:</label><br>
-        <textarea id="comments" name="Comments" rows="4" cols="20" maxlength="50"></textarea>
+        <textarea id="comments" name="Comments" rows="4" cols="20" maxlength="100"></textarea>
       
       <div>
         <img
@@ -305,7 +308,7 @@
           alt=""/>
       </div>
       
-      <div id="generated"></div>
+      <!-- <div id="generated"></div> -->
 
       <div id="qrcode" class="m-auto"></div>
       <br></br>
@@ -315,9 +318,6 @@
 
       </div>
 
-      <br></br>
-      <br></br>
-      <br></br>
       <br></br>
       <br></br>
       <button type="reset" id="resetBtn" onclick="return confirm_reset();">Reset</button>
@@ -408,8 +408,6 @@
         climb = document.getElementById("climb").value,
         robotDisabled = document.getElementById("robotDisabled").value,
         comments = document.getElementById("comments").value;
-
-    noShow.addEventListener('click', function(){noShowValue='TRUE'})    
 
     autoTopPlusButtonCone.addEventListener('click', function(){addCount(autoTopDisplayCone, autoTopValueCone);});
     autoTopSubButtonCone.addEventListener('click', function(){subCount(autoTopDisplayCone, autoTopValueCone);});
@@ -514,7 +512,6 @@
       const teamNum = document.getElementById("teamNum").value;
       const matchNum = document.getElementById("matchNum").value;
       const robotPosition = document.getElementById("robotPosition").value;
-      const exitCommunity = document.getElementById("exitCommunity").value;
       const preload = document.getElementById("preload").value;
 
       const autoTopsCone = document.getElementById("autoTopsCone").value;
@@ -537,21 +534,27 @@
       const teleLowsCone = document.getElementById("teleLowsCone").value;
       const teleLowsCube = document.getElementById("teleLowsCube").value;
       
-      const wasDefended = document.getElementById("wasDefended").value;
-      
       const climb = document.getElementById("climb").value;
 
       const comments = document.getElementById("comments").value;
+      
+      const noShow = document.getElementById("noShow");
+      const exitCommunity = document.getElementById("exitCommunity");
+      const wasDefended = document.getElementById("wasDefended");
+      const robotDisabled = document.getElementById('robotDisabled');
 
-      const noShow = document.getElementById("noShow")
 
-      noShowValue = noShow.checked ? 'TRUE' : 'FALSE'; 
+      var noShowValue = noShow.checked ? 'TRUE' : 'FALSE'; 
+      var exitCommunityValue = exitCommunity.checked ? 'TRUE' : 'FALSE'; 
+      var wasDefendedValue = wasDefended.checked ? 'TRUE' : 'FALSE';
+      var robotDisabledValue = robotDisabled.checked ? 'TRUE' : 'FALSE';
+
 
       //why
 
 
       setTimeout(() => {
-        generateQRCode(yourTeam, initials, teamNum, matchNum, robotPosition, noShowValue, exitCommunity, preload,
+        generateQRCode(yourTeam, initials, teamNum, matchNum, robotPosition, noShowValue, exitCommunityValue, preload,
                        autoTopsCone, 
                        autoTopsCube, 
                        autoMidsCone,
@@ -565,8 +568,8 @@
                        teleMidsCube,
                        teleLowsCone,
                        teleLowsCube,
-                       wasDefended,
-                       climb, robotDisabled, comments);
+                       wasDefendedValue,
+                       climb, robotDisabledValue, comments);
 
         qrLabel = document.getElementById('qrlabel')
         //console.log(initials)
@@ -585,7 +588,7 @@
 
     const sep = ","
     // Generate QR code
-    const generateQRCode = (yourTeam, initials, teamNum, matchNum, robotPosition, noShowValue, exitCommunity, preload, autoTopsCone,
+    const generateQRCode = (yourTeam, initials, teamNum, matchNum, robotPosition, noShowValue, exitCommunityValue, preload, autoTopsCone,
                             autoTopsCube,
                             autoMidsCone,
                             autoMidsCube,
@@ -597,13 +600,15 @@
                             teleMidsCone,
                             teleMidsCube,
                             teleLowsCone,
-                            teleLowsCube, climb, robotDisabled, comments) => {
+                            teleLowsCube, 
+                            wasDefendedValue,
+                            climb, robotDisabledValue, comments) => {
 
       const qrcode = new QRCode('qrcode', {
-        text: 'qm'.concat(sep, yourTeam , sep , initials , sep, teamNum, sep, matchNum , sep , robotPosition , sep , noShowValue, sep, exitCommunity , sep + preload , sep + 
+        text: 'qm'.concat(sep, yourTeam , sep , initials , sep, teamNum, sep, matchNum , sep , robotPosition , sep , noShowValue, sep, exitCommunityValue , sep + preload , sep + 
               autoTopsCone, sep + autoTopsCube, sep + autoMidsCone, sep + autoMidsCube, sep + autoLowsCone, sep + autoLowsCube, sep + autoEnd, sep + 
               teleTopsCone, sep + teleTopsCube, sep + teleMidsCone, sep + teleMidsCube, sep + teleLowsCone, sep + teleLowsCube, sep +
-              sep + climb , sep , robotDisabled , sep , comments),
+              wasDefendedValue, sep + climb , sep , robotDisabledValue , sep , comments),
         width: 300,
         height: 300,
       });
