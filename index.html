@@ -44,11 +44,9 @@
     </header>
     <main>
       <center>
-    
+  <form>
       <iframe name="dummyFrame" id="dummyFrame" style="display: none;"></iframe>
-        
-
-      <form>
+    
       <div id="preDiv">
         <h2>Prematch</h2>
         <label for="yourTeam">What Team Are You On? (401 or 422):</label><br>
@@ -57,7 +55,7 @@
           <option value="422">422</option>
         </select><br><br>
       
-        <label for="initials">Scouter Initials:</label>
+        <label for="initials" required>Scouter Initials:</label>
         <br>
         <input type="text" id="initials" class="texter" name="Initials" value="">
         <br>
@@ -131,7 +129,8 @@
         <input type="number" id="matchNum" class="texter" name="Match Number" value=""><br><br>
         
         <label for="robotPosition">Robot:</label><br>
-        <select name="Robot Position" id="robotPosition">
+        <select name="Robot Position" id="robotPosition" required>
+          <option value="SELECT TEAM" selected>Choose a Team</option>
           <option value="Red 1">Red 1</option>
           <option value="Red 2">Red 2</option>
           <option value="Red 3">Red 3</option>
@@ -141,12 +140,18 @@
         </select>
         <br>
         <br>
-        <script>
+        <!-- <script>
           var noShowValue = 'FALSE'
-        </script>
+          function checkAddress(checkbox) {
+              if (checkbox.checked) {
+                noShowValue = 'TRUE'
+              }
+            }
+
+        </script> -->
         <label for="noShow">No Show:</label>
         <br>
-        <input type="checkbox" id="noShow"=>
+        <input type="checkbox" id="noShow">
         <!-- <input type="hidden" name='No Show' value="FALSE"> -->
         <br>
         </div>
@@ -293,21 +298,6 @@
         <label for="comments">Comments:</label><br>
         <textarea id="comments" name="Comments" rows="4" cols="20" maxlength="50"></textarea>
       
-        <br>
-        <button type="reset" id="resetBtn">Reset</button>
-        
-        <br></br>
-        <br></br>
-
-      <form id="generate-form" style="margin:20px;">
-        <button
-          style="width:80%; height:200px; background-color: orange; border-color: orange;"
-          type="submit">
-          <p style="font-size: 5vw; color:white;">
-          Generate QR Code</p>
-        </button>
-      </form>
-      
       <div>
         <img
           class="w-1/2 m-auto mb-10 md:w-full"
@@ -330,13 +320,27 @@
       <br></br>
       <br></br>
       <br></br>
+      <button type="reset" id="resetBtn" onclick="return confirm_reset();">Reset</button>
+      <script>
+        function confirm_reset() {
+            return confirm("Are you sure you want to reset?");
+          }
+      </script>
 
-    
-    </form>
+      <br></br>
+      <br></br>
+  </form>
     </div>
 
-      </center>
-    </main>
+<form id="generate-form" style="margin:20px;">
+  <button style="width:80%; height:200px; background-color: orange; border-color: orange;" type="submit">
+    <p style="font-size: 5vw; color:white;">
+      Generate QR Code</p>
+  </button>
+</form>
+
+
+  </main>
 
     <script>
     var autoTopPlusButtonCone = document.getElementById("atsPlusBtnCone"),
@@ -490,8 +494,9 @@
       teleLowDisplayCube.innerHTML = 0;
       teleLowValueCube.value = 0;
 
-      //noShowValue = 'FALSE';
+      noShowValue = 'FALSE';
     }
+
 
     const form = document.getElementById('generate-form');
     const qr = document.getElementById('qrcode');
@@ -509,7 +514,6 @@
       const teamNum = document.getElementById("teamNum").value;
       const matchNum = document.getElementById("matchNum").value;
       const robotPosition = document.getElementById("robotPosition").value;
-      //const noShow = document.getElementById("noShow").value;
       const exitCommunity = document.getElementById("exitCommunity").value;
       const preload = document.getElementById("preload").value;
 
@@ -538,6 +542,11 @@
       const climb = document.getElementById("climb").value;
 
       const comments = document.getElementById("comments").value;
+
+      const noShow = document.getElementById("noShow")
+
+      noShowValue = noShow.checked ? 'TRUE' : 'FALSE'; 
+
 
       setTimeout(() => {
         generateQRCode(yourTeam, initials, teamNum, matchNum, robotPosition, noShowValue, exitCommunity, preload,
