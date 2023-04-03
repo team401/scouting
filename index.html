@@ -69,47 +69,66 @@
         </select>
         <script>
 
-          var elmts = ["339",
-                       "346",
-                       "384",
-                       "401",
-                       "404",
-                       "422",
-                       "449",
-                       "539",
-                       "540",
-                       "611",
-                       "612",
-                       "617",
-                       "619",
-                       "977",
-                       "1086",
-                       "1123",
-                       "1262",
-                       "1522",
-                       "1598",
-                       "1599",
-                       "1610",
-                       "1793",
-                       "2068",
-                       "2106",
-                       "2890",
-                       "2988",
-                       "2998",
-                       "3939",
-                       "4286",
-                       "4472",
-                       "5243",
-                       "5724",
-                       "5804",
-                       "5954",
-                       "6189",
-                       "6802",
-                       "6882",
-                       "7429",
-                       "8590",
-                       "9003",
-                       "9010",];
+          var elmts = ["116",
+                      "122",
+                      "346",
+                      "384",
+                      "401",
+                      "422",
+                      "449",
+                      "539",
+                      "611",
+                      "612",
+                      "614",
+                      "620",
+                      "623",
+                      "686",
+                      "836",
+                      "888",
+                      "977",
+                      "1086",
+                      "1111",
+                      "1123",
+                      "1389",
+                      "1418",
+                      "1599",
+                      "1610",
+                      "1629",
+                      "1727",
+                      "1731",
+                      "1895",
+                      "1908",
+                      "2028",
+                      "2068",
+                      "2106",
+                      "2199",
+                      "2363",
+                      "2377",
+                      "2421",
+                      "2537",
+                      "3136",
+                      "3373",
+                      "3748",
+                      "3939",
+                      "4099",
+                      "4456",
+                      "4472",
+                      "4541",
+                      "5115",
+                      "5338",
+                      "5549",
+                      "5587",
+                      "5724",
+                      "5804",
+                      "6326",
+                      "6802",
+                      "6863",
+                      "7770",
+                      "8230",
+                      "8592",
+                      "8622",
+                      "8726",
+                      "9033"];
           var select = document.getElementById("teamNum");
 
           function generate_dropdown_items() {
@@ -133,12 +152,12 @@
         <label for="robotPosition">Robot:</label><br>
         <select name="Robot Position" id="robotPosition" required>
           <option value="Select Option" selected>Select Position</option>
-          <option value="Red 1">Red 1</option>
-          <option value="Red 2">Red 2</option>
-          <option value="Red 3">Red 3</option>
-          <option value="Blue 1">Blue 1</option>
-          <option value="Blue 2">Blue 2</option>
-          <option value="Blue 3">Blue 3</option>
+          <option value="R1">Red 1</option>
+          <option value="R2">Red 2</option>
+          <option value="R3">Red 3</option>
+          <option value="B1">Blue 1</option>
+          <option value="B2">Blue 2</option>
+          <option value="B3">Blue 3</option>
         </select>
         <br>
         <br>
@@ -162,7 +181,7 @@
         <h2>Auto</h2>
         <label for="taxied">Exited Community:</label><br>
         <!-- <p><i><h6>bumpers fully leave community at any point during auto</h6></i></p> -->
-        <input type="checkbox" class="checkbox" name="Exit Community" value="TRUE" placeholder="FALSE" id="exitCommunity">
+        <input type="checkbox" class="checkbox" name="Exit Community" value="1" placeholder="0" id="exitCommunity">
         <br>
         <br>
       
@@ -217,9 +236,9 @@
         <select name="End of Auto" id="autoEnd">
           <option value="Choose Option" selected>Select Option</option>
           <option value="NA">Not Attempted</option>
-          <option value="Failed">Attempted but Failed</option>
-          <option value="docked">Docked but not Engaged</option>
-          <option value="engaged">Engaged and Docked</option>
+          <option value="F">Attempted but Failed</option>
+          <option value="D">Docked but not Engaged</option>
+          <option value="E">Engaged and Docked</option>
         </select>
         <br>
         <br>
@@ -280,9 +299,9 @@
         <select name="Charge Station" id="climb">
           <option value="Select Option" selected>Select Option</option>
           <option value="NA">Not Attempted</option>
-          <option value="Failed">Attempted but Failed</option>
-          <option value="docked">Docked but not Engaged</option>
-          <option value="engaged">Engaged and Docked</option>
+          <option value="F">Attempted but Failed</option>
+          <option value="D">Docked but not Engaged</option>
+          <option value="E">Engaged and Docked</option>
         </select>
         <br>
         <br>
@@ -293,7 +312,7 @@
       
         <label for="defended">Was Defended (By Another Robot)?</label><br>
         <!-- <p><i><h6>bumpers fully leave community at any point during auto</h6></i></p> -->
-        <input type="checkbox" class="checkbox" name="defended" value="TRUE" placeholder="FALSE" id="wasDefended">
+        <input type="checkbox" class="checkbox" name="defended" value="1" placeholder="0" id="wasDefended">
           <br>
           <br>
         <label for="robotDisabled">Robot Disabled?</label>
@@ -311,8 +330,9 @@
       </div>
       
       <!-- <div id="generated"></div> -->
-
-      <div id="qrcode" class="m-auto"></div>
+      <div style="margin:20px; padding: 20px;"></div>
+        <div id="qrcode" class="m-auto"></div>
+      </div>
       <br></br>
       <div id="qrlabel"></div>
       <br></br>
@@ -334,12 +354,13 @@
   </form>
     </div>
 
-<form id="generate-form" style="margin:20px;">
-  <button style="width:80%; height:200px; background-color: orange; border-color: orange;" type="submit">
-    <p style="font-size: 5vw; color:white;">
-      Generate QR Code</p>
-  </button>
-</form>
+  <form id="generate-form" style="margin:20px;">
+    <button style="width:80%; height:200px; background-color: orange; border-color: orange;" type="submit">
+      <p style="font-size: 5vw; color:white;">
+        Generate QR Code</p>
+    </button>
+  </form>
+
 
 
   </main>
