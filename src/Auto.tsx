@@ -1,12 +1,14 @@
 import * as React from "react";
+import { Grid, TextField, Typography } from "@mui/material";
 
 import Page from "./components/Page";
 import HeaderCard, { HeaderButton } from "./components/HeaderCard";
-
-import { Autocomplete, Grid, TextField, Typography } from "@mui/material";
 import BigCheckBox from "./components/BigCheckBox";
+import { useAutoContext } from "./ScoutingContexts";
 
 export default function About() {
+  const autoVals = useAutoContext();
+
   const pageButtons: HeaderButton[] = [
     { title: "Prev Page (Pre-Match)", link: "/#/pre" },
     { title: "Next page (Tele)", link: "/#/teles" },

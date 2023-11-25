@@ -5,6 +5,7 @@ import { Box } from "@mui/material";
 
 import AppBarMemo from "./components/TeamAppBar";
 import ScrollToTop from "./components/ScrollToTop";
+import { ScoutingProvider } from "./ScoutingContexts";
 
 const PreMatch = lazy(() => import("./PreMatch"));
 const Auto = lazy(() => import("./Auto"));
@@ -26,14 +27,16 @@ export default function App() {
       <AppBarMemo pages={[]} />
       <ScrollToTop />
       <Box sx={{ height: "5vh" }}></Box>
-      <Suspense fallback={<div style={{ height: "100vh" }}></div>}>
-        <Routes>
-          {pages.map((page) => (
-            <Route path={page.path} element={page.elem} key={page.path} />
-          ))}
-          <Route path="*" element={<Navigate to="/pre" replace />} />
-        </Routes>
-      </Suspense>
+      <ScoutingProvider>
+        <Suspense fallback={<div style={{ height: "100vh" }}></div>}>
+          <Routes>
+            {pages.map((page) => (
+              <Route path={page.path} element={page.elem} key={page.path} />
+            ))}
+            <Route path="*" element={<Navigate to="/pre" replace />} />
+          </Routes>
+        </Suspense>
+      </ScoutingProvider>
     </HashRouter>
   );
 }

@@ -3,14 +3,9 @@ import React, { useState } from "react";
 
 export function CounterButtons() {
   const [counter, setCounter] = useState(0);
-  const [initialCount, setInitialCount] = useState(0);
-  const handleInitialCountChange = (event: {
-    target: { value: React.SetStateAction<number> };
-  }) => {
-    setInitialCount(event.target.value);
-  };
+
   const handleReset = () => {
-    setCounter(initialCount);
+    setCounter(0);
   };
 
   return (

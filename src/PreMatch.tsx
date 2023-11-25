@@ -1,15 +1,16 @@
 import * as React from "react";
+import { Autocomplete, Grid, TextField, Typography } from "@mui/material";
 
-import { useTheme } from "@mui/material/styles";
 import Page from "./components/Page";
 import HeaderCard, { HeaderButton } from "./components/HeaderCard";
-
-import { vablaTeams, vafalTeams, dcmpTeams, worldsTeams } from "./EventTeams";
-import { Autocomplete, Grid, TextField, Typography } from "@mui/material";
 import BigCheckBox from "./components/BigCheckBox";
 
-export default function About() {
-  const theme = useTheme();
+import { usePreContext } from "./ScoutingContexts";
+
+import { vablaTeams, vafalTeams, dcmpTeams, worldsTeams } from "./EventTeams";
+
+export default function PreMatch() {
+  const preVals = usePreContext();
 
   const teamsList =
     new Date() < new Date("2024-03-04")
@@ -48,6 +49,7 @@ export default function About() {
               renderInput={(params) => (
                 <TextField
                   variant="standard"
+                  type="number"
                   {...params}
                   label={
                     <Typography variant="h6" component="h1">
@@ -83,4 +85,4 @@ export default function About() {
   );
 }
 
-export const AboutMemo = React.memo(About);
+export const AboutMemo = React.memo(PreMatch);
