@@ -43,12 +43,8 @@ export default function About() {
               sx={{ width: "100%" }}
             />
           </Grid>
-          <Grid item sm={6} textAlign="center">
-            <BigCheckBox label="Showed up to match:" isChecked />
-          </Grid>
-          <Grid item sm={6} textAlign="center">
-            <BigCheckBox label="Bypassed:" isChecked={false} />
-          </Grid>
+          <Grid item sm={6} textAlign="center"></Grid>
+          <Grid item sm={6} textAlign="center"></Grid>
         </Grid>
       </HeaderCard>
     </Page>

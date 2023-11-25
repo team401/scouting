@@ -4,6 +4,7 @@ import React from "react";
 type CBprops = {
   label: string;
   isChecked: boolean;
+  onChange: Function;
 };
 
 export default function BigCheckBox(props: CBprops) {
@@ -11,7 +12,10 @@ export default function BigCheckBox(props: CBprops) {
     <FormControlLabel
       control={
         <Checkbox
-          defaultChecked={props.isChecked}
+          checked={props.isChecked}
+          onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+            props.onChange(event);
+          }}
           sx={{ "& .MuiSvgIcon-root": { fontSize: 36 } }}
         />
       }
