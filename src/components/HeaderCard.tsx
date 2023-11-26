@@ -12,7 +12,7 @@ export type HeaderButton = {
 
 type HeaderCardProps = {
   title: JSX.Element | string;
-  buttons?: HeaderButton[];
+  buttons: HeaderButton[];
 };
 
 export default function HeaderCard(props: PropsWithChildren<HeaderCardProps>) {
@@ -39,7 +39,16 @@ export default function HeaderCard(props: PropsWithChildren<HeaderCardProps>) {
       </Typography>
       <>{props.children}</>
       <CardActions
-        sx={{ mt: "auto", justifyContent: "space-between", mb: -1, mx: -3 }}
+        sx={
+          props.buttons.length > 1
+            ? {
+                justifyContent: "space-between",
+                mt: "auto",
+                mb: -1,
+                mx: -3,
+              }
+            : { justifyContent: "center", mt: "auto", mb: -1, mx: -3 }
+        }
       >
         {props.buttons?.map((button) => (
           <StyledButton

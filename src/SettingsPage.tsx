@@ -1,6 +1,5 @@
 import * as React from "react";
 import { FormControl, Grid, InputLabel, MenuItem, Select } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import Page from "./components/Page";
 import { HeaderButton } from "./components/HeaderCard";
@@ -11,7 +10,7 @@ export default function Settings() {
   const settings = useSettingsContext();
 
   const pageButtons: HeaderButton[] = [
-    { title: <ArrowBackIcon fontSize="large" />, link: "/#/pre" },
+    { title: "Back to Scouting", link: "/#/pre" },
   ];
 
   return (
