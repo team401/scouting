@@ -16,7 +16,6 @@ export default function Page(props: PropsWithChildren<PageProps>) {
           {props.children}
         </Grid>
       </HeaderCard>
-      <Box textAlign="center"></Box>
     </Container>
   );
 }

@@ -8,7 +8,7 @@ import { Events, useSettingsContext } from "./ScoutingContexts";
 import { Stations } from "./ScoutingContexts";
 
 export default function Settings() {
-  const settingsVals = useSettingsContext();
+  const settings = useSettingsContext();
 
   const pageButtons: HeaderButton[] = [
     { title: <ArrowBackIcon fontSize="large" />, link: "/#/pre" },
@@ -20,10 +20,10 @@ export default function Settings() {
         <FormControl fullWidth>
           <InputLabel>Station Scouted</InputLabel>
           <Select
-            value={settingsVals.settings.station}
+            value={settings.data.station}
             onChange={(event) => {
-              settingsVals.setSettings({
-                ...settingsVals.settings,
+              settings.setData({
+                ...settings.data,
                 station: event.target.value,
               });
             }}
@@ -41,10 +41,10 @@ export default function Settings() {
         <FormControl fullWidth>
           <InputLabel>Event</InputLabel>
           <Select
-            value={settingsVals.settings.event}
+            value={settings.data.event}
             onChange={(event) => {
-              settingsVals.setSettings({
-                ...settingsVals.settings,
+              settings.setData({
+                ...settings.data,
                 event: event.target.value,
               });
             }}

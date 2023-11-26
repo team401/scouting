@@ -1,118 +1,6 @@
 import React, { useState } from "react";
 import { createContext, useContext } from "react";
 
-export type PreMatchData = {
-  scout: string;
-  team: number | null;
-  match: number | null;
-  showed: boolean;
-  bypassed: boolean;
-};
-
-const defaultPre: PreMatchData = {
-  scout: "",
-  team: null,
-  match: null,
-  showed: true,
-  bypassed: false,
-};
-
-type PreMatchState = {
-  preMatch: PreMatchData;
-  setPre: Function;
-};
-
-const PreMatchContext = createContext<PreMatchState>({
-  preMatch: defaultPre,
-  setPre: () => {},
-});
-
-export function usePreContext() {
-  return useContext(PreMatchContext);
-}
-
-type AutoData = {
-  exitedZone: boolean;
-  balanced: boolean;
-  scoredHigh: number;
-  scoredMid: number;
-  scoredLow: number;
-  missed: number;
-};
-
-const defaultAuto = {
-  exitedZone: false,
-  balanced: false,
-  scoredHigh: 0,
-  scoredMid: 0,
-  scoredLow: 0,
-  missed: 0,
-};
-
-type AutoState = {
-  auto: AutoData;
-  setAuto: Function;
-};
-
-const AutoContext = createContext<AutoState>({
-  auto: defaultAuto,
-  setAuto: () => {},
-});
-
-export function useAutoContext() {
-  return useContext(AutoContext);
-}
-
-type TeleData = {
-  scoredHigh: number;
-  scoredMid: number;
-  scoredLow: number;
-  balanced: boolean;
-  dropped: number;
-};
-
-const defaultTele: TeleData = {
-  scoredHigh: 0,
-  scoredMid: 0,
-  scoredLow: 0,
-  balanced: false,
-  dropped: 0,
-};
-
-type TeleState = {
-  tele: TeleData;
-  setTele: Function;
-};
-
-const TeleContext = createContext<TeleState>({
-  tele: defaultTele,
-  setTele: () => {},
-});
-
-type PostData = {
-  notes: string;
-  carded: boolean;
-  died: boolean;
-  hadIssues: boolean;
-};
-
-const defaultPost: PostData = {
-  notes: "",
-  carded: false,
-  died: false,
-  hadIssues: false,
-};
-
-type PostState = {
-  post: PostData;
-  setPost: Function;
-};
-
-const PostContext = createContext<PostState>({
-  post: defaultPost,
-  setPost: () => {},
-});
-
 export const Stations: string[] = [
   "RED 1",
   "RED 2",
@@ -135,21 +23,121 @@ type SettingsData = {
   teamList: string[];
 };
 
-type SettingsState = {
-  settings: SettingsData;
-  setSettings: Function;
-};
-
 const defaultSettings = {
   station: "RED 1",
   event: "2023vabla",
   teamList: [],
 };
 
-const SettingsContext = createContext<SettingsState>({
-  settings: defaultSettings,
-  setSettings: () => {},
+type PreMatchData = {
+  scout: string;
+  team: number | null;
+  match: number | null;
+  showed: boolean;
+  bypassed: boolean;
+};
+
+const defaultPre: PreMatchData = {
+  scout: "",
+  team: null,
+  match: null,
+  showed: true,
+  bypassed: false,
+};
+
+export type AutoData = {
+  exitedZone: boolean;
+  balanced: boolean;
+  scoredHigh: number;
+  scoredMid: number;
+  scoredLow: number;
+  missed: number;
+};
+
+const defaultAuto = {
+  exitedZone: false,
+  balanced: false,
+  scoredHigh: 0,
+  scoredMid: 0,
+  scoredLow: 0,
+  missed: 0,
+};
+
+type TeleData = {
+  scoredHigh: number;
+  scoredMid: number;
+  scoredLow: number;
+  balanced: boolean;
+  missed: number;
+};
+
+const defaultTele: TeleData = {
+  scoredHigh: 0,
+  scoredMid: 0,
+  scoredLow: 0,
+  balanced: false,
+  missed: 0,
+};
+
+type PostData = {
+  notes: string;
+  carded: boolean;
+  died: boolean;
+  hadIssues: boolean;
+};
+
+const defaultPost: PostData = {
+  notes: "",
+  carded: false,
+  died: false,
+  hadIssues: false,
+};
+
+type ContextState<T> = {
+  data: T;
+  setData: Function;
+};
+
+const PreMatchContext = createContext<ContextState<PreMatchData>>({
+  data: defaultPre,
+  setData: () => {},
 });
+
+const AutoContext = createContext<ContextState<AutoData>>({
+  data: defaultAuto,
+  setData: () => {},
+});
+
+const TeleContext = createContext<ContextState<TeleData>>({
+  data: defaultTele,
+  setData: () => {},
+});
+
+const PostContext = createContext<ContextState<PostData>>({
+  data: defaultPost,
+  setData: () => {},
+});
+
+const SettingsContext = createContext<ContextState<SettingsData>>({
+  data: defaultSettings,
+  setData: () => {},
+});
+
+export function usePreContext() {
+  return useContext(PreMatchContext);
+}
+
+export function useAutoContext() {
+  return useContext(AutoContext);
+}
+
+export function useTeleContext() {
+  return useContext(TeleContext);
+}
+
+export function usePostContext() {
+  return useContext(PostContext);
+}
 
 export function useSettingsContext() {
   return useContext(SettingsContext);
@@ -163,13 +151,11 @@ export function ScoutingProvider(props: { children: React.ReactNode }) {
   const [settingsVals, setSet] = useState<SettingsData>(defaultSettings);
 
   return (
-    <SettingsContext.Provider
-      value={{ settings: settingsVals, setSettings: setSet }}
-    >
-      <PreMatchContext.Provider value={{ preMatch: preVals, setPre: setPr }}>
-        <AutoContext.Provider value={{ auto: autoVals, setAuto: setAut }}>
-          <TeleContext.Provider value={{ tele: teleVals, setTele: setTel }}>
-            <PostContext.Provider value={{ post: postVals, setPost: setPos }}>
+    <SettingsContext.Provider value={{ data: settingsVals, setData: setSet }}>
+      <PreMatchContext.Provider value={{ data: preVals, setData: setPr }}>
+        <AutoContext.Provider value={{ data: autoVals, setData: setAut }}>
+          <TeleContext.Provider value={{ data: teleVals, setData: setTel }}>
+            <PostContext.Provider value={{ data: postVals, setData: setPos }}>
               {props.children}
             </PostContext.Provider>
           </TeleContext.Provider>

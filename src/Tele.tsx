@@ -5,28 +5,28 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
 import Page from "./components/Page";
 import { HeaderButton } from "./components/HeaderCard";
-import { AutoData, useAutoContext } from "./ScoutingContexts";
+import { useTeleContext } from "./ScoutingContexts";
 import { Counter } from "./components/Counter";
 import BigCheckBox from "./components/BigCheckBox";
 
-export default function Auto() {
-  const auto = useAutoContext();
+export default function Tele() {
+  const tele = useTeleContext();
 
   const pageButtons: HeaderButton[] = [
-    { title: <ArrowBackIcon fontSize="large" />, link: "/#/pre" },
-    { title: <ArrowForwardIcon fontSize="large" />, link: "/#/tele" },
+    { title: <ArrowBackIcon fontSize="large" />, link: "/#/auto" },
+    { title: <ArrowForwardIcon fontSize="large" />, link: "/#/teles" },
   ];
 
   return (
-    <Page title="Auto" buttons={pageButtons}>
+    <Page title="Tele" buttons={pageButtons}>
       <Grid item xs={12}>
         <Counter
           label="Scored High"
-          value={auto.data.scoredHigh}
+          value={tele.data.scoredHigh}
           onChange={(newVal: number) => {
             navigator.vibrate(50);
-            auto.setData({
-              ...auto.data,
+            tele.setData({
+              ...tele.data,
               scoredHigh: newVal < 0 ? 0 : newVal,
             });
           }}
@@ -35,11 +35,11 @@ export default function Auto() {
       <Grid item xs={12}>
         <Counter
           label="Scored Mid "
-          value={auto.data.scoredMid}
+          value={tele.data.scoredMid}
           onChange={(newVal: number) => {
             navigator.vibrate(50);
-            auto.setData({
-              ...auto.data,
+            tele.setData({
+              ...tele.data,
               scoredMid: newVal < 0 ? 0 : newVal,
             });
           }}
@@ -48,11 +48,11 @@ export default function Auto() {
       <Grid item xs={12}>
         <Counter
           label="Scored Low "
-          value={auto.data.scoredLow}
+          value={tele.data.scoredLow}
           onChange={(newVal: number) => {
             navigator.vibrate(50);
-            auto.setData({
-              ...auto.data,
+            tele.setData({
+              ...tele.data,
               scoredLow: newVal < 0 ? 0 : newVal,
             });
           }}
@@ -61,37 +61,24 @@ export default function Auto() {
       <Grid item xs={12}>
         <Counter
           label="Missed"
-          value={auto.data.missed}
+          value={tele.data.missed}
           onChange={(newVal: number) => {
             navigator.vibrate(50);
-            auto.setData({
-              ...auto.data,
+            tele.setData({
+              ...tele.data,
               missed: newVal < 0 ? 0 : newVal,
             });
           }}
         ></Counter>
       </Grid>
-      <Grid item xs={6} textAlign="center">
-        <BigCheckBox
-          label="Exited Zone:"
-          isChecked={auto.data.exitedZone}
-          onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-            navigator.vibrate(50);
-            auto.setData({
-              ...auto.data,
-              exitedZone: event.target.checked,
-            });
-          }}
-        />
-      </Grid>
-      <Grid item xs={6} textAlign="center">
+      <Grid item xs={12} textAlign="center">
         <BigCheckBox
           label="Balanced: "
-          isChecked={auto.data.balanced}
+          isChecked={tele.data.balanced}
           onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
             navigator.vibrate(50);
-            auto.setData({
-              ...auto.data,
+            tele.setData({
+              ...tele.data,
               balanced: event.target.checked,
             });
           }}
@@ -101,4 +88,4 @@ export default function Auto() {
   );
 }
 
-export const AutoMemo = React.memo(Auto);
+export const TeleMemo = React.memo(Tele);

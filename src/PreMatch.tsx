@@ -12,7 +12,7 @@ import { teamsList } from "./EventTeams";
 import LabeledTextInput from "./components/LabeledTextInput";
 
 export default function PreMatch() {
-  const preVals = usePreContext();
+  const preMatch = usePreContext();
 
   const pageButtons: HeaderButton[] = [
     { title: <SettingsIcon fontSize="large" />, link: "/#/settings" },
@@ -24,13 +24,13 @@ export default function PreMatch() {
       <Grid item xs={12}>
         <LabeledTextInput
           onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-            preVals.setPre({
-              ...preVals.preMatch,
+            preMatch.setData({
+              ...preMatch.data,
               scout: event.target.value,
             });
           }}
           label="Scout Name"
-          value={preVals.preMatch.scout}
+          value={preMatch.data.scout}
           type="text"
         />
       </Grid>
@@ -39,10 +39,10 @@ export default function PreMatch() {
           disablePortal
           options={teamsList}
           getOptionLabel={(option) => option.toString()}
-          value={preVals.preMatch.team}
+          value={preMatch.data.team}
           onChange={(event: any, newValue: number | null) => {
-            preVals.setPre({
-              ...preVals.preMatch,
+            preMatch.setData({
+              ...preMatch.data,
               team: newValue,
             });
           }}
@@ -63,23 +63,23 @@ export default function PreMatch() {
       <Grid item xs={12}>
         <LabeledTextInput
           onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-            preVals.setPre({
-              ...preVals.preMatch,
+            preMatch.setData({
+              ...preMatch.data,
               match: event.target.value,
             });
           }}
           label="Match Number"
-          value={preVals.preMatch.match}
+          value={preMatch.data.match}
           type="number"
         />
       </Grid>
       <Grid item sm={6} textAlign="center">
         <BigCheckBox
           label="Showed up to match:"
-          isChecked={preVals.preMatch.showed}
+          isChecked={preMatch.data.showed}
           onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-            preVals.setPre({
-              ...preVals.preMatch,
+            preMatch.setData({
+              ...preMatch.data,
               showed: event.target.checked,
             });
           }}
@@ -88,10 +88,10 @@ export default function PreMatch() {
       <Grid item sm={6} textAlign="center">
         <BigCheckBox
           label="Bypassed:"
-          isChecked={preVals.preMatch.bypassed}
+          isChecked={preMatch.data.bypassed}
           onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-            preVals.setPre({
-              ...preVals.preMatch,
+            preMatch.setData({
+              ...preMatch.data,
               bypassed: event.target.checked,
             });
           }}

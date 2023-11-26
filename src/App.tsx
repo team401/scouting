@@ -9,6 +9,7 @@ import { ScoutingProvider } from "./ScoutingContexts";
 
 const PreMatch = lazy(() => import("./PreMatch"));
 const Auto = lazy(() => import("./Auto"));
+const Tele = lazy(() => import("./Tele"));
 const Settings = lazy(() => import("./SettingsPage"));
 
 export type PageType = {
@@ -17,22 +18,28 @@ export type PageType = {
   elem: JSX.Element;
 };
 
-const pages: PageType[] = [
-  { path: "/pre", title: "Pre-Match", elem: <PreMatch /> },
-  { path: "/auto", title: "Auto", elem: <Auto /> },
+const listedPages: PageType[] = [
+  { path: "/pre", title: "Scouting", elem: <PreMatch /> },
   { path: "/settings", title: "Settings", elem: <Settings /> },
 ];
+
+const unlistedPages: PageType[] = [
+  { path: "/auto", title: "Auto", elem: <Auto /> },
+  { path: "/tele", title: "Tele", elem: <Tele /> },
+];
+
+const allPages = listedPages.concat(unlistedPages);
 
 export default function App() {
   return (
     <HashRouter>
-      <AppBarMemo pages={[]} />
+      <AppBarMemo pages={listedPages} />
       <ScrollToTop />
       <Box sx={{ height: "5vh" }}></Box>
       <ScoutingProvider>
         <Suspense fallback={<div style={{ height: "100vh" }}></div>}>
           <Routes>
-            {pages.map((page) => (
+            {allPages.map((page) => (
               <Route path={page.path} element={page.elem} key={page.path} />
             ))}
             <Route path="*" element={<Navigate to="/pre" replace />} />
