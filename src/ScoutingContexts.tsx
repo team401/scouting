@@ -113,18 +113,26 @@ const PostContext = createContext<PostState>({
   setPost: () => {},
 });
 
-export enum Station {
-  RED1 = "red1",
-  RED2 = "red2",
-  RED3 = "red3",
-  BLUE1 = "blue1",
-  BLUE2 = "blue2",
-  BLUE3 = "blue3",
-}
+export const Stations: string[] = [
+  "RED 1",
+  "RED 2",
+  "RED 3",
+  "BLUE 1",
+  "BLUE2",
+  "BLUE 3",
+];
+
+export const Events: string[] = [
+  "2023vabla",
+  "2023vagle",
+  "2023chcmp",
+  "2023gal",
+];
 
 type SettingsData = {
-  station: Station;
-  event: string;
+  station: (typeof Stations)[number];
+  event: (typeof Events)[number];
+  teamList: string[];
 };
 
 type SettingsState = {
@@ -133,14 +141,19 @@ type SettingsState = {
 };
 
 const defaultSettings = {
-  station: Station.RED1,
-  event: "valba",
+  station: "RED 1",
+  event: "2023vabla",
+  teamList: [],
 };
 
 const SettingsContext = createContext<SettingsState>({
   settings: defaultSettings,
   setSettings: () => {},
 });
+
+export function useSettingsContext() {
+  return useContext(SettingsContext);
+}
 
 export function ScoutingProvider(props: { children: React.ReactNode }) {
   const [preVals, setPr] = useState<PreMatchData>(defaultPre);

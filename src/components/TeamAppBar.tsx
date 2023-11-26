@@ -35,8 +35,8 @@ export default function TeamAppBar(props: { pages: PageType[] }) {
     <img
       src={logo}
       style={{
-        maxHeight: 40,
-        marginTop: 10,
+        height: 40,
+        marginTop: 5,
         marginRight: 10,
         marginLeft: 0,
         padding: 0,
@@ -45,7 +45,10 @@ export default function TeamAppBar(props: { pages: PageType[] }) {
   );
 
   return (
-    <AppBar position="fixed" style={{ background: "secondary" }}>
+    <AppBar
+      position="fixed"
+      style={{ background: "secondary", height: "60px" }}
+    >
       <Container disableGutters maxWidth={false}>
         <Toolbar disableGutters>
           <Link to={"/"}>

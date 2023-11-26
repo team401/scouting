@@ -10,9 +10,9 @@ type PageProps = {
 
 export default function Page(props: PropsWithChildren<PageProps>) {
   return (
-    <Container maxWidth="lg" sx={{ pt: 4 }}>
+    <Container maxWidth="lg" sx={{ pt: "20px", height: "calc(100vh - 80px)" }}>
       <HeaderCard title={props.title} buttons={props.buttons}>
-        <Grid container rowSpacing={5} columnSpacing={1}>
+        <Grid container rowSpacing={8} columnSpacing={1}>
           {props.children}
         </Grid>
       </HeaderCard>

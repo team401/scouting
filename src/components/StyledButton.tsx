@@ -4,7 +4,7 @@ import React from "react";
 type btnProps = {
   link: string;
   title: string | JSX.Element;
-  key?: string;
+  key: string;
   small?: boolean;
 };
 
@@ -14,6 +14,9 @@ export default function StyledButton(props: btnProps) {
       component={Link}
       href={props.link}
       key={props.key}
+      onClick={() => {
+        navigator.vibrate(50);
+      }}
       size={props.small ? "medium" : "large"}
       variant="contained"
       sx={{ mb: 0, mt: 2, mx: 2 }}

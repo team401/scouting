@@ -24,6 +24,7 @@ export default function Auto() {
           label="Scored High"
           value={autoVals.auto.scoredHigh}
           onChange={(newVal: number) => {
+            navigator.vibrate(50);
             autoVals.setAuto({
               ...autoVals.auto,
               scoredHigh: newVal < 0 ? 0 : newVal,
@@ -33,9 +34,10 @@ export default function Auto() {
       </Grid>
       <Grid item xs={12}>
         <Counter
-          label="Scored Mid"
+          label="Scored Mid "
           value={autoVals.auto.scoredMid}
           onChange={(newVal: number) => {
+            navigator.vibrate(50);
             autoVals.setAuto({
               ...autoVals.auto,
               scoredMid: newVal < 0 ? 0 : newVal,
@@ -45,9 +47,10 @@ export default function Auto() {
       </Grid>
       <Grid item xs={12}>
         <Counter
-          label="Scored Low"
+          label="Scored Low "
           value={autoVals.auto.scoredLow}
           onChange={(newVal: number) => {
+            navigator.vibrate(50);
             autoVals.setAuto({
               ...autoVals.auto,
               scoredLow: newVal < 0 ? 0 : newVal,
@@ -60,6 +63,7 @@ export default function Auto() {
           label="Missed"
           value={autoVals.auto.missed}
           onChange={(newVal: number) => {
+            navigator.vibrate(50);
             autoVals.setAuto({
               ...autoVals.auto,
               missed: newVal < 0 ? 0 : newVal,
@@ -72,6 +76,7 @@ export default function Auto() {
           label="Exited Zone:"
           isChecked={autoVals.auto.exitedZone}
           onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+            navigator.vibrate(50);
             autoVals.setAuto({
               ...autoVals.auto,
               exitedZone: event.target.checked,
@@ -84,6 +89,7 @@ export default function Auto() {
           label="Balanced: "
           isChecked={autoVals.auto.balanced}
           onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+            navigator.vibrate(50);
             autoVals.setAuto({
               ...autoVals.auto,
               balanced: event.target.checked,

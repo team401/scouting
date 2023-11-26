@@ -38,6 +38,7 @@ export default function PreMatch() {
         <Autocomplete
           disablePortal
           options={teamsList}
+          getOptionLabel={(option) => option.toString()}
           value={preVals.preMatch.team}
           onChange={(event: any, newValue: number | null) => {
             preVals.setPre({
@@ -100,4 +101,4 @@ export default function PreMatch() {
   );
 }
 
-export const AboutMemo = React.memo(PreMatch);
+export const PreMatchMemo = React.memo(PreMatch);
