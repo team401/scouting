@@ -9,6 +9,7 @@ import { ScoutingProvider } from "./ScoutingContexts";
 
 const PreMatch = lazy(() => import("./PreMatch"));
 const Auto = lazy(() => import("./Auto"));
+const Settings = lazy(() => import("./SettingsPage"));
 
 export type PageType = {
   path: string;
@@ -19,6 +20,7 @@ export type PageType = {
 const pages: PageType[] = [
   { path: "/pre", title: "Pre-Match", elem: <PreMatch /> },
   { path: "/auto", title: "Auto", elem: <Auto /> },
+  { path: "/settings", title: "Settings", elem: <Settings /> },
 ];
 
 export default function App() {

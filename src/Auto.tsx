@@ -1,54 +1,98 @@
 import * as React from "react";
-import { Grid, TextField, Typography } from "@mui/material";
+import { Grid } from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
 import Page from "./components/Page";
-import HeaderCard, { HeaderButton } from "./components/HeaderCard";
-import BigCheckBox from "./components/BigCheckBox";
+import { HeaderButton } from "./components/HeaderCard";
 import { useAutoContext } from "./ScoutingContexts";
+import { Counter } from "./components/Counter";
+import BigCheckBox from "./components/BigCheckBox";
 
-export default function About() {
+export default function Auto() {
   const autoVals = useAutoContext();
 
   const pageButtons: HeaderButton[] = [
-    { title: "Prev Page (Pre-Match)", link: "/#/pre" },
-    { title: "Next page (Tele)", link: "/#/teles" },
+    { title: <ArrowBackIcon fontSize="large" />, link: "/#/pre" },
+    { title: <ArrowForwardIcon fontSize="large" />, link: "/#/teles" },
   ];
 
   return (
-    <Page>
-      <HeaderCard title={"Auto"} buttons={pageButtons}>
-        <Grid container rowSpacing={2} columnSpacing={1}>
-          <Grid item xs={12}>
-            <TextField
-              id="scout-name"
-              label={
-                <Typography variant="h6" component="h1">
-                  Scout Name
-                </Typography>
-              }
-              variant="standard"
-              sx={{ width: "100%" }}
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              id="match-num"
-              label={
-                <Typography variant="h6" component="h1">
-                  Match Number
-                </Typography>
-              }
-              variant="standard"
-              type="number"
-              sx={{ width: "100%" }}
-            />
-          </Grid>
-          <Grid item sm={6} textAlign="center"></Grid>
-          <Grid item sm={6} textAlign="center"></Grid>
-        </Grid>
-      </HeaderCard>
+    <Page title="Auto" buttons={pageButtons}>
+      <Grid item xs={12}>
+        <Counter
+          label="Scored High"
+          value={autoVals.auto.scoredHigh}
+          onChange={(newVal: number) => {
+            autoVals.setAuto({
+              ...autoVals.auto,
+              scoredHigh: newVal < 0 ? 0 : newVal,
+            });
+          }}
+        ></Counter>
+      </Grid>
+      <Grid item xs={12}>
+        <Counter
+          label="Scored Mid"
+          value={autoVals.auto.scoredMid}
+          onChange={(newVal: number) => {
+            autoVals.setAuto({
+              ...autoVals.auto,
+              scoredMid: newVal < 0 ? 0 : newVal,
+            });
+          }}
+        ></Counter>
+      </Grid>
+      <Grid item xs={12}>
+        <Counter
+          label="Scored Low"
+          value={autoVals.auto.scoredLow}
+          onChange={(newVal: number) => {
+            autoVals.setAuto({
+              ...autoVals.auto,
+              scoredLow: newVal < 0 ? 0 : newVal,
+            });
+          }}
+        ></Counter>
+      </Grid>
+      <Grid item xs={12}>
+        <Counter
+          label="Missed"
+          value={autoVals.auto.missed}
+          onChange={(newVal: number) => {
+            autoVals.setAuto({
+              ...autoVals.auto,
+              missed: newVal < 0 ? 0 : newVal,
+            });
+          }}
+        ></Counter>
+      </Grid>
+      <Grid item xs={6} textAlign="center">
+        <BigCheckBox
+          label="Exited Zone:"
+          isChecked={autoVals.auto.exitedZone}
+          onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+            autoVals.setAuto({
+              ...autoVals.auto,
+              exitedZone: event.target.checked,
+            });
+          }}
+        />
+      </Grid>
+      <Grid item xs={6} textAlign="center">
+        <BigCheckBox
+          label="Balanced: "
+          isChecked={autoVals.auto.balanced}
+          onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+            autoVals.setAuto({
+              ...autoVals.auto,
+              balanced: event.target.checked,
+            });
+          }}
+        />
+      </Grid>
     </Page>
   );
 }
 
-export const AboutMemo = React.memo(About);
+export const AboutMemo = React.memo(Auto);

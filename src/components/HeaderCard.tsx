@@ -39,8 +39,7 @@ export default function HeaderCard(props: PropsWithChildren<HeaderCardProps>) {
         </Typography>
         <Stack
           direction="row"
-          justifyContent="center"
-          alignContent="center"
+          justifyContent="space-between"
           sx={{ pb: 0, mb: 0 }}
         >
           {props.buttons?.map((button) => (

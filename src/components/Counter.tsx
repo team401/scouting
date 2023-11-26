@@ -1,30 +1,38 @@
 import { Fab, Stack, Typography } from "@mui/material";
-import React, { useState } from "react";
+import React from "react";
+import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
 
-export function CounterButtons() {
-  const [counter, setCounter] = useState(0);
+type CounterProps = {
+  label: string;
+  value: number;
+  onChange: Function;
+};
 
-  const handleReset = () => {
-    setCounter(0);
-  };
-
+export function Counter(props: CounterProps) {
   return (
-    <Stack direction="row" justifyContent="center" alignItems="center">
-      <Fab
-        color="secondary"
-        onClick={() => setCounter(counter > 0 ? counter - 1 : 0)}
+    <Stack direction="row" justifyContent="center">
+      <Typography
+        textAlign="center"
+        component="h1"
+        variant="h6"
+        sx={{ px: 5, py: 2 }}
       >
-        -
-      </Fab>
-      <Typography textAlign="center" component="h1" variant="h4" sx={{ p: 2 }}>
-        {counter}
+        {props.label}
       </Typography>
-      <Fab
-        color="secondary"
-        aria-label="add"
-        onClick={() => setCounter(counter + 1)}
+      <Fab onClick={(e) => props.onChange(props.value - 1)}>
+        <RemoveIcon fontSize="large" />
+      </Fab>
+      <Typography
+        textAlign="center"
+        component="h1"
+        variant="h4"
+        sx={{ px: 5, py: 2 }}
       >
-        +
+        {props.value}
+      </Typography>
+      <Fab onClick={(e) => props.onChange(props.value + 1)}>
+        <AddIcon fontSize="large" />
       </Fab>
     </Stack>
   );

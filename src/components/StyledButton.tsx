@@ -24,7 +24,7 @@ export default function StyledButton(props: btnProps) {
         color="white"
         component="h1"
         textAlign="center"
-        sx={{ p: 0, m: 0 }}
+        sx={{ pt: 1, m: 0 }}
       >
         {props.title}
       </Typography>

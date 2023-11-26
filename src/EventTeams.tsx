@@ -13,3 +13,12 @@ export const vafalTeams: number[] = [
 export const dcmpTeams: number[] = [];
 
 export const worldsTeams: number[] = [];
+
+export const teamsList =
+  new Date() < new Date("2024-03-04")
+    ? vablaTeams
+    : new Date() < new Date("2024-04-04")
+    ? vafalTeams
+    : new Date() < new Date("2024-04-17")
+    ? dcmpTeams
+    : worldsTeams;

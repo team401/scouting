@@ -113,21 +113,55 @@ const PostContext = createContext<PostState>({
   setPost: () => {},
 });
 
+export enum Station {
+  RED1 = "red1",
+  RED2 = "red2",
+  RED3 = "red3",
+  BLUE1 = "blue1",
+  BLUE2 = "blue2",
+  BLUE3 = "blue3",
+}
+
+type SettingsData = {
+  station: Station;
+  event: string;
+};
+
+type SettingsState = {
+  settings: SettingsData;
+  setSettings: Function;
+};
+
+const defaultSettings = {
+  station: Station.RED1,
+  event: "valba",
+};
+
+const SettingsContext = createContext<SettingsState>({
+  settings: defaultSettings,
+  setSettings: () => {},
+});
+
 export function ScoutingProvider(props: { children: React.ReactNode }) {
   const [preVals, setPr] = useState<PreMatchData>(defaultPre);
   const [autoVals, setAut] = useState<AutoData>(defaultAuto);
   const [teleVals, setTel] = useState<TeleData>(defaultTele);
   const [postVals, setPos] = useState<PostData>(defaultPost);
+  const [settingsVals, setSet] = useState<SettingsData>(defaultSettings);
 
   return (
-    <PreMatchContext.Provider value={{ preMatch: preVals, setPre: setPr }}>
-      <AutoContext.Provider value={{ auto: autoVals, setAuto: setAut }}>
-        <TeleContext.Provider value={{ tele: teleVals, setTele: setTel }}>
-          <PostContext.Provider value={{ post: postVals, setPost: setPos }}>
-            {props.children}
-          </PostContext.Provider>
-        </TeleContext.Provider>
-      </AutoContext.Provider>
-    </PreMatchContext.Provider>
+    <SettingsContext.Provider
+      value={{ settings: settingsVals, setSettings: setSet }}
+    >
+      <PreMatchContext.Provider value={{ preMatch: preVals, setPre: setPr }}>
+        <AutoContext.Provider value={{ auto: autoVals, setAuto: setAut }}>
+          <TeleContext.Provider value={{ tele: teleVals, setTele: setTel }}>
+            <PostContext.Provider value={{ post: postVals, setPost: setPos }}>
+              {props.children}
+            </PostContext.Provider>
+          </TeleContext.Provider>
+        </AutoContext.Provider>
+      </PreMatchContext.Provider>
+    </SettingsContext.Provider>
   );
 }
