@@ -7,10 +7,11 @@ import AppBarMemo from "./components/TeamAppBar";
 import ScrollToTop from "./components/ScrollToTop";
 import { ScoutingProvider } from "./ScoutingContexts";
 
+const Settings = lazy(() => import("./SettingsPage"));
 const PreMatch = lazy(() => import("./PreMatch"));
 const Auto = lazy(() => import("./Auto"));
 const Tele = lazy(() => import("./Tele"));
-const Settings = lazy(() => import("./SettingsPage"));
+const Post = lazy(() => import("./Post"));
 
 export type PageType = {
   path: string;
@@ -26,6 +27,7 @@ const listedPages: PageType[] = [
 const unlistedPages: PageType[] = [
   { path: "/auto", title: "Auto", elem: <Auto /> },
   { path: "/tele", title: "Tele", elem: <Tele /> },
+  { path: "/post", title: "Post", elem: <Post /> },
 ];
 
 const allPages = listedPages.concat(unlistedPages);

@@ -14,7 +14,7 @@ export default function Tele() {
 
   const pageButtons: HeaderButton[] = [
     { title: <ArrowBackIcon fontSize="large" />, link: "/#/auto" },
-    { title: <ArrowForwardIcon fontSize="large" />, link: "/#/teles" },
+    { title: <ArrowForwardIcon fontSize="large" />, link: "/#/post" },
   ];
 
   return (
