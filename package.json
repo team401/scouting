@@ -10,6 +10,7 @@
     "@mui/material": "^5.14.14",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "axios": "^1.6.2",
     "react": "latest",
     "react-dom": "latest",
     "react-medium-image-zoom": "^5.1.8",

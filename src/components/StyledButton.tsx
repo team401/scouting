@@ -6,16 +6,21 @@ type btnProps = {
   title: string | JSX.Element;
   key: string;
   small?: boolean;
+  onClick?: Function;
 };
 
 export default function StyledButton(props: btnProps) {
+  function defaultClick() {
+    navigator.vibrate(50);
+  }
+
   return (
     <Button
       component={Link}
       href={props.link}
       key={props.key}
-      onClick={() => {
-        navigator.vibrate(50);
+      onClick={(e) => {
+        props.onClick ? props.onClick(e) : defaultClick;
       }}
       size={props.small ? "medium" : "large"}
       variant="contained"

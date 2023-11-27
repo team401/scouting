@@ -10,6 +10,16 @@ type CounterProps = {
 };
 
 export function Counter(props: CounterProps) {
+  function decrement(e: any) {
+    e.preventDefault();
+    props.onChange(props.value - 1);
+  }
+
+  function increment(e: any) {
+    e.preventDefault();
+    props.onChange(props.value + 1);
+  }
+
   return (
     <Grid container item xs={12}>
       <Grid item xs={6} justifyContent="right">
@@ -24,7 +34,7 @@ export function Counter(props: CounterProps) {
       </Grid>
       <Grid item xs={6}>
         <Stack direction="row">
-          <Fab onClick={(e) => props.onChange(props.value - 1)}>
+          <Fab onTouchEnd={decrement} onClick={decrement}>
             <RemoveIcon fontSize="large" />
           </Fab>
           <Typography
@@ -35,7 +45,7 @@ export function Counter(props: CounterProps) {
           >
             {props.value}
           </Typography>
-          <Fab onClick={(e) => props.onChange(props.value + 1)}>
+          <Fab onTouchEnd={increment} onClick={increment}>
             <AddIcon fontSize="large" />
           </Fab>
         </Stack>
