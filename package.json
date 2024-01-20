@@ -1,0 +1,45 @@
+{
+  "name": "material-ui-cra-ts",
+  "version": "5.0.0",
+  "private": true,
+  "dependencies": {
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.15.1",
+    "@mui/material": "^5.15.1",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "axios": "^1.6.5",
+    "concurrently": "^8.2.2",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-router-dom": "^6.20.1",
+    "react-scripts": "latest",
+    "typescript": "latest"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "dev": "concurrently --kill-others \"npx tailwindcss -o public/output.css --watch\" \"react-scripts start\"",
+    "tailwind:compile": "npx tailwindcss -o public/output.css",
+    "tailwind:watch": "npx tailwindcss -o public/output.css --watch",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "tailwind": "^4.0.0"
+  }
+}
