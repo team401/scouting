@@ -13,14 +13,7 @@ import axios, { isCancel, AxiosError } from "axios";
 export default function TeamSelector() {
   const { settings, setSettings } = useSettingsContext();
   const { preMatch, setPreMatch } = usePreMatchContext();
-  GetTeams(settings.Competition).then((value) => {
-    console.log(value);
-    setSettings({
-      ...settings,
-      FrcTeams: value,
-    });
-  });
-  console.log(settings.FrcTeams);
+
   return (
     <Autocomplete
       freeSolo

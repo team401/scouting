@@ -6,7 +6,7 @@ import { useSwitch, UseSwitchParameters } from "@mui/base/useSwitch";
 import { MouseEvent } from "react";
 import Chooser from "./Chooser";
 
-export default function AllianceSwitch() {
+export default function PositionChooser() {
   const { settings, setSettings } = useSettingsContext();
 
   const chooserLabels =

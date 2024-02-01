@@ -1,5 +1,5 @@
 import Chooser from "../Chooser";
-import { MouseEvent, useState } from "react";
+import { MouseEvent, useEffect, useState } from "react";
 import AllianceSwitch from "../AllianceSwitch";
 import {
   position,
@@ -9,10 +9,13 @@ import {
 import React from "react";
 import ScoreCounter from "../ScoreCounter";
 import PositionChooser from "../PositionChooser";
+import { Box, Checkbox, FormControlLabel, Grid } from "@mui/material";
+import { Fullscreen } from "@mui/icons-material";
+import CustomCheckbox from "../CustomCheckbox";
 
-type Props = { alliance: number; setAlliance: (alliance: number) => void };
+type chsrProps = { color?: string };
 
-export default function AutonomousForm() {
+export default function AutonomousForm(props: chsrProps) {
   const { auto, setAuto } = useAutoContext();
   const [comments, setComments] = React.useState("");
   const { settings, setSettings } = useSettingsContext();
@@ -22,58 +25,67 @@ export default function AutonomousForm() {
     console.log("Submitted");
   }
 
+  console.log("auto.Taxi according to Auto form:", auto.Taxi);
+
   return (
     <div className="flex flex-col items-center">
-      <form
-        className="flex flex-col items-center justify-center"
-        onSubmit={handleSubmit}
-      >
-        <div className="flex flex-col items-center justify-center">
-          <div className="font-semibold text-4xl text-center">Autonomous</div>
-          <div className="p-4 text-center">
-            <div className="text-3xl pt-4"> Position</div>
-            <div className="flex flex-row items-start justify-center p-4">
-              <div className="flex flex-col items-end justify-center gap-2">
-                <ScoreCounter
-                  label="Speaker"
-                  score={auto.UpperAuto}
-                  setScore={(score) => setAuto({ ...auto, UpperAuto: score })}
-                />
-                <ScoreCounter
-                  label="Amp"
-                  score={auto.LowerAuto}
-                  setScore={(score) => setAuto({ ...auto, LowerAuto: score })}
-                />
-              </div>
-            </div>
-
-            {/* comments section */}
-            <div className="flex flex-col justify-center p-4">
-              <label
-                htmlFor="message"
-                className="block mb-2 text-sm font-medium text-black text-left"
-              >
-                Your message
-              </label>
-              <textarea
-                id="message"
-                rows={4}
-                className="block p-2.5 w-full text-sm text-black bg-transparent placeholder-black rounded-lg border border-black"
-                placeholder="Write your thoughts here..."
-              ></textarea>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-row items-center justify-center">
-          <button
-            className="bg-black bg-opacity-25 hover:bg-opacity-50 text-white font-bold py-2 px-4 rounded-full"
-            type="submit"
+      <div className="flex flex-col items-center justify-center align-middle">
+        <div className="font-semibold text-4xl text-center">Autonomous</div>
+        <div className="p-4 text-center">
+          <Grid
+            container
+            spacing={2}
+            direction={"column"}
+            flexShrink={8}
+            justifyContent={"end"}
+            alignItems={"end"}
           >
-            Submit
-          </button>
+            <Grid item>
+              <ScoreCounter
+                label="Speaker Made"
+                score={auto.Speaker_Made}
+                setScore={(score) => setAuto({ ...auto, Speaker_Made: score })}
+              />
+            </Grid>
+            <Grid item>
+              <ScoreCounter
+                label="Speaker Missed"
+                score={auto.Speaker_Missed}
+                setScore={(score) =>
+                  setAuto({ ...auto, Speaker_Missed: score })
+                }
+              />
+            </Grid>
+            <Grid item>
+              <ScoreCounter
+                label="Amp Made"
+                score={auto.Amp_Made}
+                setScore={(score) => setAuto({ ...auto, Amp_Made: score })}
+              />
+            </Grid>
+            <Grid item>
+              <ScoreCounter
+                label="Amp Missed"
+                score={auto.Amp_Missed}
+                setScore={(score) => setAuto({ ...auto, Amp_Missed: score })}
+              />
+            </Grid>
+          </Grid>
+          <CustomCheckbox
+            lable="Taxi"
+            color={settings.Alliance === "Red" ? "#DC2626" : "#2563EB"}
+            value={auto.Taxi}
+            onChange={(event) =>
+              setAuto({
+                ...auto,
+                Taxi: event.target.checked,
+              })
+            }
+          />
         </div>
-      </form>
+      </div>
+
+      <div className="flex flex-row items-center justify-center"></div>
     </div>
   );
 }

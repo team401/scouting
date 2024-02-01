@@ -20,9 +20,15 @@ type SettingsState = {
   setSettings: (value: Settings) => void;
 };
 
+export enum Boolean {
+  FALSE = 0,
+  TRUE = 1,
+}
+
 type PreMatch = {
   Team: String;
   NoShow: boolean;
+  Match: number | undefined;
 };
 
 type PreMatchState = {
@@ -31,8 +37,10 @@ type PreMatchState = {
 };
 
 type Auto = {
-  UpperAuto: number;
-  LowerAuto: number;
+  Amp_Made: number;
+  Amp_Missed: number;
+  Speaker_Made: number;
+  Speaker_Missed: number;
   Taxi: boolean;
 };
 
@@ -42,9 +50,11 @@ type AutoState = {
 };
 
 type Teleop = {
-  UpperTele: number;
-  LowerTele: number;
-  EndGame: number | String;
+  Amp_Made: number;
+  Amp_Missed: number;
+  Speaker_Made: number;
+  Speaker_Missed: number;
+  EndGame: string | null;
   Text: string;
 };
 
@@ -53,26 +63,31 @@ type TeleopState = {
   setTeleop: React.Dispatch<React.SetStateAction<Teleop>>;
 };
 
-const defAuto: Auto = {
-  UpperAuto: 0,
-  LowerAuto: 0,
+export const defaultAuto: Auto = {
+  Amp_Made: 0,
+  Amp_Missed: 0,
+  Speaker_Made: 0,
+  Speaker_Missed: 0,
   Taxi: false,
 };
-const defTeleop: Teleop = {
-  UpperTele: 0,
-  LowerTele: 0,
-  EndGame: "",
+export const defaultTeleop: Teleop = {
+  Amp_Made: 0,
+  Amp_Missed: 0,
+  Speaker_Made: 0,
+  Speaker_Missed: 0,
+  EndGame: "Not Attempted",
   Text: "",
 };
-const defSettings: Settings = {
+export const defaultSettings: Settings = {
   Alliance: "Red",
   Position: "1",
   Competition: "2024mdowi",
   FrcTeams: [""],
 };
-const defPreMatch: PreMatch = {
+export const defaultPreMatch: PreMatch = {
   Team: "",
   NoShow: false,
+  Match: undefined,
 };
 
 const SettingsContext = createContext<SettingsState | null>(null);
@@ -81,10 +96,10 @@ const AutoContext = createContext<AutoState | null>(null);
 const TeleopContext = createContext<TeleopState | null>(null);
 
 export function ContextProvider(props: PropsWithChildren<{}>) {
-  const [settings, setSettings] = useState<Settings>(defSettings);
-  const [preMatch, setPreMatch] = useState<PreMatch>(defPreMatch);
-  const [auto, setAuto] = useState<Auto>(defAuto);
-  const [teleop, setTeleop] = useState<Teleop>(defTeleop);
+  const [settings, setSettings] = useState<Settings>(defaultSettings);
+  const [preMatch, setPreMatch] = useState<PreMatch>(defaultPreMatch);
+  const [auto, setAuto] = useState<Auto>(defaultAuto);
+  const [teleop, setTeleop] = useState<Teleop>(defaultTeleop);
 
   // const teams = GetTeams(settings.Competition).then((teams) => {
   //   setSettings({
