@@ -16,6 +16,7 @@ import AutonomousForm from "./Forms/AutonomousForm";
 import TeleopForm from "./Forms/TeleopForm";
 import { useState } from "react";
 import supabase from "./Supabase/supabaseClient";
+import FullTeamGraph from "./DataViz/FullTeamGraph";
 
 export default function App() {
   const { settings, setSettings } = useSettingsContext();
@@ -101,6 +102,7 @@ export default function App() {
                 >
                   Submit
                 </button>
+                <FullTeamGraph />
               </div>
 
               {formError && <p className="error"> {formError}</p>}
