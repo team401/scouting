@@ -6,8 +6,8 @@ import {
   Typography,
 } from "@mui/material";
 import React from "react";
-import { GetTeams } from "./Data";
-import { usePreMatchContext, useSettingsContext } from "./ContextProvider";
+import { GetTeams } from "../Data";
+import { usePreMatchContext, useSettingsContext } from "../ContextProvider";
 import axios, { isCancel, AxiosError } from "axios";
 
 export default function TeamSelector() {

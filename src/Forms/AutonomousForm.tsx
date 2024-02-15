@@ -1,17 +1,17 @@
-import Chooser from "../Chooser";
+import Chooser from "../Components/Chooser";
 import { MouseEvent, useEffect, useState } from "react";
-import AllianceSwitch from "../AllianceSwitch";
+import AllianceSwitch from "../Components/AllianceSwitch";
 import {
   position,
   useAutoContext,
   useSettingsContext,
 } from "../ContextProvider";
 import React from "react";
-import ScoreCounter from "../ScoreCounter";
-import PositionChooser from "../PositionChooser";
+import ScoreCounter from "../Components/ScoreCounter";
+import PositionChooser from "../Components/PositionChooser";
 import { Box, Checkbox, FormControlLabel, Grid } from "@mui/material";
 import { Fullscreen } from "@mui/icons-material";
-import CustomCheckbox from "../CustomCheckbox";
+import CustomCheckbox from "../Components/CustomCheckbox";
 
 type chsrProps = { color?: string };
 

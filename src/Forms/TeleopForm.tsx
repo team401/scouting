@@ -2,9 +2,9 @@
 import { MouseEvent } from "react";
 import React from "react";
 import { useTeleopContext } from "../ContextProvider";
-import ScoreCounter from "../ScoreCounter";
+import ScoreCounter from "../Components/ScoreCounter";
 import { Grid } from "@mui/material";
-import ClimbSelector from "../ClimbSelector";
+import ClimbSelector from "../Components/ClimbSelector";
 
 export default function TeleopForm() {
   const { teleop, setTeleop } = useTeleopContext();

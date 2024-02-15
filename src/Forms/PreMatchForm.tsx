@@ -1,6 +1,6 @@
-import Chooser from "../Chooser";
+import Chooser from "../Components/Chooser";
 import { MouseEvent } from "react";
-import AllianceSwitch from "../AllianceSwitch";
+import AllianceSwitch from "../Components/AllianceSwitch";
 import {
   useSettingsContext,
   usePreMatchContext,
@@ -9,7 +9,7 @@ import {
 import React from "react";
 import { Link } from "react-router-dom";
 import { GetTeams } from "../Data";
-import TeamSelector from "../TeamSelector";
+import TeamSelector from "../Components/TeamSelector";
 import { CheckBox } from "@mui/icons-material";
 import { Unstable_NumberInput as NumberInput } from "@mui/base/Unstable_NumberInput";
 import {
@@ -23,7 +23,7 @@ import {
   TextField,
   TextFieldVariants,
 } from "@mui/material";
-import CustomCheckbox from "../CustomCheckbox";
+import CustomCheckbox from "../Components/CustomCheckbox";
 
 export default function PreMatchForm() {
   const { settings, setSettings } = useSettingsContext();

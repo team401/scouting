@@ -1,6 +1,6 @@
 import { Box, Checkbox, FormControlLabel } from "@mui/material";
 import React, { SyntheticEvent } from "react";
-import { useAutoContext } from "./ContextProvider";
+import { useAutoContext } from "../ContextProvider";
 
 type bxprops = {
   lable: string;

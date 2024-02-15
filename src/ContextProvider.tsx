@@ -7,6 +7,13 @@ export type alliance = "Red" | "Blue";
 export const positions = ["1", "2", "3"] as const;
 export type position = (typeof positions)[number];
 
+export type DataViz = {
+  Competition: string;
+};
+type DataVizState = {
+  dataViz: DataViz;
+  setDataViz: (value: DataViz) => void;
+};
 export type Settings = {
   Alliance: alliance;
   Position: position;
@@ -63,6 +70,9 @@ type TeleopState = {
   setTeleop: React.Dispatch<React.SetStateAction<Teleop>>;
 };
 
+export const defaultData: DataViz = {
+  Competition: "2024chcmp",
+};
 export const defaultAuto: Auto = {
   Amp_Made: 0,
   Amp_Missed: 0,
@@ -90,6 +100,7 @@ export const defaultPreMatch: PreMatch = {
   Match: undefined,
 };
 
+const DataVizContext = createContext<DataVizState | null>(null);
 const SettingsContext = createContext<SettingsState | null>(null);
 const PreMatchContext = createContext<PreMatchState | null>(null);
 const AutoContext = createContext<AutoState | null>(null);
@@ -100,6 +111,7 @@ export function ContextProvider(props: PropsWithChildren<{}>) {
   const [preMatch, setPreMatch] = useState<PreMatch>(defaultPreMatch);
   const [auto, setAuto] = useState<Auto>(defaultAuto);
   const [teleop, setTeleop] = useState<Teleop>(defaultTeleop);
+  const [dataViz, setDataViz] = useState<DataViz>(defaultData);
 
   // const teams = GetTeams(settings.Competition).then((teams) => {
   //   setSettings({
@@ -120,7 +132,9 @@ export function ContextProvider(props: PropsWithChildren<{}>) {
         <PreMatchContext.Provider value={{ preMatch, setPreMatch }}>
           <AutoContext.Provider value={{ auto, setAuto }}>
             <TeleopContext.Provider value={{ teleop, setTeleop }}>
-              {children}
+              <DataVizContext.Provider value={{ dataViz, setDataViz }}>
+                {children}
+              </DataVizContext.Provider>
             </TeleopContext.Provider>
           </AutoContext.Provider>
         </PreMatchContext.Provider>
@@ -129,6 +143,13 @@ export function ContextProvider(props: PropsWithChildren<{}>) {
   );
 }
 
+export function useDataVizContext(): DataVizState {
+  const context = useContext(DataVizContext);
+  if (!context) {
+    throw Error("useDataVizContext must be used within a ContextProvider");
+  }
+  return context;
+}
 export function useSettingsContext(): SettingsState {
   const context = useContext(SettingsContext);
   if (!context) {
