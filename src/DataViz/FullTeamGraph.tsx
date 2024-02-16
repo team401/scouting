@@ -25,34 +25,46 @@ export default function FullTeamGraph() {
   const [teamsList, setTeamsList] = useState<string[]>(["000", "000"]);
   const [autoAmpAverage, setAutoAmpAverage] = useState<number[]>([0, 0]);
   const [autoAmpMissed, setAutoAmpMissed] = useState<number[]>([0, 0]);
+  const [autoSpeakerMade, setAutoSpeakerMade] = useState<number[]>([0, 0]);
+  const [autoSpeakerMissed, setAutoSpeakerMissed] = useState<number[]>([0, 0]);
+  const [teleAmpAverage, setTeleAmpAverage] = useState<number[]>([0, 0]);
+  const [teleAmpMissed, setTeleAmpMissed] = useState<number[]>([0, 0]);
+  const [teleSpeakerMade, setTeleSpeakerMade] = useState<number[]>([0, 0]);
+  const [teleSpeakerMissed, setTeleSpeakerMissed] = useState<number[]>([0, 0]);
 
   // calls the fetch teams function everytime settings.Competition is updated
   useEffect(() => {
     fetchTeams();
-    fetchAutoAmpAvg();
-    fetchAutoAmpMissed();
+    fetchAverage("Auto_Amp_Made");
+    fetchAverage("Auto_Amp_Missed");
+    fetchAverage("Auto_Speaker_Made");
+    fetchAverage("Auto_Speaker_Missed");
+    fetchAverage("Teleop_Amp_Made");
+    fetchAverage("Teleop_Amp_Missed");
+    fetchAverage("Teleop_Speaker_Made");
+    fetchAverage("Teleop_Speaker_Missed");
   }, [dataViz.Competition]);
-
+  const removeDups = (arr: string[]): string[] => {
+    let unique: string[] = arr.reduce(function (acc: string[], curr: string) {
+      if (!acc.includes(curr)) acc.push(curr);
+      return acc;
+    }, []);
+    return unique;
+  };
   // sets the teamList to the xLabels array from getEventData
   const fetchTeams = async (): Promise<string[]> => {
     const resp = await getEventData(dataViz.Competition);
     if (resp == null || resp == undefined) {
       return [];
     }
-    const teams = resp!.map((a: { team: string }) => a.team);
+    const teams = removeDups(resp!.map((a: { team: string }) => a.team));
     console.log("fetchTeams succesfully mapped", teams);
-    setTeamsList(teams);
-    return teams;
-  };
-  const fetchAutoAmpAvg = async () => {
-    const teams = await fetchTeams();
-    const resp = await getEventData(dataViz.Competition);
-    if (resp == null || resp == undefined) {
-      return;
-    }
-    console.log("TeamList:", teamsList, teams);
     console.log("succesful fetch", resp);
-    let avgs = [];
+    let teamsOrdered:
+      | string[]
+      | ((prevState: string[]) => string[])
+      | PromiseLike<string[]> = [];
+    var avgs: number[] = new Array();
     if (
       (!teamsList.length && !teams?.length) ||
       teams.length == 0 ||
@@ -60,36 +72,59 @@ export default function FullTeamGraph() {
       teams == undefined
     ) {
       console.log("no Team list");
-      return;
+      setTeamsList([""]);
+      return [];
     }
-    let i = 0;
     for (const team of teams) {
       let sum = 0;
       const autoAmp = resp!
         .filter((arr: { team: string }) => arr.team == team)
-        .map(
-          (a: { Auto_Amp_Missed: number; Auto_Amp_Made: number }) =>
-            a.Auto_Amp_Made
-        );
-      console.log("autoAmp:" + autoAmp);
+        .map((a: { Auto_Amp_Made: number }) => a.Auto_Amp_Made);
+      const autoSpeaker = resp!
+        .filter((arr: { team: string }) => arr.team == team)
+        .map((a: { Auto_Speaker_Made: number }) => a.Auto_Speaker_Made);
+      const teleAmp = resp!
+        .filter((arr: { team: string }) => arr.team == team)
+        .map((a: { Teleop_Amp_Made: number }) => a.Teleop_Amp_Made);
+      const teleSpeaker = resp!
+        .filter((arr: { team: string }) => arr.team == team)
+        .map((a: { Teleop_Speaker_Made: number }) => a.Teleop_Speaker_Made);
       for (let i = 0; i < autoAmp.length; i++) {
-        sum += autoAmp[i];
+        sum += autoAmp[i] + autoSpeaker[i] + teleAmp[i] + teleSpeaker[i];
       }
       const average = sum / autoAmp.length;
-      avgs[i] = average;
-      i++;
+      let pos = 0;
+      if (avgs.length == null || avgs.length == undefined || avgs.length == 0) {
+        avgs.push(average);
+      } else {
+        for (let i = 0; i < avgs.length; i++) {
+          if (average >= avgs[i]) {
+            avgs.splice(i, 0, average);
+            pos = i;
+            break;
+          } else if (i + 1 == avgs.length) {
+            avgs.push(average);
+          }
+        }
+      }
+      console.log("avgs", avgs);
+      if (pos < avgs.length) teamsOrdered.splice(pos, 0, team);
+      else {
+        teamsOrdered.push(team);
+      }
     }
     console.log("avgs:", avgs);
-    setAutoAmpAverage(avgs);
+    console.log("teamsOrdered:", teamsOrdered);
+    setTeamsList(teamsOrdered);
+    return teamsOrdered;
   };
-  const fetchAutoAmpMissed = async () => {
+
+  const fetchAverage = async (datum: string) => {
     const teams = await fetchTeams();
     const resp = await getEventData(dataViz.Competition);
     if (resp == null || resp == undefined) {
       return;
     }
-    console.log("TeamList:", teamsList, teams);
-    console.log("succesful fetch", resp);
     let avgs = [];
     if (
       (!teamsList.length && !teams?.length) ||
@@ -103,10 +138,42 @@ export default function FullTeamGraph() {
     let i = 0;
     for (const team of teams) {
       let sum = 0;
-      const autoAmp = resp!
-        .filter((arr: { team: string }) => arr.team == team)
-        .map((a: { Auto_Amp_Missed: number }) => a.Auto_Amp_Missed);
-      console.log("autoAmpMissed:" + autoAmp);
+      var autoAmp: number[];
+      if (datum == "Auto_Amp_Made") {
+        autoAmp = resp!
+          .filter((arr: { team: string }) => arr.team == team)
+          .map((a: { Auto_Amp_Made: number }) => a.Auto_Amp_Made);
+      } else if (datum == "Auto_Amp_Missed") {
+        autoAmp = resp!
+          .filter((arr: { team: string }) => arr.team == team)
+          .map((a: { Auto_Amp_Missed: number }) => a.Auto_Amp_Missed);
+      } else if (datum == "Auto_Speaker_Made") {
+        autoAmp = resp!
+          .filter((arr: { team: string }) => arr.team == team)
+          .map((a: { Auto_Speaker_Made: number }) => a.Auto_Speaker_Made);
+      } else if (datum == "Auto_Speaker_Missed") {
+        autoAmp = resp!
+          .filter((arr: { team: string }) => arr.team == team)
+          .map((a: { Auto_Speaker_Missed: number }) => a.Auto_Speaker_Missed);
+      } else if (datum == "Teleop_Amp_Made") {
+        autoAmp = resp!
+          .filter((arr: { team: string }) => arr.team == team)
+          .map((a: { Teleop_Amp_Made: number }) => a.Teleop_Amp_Made);
+      } else if (datum == "Teleop_Amp_Missed") {
+        autoAmp = resp!
+          .filter((arr: { team: string }) => arr.team == team)
+          .map((a: { Teleop_Amp_Missed: number }) => a.Teleop_Amp_Missed);
+      } else if (datum == "Teleop_Speaker_Made") {
+        autoAmp = resp!
+          .filter((arr: { team: string }) => arr.team == team)
+          .map((a: { Teleop_Speaker_Made: number }) => a.Teleop_Speaker_Made);
+      } else {
+        autoAmp = resp!
+          .filter((arr: { team: string }) => arr.team == team)
+          .map(
+            (a: { Teleop_Speaker_Missed: number }) => a.Teleop_Speaker_Missed
+          );
+      }
       for (let i = 0; i < autoAmp.length; i++) {
         sum += autoAmp[i];
       }
@@ -114,27 +181,71 @@ export default function FullTeamGraph() {
       avgs[i] = average;
       i++;
     }
-    console.log("avgMissed:", avgs);
-    setAutoAmpMissed(avgs);
+    if (datum == "Auto_Amp_Made") setAutoAmpAverage(avgs);
+    else if (datum == "Auto_Amp_Missed") setAutoAmpMissed(avgs);
+    else if (datum == "Auto_Speaker_Made") setAutoSpeakerMade(avgs);
+    else if (datum == "Auto_Speaker_Missed") setAutoSpeakerMissed(avgs);
+    else if (datum == "Teleop_Amp_Made") setTeleAmpAverage(avgs);
+    else if (datum == "Teleop_Amp_Missed") setTeleAmpMissed(avgs);
+    else if (datum == "Teleop_Speaker_Made") setTeleSpeakerMade(avgs);
+    else {
+      setTeleSpeakerMissed(avgs);
+    }
   };
-
   return (
     <div>
       <BarChart
-        width={500}
+        width={600}
         height={300}
+        margin={{ left: 200 }}
+        slotProps={{
+          legend: {
+            direction: "column",
+            position: { vertical: "top", horizontal: "left" },
+            padding: -1,
+            labelStyle: { fontSize: 12 },
+          },
+        }}
         series={[
           {
-            data: autoAmpMissed,
-            label: "Auto_Amp_Missed",
+            data: teleAmpAverage,
+            label: "Teleop_Amp_Made",
             stack: "A",
-            color: "#FF474C",
+          },
+          {
+            data: teleAmpMissed,
+            label: "Teleop_Amp_Missed",
+            stack: "A",
+          },
+          {
+            data: teleSpeakerMade,
+            label: "Teleop_Speaker_Made",
+            stack: "B",
+          },
+          {
+            data: teleSpeakerMissed,
+            label: "Teleop_Speaker_Missed",
+            stack: "B",
+          },
+          {
+            data: autoSpeakerMade,
+            label: "Auto_Speaker_Made",
+            stack: "C",
+          },
+          {
+            data: autoSpeakerMissed,
+            label: "Auto_Speaker_Missed",
+            stack: "C",
           },
           {
             data: autoAmpAverage,
-            label: "Auto_Amp_Average",
-            stack: "A",
-            color: "#90EF90",
+            label: "Auto_Amp_Made",
+            stack: "D",
+          },
+          {
+            data: autoAmpMissed,
+            label: "Auto_Amp_Missed",
+            stack: "D",
           },
         ]}
         xAxis={[{ data: teamsList, scaleType: "band" }]}
