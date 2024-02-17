@@ -6,7 +6,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import PositionChooser from "../Components/PositionChooser";
 import CompetitionSelector from "../Components/CompetitionSelector";
-import { GetTeams } from "../Data";
+import { GetTeamsEvent } from "../Data";
 
 export default function SettingsForm() {
   const { settings, setSettings } = useSettingsContext();
@@ -18,7 +18,7 @@ export default function SettingsForm() {
         onChange={(event: any, newValue: string | null) => {
           console.log("we do be value", newValue);
           if (!newValue) return;
-          GetTeams(settings.Competition).then((value) => {
+          GetTeamsEvent(settings.Competition).then((value) => {
             setSettings({
               ...settings,
               Competition: newValue,

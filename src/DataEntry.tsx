@@ -9,7 +9,7 @@ import {
   useSettingsContext,
   useTeleopContext,
 } from "./ContextProvider";
-import { GetTeams } from "./Data";
+import { GetTeamsEvent } from "./Data";
 import SettingsForm from "./Forms/SettingsForm";
 import PreMatchForm from "./Forms/PreMatchForm";
 import AutonomousForm from "./Forms/AutonomousForm";
@@ -84,7 +84,7 @@ export default function DataEntry() {
         {/* <Outlet /> */}
         <div className="min-h-screen">
           <form onSubmit={handleSubmit}>
-            <div className="grid grid-auto-rows-auto gap-y-3">
+            <div className="grid grid-auto-rows-auto gap-y-3 mb-5">
               <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-full h-full">
                 <SettingsForm />
               </div>
@@ -94,10 +94,10 @@ export default function DataEntry() {
               <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-full h-full">
                 <AutonomousForm />
               </div>
-              <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-full h-full gap-y-2">
+              <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-full h-full gap-y-2 mb-5">
                 <TeleopForm />
                 <button
-                  className="bg-black bg-opacity-25 hover:bg-opacity-50 text-white font-bold py-2 px-4 rounded-full"
+                  className="bg-black bg-opacity-25 hover:bg-opacity-50 text-white font-bold py-2 px-4 rounded-full "
                   type="submit"
                 >
                   Submit

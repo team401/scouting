@@ -18,6 +18,7 @@ type LinkSignatures = {
 const links: { [key: string]: LinkSignature } = {
   dataEntry: { text: "DataEntry", to: "dataEntry" },
   dataGraphs: { text: "DataGraphs", to: "dataGraphs" },
+  teamLookUp: { text: "TeamLookUp", to: "teamLookUp" },
   auto: { text: "Auto", to: "auto" },
   tele: { text: "Teleop", to: "tele" },
 };
@@ -81,6 +82,12 @@ export default function NavBar() {
         to="/dataGraphs"
       >
         DataGraphs
+      </Link>
+      <Link
+        className="bg-black bg-opacity-25 hover:bg-opacity-50 py-2 hidden md:block px-4"
+        to="/teamLookUp"
+      >
+        TeamLookUp
       </Link>
       {/* <Link
         className="bg-black bg-opacity-25 hover:bg-opacity-50 py-2 hidden md:block px-4"

@@ -1,7 +1,7 @@
 import { Autocomplete, TextField } from "@mui/material";
 import React, { SyntheticEvent } from "react";
 import { alliance, position, useSettingsContext } from "../ContextProvider";
-import { GetTeams } from "../Data";
+import { GetTeamsEvent } from "../Data";
 
 const comps = [
   "2024chcmp",

@@ -5,12 +5,21 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import React from "react";
-import { GetTeams } from "../Data";
+import React, { SyntheticEvent } from "react";
+import { GetTeamsEvent } from "../Data";
 import { usePreMatchContext, useSettingsContext } from "../ContextProvider";
 import axios, { isCancel, AxiosError } from "axios";
 
-export default function TeamSelector() {
+type selectprops = {
+  options: String[];
+  value: String;
+  onChange: (
+    event: SyntheticEvent<Element, Event>,
+    value: string | String | null
+  ) => void;
+};
+
+export default function TeamSelector(props: selectprops) {
   const { settings, setSettings } = useSettingsContext();
   const { preMatch, setPreMatch } = usePreMatchContext();
 
@@ -18,14 +27,9 @@ export default function TeamSelector() {
     <Autocomplete
       freeSolo
       clearOnEscape
-      options={settings.FrcTeams}
-      value={preMatch.Team}
-      onChange={(event) =>
-        setPreMatch({
-          ...preMatch,
-          Team: event.currentTarget.textContent!,
-        })
-      }
+      options={props.options}
+      value={props.value}
+      onChange={props.onChange}
       sx={{ width: 300 }}
       renderInput={(params) => <TextField {...params} label="Team" />}
     />

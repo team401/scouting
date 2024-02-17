@@ -9,7 +9,7 @@ import {
   useSettingsContext,
   useTeleopContext,
 } from "./ContextProvider";
-import { GetTeams } from "./Data";
+import { GetTeamsEvent } from "./Data";
 import SettingsForm from "./Forms/SettingsForm";
 import PreMatchForm from "./Forms/PreMatchForm";
 import AutonomousForm from "./Forms/AutonomousForm";

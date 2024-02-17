@@ -72,7 +72,7 @@ export default function AutonomousForm(props: chsrProps) {
             </Grid>
           </Grid>
           <CustomCheckbox
-            lable="Taxi"
+            label="Taxi"
             color={settings.Alliance === "Red" ? "#DC2626" : "#2563EB"}
             value={auto.Taxi}
             onChange={(event) =>

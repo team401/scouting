@@ -8,7 +8,7 @@ import {
 } from "../ContextProvider";
 import React from "react";
 import { Link } from "react-router-dom";
-import { GetTeams } from "../Data";
+import { GetTeamsEvent } from "../Data";
 import TeamSelector from "../Components/TeamSelector";
 import { CheckBox } from "@mui/icons-material";
 import { Unstable_NumberInput as NumberInput } from "@mui/base/Unstable_NumberInput";
@@ -42,7 +42,16 @@ export default function PreMatchForm() {
           <div className="font-semibold text-4xl text-center">PreMatch</div>
         </Grid>
         <Grid item>
-          <TeamSelector />
+          <TeamSelector
+            options={settings.FrcTeams}
+            value={preMatch.Team}
+            onChange={(event) =>
+              setPreMatch({
+                ...preMatch,
+                Team: event.currentTarget.textContent!,
+              })
+            }
+          />
         </Grid>
         <Grid item>
           <div className="text-start">Match</div>
@@ -58,7 +67,7 @@ export default function PreMatchForm() {
         </Grid>
         <Grid item>
           <CustomCheckbox
-            lable="NoShow"
+            label="NoShow"
             color={settings.Alliance === "Red" ? "#DC2626" : "#2563EB"}
             value={preMatch.NoShow}
             onChange={(event) =>

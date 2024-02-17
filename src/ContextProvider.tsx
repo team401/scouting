@@ -1,6 +1,6 @@
 import React, { PropsWithChildren } from "react";
 import { createContext, useContext, useState } from "react";
-import { GetTeams } from "./Data";
+import { GetTeamsEvent } from "./Data";
 
 export type alliance = "Red" | "Blue";
 
@@ -9,6 +9,10 @@ export type position = (typeof positions)[number];
 
 export type DataViz = {
   Competition: string;
+  Team: string;
+  TeamsList: String[];
+  NickName: string;
+  AllComps: boolean;
 };
 type DataVizState = {
   dataViz: DataViz;
@@ -72,6 +76,10 @@ type TeleopState = {
 
 export const defaultData: DataViz = {
   Competition: "2024chcmp",
+  Team: "",
+  TeamsList: [],
+  NickName: "",
+  AllComps: false,
 };
 export const defaultAuto: Auto = {
   Amp_Made: 0,
