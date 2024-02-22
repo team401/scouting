@@ -48,7 +48,7 @@ export default function PreMatchForm() {
             onChange={(event) =>
               setPreMatch({
                 ...preMatch,
-                Team: event.currentTarget.textContent!,
+                Team: event.currentTarget.textContent!.toString(),
               })
             }
           />

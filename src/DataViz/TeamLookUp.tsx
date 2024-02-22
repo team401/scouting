@@ -6,6 +6,7 @@ import TeamSelector from "../Components/TeamSelector";
 import { GetTeamsDistrict } from "../Data";
 import CustomCheckbox from "../Components/CustomCheckbox";
 import TeamGraph from "./TeamGraph";
+import { Grid, Typography } from "@mui/material";
 export default function DataGraphs() {
   const { dataViz, setDataViz } = useDataVizContext();
   const { settings, setSettings } = useSettingsContext();
@@ -53,43 +54,55 @@ export default function DataGraphs() {
        `}
     >
       <div className="w-11/12 h-full md:h-min md:w-min">
-        <div className="grid grid-auto-rows-auto gap-y-3">
-          <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-full h-full flex flex-col items-center">
-            <TeamSelector
-              options={dataViz.TeamsList}
-              value={dataViz.Team}
-              onChange={async (event) => {
-                setDataViz({
-                  ...dataViz,
-                  Team: event.currentTarget.textContent!.toString(),
-                  NickName: await getNickName(event.currentTarget.textContent!),
-                });
-              }}
-            />
-            <div className="text">Name: {dataViz.NickName}</div>
+        <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-full h-full flex flex-col items-center">
+          <Typography variant="h5">Name: {dataViz.NickName}</Typography>
 
-            <CompetitionSelector
-              value={dataViz.Competition}
-              onChange={(event, newValue: string | null) =>
-                setDataViz({
-                  ...dataViz,
-                  Competition: newValue!,
-                })
-              }
-            />
-            <CustomCheckbox
-              label="All Comps"
-              color={settings.Alliance === "Red" ? "#DC2626" : "#2563EB"}
-              value={dataViz.AllComps}
-              onChange={(event) =>
-                setDataViz({
-                  ...dataViz,
-                  AllComps: event.target.checked,
-                })
-              }
-            />
-            <TeamGraph />
-          </div>
+          <Grid
+            container
+            spacing={2}
+            direction={"column"}
+            flexGrow={12}
+            marginTop={2}
+          >
+            <Grid item alignContent={"flex-start"} justifyItems={"start"}>
+              <TeamSelector
+                options={dataViz.TeamsList}
+                value={dataViz.Team}
+                onChange={async (event) => {
+                  setDataViz({
+                    ...dataViz,
+                    Team: event.currentTarget.textContent!.toString(),
+                    NickName: await getNickName(
+                      event.currentTarget.textContent!
+                    ),
+                  });
+                }}
+              />
+            </Grid>
+            <Grid item alignContent={"flex-center"}>
+              <CompetitionSelector
+                value={dataViz.Competition}
+                onChange={(event, newValue: string | null) =>
+                  setDataViz({
+                    ...dataViz,
+                    Competition: newValue!,
+                  })
+                }
+              />
+              <CustomCheckbox
+                label="All Comps"
+                color={settings.Alliance === "Red" ? "#DC2626" : "#2563EB"}
+                value={dataViz.AllComps}
+                onChange={(event) =>
+                  setDataViz({
+                    ...dataViz,
+                    AllComps: event.target.checked,
+                  })
+                }
+              />
+            </Grid>
+          </Grid>
+          <TeamGraph />
         </div>
       </div>
     </div>

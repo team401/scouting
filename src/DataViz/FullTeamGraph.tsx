@@ -4,6 +4,10 @@ import supabase from "../Supabase/supabaseClient";
 import { BackHand } from "@mui/icons-material";
 import { useDataVizContext } from "../ContextProvider";
 import { useEffect, useState } from "react";
+
+type eventData = {
+  team: Number;
+};
 // Gets all the data for a specific event from supabase
 export async function getEventData(competition: string) {
   const { data, error } = await supabase
@@ -12,9 +16,9 @@ export async function getEventData(competition: string) {
       "team, Auto_Amp_Missed, Auto_Amp_Made, Auto_Speaker_Missed, Auto_Speaker_Made, Teleop_Amp_Missed, Teleop_Amp_Made, Teleop_Speaker_Missed, Teleop_Speaker_Made"
     )
     .eq("Event", competition);
-  const resp = data;
+  const resp = await data;
   if (error) {
-    console.log("you bad");
+    console.log("you bad", error);
     return;
   }
   return resp;

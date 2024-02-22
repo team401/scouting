@@ -17,6 +17,7 @@ import TeleopForm from "./Forms/TeleopForm";
 import { useState } from "react";
 import supabase from "./Supabase/supabaseClient";
 import FullTeamGraph from "./DataViz/FullTeamGraph";
+import QR from "./Components/QRCode";
 
 export default function DataEntry() {
   const { settings, setSettings } = useSettingsContext();
@@ -24,7 +25,7 @@ export default function DataEntry() {
   const { auto, setAuto } = useAutoContext();
   const { teleop, setTeleop } = useTeleopContext();
   const [formError, setFormError] = useState("");
-
+  const [qrcontent, setQRContent] = useState("");
   const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (
     event: React.FormEvent<HTMLFormElement>
   ) => {
@@ -56,7 +57,26 @@ export default function DataEntry() {
       console.log(error);
       setFormError("Please fill out form correctly");
     }
-
+    setQRContent(
+      [
+        preMatch.Team!,
+        preMatch.Match!,
+        preMatch.NoShow!,
+        settings.Alliance!,
+        settings.Position!,
+        auto.Amp_Missed!,
+        auto.Amp_Made!,
+        auto.Speaker_Missed!,
+        auto.Speaker_Made!,
+        auto.Taxi!,
+        teleop.Amp_Missed!,
+        teleop.Amp_Made!,
+        teleop.Speaker_Missed!,
+        teleop.Speaker_Made!,
+        teleop.EndGame!,
+        teleop.Text!,
+      ].toString()
+    );
     console.log("we are bojanglin");
     setPreMatch({
       ...preMatch,
@@ -107,6 +127,7 @@ export default function DataEntry() {
               {formError && <p className="error"> {formError}</p>}
             </div>
           </form>
+          <QR value={qrcontent} />
         </div>
       </div>
     </div>

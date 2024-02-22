@@ -65,7 +65,7 @@ type Teleop = {
   Amp_Missed: number;
   Speaker_Made: number;
   Speaker_Missed: number;
-  EndGame: string | null;
+  EndGame: string;
   Text: string;
 };
 
@@ -105,7 +105,7 @@ export const defaultSettings: Settings = {
 export const defaultPreMatch: PreMatch = {
   Team: "",
   NoShow: false,
-  Match: undefined,
+  Match: 0,
 };
 
 const DataVizContext = createContext<DataVizState | null>(null);

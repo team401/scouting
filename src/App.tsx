@@ -17,6 +17,7 @@ import TeleopForm from "./Forms/TeleopForm";
 import { useState } from "react";
 import supabase from "./Supabase/supabaseClient";
 import FullTeamGraph from "./DataViz/FullTeamGraph";
+import QR from "./Components/QRCode";
 
 export default function App() {
   const { settings, setSettings } = useSettingsContext();

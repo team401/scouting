@@ -22,7 +22,9 @@ export async function GetTeamsEvent(competition: string): Promise<teamsList> {
       throw new Error(message);
     }
     const resp = await response.json();
-    const mapped = resp.map((a: { team_number: any }) => a.team_number);
+    const mapped = resp.map((a: { team_number: any }) =>
+      a.team_number.toString()
+    );
     console.log("mapped teams list", mapped);
     teamsCache[competition] = mapped;
   }
@@ -45,7 +47,9 @@ export async function GetTeamsDistrict(): Promise<teamsList> {
     throw new Error(message);
   }
   const resp = await response.json();
-  const mapped = resp.map((a: { team_number: any }) => a.team_number);
+  const mapped = resp.map((a: { team_number: any }) =>
+    a.team_number.toString()
+  );
   console.log("mapped teams list", mapped);
   teamsCache["2024chs"] = mapped;
   console.log("teamsCache", teamsCache);
