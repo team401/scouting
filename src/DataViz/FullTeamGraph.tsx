@@ -62,8 +62,7 @@ export default function FullTeamGraph() {
       return [];
     }
     const teams = removeDups(resp!.map((a: { team: string }) => a.team));
-    console.log("fetchTeams succesfully mapped", teams);
-    console.log("succesful fetch", resp);
+    console.log("fetchTeams succesfully mapped for Graph:", teams);
     let teamsOrdered:
       | string[]
       | ((prevState: string[]) => string[])

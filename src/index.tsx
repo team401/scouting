@@ -6,6 +6,7 @@ import {
   Route,
   Navigate,
   RouterProvider,
+  redirect,
 } from "react-router-dom";
 import CssBaseline from "@mui/material/CssBaseline";
 import { ContextProvider } from "./ContextProvider";
@@ -30,6 +31,11 @@ const router = createHashRouter([
     path: "/",
     element: <App />,
     children: [
+      {
+        // default path when loading the app//
+        index: true,
+        loader: async () => redirect("/DataEntry"),
+      },
       {
         path: "DataEntry",
         element: <DataEntry />,
