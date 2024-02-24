@@ -10,7 +10,7 @@ export type position = (typeof positions)[number];
 export type DataViz = {
   Competition: string;
   Team: string;
-  TeamsList: String[];
+  TeamsList: string[];
   NickName: string;
   AllComps: boolean;
 };

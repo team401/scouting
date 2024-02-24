@@ -1,7 +1,7 @@
 import { Settings, useSettingsContext } from "./ContextProvider";
 import { DataViz, useDataVizContext } from "./ContextProvider";
 
-type teamsList = String[];
+type teamsList = string[];
 const teamsCache: { [key: string]: teamsList } = {};
 export async function GetTeamsEvent(competition: string): Promise<teamsList> {
   if (!teamsCache[competition]) {
@@ -47,7 +47,7 @@ export async function GetTeamsDistrict(): Promise<teamsList> {
     throw new Error(message);
   }
   const resp = await response.json();
-  const mapped = resp.map((a: { team_number: any }) =>
+  const mapped = resp.map((a: { team_number: string }) =>
     a.team_number.toString()
   );
   console.log("mapped teams list", mapped);

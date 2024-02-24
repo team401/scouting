@@ -2,6 +2,7 @@ import React from "react";
 import FullTeamGraph from "./DataViz/FullTeamGraph";
 import CompetitionSelector from "./Components/CompetitionSelector";
 import { useDataVizContext } from "./ContextProvider";
+import TeamTable from "./DataViz/TeamTable";
 export default function DataGraphs() {
   const { dataViz, setDataViz } = useDataVizContext();
   return (
@@ -22,6 +23,7 @@ export default function DataGraphs() {
               }
             />
             <FullTeamGraph />
+            <TeamTable />
           </div>
         </div>
       </div>
