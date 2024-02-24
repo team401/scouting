@@ -1,7 +1,7 @@
 import { Autocomplete, TextField } from "@mui/material";
 import React from "react";
-import { useTeleopContext } from "./ContextProvider";
-import { GetTeams } from "./Data";
+import { useTeleopContext } from "../ContextProvider";
+import { GetTeamsEvent } from "../Data";
 
 const opts = [
   "Not Attempted",

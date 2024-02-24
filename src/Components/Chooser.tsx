@@ -6,7 +6,7 @@ import {
   RadioGroup,
 } from "@mui/material";
 import React, { useEffect } from "react";
-import { position, positions } from "./ContextProvider";
+import { position, positions } from "../ContextProvider";
 
 type chsrProps = {
   title?: string | JSX.Element | number;

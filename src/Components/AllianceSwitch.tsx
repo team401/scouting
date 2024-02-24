@@ -1,7 +1,7 @@
 import * as React from "react";
 import clsx from "clsx";
 import { styled } from "@mui/system";
-import { alliance, useSettingsContext } from "./ContextProvider";
+import { alliance, useSettingsContext } from "../ContextProvider";
 import { useSwitch, UseSwitchParameters } from "@mui/base/useSwitch";
 import { MouseEvent } from "react";
 

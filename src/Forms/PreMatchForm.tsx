@@ -1,6 +1,6 @@
-import Chooser from "../Chooser";
+import Chooser from "../Components/Chooser";
 import { MouseEvent } from "react";
-import AllianceSwitch from "../AllianceSwitch";
+import AllianceSwitch from "../Components/AllianceSwitch";
 import {
   useSettingsContext,
   usePreMatchContext,
@@ -8,8 +8,8 @@ import {
 } from "../ContextProvider";
 import React from "react";
 import { Link } from "react-router-dom";
-import { GetTeams } from "../Data";
-import TeamSelector from "../TeamSelector";
+import { GetTeamsEvent } from "../Data";
+import TeamSelector from "../Components/TeamSelector";
 import { CheckBox } from "@mui/icons-material";
 import { Unstable_NumberInput as NumberInput } from "@mui/base/Unstable_NumberInput";
 import {
@@ -23,7 +23,7 @@ import {
   TextField,
   TextFieldVariants,
 } from "@mui/material";
-import CustomCheckbox from "../CustomCheckbox";
+import CustomCheckbox from "../Components/CustomCheckbox";
 
 export default function PreMatchForm() {
   const { settings, setSettings } = useSettingsContext();
@@ -42,7 +42,16 @@ export default function PreMatchForm() {
           <div className="font-semibold text-4xl text-center">PreMatch</div>
         </Grid>
         <Grid item>
-          <TeamSelector />
+          <TeamSelector
+            options={settings.FrcTeams}
+            value={preMatch.Team}
+            onChange={(event) =>
+              setPreMatch({
+                ...preMatch,
+                Team: event.currentTarget.textContent!.toString(),
+              })
+            }
+          />
         </Grid>
         <Grid item>
           <div className="text-start">Match</div>
@@ -58,7 +67,7 @@ export default function PreMatchForm() {
         </Grid>
         <Grid item>
           <CustomCheckbox
-            lable="NoShow"
+            label="NoShow"
             color={settings.Alliance === "Red" ? "#DC2626" : "#2563EB"}
             value={preMatch.NoShow}
             onChange={(event) =>

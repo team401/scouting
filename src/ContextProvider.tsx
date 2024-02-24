@@ -1,12 +1,23 @@
 import React, { PropsWithChildren } from "react";
 import { createContext, useContext, useState } from "react";
-import { GetTeams } from "./Data";
+import { GetTeamsEvent } from "./Data";
 
 export type alliance = "Red" | "Blue";
 
 export const positions = ["1", "2", "3"] as const;
 export type position = (typeof positions)[number];
 
+export type DataViz = {
+  Competition: string;
+  Team: string;
+  TeamsList: string[];
+  NickName: string;
+  AllComps: boolean;
+};
+type DataVizState = {
+  dataViz: DataViz;
+  setDataViz: (value: DataViz) => void;
+};
 export type Settings = {
   Alliance: alliance;
   Position: position;
@@ -54,7 +65,7 @@ type Teleop = {
   Amp_Missed: number;
   Speaker_Made: number;
   Speaker_Missed: number;
-  EndGame: string | null;
+  EndGame: string;
   Text: string;
 };
 
@@ -63,6 +74,13 @@ type TeleopState = {
   setTeleop: React.Dispatch<React.SetStateAction<Teleop>>;
 };
 
+export const defaultData: DataViz = {
+  Competition: "2024chcmp",
+  Team: "",
+  TeamsList: [],
+  NickName: "",
+  AllComps: false,
+};
 export const defaultAuto: Auto = {
   Amp_Made: 0,
   Amp_Missed: 0,
@@ -87,9 +105,10 @@ export const defaultSettings: Settings = {
 export const defaultPreMatch: PreMatch = {
   Team: "",
   NoShow: false,
-  Match: undefined,
+  Match: 0,
 };
 
+const DataVizContext = createContext<DataVizState | null>(null);
 const SettingsContext = createContext<SettingsState | null>(null);
 const PreMatchContext = createContext<PreMatchState | null>(null);
 const AutoContext = createContext<AutoState | null>(null);
@@ -100,6 +119,7 @@ export function ContextProvider(props: PropsWithChildren<{}>) {
   const [preMatch, setPreMatch] = useState<PreMatch>(defaultPreMatch);
   const [auto, setAuto] = useState<Auto>(defaultAuto);
   const [teleop, setTeleop] = useState<Teleop>(defaultTeleop);
+  const [dataViz, setDataViz] = useState<DataViz>(defaultData);
 
   // const teams = GetTeams(settings.Competition).then((teams) => {
   //   setSettings({
@@ -120,7 +140,9 @@ export function ContextProvider(props: PropsWithChildren<{}>) {
         <PreMatchContext.Provider value={{ preMatch, setPreMatch }}>
           <AutoContext.Provider value={{ auto, setAuto }}>
             <TeleopContext.Provider value={{ teleop, setTeleop }}>
-              {children}
+              <DataVizContext.Provider value={{ dataViz, setDataViz }}>
+                {children}
+              </DataVizContext.Provider>
             </TeleopContext.Provider>
           </AutoContext.Provider>
         </PreMatchContext.Provider>
@@ -129,6 +151,13 @@ export function ContextProvider(props: PropsWithChildren<{}>) {
   );
 }
 
+export function useDataVizContext(): DataVizState {
+  const context = useContext(DataVizContext);
+  if (!context) {
+    throw Error("useDataVizContext must be used within a ContextProvider");
+  }
+  return context;
+}
 export function useSettingsContext(): SettingsState {
   const context = useContext(SettingsContext);
   if (!context) {
