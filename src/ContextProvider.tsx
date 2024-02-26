@@ -66,6 +66,7 @@ type Teleop = {
   Speaker_Made: number;
   Speaker_Missed: number;
   EndGame: string;
+  Trap: string;
   Text: string;
 };
 
@@ -76,7 +77,7 @@ type TeleopState = {
 
 export const defaultData: DataViz = {
   Competition: "2024chcmp",
-  Team: "",
+  Team: "401",
   TeamsList: [],
   NickName: "",
   AllComps: false,
@@ -94,6 +95,7 @@ export const defaultTeleop: Teleop = {
   Speaker_Made: 0,
   Speaker_Missed: 0,
   EndGame: "Not Attempted",
+  Trap: "Not Attempted",
   Text: "",
 };
 export const defaultSettings: Settings = {

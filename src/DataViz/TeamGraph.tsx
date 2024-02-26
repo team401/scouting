@@ -1,10 +1,15 @@
 import * as React from "react";
 import { BarChart } from "@mui/x-charts/BarChart";
 import supabase from "../Supabase/supabaseClient";
-import { BackHand } from "@mui/icons-material";
+import { BackHand, FitScreen } from "@mui/icons-material";
 import { useDataVizContext } from "../ContextProvider";
 import { useEffect, useState } from "react";
-import { getEventData } from "./FullTeamGraph";
+import {
+  fetchClimbAvg,
+  fetchTaxiAvg,
+  fetchTrapAvg,
+  getEventData,
+} from "./FullTeamGraph";
 
 export async function getFullTeamData(team: string) {
   const { data, error } = await supabase
@@ -23,6 +28,9 @@ export async function getFullTeamData(team: string) {
 export default function TeamGraph() {
   const { dataViz, setDataViz } = useDataVizContext();
   const [avgTeamData, setAvgTeamData] = useState<number[][]>([
+    [0],
+    [0],
+    [0],
     [0],
     [0],
     [0],
@@ -66,10 +74,10 @@ export default function TeamGraph() {
 
     if (!teamData[0] || teamData[0] == null || teamData[0] == undefined) {
       console.log("no team data");
-      setAvgTeamData([[0], [0], [0], [0]]);
-      return [[0], [0], [0], [0]];
+      setAvgTeamData([[0], [0], [0], [0], [0], [0], [0]]);
+      return [[0], [0], [0], [0], [0], [0], [0]];
     }
-    let avgTeamData: number[][] = [[], [], [], []];
+    let avgTeamData: number[][] = [[], [], [], [], [], [], []];
     for (let i = 0; i < teamData[0].length; i++) {
       let sum = 0;
       for (const element of teamData) {
@@ -84,7 +92,30 @@ export default function TeamGraph() {
       avgTeamData[0] == undefined
     ) {
       console.log("no team data");
-      return [[0], [0], [0], [0]];
+      return [[0], [0], [0], [0], [0], [0], [0]];
+    }
+    let climb = await fetchClimbAvg(dataViz.Team);
+    if (climb == null || !climb || climb == undefined) {
+      climb = 0;
+    }
+    let taxi = await fetchTaxiAvg(dataViz.Team);
+    if (taxi == null || taxi == undefined) {
+      taxi = 0;
+    }
+    let trap = await fetchTrapAvg(dataViz.Team);
+    if ((trap == null || trap == undefined) && trap <= 1) {
+      trap = 0;
+    }
+    avgTeamData[4].push(climb);
+    avgTeamData[5].push(taxi);
+    avgTeamData[6].push(trap);
+    if (
+      !avgTeamData[4] ||
+      avgTeamData[4] == null ||
+      avgTeamData[4] == undefined
+    ) {
+      console.log("no climb data");
+      return [[0], [0], [0], [0], [0], [0], [0]];
     }
     console.log("avgTeamData", avgTeamData);
     setAvgTeamData(avgTeamData);
@@ -124,10 +155,10 @@ export default function TeamGraph() {
 
     if (!teamData[0] || teamData[0] == null || teamData[0] == undefined) {
       console.log("no team data");
-      setAvgTeamData([[0], [0], [0], [0]]);
-      return [[0], [0], [0], [0]];
+      setAvgTeamData([[0], [0], [0], [0], [0], [0], [0]]);
+      return [[0], [0], [0], [0], [0], [0], [0]];
     }
-    let avgTeamData: number[][] = [[], [], [], []];
+    let avgTeamData: number[][] = [[], [], [], [], [], [], []];
     for (let i = 0; i < teamData[0].length; i++) {
       let sum = 0;
       for (const element of teamData) {
@@ -142,7 +173,30 @@ export default function TeamGraph() {
       avgTeamData[0] == undefined
     ) {
       console.log("no team data");
-      return [[0], [0], [0], [0]];
+      return [[0], [0], [0], [0], [0], [0], [0]];
+    }
+    let climb = await fetchClimbAvg(dataViz.Team);
+    if (climb == null || !climb || climb == undefined) {
+      climb = 0;
+    }
+    let taxi = await fetchTaxiAvg(dataViz.Team);
+    if (taxi == null || !taxi || taxi == undefined) {
+      taxi = 0;
+    }
+    let trap = await fetchTrapAvg(dataViz.Team);
+    if (trap == null || !trap || trap == undefined) {
+      trap = 0;
+    }
+    avgTeamData[4].push(climb);
+    avgTeamData[5].push(taxi);
+    avgTeamData[6].push(trap);
+    if (
+      !avgTeamData[4] ||
+      avgTeamData[4] == null ||
+      avgTeamData[4] == undefined
+    ) {
+      console.log("no climb data");
+      return [[0], [0], [0], [0], [0], [0], [0]];
     }
     console.log("avgTeamData", avgTeamData);
     setAvgTeamData(avgTeamData);
@@ -151,13 +205,14 @@ export default function TeamGraph() {
   return (
     <BarChart
       height={400}
-      width={600}
-      margin={{ left: 200 }}
+      width={500}
+      sx={{ maxWidth: 600, width: 300 }}
+      margin={{ left: 150 }}
       slotProps={{
         legend: {
           direction: "column",
           position: { vertical: "top", horizontal: "left" },
-          padding: -1,
+          padding: 0,
           labelStyle: { fontSize: 12 },
         },
       }}
@@ -166,6 +221,9 @@ export default function TeamGraph() {
         { data: avgTeamData[1], label: "Auto_Speaker" },
         { data: avgTeamData[2], label: "Tele_Amp" },
         { data: avgTeamData[3], label: "Tele_Speaker" },
+        { data: avgTeamData[4], label: "Climb_Score" },
+        { data: avgTeamData[5], label: "Taxi (1 = 100%)" },
+        { data: avgTeamData[6], label: "Trap (1 = 100%)" },
       ]}
       xAxis={[{ data: [dataViz.Team], scaleType: "band" }]}
     />

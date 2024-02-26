@@ -51,6 +51,7 @@ export default function DataEntry() {
       Teleop_Speaker_Missed: teleop.Speaker_Missed,
       Teleop_Speaker_Made: teleop.Speaker_Made,
       Endgame: teleop.EndGame,
+      Trap: teleop.Trap,
       Comments: teleop.Text,
     });
     if (error) {
@@ -74,6 +75,7 @@ export default function DataEntry() {
         teleop.Speaker_Missed!,
         teleop.Speaker_Made!,
         teleop.EndGame!,
+        teleop.Trap!,
         teleop.Text!,
       ].toString()
     );

@@ -5,6 +5,7 @@ import { useTeleopContext } from "../ContextProvider";
 import ScoreCounter from "../Components/ScoreCounter";
 import { Grid } from "@mui/material";
 import ClimbSelector from "../Components/ClimbSelector";
+import TrapSelector from "../Components/TrapSelector";
 
 export default function TeleopForm() {
   const { teleop, setTeleop } = useTeleopContext();
@@ -63,6 +64,9 @@ export default function TeleopForm() {
             </Grid>
             <Grid item>
               <ClimbSelector />
+            </Grid>
+            <Grid item>
+              <TrapSelector />
             </Grid>
           </Grid>
         </div>
