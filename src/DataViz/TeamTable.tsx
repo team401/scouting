@@ -13,6 +13,33 @@ import {
 } from "@mui/material";
 import { GetTeamsEvent } from "../Data";
 import { getEventData } from "./FullTeamGraph";
+
+import { alpha } from "@mui/material/styles";
+import Box from "@mui/material/Box";
+import Table from "@mui/material/Table";
+import TableSortLabel from "@mui/material/TableSortLabel";
+import Toolbar from "@mui/material/Toolbar";
+import Typography from "@mui/material/Typography";
+import Checkbox from "@mui/material/Checkbox";
+import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Switch from "@mui/material/Switch";
+import DeleteIcon from "@mui/icons-material/Delete";
+import FilterListIcon from "@mui/icons-material/FilterList";
+import { visuallyHidden } from "@mui/utils";
+
+interface Data {
+  name: string;
+  number: string;
+  Auto_Amp: number;
+  Auto_Speaker: number;
+  Teleop_Amp: number;
+  Teleop_Speaker: number;
+  Climb_Score: number;
+  Taxi: number;
+}
+
 function createData(
   name: string,
   number: string,
@@ -34,20 +61,7 @@ function createData(
     Taxi,
   };
 }
-function stableSort<T>(
-  array: readonly T[],
-  comparator: (a: T, b: T) => number
-) {
-  const stabilizedThis = array.map((el, index) => [el, index] as [T, number]);
-  stabilizedThis.sort((a, b) => {
-    const order = comparator(a[0], b[0]);
-    if (order !== 0) {
-      return order;
-    }
-    return a[1] - b[1];
-  });
-  return stabilizedThis.map((el) => el[0]);
-}
+
 function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
   if (b[orderBy] < a[orderBy]) {
     return -1;
@@ -56,16 +70,6 @@ function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
     return 1;
   }
   return 0;
-}
-interface Data {
-  name: string;
-  number: string;
-  Auto_Amp: number;
-  Auto_Speaker: number;
-  Teleop_Amp: number;
-  Teleop_Speaker: number;
-  Climb_Score: number;
-  Taxi: number;
 }
 
 type Order = "asc" | "desc";
@@ -82,13 +86,193 @@ function getComparator<Key extends keyof any>(
     : (a, b) => -descendingComparator(a, b, orderBy);
 }
 
-export default function TeamTable() {
+// Since 2020 all major browsers ensure sort stability with Array.prototype.sort().
+// stableSort() brings sort stability to non-modern browsers (notably IE11). If you
+// only support modern browsers you can replace stableSort(exampleArray, exampleComparator)
+// with exampleArray.slice().sort(exampleComparator)
+function stableSort<T>(
+  array: readonly T[],
+  comparator: (a: T, b: T) => number
+) {
+  const stabilizedThis = array.map((el, index) => [el, index] as [T, number]);
+  stabilizedThis.sort((a, b) => {
+    const order = comparator(a[0], b[0]);
+    if (order !== 0) {
+      return order;
+    }
+    return a[1] - b[1];
+  });
+  return stabilizedThis.map((el) => el[0]);
+}
+
+interface HeadCell {
+  disablePadding: boolean;
+  id: keyof Data;
+  label: string;
+  numeric: boolean;
+}
+
+const headCells: readonly HeadCell[] = [
+  {
+    id: "name",
+    numeric: false,
+    disablePadding: true,
+    label: "Team",
+  },
+  {
+    id: "number",
+    numeric: true,
+    disablePadding: false,
+    label: "Team_Number",
+  },
+  {
+    id: "Auto_Amp",
+    numeric: true,
+    disablePadding: true,
+    label: "Avg_Auto_Amp",
+  },
+  {
+    id: "Auto_Speaker",
+    numeric: true,
+    disablePadding: true,
+    label: "Avg_Auto_Speaker",
+  },
+  {
+    id: "Teleop_Amp",
+    numeric: true,
+    disablePadding: true,
+    label: "Average_Teleop_Amp",
+  },
+  {
+    id: "Teleop_Speaker",
+    numeric: true,
+    disablePadding: false,
+    label: "Average_Teleop_Speaker",
+  },
+];
+
+interface EnhancedTableProps {
+  numSelected: number;
+  onRequestSort: (
+    event: React.MouseEvent<unknown>,
+    property: keyof Data
+  ) => void;
+  onSelectAllClick: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  order: Order;
+  orderBy: string;
+  rowCount: number;
+}
+
+function EnhancedTableHead(props: EnhancedTableProps) {
+  const {
+    onSelectAllClick,
+    order,
+    orderBy,
+    numSelected,
+    rowCount,
+    onRequestSort,
+  } = props;
+  const createSortHandler =
+    (property: keyof Data) => (event: React.MouseEvent<unknown>) => {
+      onRequestSort(event, property);
+    };
+
+  return (
+    <TableHead>
+      <TableRow>
+        <TableCell padding="checkbox"></TableCell>
+        {headCells.map((headCell) => (
+          <TableCell
+            key={headCell.id}
+            align={headCell.numeric ? "right" : "left"}
+            padding={headCell.disablePadding ? "none" : "normal"}
+            sortDirection={orderBy === headCell.id ? order : false}
+          >
+            <TableSortLabel
+              active={orderBy === headCell.id}
+              direction={orderBy === headCell.id ? order : "asc"}
+              onClick={createSortHandler(headCell.id)}
+            >
+              {headCell.label}
+              {orderBy === headCell.id ? (
+                <Box component="span" sx={visuallyHidden}>
+                  {order === "desc" ? "sorted descending" : "sorted ascending"}
+                </Box>
+              ) : null}
+            </TableSortLabel>
+          </TableCell>
+        ))}
+      </TableRow>
+    </TableHead>
+  );
+}
+
+interface EnhancedTableToolbarProps {
+  numSelected: number;
+}
+
+function EnhancedTableToolbar(props: EnhancedTableToolbarProps) {
+  const { numSelected } = props;
+
+  return (
+    <Toolbar
+      sx={{
+        pl: { sm: 2 },
+        pr: { xs: 1, sm: 1 },
+        ...(numSelected > 0 && {
+          bgcolor: (theme) =>
+            alpha(
+              theme.palette.primary.main,
+              theme.palette.action.activatedOpacity
+            ),
+        }),
+      }}
+    >
+      {numSelected > 0 ? (
+        <Typography
+          sx={{ flex: "1 1 100%" }}
+          color="inherit"
+          variant="subtitle1"
+          component="div"
+        >
+          {numSelected} selected
+        </Typography>
+      ) : (
+        <Typography
+          sx={{ flex: "1 1 100%" }}
+          variant="h6"
+          id="tableTitle"
+          component="div"
+        >
+          Nutrition
+        </Typography>
+      )}
+      {numSelected > 0 ? (
+        <Tooltip title="Delete">
+          <IconButton>
+            <DeleteIcon />
+          </IconButton>
+        </Tooltip>
+      ) : (
+        <Tooltip title="Filter list">
+          <IconButton>
+            <FilterListIcon />
+          </IconButton>
+        </Tooltip>
+      )}
+    </Toolbar>
+  );
+}
+export default function EnhancedTable() {
   const { dataViz, setDataViz } = useDataVizContext();
   const [rows, setRows] = useState<any[]>(["", "", 0, 0, 0, 0, 0, 0]);
-  const [rowsPerPage, setRowsPerPage] = React.useState(5);
-  const [page, setPage] = React.useState(0);
   const [order, setOrder] = React.useState<Order>("asc");
-  const [orderBy, setOrderBy] = React.useState<keyof Data>("Teleop_Speaker");
+  const [orderBy, setOrderBy] = React.useState<keyof Data>("number");
+  const [selected, setSelected] = React.useState<readonly number[]>([]);
+  const [page, setPage] = React.useState(0);
+  const [dense, setDense] = React.useState(false);
+  const [rowsPerPage, setRowsPerPage] = React.useState(5);
+
   useEffect(() => {
     getRows();
   }, [dataViz.Competition]);
@@ -98,7 +282,6 @@ export default function TeamTable() {
       return [];
     }
     const teams = resp!.filter((arr: { team: any }) => arr.team == team);
-    console.log("teams:", teams);
     const matches = teams!.map(
       (a: {
         Auto_Amp_Made: any;
@@ -112,7 +295,6 @@ export default function TeamTable() {
         Teleop_Speaker_Made: a.Teleop_Speaker_Made,
       })
     );
-    console.log("matches:", matches);
     let teamData: number[][] = [];
     for (let i = 0; i < matches.length; i++) {
       let row: number[] = new Array();
@@ -122,7 +304,6 @@ export default function TeamTable() {
       row.push(matches[i].Teleop_Speaker_Made);
       teamData.push(row);
     }
-    console.log("teamData", teamData);
 
     if (!teamData[0] || teamData[0] == null || teamData[0] == undefined) {
       console.log("no team data");
@@ -145,7 +326,6 @@ export default function TeamTable() {
       console.log("no team data");
       return [[0], [0], [0], [0]];
     }
-    console.log("avgTeamData", avgTeamData);
     return avgTeamData;
   };
 
@@ -165,7 +345,6 @@ export default function TeamTable() {
       throw new Error(message);
     }
     const resp = await response.json();
-    console.log(resp);
     const data = resp.filter(
       (arr: { team_number: string }) => arr.team_number == meat
     );
@@ -174,16 +353,15 @@ export default function TeamTable() {
       return "Error";
     }
     const NickName = data[0].nickname;
-    console.log("NickName", NickName);
     return NickName;
   };
   const getRows = async () => {
     const teamsList = await GetTeamsEvent(dataViz.Competition);
+    console.log("TeamsList for table:", teamsList);
     let rows: any[] = [];
     for (const team of teamsList) {
       const averages = await fetchAveragesComp(team);
       const nickName = await getNickName(team);
-      console.log("averages:", averages);
       rows.push(
         createData(
           nickName,
@@ -204,16 +382,62 @@ export default function TeamTable() {
     setRows(rows);
     return rows;
   };
+
+  const handleRequestSort = (
+    event: React.MouseEvent<unknown>,
+    property: keyof Data
+  ) => {
+    const isAsc = orderBy === property && order === "asc";
+    setOrder(isAsc ? "desc" : "asc");
+    setOrderBy(property);
+  };
+
+  const handleSelectAllClick = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.checked) {
+      const newSelected = rows.map((n) => n.id);
+      setSelected(newSelected);
+      return;
+    }
+    setSelected([]);
+  };
+
+  const handleClick = (event: React.MouseEvent<unknown>, id: number) => {
+    const selectedIndex = selected.indexOf(id);
+    let newSelected: readonly number[] = [];
+
+    if (selectedIndex === -1) {
+      newSelected = newSelected.concat(selected, id);
+    } else if (selectedIndex === 0) {
+      newSelected = newSelected.concat(selected.slice(1));
+    } else if (selectedIndex === selected.length - 1) {
+      newSelected = newSelected.concat(selected.slice(0, -1));
+    } else if (selectedIndex > 0) {
+      newSelected = newSelected.concat(
+        selected.slice(0, selectedIndex),
+        selected.slice(selectedIndex + 1)
+      );
+    }
+    setSelected(newSelected);
+  };
+
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
   const handleChangeRowsPerPage = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
-  const handleChangePage = (event: unknown, newPage: number) => {
-    setPage(newPage);
+
+  const handleChangeDense = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setDense(event.target.checked);
   };
 
+  const isSelected = (id: number) => selected.indexOf(id) !== -1;
+
+  // Avoid a layout jump when reaching the last page with empty rows.
   const emptyRows =
     page > 0 ? Math.max(0, (1 + page) * rowsPerPage - rows.length) : 0;
 
@@ -225,46 +449,86 @@ export default function TeamTable() {
       ),
     [order, orderBy, page, rowsPerPage]
   );
+
   return (
-    <div>
-      <TableContainer component={Paper}>
-        <TableHead>
-          <TableRow>
-            <TableCell>Team</TableCell>
-            <TableCell align="right">Number</TableCell>
-            <TableCell align="right">Auto_Amp_Avg</TableCell>
-            <TableCell align="right">Auto_Speaker_Avg</TableCell>
-            <TableCell align="right">Teleop_Amp_Avg</TableCell>
-            <TableCell align="right">Teleop_Speaker_Avg</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {visibleRows.map((row, index) => (
-            <TableRow
-              key={row.name}
-              sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
-            >
-              <TableCell component="th" scope="row">
-                {row.name}
-              </TableCell>
-              <TableCell align="right">{row.number}</TableCell>
-              <TableCell align="right">{row.Auto_Amp}</TableCell>
-              <TableCell align="right">{row.Auto_Speaker}</TableCell>
-              <TableCell align="right">{row.Teleop_Amp}</TableCell>
-              <TableCell align="right">{row.Teleop_Speaker}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </TableContainer>
-      <TablePagination
-        rowsPerPageOptions={[5, 10, 25]}
-        component="div"
-        count={rows.length}
-        rowsPerPage={rowsPerPage}
-        page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
+    <Box sx={{ width: "100%" }}>
+      <Paper sx={{ width: "100%", mb: 2 }}>
+        <EnhancedTableToolbar numSelected={selected.length} />
+        <TableContainer>
+          <Table
+            sx={{ minWidth: 750 }}
+            aria-labelledby="tableTitle"
+            size={dense ? "small" : "medium"}
+          >
+            <EnhancedTableHead
+              numSelected={selected.length}
+              order={order}
+              orderBy={orderBy}
+              onSelectAllClick={handleSelectAllClick}
+              onRequestSort={handleRequestSort}
+              rowCount={rows.length}
+            />
+            <TableBody>
+              {visibleRows.map((row, index) => {
+                const isItemSelected = isSelected(row.number as number);
+                const labelId = `enhanced-table-checkbox-${index}`;
+
+                return (
+                  <TableRow
+                    hover
+                    onClick={(event) =>
+                      handleClick(event, row.number as number)
+                    }
+                    role="checkbox"
+                    aria-checked={isItemSelected}
+                    tabIndex={-1}
+                    key={row.number as number}
+                    selected={isItemSelected}
+                    sx={{ cursor: "pointer" }}
+                  >
+                    <TableCell padding="checkbox"></TableCell>
+                    <TableCell
+                      component="th"
+                      id={labelId}
+                      scope="row"
+                      padding="none"
+                    >
+                      {row.name}
+                    </TableCell>
+                    <TableCell align="right">{row.number}</TableCell>
+                    <TableCell align="right">{row.Auto_Amp}</TableCell>
+                    <TableCell align="right">{row.Auto_Speaker}</TableCell>
+                    <TableCell align="right">{row.Teleop_Amp}</TableCell>
+                    <TableCell align="right">{row.Teleop_Speaker}</TableCell>
+                  </TableRow>
+                );
+              })}
+              {emptyRows > 0 && (
+                <TableRow
+                  style={{
+                    height: (dense ? 33 : 53) * emptyRows,
+                  }}
+                >
+                  <TableCell colSpan={6} />
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25]}
+          component="div"
+          count={rows.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
+      </Paper>
+      <FormControlLabel
+        control={<Switch checked={dense} onChange={handleChangeDense} />}
+        label="Dense padding"
       />
-    </div>
+    </Box>
   );
 }

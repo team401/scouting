@@ -18,7 +18,7 @@ export default function SettingsForm() {
         onChange={(event: any, newValue: string | null) => {
           console.log("we do be value", newValue);
           if (!newValue) return;
-          GetTeamsEvent(settings.Competition).then((value) => {
+          GetTeamsEvent(newValue).then((value) => {
             setSettings({
               ...settings,
               Competition: newValue,
