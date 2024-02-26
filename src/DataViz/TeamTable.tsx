@@ -12,7 +12,12 @@ import {
   TableRow,
 } from "@mui/material";
 import { GetTeamsEvent } from "../Data";
-import { getEventData } from "./FullTeamGraph";
+import {
+  fetchClimbAvg,
+  fetchTaxiAvg,
+  fetchTrapAvg,
+  getEventData,
+} from "./FullTeamGraph";
 
 import { alpha } from "@mui/material/styles";
 import Box from "@mui/material/Box";
@@ -38,6 +43,7 @@ interface Data {
   Teleop_Speaker: number;
   Climb_Score: number;
   Taxi: number;
+  Trap: number;
 }
 
 function createData(
@@ -48,7 +54,8 @@ function createData(
   Teleop_Amp: number,
   Teleop_Speaker: number,
   Climb_Score: number,
-  Taxi: number
+  Taxi: number,
+  Trap: number
 ) {
   return {
     name,
@@ -59,6 +66,7 @@ function createData(
     Teleop_Speaker,
     Climb_Score,
     Taxi,
+    Trap,
   };
 }
 
@@ -141,13 +149,32 @@ const headCells: readonly HeadCell[] = [
     id: "Teleop_Amp",
     numeric: true,
     disablePadding: true,
-    label: "Average_Teleop_Amp",
+    label: "Avg_Teleop_Amp",
+
   },
   {
     id: "Teleop_Speaker",
     numeric: true,
     disablePadding: false,
-    label: "Average_Teleop_Speaker",
+    label: "Avg_Teleop_Speaker",
+  },
+  {
+    id: "Climb_Score",
+    numeric: true,
+    disablePadding: false,
+    label: "Avg_Climb_Score",
+  },
+  {
+    id: "Taxi",
+    numeric: true,
+    disablePadding: false,
+    label: "Taxi (%)",
+  },
+  {
+    id: "Trap",
+    numeric: true,
+    disablePadding: false,
+    label: "Trap (%)",
   },
 ];
 
@@ -362,6 +389,9 @@ export default function EnhancedTable() {
     for (const team of teamsList) {
       const averages = await fetchAveragesComp(team);
       const nickName = await getNickName(team);
+      const climb = Math.trunc((await fetchClimbAvg(team))!);
+      const taxi = Math.trunc((await fetchTaxiAvg(team))!) * 100;
+      const trap = Math.trunc((await fetchTrapAvg(team))!) * 100;
       rows.push(
         createData(
           nickName,
@@ -370,8 +400,9 @@ export default function EnhancedTable() {
           averages[1][0],
           averages[2][0],
           averages[3][0],
-          1,
-          1
+          climb!,
+          taxi!,
+          trap!
         )
       );
     }
@@ -455,8 +486,7 @@ export default function EnhancedTable() {
       <Paper sx={{ width: "100%", mb: 2 }}>
         <EnhancedTableToolbar numSelected={selected.length} />
         <TableContainer>
-          <Table
-            sx={{ minWidth: 750 }}
+            sx={{ maxWidth: 250 }}
             aria-labelledby="tableTitle"
             size={dense ? "small" : "medium"}
           >
@@ -500,6 +530,10 @@ export default function EnhancedTable() {
                     <TableCell align="right">{row.Auto_Speaker}</TableCell>
                     <TableCell align="right">{row.Teleop_Amp}</TableCell>
                     <TableCell align="right">{row.Teleop_Speaker}</TableCell>
+                    <TableCell align="right">{row.Climb_Score}</TableCell>
+                    <TableCell align="right">{row.Taxi}</TableCell>
+                    <TableCell align="right">{row.Trap}</TableCell>
+
                   </TableRow>
                 );
               })}

@@ -23,6 +23,91 @@ export async function getEventData(competition: string) {
   }
   return resp;
 }
+export async function fetchClimbAvg(team: string) {
+  const { data, error } = await supabase
+    .from("Scout_Data")
+    .select("team, Endgame")
+    .eq("team", team);
+  const resp = await data;
+  if (error) {
+    console.log("you bad", error);
+    return;
+  }
+  if (!resp || resp == null || resp == undefined) {
+    return 0;
+  }
+  const values: string[] = await resp!.map(
+    (a: { Endgame: string }) => a.Endgame
+  );
+  if (values.length == 0 || values == null || values == undefined) {
+    return 0;
+  }
+  let sum = 0;
+  for (const value of values) {
+    if (value == "Parked") {
+      sum += 1;
+    } else if (value == "Climbed") {
+      sum += 3;
+    } else if (value == "Harmony ") {
+      sum += 5;
+    }
+  }
+  let avg = sum / values.length;
+  return avg;
+}
+export async function fetchTaxiAvg(team: string) {
+  const { data, error } = await supabase
+    .from("Scout_Data")
+    .select("team, Taxi")
+    .eq("team", team);
+  const resp = await data;
+  if (error) {
+    console.log("you bad", error);
+    return 0;
+  }
+  if (!resp || resp == null || resp == undefined) {
+    return 0;
+  }
+  const values: boolean[] = await resp!.map((a: { Taxi: boolean }) => a.Taxi);
+  if (values.length == 0 || values == null || values == undefined) {
+    return 0;
+  }
+  let sum = 0;
+  for (const value of values) {
+    if (value) {
+      sum++;
+    }
+  }
+  let avg = sum / values.length;
+  console.log("Taxi Avg:", avg);
+  return avg;
+}
+export async function fetchTrapAvg(team: string) {
+  const { data, error } = await supabase
+    .from("Scout_Data")
+    .select("team, Trap")
+    .eq("team", team);
+  const resp = await data;
+  if (error) {
+    console.log("you bad", error);
+    return 0;
+  }
+  if (!resp || resp == null || resp == undefined) {
+    return 0;
+  }
+  const values: string[] = await resp!.map((a: { Trap: string }) => a.Trap);
+  if (values.length == 0 || values == null || values == undefined) {
+    return 0;
+  }
+  let sum = 0;
+  for (const value of values) {
+    if (value == "Succesful") {
+      sum += 1;
+    }
+  }
+  let avg = sum / values.length;
+  return avg;
+}
 export default function FullTeamGraph() {
   const { dataViz } = useDataVizContext();
 
@@ -198,14 +283,14 @@ export default function FullTeamGraph() {
   return (
     <div>
       <BarChart
-        width={600}
+        width={500}
         height={300}
         margin={{ left: 200 }}
         slotProps={{
           legend: {
             direction: "column",
             position: { vertical: "top", horizontal: "left" },
-            padding: -1,
+            padding: 0,
             labelStyle: { fontSize: 12 },
           },
         }}

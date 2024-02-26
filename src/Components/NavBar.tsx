@@ -61,7 +61,7 @@ export default function NavBar() {
 
   return (
     <div
-      className={`flex fixed md:relative bottom-0 md:bottom-auto mt-2.5 left-0 md:left-auto justify-between text-sm md:text-lg lg:text-base w-full md:w-auto flex-row grid-1 shadow-lg text-white md:rounded-lg transition font-sans items-center
+      className={`flex fixed  bottom-1 md:bottom-auto sm:bottom-1 mt-2.5 left-1 md:left-auto sm:left-0 justify-between text-sm md:text-lg lg:text-base w-3/4 md:w-auto sm:w-1/2 sm:scroll-smooth flex-row grid-1 shadow-lg text-white md:rounded-lg transition font-sans items-center
       ${settings.Alliance == "Red" ? "bg-red-bg" : "bg-blue-bg"}`}
     >
       {/* <Link
@@ -72,19 +72,19 @@ export default function NavBar() {
         {links.prev.text}
       </Link> */}
       <Link
-        className="bg-black bg-opacity-25 hover:bg-opacity-50 py-2 hidden md:block px-4 rounded-l-lg"
+        className="bg-black bg-opacity-25 hover:bg-opacity-50 py-2  md:block px-4  rounded-l-lg sm:block"
         to="/dataEntry"
       >
         DataEntry
       </Link>
       <Link
-        className="bg-black bg-opacity-25 hover:bg-opacity-50 py-2 hidden md:block px-4"
+        className="bg-black bg-opacity-25 hover:bg-opacity-50 py-2  md:block px-4 sm:block"
         to="/dataGraphs"
       >
         DataGraphs
       </Link>
       <Link
-        className="bg-black bg-opacity-25 hover:bg-opacity-50 py-2 hidden md:block px-4"
+        className="bg-black bg-opacity-25 hover:bg-opacity-50 py-2  md:block px-4 sm:block"
         to="/teamLookUp"
       >
         TeamLookUp
@@ -108,7 +108,7 @@ export default function NavBar() {
         Teleop
       </Link> */}
       <button
-        className="flex-auto flex self-center flex-row bg-black bg-opacity-50 hover:bg-opacity-60 justify-center items-center md:rounded-r-lg md:px-2"
+        className="flex-auto flex self-center flex-row bg-black bg-opacity-50 hover:bg-opacity-60 justify-center items-center md:rounded-r-lg md:px-2 sm:px-2"
         onClick={() => {
           setSettings({
             ...settings,
@@ -116,7 +116,7 @@ export default function NavBar() {
           });
         }}
       >
-        <div className="flex justify-self-center font-semibold py-4 md:py-2 px-1 md:px-2 text-center">
+        <div className="flex justify-self-center font-semibold py-2 md:py-2 px-1 md:px-4 text-center ">
           Alliance
         </div>
         <AllianceSwitch />

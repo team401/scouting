@@ -54,7 +54,7 @@ export default function DataGraphs() {
        `}
     >
       <div className="w-11/12 h-full md:h-min md:w-min">
-        <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-full h-full flex flex-col items-center">
+        <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-full overflow-scroll h-full flex flex-col items-center">
           <Typography variant="h5">Name: {dataViz.NickName}</Typography>
 
           <Grid
@@ -63,6 +63,7 @@ export default function DataGraphs() {
             direction={"column"}
             flexGrow={12}
             marginTop={2}
+            overflow={"scroll"}
           >
             <Grid item alignContent={"flex-start"} justifyItems={"start"}>
               <TeamSelector
@@ -102,7 +103,9 @@ export default function DataGraphs() {
               />
             </Grid>
           </Grid>
-          <TeamGraph />
+          <Grid item>
+            <TeamGraph />
+          </Grid>
         </div>
       </div>
     </div>
