@@ -31,7 +31,7 @@ export default function PitScout() {
   const [images, setImages] = React.useState([]);
   const [formError, setFormError] = useState("");
   const { settings, setSettings } = useSettingsContext();
-  const maxNumber = 69;
+  const fileInput = document.getElementById("image-input");
   useEffect(() => {
     getTeamsListDristrict();
   }, [pitScout.Competition]);
@@ -76,6 +76,10 @@ export default function PitScout() {
       setFormError(`Error: ${error.message} (please use QR code)`);
     }
   };
+  // const handleFileSubmit = async (images: FileList) => {
+  //   let file = images[0];
+  //    fileInput!.src = URL.createObjectURL(file);
+  // };
   return (
     <div className="w-11/12 h-full md:h-min md:w-min">
       <form onSubmit={handleOnSubmit}>
@@ -243,16 +247,22 @@ export default function PitScout() {
                   ></textarea>
                 </div>
               </Grid>
-              <Grid item>
+              {/* <Grid item>
                 <div className="flex flex-col gap-4 space-y-4 justify-center content-center items-center">
                   <div className=" col-span-1 py-2">
                     <label> Robot Picture</label>
                   </div>
                   <div className=" col-span-1 py-2 justify-center items-center content-center">
-                    <input type="file" accept="image/*" capture="environment" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      id="image-input"
+                      onChange={(e) => handleFileSubmit(e.target.value)}
+                    />
                   </div>
                 </div>
-              </Grid>
+              </Grid> */}
             </Grid>
             <button
               className="bg-black bg-opacity-25 hover:bg-opacity-50 text-white font-bold py-2 px-4 rounded-full "

@@ -122,7 +122,10 @@ export default function DataGraphs() {
     >
       <div className="w-11/12 h-full md:h-min md:w-min">
         <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-full overflow-scroll h-full flex flex-col items-center mb-4 py-4">
-          <Typography variant="h5">Name: {dataViz.NickName}</Typography>
+          <Typography variant="h5" paddingTop={2}>
+            {" "}
+            <b>Name: {dataViz.NickName} </b>
+          </Typography>
 
           <Grid
             container
@@ -186,7 +189,9 @@ export default function DataGraphs() {
             spacing={3}
           >
             <Grid item>
-              <Typography variant="subtitle1">Amp</Typography>
+              <Typography variant="subtitle1">
+                <u>Amp</u>
+              </Typography>
               {capabilities[0] ? (
                 <CheckIcon color="success" />
               ) : (
@@ -194,7 +199,9 @@ export default function DataGraphs() {
               )}
             </Grid>
             <Grid item>
-              <Typography variant="subtitle1">Speaker</Typography>
+              <Typography variant="subtitle1">
+                <u>Speaker</u>
+              </Typography>
               {capabilities[1] ? (
                 <CheckIcon color="success" />
               ) : (
@@ -202,7 +209,9 @@ export default function DataGraphs() {
               )}
             </Grid>
             <Grid item>
-              <Typography variant="subtitle1">Climb</Typography>
+              <Typography variant="subtitle1">
+                <u>Climb</u>
+              </Typography>
               {capabilities[2] ? (
                 <CheckIcon color="success" />
               ) : (
@@ -210,7 +219,9 @@ export default function DataGraphs() {
               )}
             </Grid>
             <Grid item>
-              <Typography variant="subtitle1">Trap</Typography>
+              <Typography variant="subtitle1">
+                <u>Trap</u>
+              </Typography>
               {capabilities[3] ? (
                 <CheckIcon color="success" />
               ) : (
@@ -218,7 +229,9 @@ export default function DataGraphs() {
               )}
             </Grid>
             <Grid item>
-              <Typography variant="subtitle1">Drive</Typography>
+              <Typography variant="subtitle1">
+                <u>Drive</u>
+              </Typography>
               <Typography variant="subtitle1">{drive}</Typography>
             </Grid>
           </Grid>
