@@ -121,7 +121,9 @@ export default function DataGraphs() {
        `}
     >
       <div className="w-11/12 h-full md:h-min md:w-min">
+
         <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-full overflow-scroll h-full flex flex-col items-center mb-4 py-4">
+
           <Typography variant="h5">Name: {dataViz.NickName}</Typography>
 
           <Grid
@@ -173,6 +175,7 @@ export default function DataGraphs() {
           <Grid item>
             <TeamGraph />
           </Grid>
+
           <Grid item>
             <Typography variant="h6">Capabilities</Typography>
           </Grid>
@@ -222,6 +225,7 @@ export default function DataGraphs() {
               <Typography variant="subtitle1">{drive}</Typography>
             </Grid>
           </Grid>
+
         </div>
       </div>
     </div>

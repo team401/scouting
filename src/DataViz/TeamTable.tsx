@@ -150,6 +150,7 @@ const headCells: readonly HeadCell[] = [
     numeric: true,
     disablePadding: true,
     label: "Avg_Teleop_Amp",
+
   },
   {
     id: "Teleop_Speaker",
@@ -485,7 +486,9 @@ export default function EnhancedTable() {
       <Paper sx={{ width: "100%", mb: 2 }}>
         <EnhancedTableToolbar numSelected={selected.length} />
         <TableContainer>
+
           <Table
+
             sx={{ maxWidth: 250 }}
             aria-labelledby="tableTitle"
             size={dense ? "small" : "medium"}
@@ -533,6 +536,7 @@ export default function EnhancedTable() {
                     <TableCell align="right">{row.Climb_Score}</TableCell>
                     <TableCell align="right">{row.Taxi}</TableCell>
                     <TableCell align="right">{row.Trap}</TableCell>
+
                   </TableRow>
                 );
               })}

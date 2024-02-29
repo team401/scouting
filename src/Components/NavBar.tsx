@@ -62,6 +62,7 @@ export default function NavBar() {
   return (
     <div
       className={`flex fixed md:relative bottom-0 md:bottom-auto mt-2.5 left-0 md:left-auto sm:left-0 justify-between text-sm md:text-lg lg:text-base w-full md:w-auto shadow-lg text-white md:rounded-lg transition font-sans item-center sm:w-1/2 sm:scroll-smooth flex-row grid-1 items-center
+
       ${settings.Alliance == "Red" ? "bg-red-bg" : "bg-blue-bg"}`}
     >
       <Link
@@ -72,12 +73,15 @@ export default function NavBar() {
         {links.prev.text}
       </Link>
       <Link
+
         className="bg-black hidden bg-opacity-25 hover:bg-opacity-50 py-2  md:block px-4  rounded-l-lg "
+
         to="/dataEntry"
       >
         DataEntry
       </Link>
       <Link
+
         className="bg-black bg-opacity-25 hidden hover:bg-opacity-50 py-2  md:block px-4 "
         to="/pitScout"
       >
@@ -85,19 +89,22 @@ export default function NavBar() {
       </Link>
       <Link
         className="bg-black bg-opacity-25 hidden hover:bg-opacity-50 py-2  md:block px-4 "
+
         to="/dataGraphs"
       >
         DataGraphs
       </Link>
       <Link
+
         className="bg-black bg-opacity-25 hidden hover:bg-opacity-50 py-2  md:block px-4"
+
         to="/teamLookUp"
       >
         TeamLookUp
       </Link>
 
       <button
-        className="flex-auto flex self-center flex-row bg-black bg-opacity-50 hover:bg-opacity-60 justify-center items-center md:rounded-r-lg md:px-2"
+        className="flex-auto flex self-center flex-row bg-black bg-opacity-50 hover:bg-opacity-60 justify-center items-center md:rounded-r-lg md:px-2 sm:px-2"
         onClick={() => {
           setSettings({
             ...settings,
@@ -105,7 +112,9 @@ export default function NavBar() {
           });
         }}
       >
+
         <div className="flex justify-self-center font-semibold py-4 md:py-2 px-1 md:px-4 text-center ">
+
           Alliance
         </div>
         <AllianceSwitch />

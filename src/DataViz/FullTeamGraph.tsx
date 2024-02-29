@@ -299,7 +299,9 @@ export default function FullTeamGraph() {
   return (
     <div>
       <BarChart
+
         width={padding}
+
         height={300}
         margin={{ left: margin }}
         slotProps={{
@@ -307,7 +309,9 @@ export default function FullTeamGraph() {
             direction: "column",
             position: { vertical: "top", horizontal: "left" },
             padding: 0,
+
             labelStyle: { fontSize: 12, textOverflow: "clip" },
+
           },
         }}
         series={[
