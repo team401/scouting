@@ -30,8 +30,6 @@ export default function DataGraphs() {
   const getTeamsListDristrict = async () => {
     const teams = await GetTeamsDistrict();
     setDataViz({ ...dataViz, TeamsList: teams });
-    console.log("DistrictTeams", dataViz.TeamsList);
-    console.log(teams);
     return teams;
   };
   const getNickName = async (meat: string) => {
@@ -50,11 +48,9 @@ export default function DataGraphs() {
       throw new Error(message);
     }
     const resp = await response.json();
-    console.log(resp);
     const data = resp.filter(
       (arr: { team_number: string }) => arr.team_number == meat
     );
-    console.log(data);
     if (!data[0] || data[0] == undefined || data[0] == null) {
       return "Error";
     }
@@ -80,6 +76,7 @@ export default function DataGraphs() {
         }. Response:`,
         resp
       );
+      setCapabilities([false, false, false, false]);
       return;
     }
     const teamRow = resp![0];
@@ -88,7 +85,6 @@ export default function DataGraphs() {
       console.error("invalid capabilities data");
       return;
     }
-    console.log("the deets:", caps);
     setCapabilities(caps);
   };
   const getDrive = async (competition: string, team: string) => {
@@ -187,6 +183,7 @@ export default function DataGraphs() {
             justifyItems={"center"}
             justifyContent={"center"}
             spacing={3}
+            paddingBottom={1}
           >
             <Grid item>
               <Typography variant="subtitle1">

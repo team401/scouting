@@ -374,7 +374,6 @@ export default function EnhancedTable() {
     const data = resp.filter(
       (arr: { team_number: string }) => arr.team_number == meat
     );
-    console.log(data);
     if (!data[0] || data[0] == undefined || data[0] == null) {
       return "Error";
     }
@@ -383,7 +382,6 @@ export default function EnhancedTable() {
   };
   const getRows = async () => {
     const teamsList = await GetTeamsEvent(dataViz.Competition);
-    console.log("TeamsList for table:", teamsList);
     let rows: any[] = [];
     for (const team of teamsList) {
       const averages = await fetchAveragesComp(team);

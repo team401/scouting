@@ -38,7 +38,6 @@ export default function PitScout() {
   const getTeamsListDristrict = async () => {
     const teams = await GetTeamsDistrict();
     setPitScout({ ...pitScout, TeamsList: teams });
-    console.log(teams);
     return teams;
   };
   const handleOnSubmit = async (event: { preventDefault: () => void }) => {

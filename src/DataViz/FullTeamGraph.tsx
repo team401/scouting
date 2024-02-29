@@ -210,14 +210,11 @@ export default function FullTeamGraph() {
           }
         }
       }
-      console.log("avgs", avgs);
       if (pos < avgs.length) teamsOrdered.splice(pos, 0, team);
       else {
         teamsOrdered.push(team);
       }
     }
-    console.log("avgs:", avgs);
-    console.log("teamsOrdered:", teamsOrdered);
     setTeamsList(teamsOrdered);
     return teamsOrdered;
   };
