@@ -25,7 +25,7 @@ export default function DataGraphs() {
               />
               <FullTeamGraph />
             </div>
-            <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-1/2 overflow-scroll h-full flex flex-col items-center content-center">
+            <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-1/2 overflow-scroll h-full flex flex-col items-center content-center py-6">
               <TeamTable />
             </div>
           </div>

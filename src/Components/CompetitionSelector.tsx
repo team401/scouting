@@ -31,7 +31,7 @@ export default function CompetitionSelector(props: selectprops) {
       onChange={props.onChange}
       clearOnEscape
       options={comps}
-      sx={{ width: 300 }}
+      sx={{ width: 200 }}
       renderInput={(params) => <TextField {...params} label="Competition" />}
     />
   );

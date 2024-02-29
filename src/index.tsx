@@ -25,6 +25,7 @@ import DataEntry from "./DataEntry";
 import FullTeamGraph from "./DataViz/FullTeamGraph";
 import DataGraphs from "./DataGraphs";
 import TeamLookUp from "./DataViz/TeamLookUp";
+import PitScout from "./Forms/PitScouting";
 
 const router = createHashRouter([
   {
@@ -47,6 +48,10 @@ const router = createHashRouter([
       {
         path: "TeamLookUp",
         element: <TeamLookUp />,
+      },
+      {
+        path: "PitScout",
+        element: <PitScout />,
       },
     ],
   },

@@ -30,7 +30,7 @@ export default function TeamSelector(props: selectprops) {
       options={props.options}
       value={props.value}
       onChange={props.onChange}
-      sx={{ width: 300 }}
+      sx={{ width: 100 }}
       renderInput={(params) => <TextField {...params} label="Team" />}
     />
   );

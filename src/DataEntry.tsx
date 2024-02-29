@@ -54,10 +54,7 @@ export default function DataEntry() {
       Trap: teleop.Trap,
       Comments: teleop.Text,
     });
-    if (error) {
-      console.log(error);
-      setFormError("Please fill out form correctly");
-    }
+
     setQRContent(
       [
         preMatch.Team!,
@@ -89,6 +86,10 @@ export default function DataEntry() {
     setAuto({ ...defaultAuto });
     setTeleop(defaultTeleop);
     console.log(preMatch.NoShow);
+    if (error) {
+      console.log(error);
+      setFormError(`Error: ${error.message} (please use QR code)`);
+    }
   };
 
   return (
@@ -129,7 +130,9 @@ export default function DataEntry() {
               {formError && <p className="error"> {formError}</p>}
             </div>
           </form>
-          <QR value={qrcontent} />
+          <div className="box mb-4 py-4">
+            <QR value={qrcontent} />
+          </div>
         </div>
       </div>
     </div>

@@ -17,7 +17,9 @@ export default function ScoreCounter({
       <button
         type="button"
         className="bg-black bg-opacity-25 hover:bg-opacity-50 text-white shadow-black/20 shadow font-bold w-8 h-8 rounded-full"
-        onClick={() => setScore(score > 0 ? score - 1 : 0)}
+        onClick={() => {
+          setScore(score > 0 ? score - 1 : 0);
+        }}
       >
         <RemoveIcon className="mb-0.5" fontSize="inherit" />
       </button>
