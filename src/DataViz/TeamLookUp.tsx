@@ -15,6 +15,7 @@ import { pink } from "@mui/material/colors";
 export default function DataGraphs() {
   const { dataViz, setDataViz } = useDataVizContext();
   const { settings, setSettings } = useSettingsContext();
+  const [drive, setDrive] = useState<string>("Unknown");
   const [capabilities, setCapabilities] = useState<boolean[]>([
     false,
     false,
@@ -24,6 +25,7 @@ export default function DataGraphs() {
   useEffect(() => {
     getTeamsListDristrict();
     getCapabilities(dataViz.Competition, dataViz.Team);
+    getDrive(dataViz.Competition, dataViz.Team);
   }, [dataViz.Competition]);
   const getTeamsListDristrict = async () => {
     const teams = await GetTeamsDistrict();
@@ -88,6 +90,30 @@ export default function DataGraphs() {
     }
     console.log("the deets:", caps);
     setCapabilities(caps);
+  };
+  const getDrive = async (competition: string, team: string) => {
+    const { data, error } = await supabase
+      .from("Pit_Data")
+      .select("Team, Drive")
+      .eq("Competition", competition)
+      .eq("Team", team);
+    const resp = await data;
+    if (error) {
+      console.log("you bad", error);
+      return;
+    }
+    if (resp!.length != 1) {
+      console.error(
+        `Drive lookup expected to find 1 team, found ${
+          resp!.length
+        }. Response:`,
+        resp
+      );
+      return;
+    }
+    const teamRow = resp![0];
+    const drive = teamRow.Drive;
+    setDrive(drive);
   };
   return (
     <div
@@ -190,6 +216,10 @@ export default function DataGraphs() {
               ) : (
                 <CloseIcon sx={{ color: pink[500] }} />
               )}
+            </Grid>
+            <Grid item>
+              <Typography variant="subtitle1">Drive</Typography>
+              <Typography variant="subtitle1">{drive}</Typography>
             </Grid>
           </Grid>
         </div>
