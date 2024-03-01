@@ -26,6 +26,7 @@ export default function ClimbSelector() {
       }}
       clearOnEscape
       options={opts}
+      openText="false"
       sx={{ width: 300 }}
       renderInput={(params) => <TextField {...params} label="Climb" />}
     />

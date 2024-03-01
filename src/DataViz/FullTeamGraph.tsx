@@ -120,6 +120,20 @@ export default function FullTeamGraph() {
   const [teleAmpMissed, setTeleAmpMissed] = useState<number[]>([0, 0]);
   const [teleSpeakerMade, setTeleSpeakerMade] = useState<number[]>([0, 0]);
   const [teleSpeakerMissed, setTeleSpeakerMissed] = useState<number[]>([0, 0]);
+  const [width, setWidth] = useState(window.innerWidth);
+  const [padding, setPadding] = useState(600);
+  const [margin, setMargin] = useState(200);
+  const handleResize = () => {
+    setWidth(window.innerWidth);
+    if (width >= 768) {
+      setPadding(600);
+      setMargin(200);
+    } else {
+      setPadding(400);
+      setMargin(150);
+    }
+    console.log("padding:", padding);
+  };
 
   // calls the fetch teams function everytime settings.Competition is updated
   useEffect(() => {
@@ -133,6 +147,7 @@ export default function FullTeamGraph() {
     fetchAverage("Teleop_Speaker_Made");
     fetchAverage("Teleop_Speaker_Missed");
   }, [dataViz.Competition]);
+
   const removeDups = (arr: string[]): string[] => {
     let unique: string[] = arr.reduce(function (acc: string[], curr: string) {
       if (!acc.includes(curr)) acc.push(curr);
@@ -195,14 +210,11 @@ export default function FullTeamGraph() {
           }
         }
       }
-      console.log("avgs", avgs);
       if (pos < avgs.length) teamsOrdered.splice(pos, 0, team);
       else {
         teamsOrdered.push(team);
       }
     }
-    console.log("avgs:", avgs);
-    console.log("teamsOrdered:", teamsOrdered);
     setTeamsList(teamsOrdered);
     return teamsOrdered;
   };
@@ -280,64 +292,70 @@ export default function FullTeamGraph() {
       setTeleSpeakerMissed(avgs);
     }
   };
+  window.addEventListener("resize", handleResize);
   return (
     <div>
       <BarChart
-        width={500}
+
+        width={padding}
+
         height={300}
-        margin={{ left: 200 }}
+        margin={{ left: margin }}
         slotProps={{
           legend: {
             direction: "column",
             position: { vertical: "top", horizontal: "left" },
             padding: 0,
-            labelStyle: { fontSize: 12 },
+
+            labelStyle: { fontSize: 12, textOverflow: "clip" },
+
           },
         }}
         series={[
           {
             data: teleAmpAverage,
-            label: "Teleop_Amp_Made",
+            label: "Teleop Amp Made",
             stack: "A",
           },
           {
             data: teleAmpMissed,
-            label: "Teleop_Amp_Missed",
+            label: "Teleop Amp Missed",
             stack: "A",
           },
           {
             data: teleSpeakerMade,
-            label: "Teleop_Speaker_Made",
+            label: "Teleop Speaker Made",
             stack: "B",
           },
           {
             data: teleSpeakerMissed,
-            label: "Teleop_Speaker_Missed",
+            label: "Teleop Speaker Missed",
             stack: "B",
           },
           {
             data: autoSpeakerMade,
-            label: "Auto_Speaker_Made",
+            label: "Auto Speaker Made",
             stack: "C",
           },
           {
             data: autoSpeakerMissed,
-            label: "Auto_Speaker_Missed",
+            label: "Auto Speaker Missed",
             stack: "C",
           },
           {
             data: autoAmpAverage,
-            label: "Auto_Amp_Made",
+            label: "Auto Amp Made",
             stack: "D",
           },
           {
             data: autoAmpMissed,
-            label: "Auto_Amp_Missed",
+            label: "Auto Amp Missed",
             stack: "D",
           },
         ]}
         xAxis={[{ data: teamsList, scaleType: "band" }]}
       />
+      <script>window.addEventListener('resize', handleResize); const</script>
     </div>
   );
 }

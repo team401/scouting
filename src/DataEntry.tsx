@@ -54,30 +54,30 @@ export default function DataEntry() {
       Trap: teleop.Trap,
       Comments: teleop.Text,
     });
-    if (error) {
-      console.log(error);
-      setFormError("Please fill out form correctly");
-    }
+
     setQRContent(
-      [
-        preMatch.Team!,
-        preMatch.Match!,
-        preMatch.NoShow!,
-        settings.Alliance!,
-        settings.Position!,
-        auto.Amp_Missed!,
-        auto.Amp_Made!,
-        auto.Speaker_Missed!,
-        auto.Speaker_Made!,
-        auto.Taxi!,
-        teleop.Amp_Missed!,
-        teleop.Amp_Made!,
-        teleop.Speaker_Missed!,
-        teleop.Speaker_Made!,
-        teleop.EndGame!,
-        teleop.Trap!,
-        teleop.Text!,
-      ].toString()
+      "Event,Match,team,NoShow,Alliance,Position,Auto_Amp_Missed,Auto_Amp_Made,Auto_Speaker_Missed,Auto_Speaker_Made,Taxi,Teleop_Amp_Missed,Teleop_Amp_Made,Teleop_Speaker_Missed,Teleop_Speaker_Made,Endgame,Trap,Comments" +
+        "\n" +
+        [
+          settings.Competition,
+          preMatch.Match!,
+          preMatch.Team!,
+          preMatch.NoShow!,
+          settings.Alliance!,
+          settings.Position!,
+          auto.Amp_Missed!,
+          auto.Amp_Made!,
+          auto.Speaker_Missed!,
+          auto.Speaker_Made!,
+          auto.Taxi!,
+          teleop.Amp_Missed!,
+          teleop.Amp_Made!,
+          teleop.Speaker_Missed!,
+          teleop.Speaker_Made!,
+          teleop.EndGame!,
+          teleop.Trap!,
+          teleop.Text!,
+        ].toString()
     );
     console.log("we are bojanglin");
     setPreMatch({
@@ -89,6 +89,12 @@ export default function DataEntry() {
     setAuto({ ...defaultAuto });
     setTeleop(defaultTeleop);
     console.log(preMatch.NoShow);
+    if (error) {
+      console.log(error);
+      setFormError(`Error: ${error.message} (please use QR code)`);
+      return;
+    }
+    setFormError("");
   };
 
   return (
@@ -129,7 +135,9 @@ export default function DataEntry() {
               {formError && <p className="error"> {formError}</p>}
             </div>
           </form>
-          <QR value={qrcontent} />
+          <div className="box mb-4 py-4">
+            <QR value={qrcontent} />
+          </div>
         </div>
       </div>
     </div>
