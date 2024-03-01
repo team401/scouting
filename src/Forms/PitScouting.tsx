@@ -61,6 +61,12 @@ export default function PitScout() {
       Trap: pitScout.Trap,
       Comments: pitScout.Comments,
     });
+    if (error) {
+      console.log(error);
+      setFormError(
+        `Error: ${error.message} (please try again with a better connection)`
+      );
+    }
     setPitScout({
       ...pitScout,
       Nomination: ["N/A"],
@@ -70,10 +76,7 @@ export default function PitScout() {
       Trap: false,
       Comments: "",
     });
-    if (error) {
-      console.log(error);
-      setFormError(`Error: ${error.message} (please use QR code)`);
-    }
+    setFormError("");
   };
   // const handleFileSubmit = async (images: FileList) => {
   //   let file = images[0];

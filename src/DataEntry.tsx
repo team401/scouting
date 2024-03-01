@@ -92,6 +92,7 @@ export default function DataEntry() {
     if (error) {
       console.log(error);
       setFormError(`Error: ${error.message} (please use QR code)`);
+      return;
     }
     setFormError("");
   };
