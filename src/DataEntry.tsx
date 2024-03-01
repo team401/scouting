@@ -17,14 +17,15 @@ import TeleopForm from "./Forms/TeleopForm";
 import { useState } from "react";
 import supabase from "./Supabase/supabaseClient";
 import FullTeamGraph from "./DataViz/FullTeamGraph";
+import QR from "./Components/QRCode";
 
-export default function App() {
+export default function DataEntry() {
   const { settings, setSettings } = useSettingsContext();
   const { preMatch, setPreMatch } = usePreMatchContext();
   const { auto, setAuto } = useAutoContext();
   const { teleop, setTeleop } = useTeleopContext();
   const [formError, setFormError] = useState("");
-
+  const [qrcontent, setQRContent] = useState("");
   const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (
     event: React.FormEvent<HTMLFormElement>
   ) => {
@@ -50,13 +51,34 @@ export default function App() {
       Teleop_Speaker_Missed: teleop.Speaker_Missed,
       Teleop_Speaker_Made: teleop.Speaker_Made,
       Endgame: teleop.EndGame,
+      Trap: teleop.Trap,
       Comments: teleop.Text,
     });
-    if (error) {
-      console.log(error);
-      setFormError("Please fill out form correctly");
-    }
 
+    setQRContent(
+      "Event,Match,team,NoShow,Alliance,Position,Auto_Amp_Missed,Auto_Amp_Made,Auto_Speaker_Missed,Auto_Speaker_Made,Taxi,Teleop_Amp_Missed,Teleop_Amp_Made,Teleop_Speaker_Missed,Teleop_Speaker_Made,Endgame,Trap,Comments" +
+        "\n" +
+        [
+          settings.Competition,
+          preMatch.Match!,
+          preMatch.Team!,
+          preMatch.NoShow!,
+          settings.Alliance!,
+          settings.Position!,
+          auto.Amp_Missed!,
+          auto.Amp_Made!,
+          auto.Speaker_Missed!,
+          auto.Speaker_Made!,
+          auto.Taxi!,
+          teleop.Amp_Missed!,
+          teleop.Amp_Made!,
+          teleop.Speaker_Missed!,
+          teleop.Speaker_Made!,
+          teleop.EndGame!,
+          teleop.Trap!,
+          teleop.Text!,
+        ].toString()
+    );
     console.log("we are bojanglin");
     setPreMatch({
       ...preMatch,
@@ -67,6 +89,12 @@ export default function App() {
     setAuto({ ...defaultAuto });
     setTeleop(defaultTeleop);
     console.log(preMatch.NoShow);
+    if (error) {
+      console.log(error);
+      setFormError(`Error: ${error.message} (please use QR code)`);
+      return;
+    }
+    setFormError("");
   };
 
   return (
@@ -84,7 +112,7 @@ export default function App() {
         {/* <Outlet /> */}
         <div className="min-h-screen">
           <form onSubmit={handleSubmit}>
-            <div className="grid grid-auto-rows-auto gap-y-3">
+            <div className="grid grid-auto-rows-auto gap-y-3 mb-5">
               <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-full h-full">
                 <SettingsForm />
               </div>
@@ -94,20 +122,22 @@ export default function App() {
               <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-full h-full">
                 <AutonomousForm />
               </div>
-              <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-full h-full">
+              <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-full h-full gap-y-2 mb-5">
                 <TeleopForm />
                 <button
-                  className="bg-black bg-opacity-25 hover:bg-opacity-50 text-white font-bold py-2 px-4 rounded-full"
+                  className="bg-black bg-opacity-25 hover:bg-opacity-50 text-white font-bold py-2 px-4 rounded-full "
                   type="submit"
                 >
                   Submit
                 </button>
-                <FullTeamGraph />
               </div>
 
               {formError && <p className="error"> {formError}</p>}
             </div>
           </form>
+          <div className="box mb-4 py-4">
+            <QR value={qrcontent} />
+          </div>
         </div>
       </div>
     </div>

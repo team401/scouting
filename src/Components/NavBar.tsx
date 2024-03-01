@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { alliance, useSettingsContext } from "./ContextProvider";
+import { alliance, useSettingsContext } from "../ContextProvider";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import AllianceSwitch from "./AllianceSwitch";
@@ -16,34 +16,35 @@ type LinkSignatures = {
 };
 
 const links: { [key: string]: LinkSignature } = {
-  settings: { text: "Settings", to: "settings" },
-  pre: { text: "PreMatch", to: "pre" },
+  dataEntry: { text: "DataEntry", to: "dataEntry" },
+  dataGraphs: { text: "DataGraphs", to: "dataGraphs" },
+  teamLookUp: { text: "TeamLookUp", to: "teamLookUp" },
+  pitScout: { text: "PitScout", to: "pitScout" },
   auto: { text: "Auto", to: "auto" },
   tele: { text: "Teleop", to: "tele" },
 };
 
 function linksFromPathname(pathname: string): LinkSignatures {
   switch (pathname) {
-    case "/settings":
+    case "/dataEntry":
       return {
-        prev: links.tele,
-        next: links.pre,
+        prev: links.teamLookUp,
+        next: links.pitScout,
       };
-    case "/":
-    case "/pre":
+    case "/dataGraphs":
       return {
-        prev: links.settings,
-        next: links.auto,
+        prev: links.pitScout,
+        next: links.teamLookUp,
       };
-    case "/auto":
+    case "/teamLookUp":
       return {
-        prev: links.pre,
-        next: links.tele,
+        prev: links.dataGraphs,
+        next: links.dataEntry,
       };
-    case "/tele":
+    case "/pitScout":
       return {
-        prev: links.auto,
-        next: links.settings,
+        prev: links.dataEntry,
+        next: links.dataGraphs,
       };
     default:
       throw Error(
@@ -60,7 +61,8 @@ export default function NavBar() {
 
   return (
     <div
-      className={`flex fixed md:relative bottom-0 md:bottom-auto mt-2.5 left-0 md:left-auto justify-between text-sm md:text-lg lg:text-base w-full md:w-auto flex-row grid-1 shadow-lg text-white md:rounded-lg transition font-sans items-center
+      className={`flex fixed md:relative bottom-0 md:bottom-auto mt-2.5 left-0 md:left-auto sm:left-0 justify-between text-sm md:text-lg lg:text-base w-full md:w-auto shadow-lg text-white md:rounded-lg transition font-sans item-center sm:w-1/2 sm:scroll-smooth flex-row grid-1 items-center
+
       ${settings.Alliance == "Red" ? "bg-red-bg" : "bg-blue-bg"}`}
     >
       <Link
@@ -71,31 +73,38 @@ export default function NavBar() {
         {links.prev.text}
       </Link>
       <Link
-        className="bg-black bg-opacity-25 hover:bg-opacity-50 py-2 hidden md:block px-4 rounded-l-lg"
-        to="/settings"
+
+        className="bg-black hidden bg-opacity-25 hover:bg-opacity-50 py-2  md:block px-4  rounded-l-lg "
+
+        to="/dataEntry"
       >
-        Settings
+        DataEntry
       </Link>
       <Link
-        className="bg-black bg-opacity-25 hover:bg-opacity-50 py-2 hidden md:block px-4"
-        to="/pre"
+
+        className="bg-black bg-opacity-25 hidden hover:bg-opacity-50 py-2  md:block px-4 "
+        to="/pitScout"
       >
-        PreMatch
+        PitScouting
       </Link>
       <Link
-        className="bg-black bg-opacity-25 hover:bg-opacity-50 py-2 hidden md:block px-4"
-        to="/auto"
+        className="bg-black bg-opacity-25 hidden hover:bg-opacity-50 py-2  md:block px-4 "
+
+        to="/dataGraphs"
       >
-        Autonomous
+        DataGraphs
       </Link>
       <Link
-        className="bg-black bg-opacity-25 hover:bg-opacity-50 py-2 hidden md:block px-4"
-        to="/tele"
+
+        className="bg-black bg-opacity-25 hidden hover:bg-opacity-50 py-2  md:block px-4"
+
+        to="/teamLookUp"
       >
-        Teleop
+        TeamLookUp
       </Link>
+
       <button
-        className="flex-auto flex self-center flex-row bg-black bg-opacity-50 hover:bg-opacity-60 justify-center items-center md:rounded-r-lg md:px-2"
+        className="flex-auto flex self-center flex-row bg-black bg-opacity-50 hover:bg-opacity-60 justify-center items-center md:rounded-r-lg md:px-2 sm:px-2"
         onClick={() => {
           setSettings({
             ...settings,
@@ -103,7 +112,9 @@ export default function NavBar() {
           });
         }}
       >
-        <div className="flex justify-self-center font-semibold py-4 md:py-2 px-1 md:px-2 text-center">
+
+        <div className="flex justify-self-center font-semibold py-4 md:py-2 px-1 md:px-4 text-center ">
+
           Alliance
         </div>
         <AllianceSwitch />

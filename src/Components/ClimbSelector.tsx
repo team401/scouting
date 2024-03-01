@@ -1,13 +1,13 @@
 import { Autocomplete, TextField } from "@mui/material";
 import React from "react";
-import { useTeleopContext } from "./ContextProvider";
-import { GetTeams } from "./Data";
+import { useTeleopContext } from "../ContextProvider";
+import { GetTeamsEvent } from "../Data";
 
 const opts = [
   "Not Attempted",
   "Attempted but Failed",
   "Climbed",
-  "Climbed with other Robot",
+  "Harmony",
   "Parked",
 ];
 
@@ -26,6 +26,7 @@ export default function ClimbSelector() {
       }}
       clearOnEscape
       options={opts}
+      openText="false"
       sx={{ width: 300 }}
       renderInput={(params) => <TextField {...params} label="Climb" />}
     />

@@ -1,9 +1,9 @@
 import { Box, Checkbox, FormControlLabel } from "@mui/material";
 import React, { SyntheticEvent } from "react";
-import { useAutoContext } from "./ContextProvider";
+import { useAutoContext } from "../ContextProvider";
 
 type bxprops = {
-  lable: string;
+  label: string;
   color: string;
   value: boolean;
   onChange: (
@@ -16,7 +16,7 @@ export default function CustomCheckbox(props: bxprops) {
   return (
     <Box>
       <FormControlLabel
-        label={props.lable}
+        label={props.label}
         control={
           <Checkbox
             sx={{

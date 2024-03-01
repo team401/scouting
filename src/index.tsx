@@ -6,6 +6,7 @@ import {
   Route,
   Navigate,
   RouterProvider,
+  redirect,
 } from "react-router-dom";
 import CssBaseline from "@mui/material/CssBaseline";
 import { ContextProvider } from "./ContextProvider";
@@ -18,37 +19,43 @@ import { ThemeProvider } from "@mui/material/styles";
 import theme from "./theme";
 import SettingsForm from "./Forms/SettingsForm";
 import TeleopForm from "./Forms/TeleopForm";
-import NavBar from "./NavBar";
+import NavBar from "./Components/NavBar";
 import App from "./App";
+import DataEntry from "./DataEntry";
+import FullTeamGraph from "./DataViz/FullTeamGraph";
+import DataGraphs from "./DataGraphs";
+import TeamLookUp from "./DataViz/TeamLookUp";
+import PitScout from "./Forms/PitScouting";
 
-// const router = createHashRouter([
-//   {
-//     path: "/",
-//     element: <App />,
-//     children: [
-//       {
-//         path: "pre",
-//         element: <PreMatchForm />,
-//       },
-//       {
-//         path: "auto",
-//         element: <AutonomousForm />,
-//       },
-//       {
-//         path: "settings",
-//         element: <SettingsForm />,
-//       },
-//       {
-//         path: "tele",
-//         element: <TeleopForm />,
-//       },
-//       {
-//         path: "/",
-//         element: <Navigate to="/pre" replace />,
-//       },
-//     ],
-//   },
-// ]);
+const router = createHashRouter([
+  {
+    path: "/",
+    element: <App />,
+    children: [
+      {
+        // default path when loading the app//
+        index: true,
+        loader: async () => redirect("/DataEntry"),
+      },
+      {
+        path: "DataEntry",
+        element: <DataEntry />,
+      },
+      {
+        path: "DataGraphs",
+        element: <DataGraphs />,
+      },
+      {
+        path: "TeamLookUp",
+        element: <TeamLookUp />,
+      },
+      {
+        path: "PitScout",
+        element: <PitScout />,
+      },
+    ],
+  },
+]);
 
 // const rootElement = document.getElementById("root");
 // const root = ReactDOM.createRoot(rootElement!);
@@ -73,7 +80,7 @@ root.render(
     {/* CssBaseline kickstart an elegant, consistent, and simple baseline to build upon. */}
     <CssBaseline />
     <ContextProvider>
-      <App />
+      <RouterProvider router={router} fallbackElement={<DataEntry />} />
     </ContextProvider>
     {/* <PreMatchForm /> */}
   </ThemeProvider>
