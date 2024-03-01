@@ -20,6 +20,7 @@ export default function TrapSelector() {
       }}
       clearOnEscape
       openText="false"
+
       options={opts}
       sx={{ width: 300 }}
       renderInput={(params) => <TextField {...params} label="Trap" />}

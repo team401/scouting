@@ -172,6 +172,7 @@ export default function DataGraphs() {
           <Grid item>
             <TeamGraph />
           </Grid>
+
           <Grid item>
             <Typography variant="h6">Capabilities</Typography>
           </Grid>
