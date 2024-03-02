@@ -138,6 +138,9 @@ export default function DataEntry() {
           <div className="box mb-4 py-4">
             <QR value={qrcontent} />
           </div>
+          <br></br>
+          <br></br>
+          <br></br>
         </div>
       </div>
     </div>
