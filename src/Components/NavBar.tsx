@@ -73,7 +73,9 @@ export default function NavBar() {
         {links.prev.text}
       </Link>
       <Link
+
         className="bg-black hidden bg-opacity-25 hover:bg-opacity-50 py-2  md:block px-4  rounded-l-lg "
+
         to="/dataEntry"
       >
         DataEntry
@@ -86,6 +88,7 @@ export default function NavBar() {
       </Link>
       <Link
         className="bg-black bg-opacity-25 hidden hover:bg-opacity-50 py-2  md:block px-4 "
+
         to="/dataGraphs"
       >
         DataGraphs
