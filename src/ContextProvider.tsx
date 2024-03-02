@@ -7,6 +7,23 @@ export type alliance = "Red" | "Blue";
 export const positions = ["1", "2", "3"] as const;
 export type position = (typeof positions)[number];
 
+export type PitScout = {
+  Competition: string;
+  Drive: string;
+  Team: string;
+  TeamsList: string[];
+  Nomination: string[];
+  Amp: boolean;
+  Speaker: boolean;
+  Climb: boolean;
+  Trap: boolean;
+  Comments: string;
+};
+type PitScoutState = {
+  pitScout: PitScout;
+  setPitScout: (value: PitScout) => void;
+};
+
 export type DataViz = {
   Competition: string;
   Team: string;
@@ -75,6 +92,19 @@ type TeleopState = {
   setTeleop: React.Dispatch<React.SetStateAction<Teleop>>;
 };
 
+export const defaultPit: PitScout = {
+  TeamsList: [],
+  Competition: "2024chcmp",
+  Team: "401",
+  Drive: "Tank",
+  Nomination: ["N/A"],
+  Amp: false,
+  Speaker: false,
+  Trap: false,
+  Climb: false,
+  Comments: "",
+};
+
 export const defaultData: DataViz = {
   Competition: "2024chcmp",
   Team: "401",
@@ -110,6 +140,7 @@ export const defaultPreMatch: PreMatch = {
   Match: 0,
 };
 
+const PitScoutContext = createContext<PitScoutState | null>(null);
 const DataVizContext = createContext<DataVizState | null>(null);
 const SettingsContext = createContext<SettingsState | null>(null);
 const PreMatchContext = createContext<PreMatchState | null>(null);
@@ -122,6 +153,7 @@ export function ContextProvider(props: PropsWithChildren<{}>) {
   const [auto, setAuto] = useState<Auto>(defaultAuto);
   const [teleop, setTeleop] = useState<Teleop>(defaultTeleop);
   const [dataViz, setDataViz] = useState<DataViz>(defaultData);
+  const [pitScout, setPitScout] = useState<PitScout>(defaultPit);
 
   // const teams = GetTeams(settings.Competition).then((teams) => {
   //   setSettings({
@@ -143,7 +175,9 @@ export function ContextProvider(props: PropsWithChildren<{}>) {
           <AutoContext.Provider value={{ auto, setAuto }}>
             <TeleopContext.Provider value={{ teleop, setTeleop }}>
               <DataVizContext.Provider value={{ dataViz, setDataViz }}>
-                {children}
+                <PitScoutContext.Provider value={{ pitScout, setPitScout }}>
+                  {children}
+                </PitScoutContext.Provider>
               </DataVizContext.Provider>
             </TeleopContext.Provider>
           </AutoContext.Provider>
@@ -153,6 +187,13 @@ export function ContextProvider(props: PropsWithChildren<{}>) {
   );
 }
 
+export function usePitScoutContext(): PitScoutState {
+  const context = useContext(PitScoutContext);
+  if (!context) {
+    throw Error("usePitScoutContext must be used within a ContextProvider");
+  }
+  return context;
+}
 export function useDataVizContext(): DataVizState {
   const context = useContext(DataVizContext);
   if (!context) {

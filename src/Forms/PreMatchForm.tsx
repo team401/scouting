@@ -37,6 +37,7 @@ export default function PreMatchForm() {
         flexGrow={12}
         justifyContent={"center"}
         alignItems={"center"}
+        paddingRight={2}
       >
         <Grid item>
           <div className="font-semibold text-4xl text-center">PreMatch</div>
