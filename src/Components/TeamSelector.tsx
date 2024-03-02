@@ -32,6 +32,14 @@ export default function TeamSelector(props: selectprops) {
       onChange={props.onChange}
       sx={{ width: 100 }}
       renderInput={(params) => <TextField {...params} label="Team" />}
+      onOpen={(event) => {
+        GetTeamsEvent(settings.Competition).then((value) => {
+          setSettings({
+            ...settings,
+            FrcTeams: value,
+          });
+        });
+      }}
     />
   );
 }

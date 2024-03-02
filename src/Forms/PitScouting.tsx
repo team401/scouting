@@ -276,6 +276,9 @@ export default function PitScout() {
           {formError && <p className="error"> {formError}</p>}
         </div>
       </form>
+      <br></br>
+      <br></br>
+      <br></br>
     </div>
   );
 }

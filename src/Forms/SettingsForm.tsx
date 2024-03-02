@@ -13,6 +13,7 @@ export default function SettingsForm() {
   return (
     <div className="flex flex-col items-center">
       <div className="font-semibold text-4xl text-center">Settings</div>
+      <br></br>
       <CompetitionSelector
         value={settings.Competition}
         onChange={(event: any, newValue: string | null) => {

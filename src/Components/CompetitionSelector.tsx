@@ -1,5 +1,5 @@
 import { Autocomplete, TextField } from "@mui/material";
-import React, { SyntheticEvent } from "react";
+import React, { ReactEventHandler, SyntheticEvent } from "react";
 import { alliance, position, useSettingsContext } from "../ContextProvider";
 import { GetTeamsEvent } from "../Data";
 

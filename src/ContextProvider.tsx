@@ -94,7 +94,7 @@ type TeleopState = {
 
 export const defaultPit: PitScout = {
   TeamsList: [],
-  Competition: "2024chcmp",
+  Competition: "2024vabla",
   Team: "401",
   Drive: "Tank",
   Nomination: ["N/A"],
@@ -106,7 +106,7 @@ export const defaultPit: PitScout = {
 };
 
 export const defaultData: DataViz = {
-  Competition: "2024chcmp",
+  Competition: "2024vabla",
   Team: "401",
   TeamsList: [],
   NickName: "",
@@ -131,7 +131,7 @@ export const defaultTeleop: Teleop = {
 export const defaultSettings: Settings = {
   Alliance: "Red",
   Position: "1",
-  Competition: "2024mdowi",
+  Competition: "2024vabla",
   FrcTeams: [""],
 };
 export const defaultPreMatch: PreMatch = {
