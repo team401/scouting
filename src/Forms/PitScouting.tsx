@@ -66,6 +66,7 @@ export default function PitScout() {
       setFormError(
         `Error: ${error.message} (please try again with a better connection)`
       );
+      return;
     }
     setPitScout({
       ...pitScout,
