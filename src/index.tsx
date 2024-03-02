@@ -35,7 +35,7 @@ const router = createHashRouter([
       {
         // default path when loading the app//
         index: true,
-        loader: async () => redirect("/DataEntry"),
+        loader: async () => redirect("/dataEntry"),
       },
       {
         path: "DataEntry",
