@@ -73,15 +73,12 @@ export default function NavBar() {
         {links.prev.text}
       </Link>
       <Link
-
         className="bg-black hidden bg-opacity-25 hover:bg-opacity-50 py-2  md:block px-4  rounded-l-lg "
-
         to="/dataEntry"
       >
         DataEntry
       </Link>
       <Link
-
         className="bg-black bg-opacity-25 hidden hover:bg-opacity-50 py-2  md:block px-4 "
         to="/pitScout"
       >
@@ -89,15 +86,12 @@ export default function NavBar() {
       </Link>
       <Link
         className="bg-black bg-opacity-25 hidden hover:bg-opacity-50 py-2  md:block px-4 "
-
         to="/dataGraphs"
       >
         DataGraphs
       </Link>
       <Link
-
         className="bg-black bg-opacity-25 hidden hover:bg-opacity-50 py-2  md:block px-4"
-
         to="/teamLookUp"
       >
         TeamLookUp
@@ -112,9 +106,7 @@ export default function NavBar() {
           });
         }}
       >
-
         <div className="flex justify-self-center font-semibold py-4 md:py-2 px-1 md:px-4 text-center ">
-
           Alliance
         </div>
         <AllianceSwitch />
