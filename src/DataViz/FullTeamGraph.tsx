@@ -151,7 +151,7 @@ export default function FullTeamGraph() {
     fetchAverage("Teleop_Amp_Missed");
     fetchAverage("Teleop_Speaker_Made");
     fetchAverage("Teleop_Speaker_Missed");
-  }, [dataViz.Competition]);
+  }, [dataViz.Competition, dataViz.Playoffs]);
 
   const removeDups = (arr: string[]): string[] => {
     let unique: string[] = arr.reduce(function (acc: string[], curr: string) {
