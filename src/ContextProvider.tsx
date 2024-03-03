@@ -30,6 +30,7 @@ export type DataViz = {
   TeamsList: string[];
   NickName: string;
   AllComps: boolean;
+  Playoffs: boolean;
 };
 type DataVizState = {
   dataViz: DataViz;
@@ -57,6 +58,7 @@ type PreMatch = {
   Team: String;
   NoShow: boolean;
   Match: number | undefined;
+  Playoffs: boolean;
 };
 
 type PreMatchState = {
@@ -85,6 +87,7 @@ type Teleop = {
   EndGame: string;
   Trap: string;
   Text: string;
+  Disabled: boolean;
 };
 
 type TeleopState = {
@@ -111,6 +114,7 @@ export const defaultData: DataViz = {
   TeamsList: [],
   NickName: "",
   AllComps: false,
+  Playoffs: false,
 };
 export const defaultAuto: Auto = {
   Amp_Made: 0,
@@ -127,6 +131,7 @@ export const defaultTeleop: Teleop = {
   EndGame: "Not Attempted",
   Trap: "Not Attempted",
   Text: "",
+  Disabled: false,
 };
 export const defaultSettings: Settings = {
   Alliance: "Red",
@@ -138,6 +143,7 @@ export const defaultPreMatch: PreMatch = {
   Team: "",
   NoShow: false,
   Match: 0,
+  Playoffs: false,
 };
 
 const PitScoutContext = createContext<PitScoutState | null>(null);

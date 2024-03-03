@@ -9,14 +9,19 @@ type eventData = {
   team: Number;
 };
 // Gets all the data for a specific event from supabase
-export async function getEventData(competition: string) {
+export async function getEventData(competition: string, playoffs: boolean) {
   const { data, error } = await supabase
     .from("Scout_Data")
     .select(
-      "team, Auto_Amp_Missed, Auto_Amp_Made, Auto_Speaker_Missed, Auto_Speaker_Made, Teleop_Amp_Missed, Teleop_Amp_Made, Teleop_Speaker_Missed, Teleop_Speaker_Made"
+      "team, Auto_Amp_Missed, Auto_Amp_Made, Auto_Speaker_Missed, Auto_Speaker_Made, Teleop_Amp_Missed, Teleop_Amp_Made, Teleop_Speaker_Missed, Teleop_Speaker_Made, Playoffs"
     )
     .eq("Event", competition);
-  const resp = await data;
+  let resp;
+  if (playoffs) {
+    resp = await data?.filter((arr: { Playoffs: boolean }) => arr.Playoffs);
+  } else {
+    resp = await data;
+  }
   if (error) {
     console.log("you bad", error);
     return;
@@ -126,7 +131,7 @@ export default function FullTeamGraph() {
   const handleResize = () => {
     setWidth(window.innerWidth);
     if (width >= 768) {
-      setPadding(600);
+      setPadding(800);
       setMargin(200);
     } else {
       setPadding(400);
@@ -146,7 +151,7 @@ export default function FullTeamGraph() {
     fetchAverage("Teleop_Amp_Missed");
     fetchAverage("Teleop_Speaker_Made");
     fetchAverage("Teleop_Speaker_Missed");
-  }, [dataViz.Competition]);
+  }, [dataViz.Competition, dataViz.Playoffs]);
 
   const removeDups = (arr: string[]): string[] => {
     let unique: string[] = arr.reduce(function (acc: string[], curr: string) {
@@ -157,7 +162,7 @@ export default function FullTeamGraph() {
   };
   // sets the teamList to the xLabels array from getEventData
   const fetchTeams = async (): Promise<string[]> => {
-    const resp = await getEventData(dataViz.Competition);
+    const resp = await getEventData(dataViz.Competition, dataViz.Playoffs);
     if (resp == null || resp == undefined) {
       return [];
     }
@@ -221,7 +226,7 @@ export default function FullTeamGraph() {
 
   const fetchAverage = async (datum: string) => {
     const teams = await fetchTeams();
-    const resp = await getEventData(dataViz.Competition);
+    const resp = await getEventData(dataViz.Competition, dataViz.Playoffs);
     if (resp == null || resp == undefined) {
       return;
     }
@@ -296,9 +301,7 @@ export default function FullTeamGraph() {
   return (
     <div>
       <BarChart
-
         width={padding}
-
         height={300}
         margin={{ left: margin }}
         slotProps={{
@@ -308,7 +311,6 @@ export default function FullTeamGraph() {
             padding: 0,
 
             labelStyle: { fontSize: 12, textOverflow: "clip" },
-
           },
         }}
         series={[

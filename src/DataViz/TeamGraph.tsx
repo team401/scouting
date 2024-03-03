@@ -11,14 +11,19 @@ import {
   getEventData,
 } from "./FullTeamGraph";
 
-export async function getFullTeamData(team: string) {
+export async function getFullTeamData(team: string, playoffs: boolean) {
   const { data, error } = await supabase
     .from("Scout_Data")
     .select(
-      "Auto_Amp_Missed, Auto_Amp_Made, Auto_Speaker_Missed, Auto_Speaker_Made, Teleop_Amp_Missed, Teleop_Amp_Made, Teleop_Speaker_Missed, Teleop_Speaker_Made"
+      "Auto_Amp_Missed, Auto_Amp_Made, Auto_Speaker_Missed, Auto_Speaker_Made, Teleop_Amp_Missed, Teleop_Amp_Made, Teleop_Speaker_Missed, Teleop_Speaker_Made, Playoffs"
     )
     .eq("team", team);
-  const resp = await data;
+  let resp;
+  if (playoffs) {
+    resp = await data?.filter((arr: { Playoffs: boolean }) => arr.Playoffs);
+  } else {
+    resp = await data;
+  }
   if (error) {
     console.log("you bad", error);
     return;
@@ -39,9 +44,9 @@ export default function TeamGraph() {
   useEffect(() => {
     if (dataViz.AllComps) fetchAveragesAll();
     else fetchAveragesComp(dataViz.Team);
-  }, [dataViz.Competition, dataViz.Team, dataViz.AllComps]);
+  }, [dataViz.Competition, dataViz.Team, dataViz.AllComps, dataViz.Playoffs]);
   const fetchAveragesComp = async (team: string) => {
-    const resp = await getEventData(dataViz.Competition);
+    const resp = await getEventData(dataViz.Competition, dataViz.Playoffs);
     if (resp == null || resp == undefined) {
       return [];
     }
@@ -123,7 +128,7 @@ export default function TeamGraph() {
   };
 
   const fetchAveragesAll = async () => {
-    const resp = await getFullTeamData(dataViz.Team);
+    const resp = await getFullTeamData(dataViz.Team, dataViz.Playoffs);
     if (resp == null || resp == undefined) {
       return [];
     }

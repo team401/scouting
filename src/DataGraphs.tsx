@@ -1,10 +1,12 @@
 import React from "react";
 import FullTeamGraph from "./DataViz/FullTeamGraph";
 import CompetitionSelector from "./Components/CompetitionSelector";
-import { useDataVizContext } from "./ContextProvider";
+import { useDataVizContext, useSettingsContext } from "./ContextProvider";
 import TeamTable from "./DataViz/TeamTable";
+import CustomCheckbox from "./Components/CustomCheckbox";
 export default function DataGraphs() {
   const { dataViz, setDataViz } = useDataVizContext();
+  const { settings, setSettings } = useSettingsContext();
   return (
     <div
       className={`transition min-h-screen w-screen font-sans flex flex-col items-center
@@ -23,11 +25,21 @@ export default function DataGraphs() {
                   })
                 }
               />
+              <CustomCheckbox
+                label="Playoffs"
+                color={settings.Alliance === "Red" ? "#DC2626" : "#2563EB"}
+                value={dataViz.Playoffs}
+                onChange={(event) =>
+                  setDataViz({
+                    ...dataViz,
+                    Playoffs: event.target.checked,
+                  })
+                }
+              />
               <FullTeamGraph />
             </div>
 
             <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-1/2 overflow-scroll h-full flex flex-col items-center content-center py-6">
-
               <TeamTable />
             </div>
           </div>
