@@ -1,14 +1,16 @@
 //create the default function for a form
 import { MouseEvent } from "react";
 import React from "react";
-import { useTeleopContext } from "../ContextProvider";
+import { useSettingsContext, useTeleopContext } from "../ContextProvider";
 import ScoreCounter from "../Components/ScoreCounter";
 import { Grid } from "@mui/material";
 import ClimbSelector from "../Components/ClimbSelector";
 import TrapSelector from "../Components/TrapSelector";
+import CustomCheckbox from "../Components/CustomCheckbox";
 
 export default function TeleopForm() {
   const { teleop, setTeleop } = useTeleopContext();
+  const { settings, setSettings } = useSettingsContext();
   // const [highScore, setHighScore] = React.useState(0);
   // const [lowScore, setLowScore] = React.useState(0);
 
@@ -67,6 +69,16 @@ export default function TeleopForm() {
             </Grid>
             <Grid item>
               <TrapSelector />
+            </Grid>
+            <Grid item justifyItems={"center"} alignItems={"center"}>
+              <CustomCheckbox
+                label="Disabled"
+                value={teleop.Disabled}
+                onChange={(event) => {
+                  setTeleop({ ...teleop, Disabled: event.target.checked });
+                }}
+                color={settings.Alliance === "Red" ? "#DC2626" : "#2563EB"}
+              />
             </Grid>
           </Grid>
         </div>

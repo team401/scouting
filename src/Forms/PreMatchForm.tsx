@@ -66,7 +66,7 @@ export default function PreMatchForm() {
             }
           ></NumberInput>
         </Grid>
-        <Grid item>
+        <Grid item gridRow={1} justifyItems={"center"}>
           <CustomCheckbox
             label="NoShow"
             color={settings.Alliance === "Red" ? "#DC2626" : "#2563EB"}
@@ -75,6 +75,17 @@ export default function PreMatchForm() {
               setPreMatch({
                 ...preMatch,
                 NoShow: event.target.checked,
+              })
+            }
+          />
+          <CustomCheckbox
+            label="Playoffs"
+            color={settings.Alliance === "Red" ? "#DC2626" : "#2563EB"}
+            value={preMatch.Playoffs}
+            onChange={(event) =>
+              setPreMatch({
+                ...preMatch,
+                Playoffs: event.target.checked,
               })
             }
           />

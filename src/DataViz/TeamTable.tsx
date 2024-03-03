@@ -303,7 +303,7 @@ export default function EnhancedTable() {
     getRows();
   }, [dataViz.Competition]);
   const fetchAveragesComp = async (team: string) => {
-    const resp = await getEventData(dataViz.Competition);
+    const resp = await getEventData(dataViz.Competition, dataViz.Playoffs);
     if (resp == null || resp == undefined) {
       return [];
     }

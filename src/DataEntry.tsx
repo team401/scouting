@@ -53,10 +53,11 @@ export default function DataEntry() {
       Endgame: teleop.EndGame,
       Trap: teleop.Trap,
       Comments: teleop.Text,
+      Playoffs: preMatch.Playoffs,
     });
 
     setQRContent(
-      "Event,Match,team,NoShow,Alliance,Position,Auto_Amp_Missed,Auto_Amp_Made,Auto_Speaker_Missed,Auto_Speaker_Made,Taxi,Teleop_Amp_Missed,Teleop_Amp_Made,Teleop_Speaker_Missed,Teleop_Speaker_Made,Endgame,Trap,Comments" +
+      "Event,Match,team,NoShow,Alliance,Position,Auto_Amp_Missed,Auto_Amp_Made,Auto_Speaker_Missed,Auto_Speaker_Made,Taxi,Teleop_Amp_Missed,Teleop_Amp_Made,Teleop_Speaker_Missed,Teleop_Speaker_Made,Endgame,Trap,Comments, Playoffs" +
         "\n" +
         [
           settings.Competition,
@@ -77,6 +78,7 @@ export default function DataEntry() {
           teleop.EndGame!,
           teleop.Trap!,
           teleop.Text!,
+          preMatch.Playoffs!,
         ].toString()
     );
     console.log("we are bojanglin");

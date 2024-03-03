@@ -191,6 +191,17 @@ export default function DataGraphs() {
                   })
                 }
               />
+              <CustomCheckbox
+                label="Playoffs"
+                color={settings.Alliance === "Red" ? "#DC2626" : "#2563EB"}
+                value={dataViz.Playoffs}
+                onChange={(event) =>
+                  setDataViz({
+                    ...dataViz,
+                    Playoffs: event.target.checked,
+                  })
+                }
+              />
             </Grid>
           </Grid>
           <Grid item>
