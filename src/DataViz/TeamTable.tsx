@@ -150,7 +150,6 @@ const headCells: readonly HeadCell[] = [
     numeric: true,
     disablePadding: true,
     label: "Avg_Teleop_Amp",
-
   },
   {
     id: "Teleop_Speaker",
@@ -271,7 +270,7 @@ function EnhancedTableToolbar(props: EnhancedTableToolbarProps) {
           id="tableTitle"
           component="div"
         >
-          Nutrition
+          Team Averages
         </Typography>
       )}
       {numSelected > 0 ? (
@@ -357,28 +356,43 @@ export default function EnhancedTable() {
   };
 
   const getNickName = async (meat: string) => {
-    const response = await fetch(
-      "https://www.thebluealliance.com/api/v3/district/2024chs/teams/simple",
-      {
-        method: "GET",
-        headers: {
-          "X-TBA-Auth-Key":
-            "3MbBFKbSOrahWa5SA7GmFv6L9ByIly1nk0vUPPSK1xQnI4ccLvsF5FRknNFz1CAm",
-        },
+    let response;
+    if (dataViz.AllComps) {
+      response = await fetch(
+        "https://www.thebluealliance.com/api/v3/district/2024chs/teams/simple",
+        {
+          method: "GET",
+          headers: {
+            "X-TBA-Auth-Key":
+              "3MbBFKbSOrahWa5SA7GmFv6L9ByIly1nk0vUPPSK1xQnI4ccLvsF5FRknNFz1CAm",
+          },
+        }
+      );
+    } else {
+      if (meat == "" || meat.length == 0) {
+        return setDataViz({ ...dataViz, NickName: "Error" });
       }
-    );
+      response = await fetch(
+        "https://www.thebluealliance.com/api/v3/team/frc" + meat + "/simple",
+        {
+          method: "GET",
+          headers: {
+            "X-TBA-Auth-Key":
+              "3MbBFKbSOrahWa5SA7GmFv6L9ByIly1nk0vUPPSK1xQnI4ccLvsF5FRknNFz1CAm",
+          },
+        }
+      );
+    }
     if (!response.ok) {
       const message = `An error has occured: ${response.status}`;
       throw new Error(message);
     }
     const resp = await response.json();
-    const data = resp.filter(
-      (arr: { team_number: string }) => arr.team_number == meat
-    );
-    if (!data[0] || data[0] == undefined || data[0] == null) {
+    if (resp.legnth == 0 || resp == undefined || resp == null) {
       return "Error";
     }
-    const NickName = data[0].nickname;
+    const NickName = resp.nickname;
+    console.log("NickName", NickName);
     return NickName;
   };
   const getRows = async () => {
@@ -484,9 +498,7 @@ export default function EnhancedTable() {
       <Paper sx={{ width: "100%", mb: 2 }}>
         <EnhancedTableToolbar numSelected={selected.length} />
         <TableContainer>
-
           <Table
-
             sx={{ maxWidth: 250 }}
             aria-labelledby="tableTitle"
             size={dense ? "small" : "medium"}
@@ -534,7 +546,6 @@ export default function EnhancedTable() {
                     <TableCell align="right">{row.Climb_Score}</TableCell>
                     <TableCell align="right">{row.Taxi}</TableCell>
                     <TableCell align="right">{row.Trap}</TableCell>
-
                   </TableRow>
                 );
               })}
