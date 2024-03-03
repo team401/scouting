@@ -44,7 +44,7 @@ export default function TeamGraph() {
   useEffect(() => {
     if (dataViz.AllComps) fetchAveragesAll();
     else fetchAveragesComp(dataViz.Team);
-  }, [dataViz.Competition, dataViz.Team, dataViz.AllComps]);
+  }, [dataViz.Competition, dataViz.Team, dataViz.AllComps, dataViz.Playoffs]);
   const fetchAveragesComp = async (team: string) => {
     const resp = await getEventData(dataViz.Competition, dataViz.Playoffs);
     if (resp == null || resp == undefined) {
