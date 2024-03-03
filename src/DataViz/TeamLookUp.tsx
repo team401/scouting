@@ -3,7 +3,7 @@ import FullTeamGraph from "../DataViz/FullTeamGraph";
 import CompetitionSelector from "../Components/CompetitionSelector";
 import { useDataVizContext, useSettingsContext } from "../ContextProvider";
 import TeamSelector from "../Components/TeamSelector";
-import { GetTeamsDistrict } from "../Data";
+import { GetTeamsDistrict, GetTeamsEvent } from "../Data";
 import CustomCheckbox from "../Components/CustomCheckbox";
 import TeamGraph from "./TeamGraph";
 import { Grid, Typography } from "@mui/material";
@@ -23,38 +23,61 @@ export default function DataGraphs() {
     false,
   ]);
   useEffect(() => {
-    getTeamsListDristrict();
+    if (dataViz.AllComps) {
+      getTeamsListDistrict();
+    } else {
+      getTeamsListCompetition(dataViz.Competition);
+    }
     getCapabilities(dataViz.Competition, dataViz.Team);
     getDrive(dataViz.Competition, dataViz.Team);
-  }, [dataViz.Competition]);
-  const getTeamsListDristrict = async () => {
+  }, [dataViz.Competition, dataViz.Team]);
+  const getTeamsListDistrict = async () => {
     const teams = await GetTeamsDistrict();
     setDataViz({ ...dataViz, TeamsList: teams });
     return teams;
   };
+  const getTeamsListCompetition = async (competition: string) => {
+    const teams = await GetTeamsEvent(competition);
+    setDataViz({ ...dataViz, TeamsList: teams });
+    return teams;
+  };
   const getNickName = async (meat: string) => {
-    const response = await fetch(
-      "https://www.thebluealliance.com/api/v3/district/2024chs/teams/simple",
-      {
-        method: "GET",
-        headers: {
-          "X-TBA-Auth-Key":
-            "3MbBFKbSOrahWa5SA7GmFv6L9ByIly1nk0vUPPSK1xQnI4ccLvsF5FRknNFz1CAm",
-        },
+    let response;
+    if (dataViz.AllComps) {
+      response = await fetch(
+        "https://www.thebluealliance.com/api/v3/district/2024chs/teams/simple",
+        {
+          method: "GET",
+          headers: {
+            "X-TBA-Auth-Key":
+              "3MbBFKbSOrahWa5SA7GmFv6L9ByIly1nk0vUPPSK1xQnI4ccLvsF5FRknNFz1CAm",
+          },
+        }
+      );
+    } else {
+      if (meat == "" || meat.length == 0) {
+        return setDataViz({ ...dataViz, NickName: "Error" });
       }
-    );
+      response = await fetch(
+        "https://www.thebluealliance.com/api/v3/team/frc" + meat + "/simple",
+        {
+          method: "GET",
+          headers: {
+            "X-TBA-Auth-Key":
+              "3MbBFKbSOrahWa5SA7GmFv6L9ByIly1nk0vUPPSK1xQnI4ccLvsF5FRknNFz1CAm",
+          },
+        }
+      );
+    }
     if (!response.ok) {
       const message = `An error has occured: ${response.status}`;
       throw new Error(message);
     }
     const resp = await response.json();
-    const data = resp.filter(
-      (arr: { team_number: string }) => arr.team_number == meat
-    );
-    if (!data[0] || data[0] == undefined || data[0] == null) {
+    if (resp.legnth == 0 || resp == undefined || resp == null) {
       return "Error";
     }
-    const NickName = data[0].nickname;
+    const NickName = resp.nickname;
     console.log("NickName", NickName);
     return NickName;
   };
@@ -85,6 +108,7 @@ export default function DataGraphs() {
       console.error("invalid capabilities data");
       return;
     }
+    console.log("Capabalities:", caps);
     setCapabilities(caps);
   };
   const getDrive = async (competition: string, team: string) => {
