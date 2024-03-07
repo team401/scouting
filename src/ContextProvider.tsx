@@ -55,7 +55,7 @@ export enum Boolean {
 }
 
 type PreMatch = {
-  Team: String;
+  Team: string;
   NoShow: boolean;
   Match: number | undefined;
   Playoffs: boolean;

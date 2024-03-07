@@ -56,6 +56,45 @@ export default function DataEntry() {
       Playoffs: preMatch.Playoffs,
     });
 
+    if(!error) {
+      // compute and send averages
+      const { data, error: avgError } = await supabase.from("Averages")
+          .select(
+              "teamNumber, matchesPlayed, teleAmp, teleSpeaker, autoAmp, autoSpeaker, climb, trapPercent, taxiPercent"
+          )
+          .eq(
+              "teamNumber", parseInt(preMatch.Team)
+          )
+          .eq(
+              "event", settings.Competition
+          );
+      if (avgError) {
+        console.error(avgError.message);
+      } else if (data == null) {
+        // create column ( first match added )
+        let climbPoints = 0;
+        if(teleop.EndGame === "Parked") {
+          climbPoints = 1;
+        } else if (teleop.EndGame === "Climbed") {
+          climbPoints = 3;
+        } else {
+          climbPoints = 5;
+        }
+        const {error: sendError } = await supabase.from("Average").insert({
+          teamNumber: parseInt(preMatch.Team),
+          event: settings.Competition,
+          matchesPlayed: 1,
+          teleAmp: teleop.Amp_Made,
+          teleSpeaker: teleop.Speaker_Made,
+          autoAmp: auto.Amp_Made,
+          autoSpeaker: auto.Speaker_Made,
+          climb: climbPoints,
+          trapPercent: teleop.Trap === "Successful" ? 100 : 0,
+          taxiPercent: auto.Taxi ? 100 : 0
+        })
+      }
+    }
+
     setQRContent(
       "Event,Match,team,NoShow,Alliance,Position,Auto_Amp_Missed,Auto_Amp_Made,Auto_Speaker_Missed,Auto_Speaker_Made,Taxi,Teleop_Amp_Missed,Teleop_Amp_Made,Teleop_Speaker_Missed,Teleop_Speaker_Made,Endgame,Trap,Comments, Playoffs" +
         "\n" +
