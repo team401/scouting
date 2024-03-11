@@ -18,6 +18,9 @@ import { useState } from "react";
 import supabase from "./Supabase/supabaseClient";
 import FullTeamGraph from "./DataViz/FullTeamGraph";
 import QR from "./Components/QRCode";
+import average from "./utils/average";
+import findClimbPoints from "./utils/findPoints";
+import updateAverage from "./utils/average";
 
 export default function DataEntry() {
   const { settings, setSettings } = useSettingsContext();
@@ -57,42 +60,7 @@ export default function DataEntry() {
     });
 
     if(!error) {
-      // compute and send averages
-      const { data, error: avgError } = await supabase.from("Averages")
-          .select(
-              "teamNumber, matchesPlayed, teleAmp, teleSpeaker, autoAmp, autoSpeaker, climb, trapPercent, taxiPercent"
-          )
-          .eq(
-              "teamNumber", parseInt(preMatch.Team)
-          )
-          .eq(
-              "event", settings.Competition
-          );
-      if (avgError) {
-        console.error(avgError.message);
-      } else if (data == null) {
-        // create column ( first match added )
-        let climbPoints = 0;
-        if(teleop.EndGame === "Parked") {
-          climbPoints = 1;
-        } else if (teleop.EndGame === "Climbed") {
-          climbPoints = 3;
-        } else {
-          climbPoints = 5;
-        }
-        const {error: sendError } = await supabase.from("Average").insert({
-          teamNumber: parseInt(preMatch.Team),
-          event: settings.Competition,
-          matchesPlayed: 1,
-          teleAmp: teleop.Amp_Made,
-          teleSpeaker: teleop.Speaker_Made,
-          autoAmp: auto.Amp_Made,
-          autoSpeaker: auto.Speaker_Made,
-          climb: climbPoints,
-          trapPercent: teleop.Trap === "Successful" ? 100 : 0,
-          taxiPercent: auto.Taxi ? 100 : 0
-        })
-      }
+      await updateAverage(settings, preMatch, auto, teleop);
     }
 
     setQRContent(
