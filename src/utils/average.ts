@@ -2,8 +2,8 @@ import {Auto, PreMatch, Settings, Teleop} from "../ContextProvider";
 import supabase from "../Supabase/supabaseClient";
 import findClimbPoints from "./findPoints";
 
-const average = (old: number, newVal: number, denom: number) => {
-    return (old + newVal) / denom;
+const average = (oldAvg: number, newVal: number, denom: number) => {
+    return (oldAvg * (denom - 1) + newVal) / denom;
 }
 
 const updateAverage = async (settings: Settings, preMatch: PreMatch, auto: Auto, teleop: Teleop) => {
