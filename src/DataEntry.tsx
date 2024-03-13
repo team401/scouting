@@ -18,6 +18,9 @@ import { useState } from "react";
 import supabase from "./Supabase/supabaseClient";
 import FullTeamGraph from "./DataViz/FullTeamGraph";
 import QR from "./Components/QRCode";
+import average from "./utils/average";
+import findClimbPoints from "./utils/findPoints";
+import updateAverage from "./utils/average";
 
 export default function DataEntry() {
   const { settings, setSettings } = useSettingsContext();
@@ -95,6 +98,8 @@ export default function DataEntry() {
       console.log(error);
       setFormError(`Error: ${error.message} (please use QR code)`);
       return;
+    } else {
+      await updateAverage(settings, preMatch, auto, teleop);
     }
     setFormError("");
   };
