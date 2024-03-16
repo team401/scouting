@@ -13,7 +13,7 @@ cd scouting
 
 Add The Blue Alliance API Key ([free at](thebluealliance.com)) to data.tsx file
 
-Add Supabase URL and Anion key to ```./src/Supabase/.env.local```
+Add Supabase URL and Anon key to ```./src/Supabase/.env.local```
 
 Install all dependencies: 
 ```bash
