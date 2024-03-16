@@ -1,40 +1,46 @@
-# Material UI - Create React App example in TypeScript
+# Team 401 Copper Scout -  a First Robotics Competition Scouting App
 
 ## How to use
 
-Download the example [or clone the repo](https://github.com/mui/material-ui):
+[clone the repo](https://github.com/team401/scouting):
 
 <!-- #default-branch-switch -->
 
 ```bash
-curl https://codeload.github.com/mui/material-ui/tar.gz/master | tar -xz --strip=2 material-ui-master/examples/material-ui-cra-ts
-cd material-ui-cra-ts
+git clone https://github.com/team401/scouting
+cd scouting
 ```
 
-Install it and run:
+Add The Blue Alliance API Key ([free at](thebluealliance.com)) to data.tsx file
 
+Add Supabase URL and Anon key to ```./src/Supabase/.env.local```
+
+Install all dependencies: 
 ```bash
 npm install
+```
+
+then start in production mode:
+```bash
 npm start
 ```
 
-or:
+or start in development mode:
+```bash
+npm run dev
+```
 
-<!-- #default-branch-switch -->
 
-[![Edit on CodeSandbox](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/s/github/mui/material-ui/tree/master/examples/material-ui-cra-ts)
+## Features
 
-[![Edit on StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/mui/material-ui/tree/master/examples/material-ui-cra-ts)
+- ***Offline data collection***: users can populate scouting form and a QR Code is automatically generated on submission that contains comma seperated values to import into Google Spreadsheet or custom script
+- ***Comprehensive data graphs***: Once all data is sent to supabase, users are able to look at graphs viewing averages of all inputted data such as: teleop speaker points, teleop amp points, auto points, and endgame points.
+- ***Online data submission***: When Wifi or cellular service is available, the form will automatically submit to a supabase database and calculate averages
 
-## The idea behind the example
+## Technology
 
-This example demonstrates how you can use Material UI with [Create React App](https://github.com/facebookincubator/create-react-app) in [TypeScript](https://github.com/Microsoft/TypeScript).
-It includes `@mui/material` and its peer dependencies, including [Emotion](https://emotion.sh/docs/introduction), the default style engine in Material UI v5.
-If you prefer, you can [use styled-components instead](https://mui.com/material-ui/guides/interoperability/#styled-components).
-
-## What's next?
-
-<!-- #default-branch-switch -->
-
-You now have a working example project.
-You can head back to the documentation and continue by browsing the [templates](https://mui.com/material-ui/getting-started/templates/) section.
+- ***React***: Used to handle views of application and form submission
+- ***Typescript***: statically-typed language to promote early type error detection
+- ***react-qr-code***: Library used to efficiently generate QR Codes containing form data if no internet is available
+- ***Material-UI / Tailwind CSS***: Material UI Components used (Autofill etc) in conjuction with tailwind CSS to provide a dynamic webpage that conforms to mobile and web usage
+- ***Supabase***: handles all relevant data submission from scouting form and queries for graphs
