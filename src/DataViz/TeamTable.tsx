@@ -17,7 +17,7 @@ import {
   fetchTaxiAvg,
   fetchTrapAvg,
   getEventData,
-} from "./FullTeamGraph";
+} from "./AverageTeamGraph";
 
 import { alpha } from "@mui/material/styles";
 import Box from "@mui/material/Box";

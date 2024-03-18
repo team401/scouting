@@ -1,5 +1,5 @@
 import React from "react";
-import FullTeamGraph from "./DataViz/FullTeamGraph";
+import AverageTeamGraph from "./DataViz/AverageTeamGraph";
 import CompetitionSelector from "./Components/CompetitionSelector";
 import { useDataVizContext, useSettingsContext } from "./ContextProvider";
 import TeamTable from "./DataViz/TeamTable";
@@ -36,7 +36,7 @@ export default function DataGraphs() {
                   })
                 }
               />
-              <FullTeamGraph />
+              <AverageTeamGraph />
             </div>
 
             <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-1/2 overflow-scroll h-full flex flex-col items-center content-center py-6">

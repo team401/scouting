@@ -16,7 +16,7 @@ import AutonomousForm from "./Forms/AutonomousForm";
 import TeleopForm from "./Forms/TeleopForm";
 import { useState } from "react";
 import supabase from "./Supabase/supabaseClient";
-import FullTeamGraph from "./DataViz/FullTeamGraph";
+import AverageTeamGraph from "./DataViz/AverageTeamGraph";
 import QR from "./Components/QRCode";
 
 export default function App() {
