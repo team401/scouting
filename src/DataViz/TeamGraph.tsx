@@ -230,7 +230,14 @@ export default function TeamGraph() {
         { data: avgTeamData[5], label: "Taxi (1 = 100%)" },
         { data: avgTeamData[6], label: "Trap (1 = 100%)" },
       ]}
-      xAxis={[{ data: [dataViz.Team], scaleType: "band" }]}
+      xAxis={[
+        {
+          data: [dataViz.Team], 
+          scaleType: "band" ,
+          categoryGapRatio: 0.2,
+          barGapRatio: 0.1
+        }
+      ]}
     />
   );
 }
