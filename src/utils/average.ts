@@ -4,7 +4,7 @@ import findClimbPoints from "./findPoints";
 import {AverageData} from "../types";
 
 const average = (oldAvg: number, newVal: number, denom: number) => {
-    return (oldAvg * (denom - 1) + newVal) / denom;
+    return ((oldAvg * (denom - 1) + newVal) / denom).toFixed(2);
 }
 
 const updateAverage = async (settings: Settings, preMatch: PreMatch, auto: Auto, teleop: Teleop) => {
