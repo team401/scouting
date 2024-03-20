@@ -302,6 +302,10 @@ export default function EnhancedTable() {
 
   const getRows = async () => {
     const averages = await getAverageData(dataViz.Competition);
+    if(!averages) {
+      console.log(averages);
+      return;
+    }
     const teamsList = averages!.map((d: AverageData) => d.teamNumber.toString());
     let rows: any[] = [];
     for (const team of teamsList) {

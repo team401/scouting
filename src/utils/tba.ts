@@ -37,6 +37,5 @@ export const getNickName = async (meat: string, dataViz: DataViz, setDataViz: an
         return "Error";
     }
     const NickName = resp.nickname;
-    console.log("NickName", NickName);
     return NickName;
 };

@@ -203,7 +203,7 @@ export default function DataGraphs() {
               />
             </Grid>
           </Grid>
-          <Grid item>
+          <Grid>
             <AverageTeamGraph />
           </Grid>
 

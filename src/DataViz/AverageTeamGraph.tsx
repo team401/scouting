@@ -17,6 +17,29 @@ export default function AverageTeamGraph() {
   const [width, setWidth] = useState(window.innerWidth);
   const [padding, setPadding] = useState(600);
   const [margin, setMargin] = useState(200);
+  // calls the fetch teams function everytime settings.Competition is updated
+  useEffect(() => {
+    const updateData = async () => {
+      const data = await getAverageData(dataViz.Competition);
+      if(data) {
+        setAverageData(data);
+        setTeamsList(data.map((d) => d.teamNumber.toString()));
+        setCurrentTeamAvg(data.find((d) => d.teamNumber === parseInt(dataViz.Team)));
+      } else {
+        console.error('error fetching averages');
+        setAverageData(null)
+      }
+    }
+    updateData();
+  }, [dataViz.Competition]);
+
+  useEffect(() => {
+    if(averageData) {
+    } else {
+      setCurrentTeamAvg(null);
+    }
+  }, [dataViz.Team])
+
   const handleResize = () => {
     setWidth(window.innerWidth);
     if (width >= 768) {
@@ -28,28 +51,6 @@ export default function AverageTeamGraph() {
     }
     console.log("padding:", padding);
   };
-
-  // calls the fetch teams function everytime settings.Competition is updated
-  useEffect(() => {
-    getAverageData(dataViz.Competition).then((data) => {
-      if(data) {
-        setAverageData(data);
-        setTeamsList(data.map((d) => d.teamNumber.toString()));
-        setCurrentTeamAvg(data[0]);
-      } else {
-        console.error('error fetching averages');
-        setAverageData(null)
-      }
-    })
-  }, [dataViz.Competition]);
-
-  useEffect(() => {
-    if(averageData) {
-      setCurrentTeamAvg(averageData.find((d) => d.teamNumber === parseInt(dataViz.Team)));
-    } else {
-      setCurrentTeamAvg(null);
-    }
-  }, [dataViz.Team])
 
   window.addEventListener("resize", handleResize);
   return (

@@ -68,7 +68,7 @@ const updateAverage = async (settings: Settings, preMatch: PreMatch, auto: Auto,
 export async function getAverageData(competition: string): Promise<AverageData[] | undefined> {
     try {
         const {data } = await supabase
-            .from("Average")
+            .from("Averages")
             .select(
                 "teamNumber, matchesPlayed, teleAmp, teleSpeaker, autoAmp, autoSpeaker, climb, trapPercent, taxiPercent"
             )
