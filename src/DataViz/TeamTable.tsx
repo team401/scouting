@@ -12,12 +12,6 @@ import {
   TableRow,
 } from "@mui/material";
 import { GetTeamsEvent } from "../Data";
-import {
-  fetchClimbAvg,
-  fetchTaxiAvg,
-  fetchTrapAvg,
-  getEventData,
-} from "./FullTeamGraph";
 
 import { alpha } from "@mui/material/styles";
 import Box from "@mui/material/Box";
@@ -33,6 +27,9 @@ import Switch from "@mui/material/Switch";
 import DeleteIcon from "@mui/icons-material/Delete";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import { visuallyHidden } from "@mui/utils";
+import {getAverageData} from "../utils/average";
+import {AverageData} from "../types";
+import { getNickName } from "../utils/tba";
 
 interface Data {
   name: string;
@@ -302,116 +299,29 @@ export default function EnhancedTable() {
   useEffect(() => {
     getRows();
   }, [dataViz.Competition]);
-  const fetchAveragesComp = async (team: string) => {
-    const resp = await getEventData(dataViz.Competition, dataViz.Playoffs);
-    if (resp == null || resp == undefined) {
-      return [];
-    }
-    const teams = resp!.filter((arr: { team: any }) => arr.team == team);
-    const matches = teams!.map(
-      (a: {
-        Auto_Amp_Made: any;
-        Auto_Speaker_Made: any;
-        Teleop_Amp_Made: any;
-        Teleop_Speaker_Made: any;
-      }) => ({
-        Auto_Amp_Made: a.Auto_Amp_Made,
-        Auto_Speaker_Made: a.Auto_Speaker_Made,
-        Teleop_Amp_Made: a.Teleop_Amp_Made,
-        Teleop_Speaker_Made: a.Teleop_Speaker_Made,
-      })
-    );
-    let teamData: number[][] = [];
-    for (let i = 0; i < matches.length; i++) {
-      let row: number[] = new Array();
-      row.push(matches[i].Auto_Amp_Made);
-      row.push(matches[i].Auto_Speaker_Made);
-      row.push(matches[i].Teleop_Amp_Made);
-      row.push(matches[i].Teleop_Speaker_Made);
-      teamData.push(row);
-    }
 
-    if (!teamData[0] || teamData[0] == null || teamData[0] == undefined) {
-      console.log("no team data");
-      return [[0], [0], [0], [0]];
-    }
-    let avgTeamData: number[][] = [[], [], [], []];
-    for (let i = 0; i < teamData[0].length; i++) {
-      let sum = 0;
-      for (const element of teamData) {
-        sum += element[i];
-      }
-      let average = sum / teamData.length;
-      avgTeamData[i].push(average);
-    }
-    if (
-      !avgTeamData[0] ||
-      avgTeamData[0] == null ||
-      avgTeamData[0] == undefined
-    ) {
-      console.log("no team data");
-      return [[0], [0], [0], [0]];
-    }
-    return avgTeamData;
-  };
-
-  const getNickName = async (meat: string) => {
-    let response;
-    if (dataViz.AllComps) {
-      response = await fetch(
-        "https://www.thebluealliance.com/api/v3/district/2024chs/teams/simple",
-        {
-          method: "GET",
-          headers: {
-            "X-TBA-Auth-Key":
-              "3MbBFKbSOrahWa5SA7GmFv6L9ByIly1nk0vUPPSK1xQnI4ccLvsF5FRknNFz1CAm",
-          },
-        }
-      );
-    } else {
-      if (meat == "" || meat.length == 0) {
-        return setDataViz({ ...dataViz, NickName: "Error" });
-      }
-      response = await fetch(
-        "https://www.thebluealliance.com/api/v3/team/frc" + meat + "/simple",
-        {
-          method: "GET",
-          headers: {
-            "X-TBA-Auth-Key":
-              "3MbBFKbSOrahWa5SA7GmFv6L9ByIly1nk0vUPPSK1xQnI4ccLvsF5FRknNFz1CAm",
-          },
-        }
-      );
-    }
-    if (!response.ok) {
-      const message = `An error has occured: ${response.status}`;
-      throw new Error(message);
-    }
-    const resp = await response.json();
-    if (resp.legnth == 0 || resp == undefined || resp == null) {
-      return "Error";
-    }
-    const NickName = resp.nickname;
-    console.log("NickName", NickName);
-    return NickName;
-  };
   const getRows = async () => {
-    const teamsList = await GetTeamsEvent(dataViz.Competition);
+    const averages = await getAverageData(dataViz.Competition);
+    if(!averages) {
+      console.error('no averages found');
+      return;
+    }
+    const teamsList = averages!.map((d: AverageData) => d.teamNumber.toString());
     let rows: any[] = [];
     for (const team of teamsList) {
-      const averages = await fetchAveragesComp(team);
-      const nickName = await getNickName(team);
-      const climb = Math.trunc((await fetchClimbAvg(team))!);
-      const taxi = Math.trunc((await fetchTaxiAvg(team))!) * 100;
-      const trap = Math.trunc((await fetchTrapAvg(team))!) * 100;
+      const currentAvg = averages!.find((d) => d.teamNumber === parseInt(team));
+      const nickName = await getNickName(team, dataViz, setDataViz);
+      const climb = Math.trunc(currentAvg!.climb);
+      const taxi = Math.trunc(currentAvg!.taxiPercent) * 100;
+      const trap = Math.trunc(currentAvg!.trapPercent) * 100;
       rows.push(
         createData(
           nickName,
           team,
-          averages[0][0],
-          averages[1][0],
-          averages[2][0],
-          averages[3][0],
+          currentAvg!.autoAmp,
+          currentAvg!.autoSpeaker,
+          currentAvg!.teleAmp,
+          currentAvg!.teleSpeaker,
           climb!,
           taxi!,
           trap!

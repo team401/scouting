@@ -30,6 +30,10 @@ or start in development mode:
 npm run dev
 ```
 
+## Updating Average Table
+In the event of a loss of WiFi connection, in which the app must rely on QR code scanning, the averages table (queried for graphs) will be out of data.
+- To fix this send a POST request to https://copperscoututil.onrender.com/updateAverages/ (adding the event name after the last /)
+- Example: post to https://copperscoututil.onrender.com/updateAverages/2024vabla (recalculates 2024vabla event averages)
 
 ## Features
 

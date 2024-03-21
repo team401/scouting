@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from "react";
-import FullTeamGraph from "../DataViz/FullTeamGraph";
+import AverageTeamGraph from "./AverageTeamGraph";
 import CompetitionSelector from "../Components/CompetitionSelector";
 import { useDataVizContext, useSettingsContext } from "../ContextProvider";
 import TeamSelector from "../Components/TeamSelector";
 import { GetTeamsDistrict, GetTeamsEvent } from "../Data";
 import CustomCheckbox from "../Components/CustomCheckbox";
-import TeamGraph from "./TeamGraph";
 import { Grid, Typography } from "@mui/material";
 import supabase from "../Supabase/supabaseClient";
 import CheckIcon from "@mui/icons-material/Check";
@@ -204,8 +203,8 @@ export default function DataGraphs() {
               />
             </Grid>
           </Grid>
-          <Grid item>
-            <TeamGraph />
+          <Grid>
+            <AverageTeamGraph />
           </Grid>
 
           <Grid item>

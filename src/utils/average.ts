@@ -1,9 +1,10 @@
 import {Auto, PreMatch, Settings, Teleop} from "../ContextProvider";
 import supabase from "../Supabase/supabaseClient";
 import findClimbPoints from "./findPoints";
+import {AverageData} from "../types";
 
 const average = (oldAvg: number, newVal: number, denom: number) => {
-    return (oldAvg * (denom - 1) + newVal) / denom;
+    return ((oldAvg * (denom - 1) + newVal) / denom).toFixed(2);
 }
 
 const updateAverage = async (settings: Settings, preMatch: PreMatch, auto: Auto, teleop: Teleop) => {
@@ -61,6 +62,23 @@ const updateAverage = async (settings: Settings, preMatch: PreMatch, auto: Auto,
         if (updateError) {
             console.error(updateError.message);
         }
+    }
+}
+
+export async function getAverageData(competition: string): Promise<AverageData[] | undefined> {
+    try {
+        const {data } = await supabase
+            .from("Averages")
+            .select(
+                "teamNumber, matchesPlayed, teleAmp, teleSpeaker, autoAmp, autoSpeaker, climb, trapPercent, taxiPercent"
+            )
+            .eq("event", competition);
+
+        if(data) {
+            return data as AverageData[];
+        }
+    } catch (err: any) {
+        console.error('Error grabbbing average:', err.message);
     }
 }
 export default updateAverage;
