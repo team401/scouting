@@ -1,5 +1,5 @@
 import React from "react";
-import AverageTeamGraph from "./DataViz/AverageTeamGraph";
+import AllAveragesGraph from './DataViz/AllAveragesGraph';
 import CompetitionSelector from "./Components/CompetitionSelector";
 import { useDataVizContext, useSettingsContext } from "./ContextProvider";
 import TeamTable from "./DataViz/TeamTable";
@@ -25,18 +25,18 @@ export default function DataGraphs() {
                   })
                 }
               />
-              <CustomCheckbox
-                label="Playoffs"
-                color={settings.Alliance === "Red" ? "#DC2626" : "#2563EB"}
-                value={dataViz.Playoffs}
-                onChange={(event) =>
-                  setDataViz({
-                    ...dataViz,
-                    Playoffs: event.target.checked,
-                  })
-                }
-              />
-              <AverageTeamGraph />
+              {/*<CustomCheckbox*/}
+              {/*  label="Playoffs"*/}
+              {/*  color={settings.Alliance === "Red" ? "#DC2626" : "#2563EB"}*/}
+              {/*  value={dataViz.Playoffs}*/}
+              {/*  onChange={(event) =>*/}
+              {/*    setDataViz({*/}
+              {/*      ...dataViz,*/}
+              {/*      Playoffs: event.target.checked,*/}
+              {/*    })*/}
+              {/*  }*/}
+              {/*/>*/}
+              <AllAveragesGraph />
             </div>
 
             <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-1/2 overflow-scroll h-full flex flex-col items-center content-center py-6">

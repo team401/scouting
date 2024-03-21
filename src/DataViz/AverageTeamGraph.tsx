@@ -13,7 +13,6 @@ export default function AverageTeamGraph() {
   const [averageData, setAverageData] = useState<AverageData[] | null>(null);
   const [teamsList, setTeamsList] = useState<string[]>(["000", "000"]);
   const [currentTeamAvg, setCurrentTeamAvg] = useState<AverageData | null | undefined>(null);
-  const [averages, setAverages] = useState()
   const [width, setWidth] = useState(window.innerWidth);
   const [padding, setPadding] = useState(600);
   const [margin, setMargin] = useState(200);
