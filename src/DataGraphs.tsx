@@ -36,6 +36,7 @@ export default function DataGraphs() {
                   })
                 }
               />
+
               <FullTeamGraph />
             </div>
 

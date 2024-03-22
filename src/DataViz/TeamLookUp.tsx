@@ -6,11 +6,19 @@ import TeamSelector from "../Components/TeamSelector";
 import { GetTeamsDistrict, GetTeamsEvent } from "../Data";
 import CustomCheckbox from "../Components/CustomCheckbox";
 import TeamGraph from "./TeamGraph";
-import { Grid, Typography } from "@mui/material";
+import {
+  FormControl,
+  Grid,
+  InputLabel,
+  MenuItem,
+  Select,
+  Typography,
+} from "@mui/material";
 import supabase from "../Supabase/supabaseClient";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import { pink } from "@mui/material/colors";
+import MatchGraph from "./MatchProgression";
 
 export default function DataGraphs() {
   const { dataViz, setDataViz } = useDataVizContext();
@@ -155,20 +163,29 @@ export default function DataGraphs() {
             marginTop={2}
             overflow={"scroll"}
           >
-            <Grid item alignContent={"flex-start"} justifyItems={"start"}>
-              <TeamSelector
-                options={dataViz.TeamsList}
-                value={dataViz.Team}
-                onChange={async (event) => {
-                  setDataViz({
-                    ...dataViz,
-                    Team: event.currentTarget.textContent!.toString(),
-                    NickName: await getNickName(
-                      event.currentTarget.textContent!
-                    ),
-                  });
-                }}
-              />
+            <Grid
+              container
+              spacing={2}
+              item
+              alignContent={"center"}
+              justifyItems={"start"}
+              xs={12}
+            >
+              <Grid item>
+                <TeamSelector
+                  options={dataViz.TeamsList}
+                  value={dataViz.Team}
+                  onChange={async (event) => {
+                    setDataViz({
+                      ...dataViz,
+                      Team: event.currentTarget.textContent!.toString(),
+                      NickName: await getNickName(
+                        event.currentTarget.textContent!
+                      ),
+                    });
+                  }}
+                />
+              </Grid>
             </Grid>
             <Grid item alignContent={"flex-center"}>
               <CompetitionSelector
@@ -269,6 +286,50 @@ export default function DataGraphs() {
             </Grid>
           </Grid>
         </div>
+        <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-full overflow-scroll h-full flex flex-col items-center mb-4 py-4">
+          <Typography variant="h5">Match Scores</Typography>
+          <Grid
+            container
+            spacing={2}
+            direction={"column"}
+            justifyItems={"flex-start"}
+            alignContent={"center"}
+          >
+            <Grid item>
+              <div className=" col-span-1 px-2">
+                <FormControl>
+                  <InputLabel
+                    id="demo-simple-select-autowidth-label"
+                    size="normal"
+                  >
+                    Elements
+                  </InputLabel>
+                  <Select
+                    labelId="demo-simple-select-autowidth-label"
+                    id="demo-simple-select-autowidth"
+                    value={dataViz.Elements}
+                    label="Elements"
+                    onChange={(event, newValue) =>
+                      setDataViz({
+                        ...dataViz,
+                        Elements: event.target.value,
+                      })
+                    }
+                  >
+                    <MenuItem value={"All"}>All</MenuItem>
+                    <MenuItem value={"Speaker"}>Speaker</MenuItem>
+                    <MenuItem value={"Amp"}>Amp</MenuItem>
+                    <MenuItem value={"Endgame"}>Endgame</MenuItem>
+                  </Select>
+                </FormControl>
+              </div>
+            </Grid>
+            <Grid item>
+              <MatchGraph />
+            </Grid>
+          </Grid>
+        </div>
+        <br></br>
       </div>
     </div>
   );

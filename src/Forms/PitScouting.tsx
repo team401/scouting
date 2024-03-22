@@ -43,9 +43,11 @@ export default function PitScout() {
   const handleOnSubmit = async (event: { preventDefault: () => void }) => {
     event.preventDefault();
     if (
-      pitScout.Team == "" ||
+      pitScout.Team === "" ||
       pitScout.Competition == undefined ||
-      pitScout.Competition == ""
+      pitScout.Competition == "" ||
+      pitScout.Team === undefined ||
+      pitScout.Team === null
     ) {
       setFormError("Please fill out form correctly");
       return;
@@ -143,13 +145,11 @@ export default function PitScout() {
                         <MenuItem value={"Tank"}>Tank</MenuItem>
                         <MenuItem value={"Swerve"}>Swerve</MenuItem>
                         <MenuItem value={"Mechanum"}>Mechanum</MenuItem>
+                        <MenuItem value={"Other"}>Other</MenuItem>
                       </Select>
                     </FormControl>
                   </div>
                 </div>
-              </Grid>
-              <Grid item>
-                <MultiAutoComplete />
               </Grid>
               <Grid item>
                 <FormGroup>
@@ -228,12 +228,12 @@ export default function PitScout() {
                 </FormGroup>
               </Grid>
               <Grid item>
-                <div className="flex flex-col items-center justify-center p-4">
+                <div className="flex flex-col items-center justify-center p-4 w-full">
                   <label
                     htmlFor="message"
-                    className="block mb-2 text-sm font-medium text-black"
+                    className="block mb-2 text-xs font-medium text-black space-x-3 px-4"
                   >
-                    Comments
+                    Comments (weight, perimeter)
                   </label>
                   <textarea
                     id="message"

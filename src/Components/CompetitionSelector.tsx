@@ -1,4 +1,8 @@
-import { Autocomplete, TextField } from "@mui/material";
+import {
+  Autocomplete,
+  AutocompleteCloseReason,
+  TextField,
+} from "@mui/material";
 import React, { ReactEventHandler, SyntheticEvent } from "react";
 import { alliance, position, useSettingsContext } from "../ContextProvider";
 import { GetTeamsEvent } from "../Data";
@@ -20,7 +24,6 @@ type selectprops = {
     value: string | null
   ) => void;
 };
-
 export default function CompetitionSelector(props: selectprops) {
   const { settings, setSettings } = useSettingsContext();
   console.log(settings.FrcTeams);
@@ -29,7 +32,8 @@ export default function CompetitionSelector(props: selectprops) {
     <Autocomplete
       value={props.value}
       onChange={props.onChange}
-      clearOnEscape
+      autoSelect={true}
+      autoHighlight
       options={comps}
       sx={{ width: 200 }}
       renderInput={(params) => <TextField {...params} label="Competition" />}

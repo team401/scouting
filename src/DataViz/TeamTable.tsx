@@ -401,9 +401,11 @@ export default function EnhancedTable() {
     for (const team of teamsList) {
       const averages = await fetchAveragesComp(team);
       const nickName = await getNickName(team);
-      const climb = Math.trunc((await fetchClimbAvg(team))!);
-      const taxi = Math.trunc((await fetchTaxiAvg(team))!) * 100;
-      const trap = Math.trunc((await fetchTrapAvg(team))!) * 100;
+      const climb = Math.trunc((await fetchClimbAvg(team, dataViz.Playoffs))!);
+      const taxi =
+        Math.trunc((await fetchTaxiAvg(team, dataViz.Playoffs))!) * 100;
+      const trap =
+        Math.trunc((await fetchTrapAvg(team, dataViz.Playoffs))!) * 100;
       rows.push(
         createData(
           nickName,

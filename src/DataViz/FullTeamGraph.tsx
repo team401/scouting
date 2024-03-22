@@ -4,6 +4,7 @@ import supabase from "../Supabase/supabaseClient";
 import { BackHand } from "@mui/icons-material";
 import { useDataVizContext } from "../ContextProvider";
 import { useEffect, useState } from "react";
+import { FormControl, InputLabel, Select, MenuItem } from "@mui/material";
 
 type eventData = {
   team: Number;
@@ -13,7 +14,7 @@ export async function getEventData(competition: string, playoffs: boolean) {
   const { data, error } = await supabase
     .from("Scout_Data")
     .select(
-      "team, Auto_Amp_Missed, Auto_Amp_Made, Auto_Speaker_Missed, Auto_Speaker_Made, Teleop_Amp_Missed, Teleop_Amp_Made, Teleop_Speaker_Missed, Teleop_Speaker_Made, Playoffs"
+      "team, Auto_Amp_Missed, Auto_Amp_Made, Auto_Speaker_Missed, Auto_Speaker_Made, Teleop_Amp_Missed, Teleop_Amp_Made, Teleop_Speaker_Missed, Teleop_Speaker_Made, Playoffs, Endgame, Trap"
     )
     .eq("Event", competition);
   let resp;
@@ -28,12 +29,17 @@ export async function getEventData(competition: string, playoffs: boolean) {
   }
   return resp;
 }
-export async function fetchClimbAvg(team: string) {
+export async function fetchClimbAvg(team: string, playoffs: boolean) {
   const { data, error } = await supabase
     .from("Scout_Data")
-    .select("team, Endgame")
+    .select("team, Endgame, Playoffs")
     .eq("team", team);
-  const resp = await data;
+  let resp;
+  if (playoffs) {
+    resp = await data?.filter((arr: { Playoffs: boolean }) => arr.Playoffs);
+  } else {
+    resp = await data;
+  }
   if (error) {
     console.log("you bad", error);
     return;
@@ -60,12 +66,17 @@ export async function fetchClimbAvg(team: string) {
   let avg = sum / values.length;
   return avg;
 }
-export async function fetchTaxiAvg(team: string) {
+export async function fetchTaxiAvg(team: string, playoffs: boolean) {
   const { data, error } = await supabase
     .from("Scout_Data")
-    .select("team, Taxi")
+    .select("team, Taxi, Playoffs")
     .eq("team", team);
-  const resp = await data;
+  let resp;
+  if (playoffs) {
+    resp = await data?.filter((arr: { Playoffs: boolean }) => arr.Playoffs);
+  } else {
+    resp = await data;
+  }
   if (error) {
     console.log("you bad", error);
     return 0;
@@ -87,12 +98,17 @@ export async function fetchTaxiAvg(team: string) {
   console.log("Taxi Avg:", avg);
   return avg;
 }
-export async function fetchTrapAvg(team: string) {
+export async function fetchTrapAvg(team: string, playoffs: boolean) {
   const { data, error } = await supabase
     .from("Scout_Data")
-    .select("team, Trap")
+    .select("team, Trap, Playoffs")
     .eq("team", team);
-  const resp = await data;
+  let resp;
+  if (playoffs) {
+    resp = await data?.filter((arr: { Playoffs: boolean }) => arr.Playoffs);
+  } else {
+    resp = await data;
+  }
   if (error) {
     console.log("you bad", error);
     return 0;
@@ -114,7 +130,7 @@ export async function fetchTrapAvg(team: string) {
   return avg;
 }
 export default function FullTeamGraph() {
-  const { dataViz } = useDataVizContext();
+  const { dataViz, setDataViz } = useDataVizContext();
 
   const [teamsList, setTeamsList] = useState<string[]>(["000", "000"]);
   const [autoAmpAverage, setAutoAmpAverage] = useState<number[]>([0, 0]);
@@ -126,7 +142,7 @@ export default function FullTeamGraph() {
   const [teleSpeakerMade, setTeleSpeakerMade] = useState<number[]>([0, 0]);
   const [teleSpeakerMissed, setTeleSpeakerMissed] = useState<number[]>([0, 0]);
   const [width, setWidth] = useState(window.innerWidth);
-  const [padding, setPadding] = useState(600);
+  const [padding, setPadding] = useState(800);
   const [margin, setMargin] = useState(200);
   const handleResize = () => {
     setWidth(window.innerWidth);
@@ -137,7 +153,6 @@ export default function FullTeamGraph() {
       setPadding(400);
       setMargin(150);
     }
-    console.log("padding:", padding);
   };
 
   // calls the fetch teams function everytime settings.Competition is updated
@@ -300,64 +315,188 @@ export default function FullTeamGraph() {
   window.addEventListener("resize", handleResize);
   return (
     <div>
-      <BarChart
-        width={padding}
-        height={300}
-        margin={{ left: margin }}
-        slotProps={{
-          legend: {
-            direction: "column",
-            position: { vertical: "top", horizontal: "left" },
-            padding: 0,
+      <div className=" col-span-1 px-2">
+        <FormControl>
+          <InputLabel id="demo-simple-select-autowidth-label" size="normal">
+            Elements
+          </InputLabel>
+          <Select
+            labelId="demo-simple-select-autowidth-label"
+            id="demo-simple-select-autowidth"
+            value={dataViz.Elements}
+            label="Elements"
+            onChange={(event, newValue) =>
+              setDataViz({
+                ...dataViz,
+                Elements: event.target.value,
+              })
+            }
+          >
+            <MenuItem value={"All"}>All</MenuItem>
+            <MenuItem value={"Speaker"}>Speaker</MenuItem>
+            <MenuItem value={"Amp"}>Amp</MenuItem>
+            <MenuItem value={"Endgame"}>Endgame</MenuItem>
+          </Select>
+        </FormControl>
+      </div>
+      {dataViz.Elements === "All" ? (
+        <>
+          <BarChart
+            width={padding}
+            height={300}
+            margin={{ left: margin }}
+            slotProps={{
+              legend: {
+                direction: "column",
+                position: { vertical: "top", horizontal: "left" },
+                padding: 0,
 
-            labelStyle: { fontSize: 12, textOverflow: "clip" },
-          },
-        }}
-        series={[
-          {
-            data: teleAmpAverage,
-            label: "Teleop Amp Made",
-            stack: "A",
-          },
-          {
-            data: teleAmpMissed,
-            label: "Teleop Amp Missed",
-            stack: "A",
-          },
-          {
-            data: teleSpeakerMade,
-            label: "Teleop Speaker Made",
-            stack: "B",
-          },
-          {
-            data: teleSpeakerMissed,
-            label: "Teleop Speaker Missed",
-            stack: "B",
-          },
-          {
-            data: autoSpeakerMade,
-            label: "Auto Speaker Made",
-            stack: "C",
-          },
-          {
-            data: autoSpeakerMissed,
-            label: "Auto Speaker Missed",
-            stack: "C",
-          },
-          {
-            data: autoAmpAverage,
-            label: "Auto Amp Made",
-            stack: "D",
-          },
-          {
-            data: autoAmpMissed,
-            label: "Auto Amp Missed",
-            stack: "D",
-          },
-        ]}
-        xAxis={[{ data: teamsList, scaleType: "band" }]}
-      />
-      <script>window.addEventListener('resize', handleResize); const</script>
+                labelStyle: { fontSize: 12, textOverflow: "clip" },
+              },
+            }}
+            series={[
+              {
+                data: teleAmpAverage,
+                label: "Teleop Amp Made",
+                stack: "A",
+              },
+              {
+                data: teleAmpMissed,
+                label: "Teleop Amp Missed",
+                stack: "A",
+              },
+              {
+                data: teleSpeakerMade,
+                label: "Teleop Speaker Made",
+                stack: "B",
+              },
+              {
+                data: teleSpeakerMissed,
+                label: "Teleop Speaker Missed",
+                stack: "B",
+              },
+              {
+                data: autoSpeakerMade,
+                label: "Auto Speaker Made",
+                stack: "C",
+              },
+              {
+                data: autoSpeakerMissed,
+                label: "Auto Speaker Missed",
+                stack: "C",
+              },
+              {
+                data: autoAmpAverage,
+                label: "Auto Amp Made",
+                stack: "D",
+              },
+              {
+                data: autoAmpMissed,
+                label: "Auto Amp Missed",
+                stack: "D",
+              },
+            ]}
+            xAxis={[{ data: teamsList, scaleType: "band" }]}
+          />
+          <script>
+            window.addEventListener('resize', handleResize); const
+          </script>
+        </>
+      ) : (
+        <div />
+      )}
+      {dataViz.Elements === "Speaker" ? (
+        <>
+          <BarChart
+            width={padding}
+            height={300}
+            margin={{ left: margin }}
+            slotProps={{
+              legend: {
+                direction: "column",
+                position: { vertical: "top", horizontal: "left" },
+                padding: 0,
+
+                labelStyle: { fontSize: 12, textOverflow: "clip" },
+              },
+            }}
+            series={[
+              {
+                data: teleSpeakerMade,
+                label: "Teleop Speaker Made",
+                stack: "B",
+              },
+              {
+                data: teleSpeakerMissed,
+                label: "Teleop Speaker Missed",
+                stack: "B",
+              },
+              {
+                data: autoSpeakerMade,
+                label: "Auto Speaker Made",
+                stack: "C",
+              },
+              {
+                data: autoSpeakerMissed,
+                label: "Auto Speaker Missed",
+                stack: "C",
+              },
+            ]}
+            xAxis={[{ data: teamsList, scaleType: "band" }]}
+          />
+          <script>
+            window.addEventListener('resize', handleResize); const
+          </script>
+        </>
+      ) : (
+        <div />
+      )}
+      {dataViz.Elements === "Amp" ? (
+        <>
+          <BarChart
+            width={padding}
+            height={300}
+            margin={{ left: margin }}
+            slotProps={{
+              legend: {
+                direction: "column",
+                position: { vertical: "top", horizontal: "left" },
+                padding: 0,
+
+                labelStyle: { fontSize: 12, textOverflow: "clip" },
+              },
+            }}
+            series={[
+              {
+                data: teleAmpAverage,
+                label: "Teleop Amp Made",
+                stack: "A",
+              },
+              {
+                data: teleAmpMissed,
+                label: "Teleop Amp Missed",
+                stack: "A",
+              },
+              {
+                data: autoAmpAverage,
+                label: "Auto Amp Made",
+                stack: "D",
+              },
+              {
+                data: autoAmpMissed,
+                label: "Auto Amp Missed",
+                stack: "D",
+              },
+            ]}
+            xAxis={[{ data: teamsList, scaleType: "band" }]}
+          />
+          <script>
+            window.addEventListener('resize', handleResize); const
+          </script>
+        </>
+      ) : (
+        <div />
+      )}
     </div>
   );
 }

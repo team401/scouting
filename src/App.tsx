@@ -26,50 +26,6 @@ export default function App() {
   const { teleop, setTeleop } = useTeleopContext();
   const [formError, setFormError] = useState("");
 
-  const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (
-    event: React.FormEvent<HTMLFormElement>
-  ) => {
-    event.preventDefault();
-    if (preMatch.Team == "" || preMatch.Match == undefined) {
-      setFormError("Please fill out form correctly");
-      return;
-    }
-    const { error } = await supabase.from("Scout_Data").insert({
-      Event: settings.Competition,
-      team: preMatch.Team,
-      Match: preMatch.Match,
-      NoShow: preMatch.NoShow,
-      Alliance: settings.Alliance,
-      Position: settings.Position,
-      Auto_Amp_Missed: auto.Amp_Missed,
-      Auto_Amp_Made: auto.Amp_Made,
-      Auto_Speaker_Missed: auto.Speaker_Missed,
-      Auto_Speaker_Made: auto.Speaker_Made,
-      Taxi: auto.Taxi,
-      Teleop_Amp_Missed: teleop.Amp_Missed,
-      Teleop_Amp_Made: teleop.Amp_Made,
-      Teleop_Speaker_Missed: teleop.Speaker_Missed,
-      Teleop_Speaker_Made: teleop.Speaker_Made,
-      Endgame: teleop.EndGame,
-      Comments: teleop.Text,
-    });
-    if (error) {
-      console.log(error);
-      setFormError("Please fill out form correctly");
-    }
-
-    console.log("we are bojanglin");
-    setPreMatch({
-      ...preMatch,
-      Team: "",
-      Match: preMatch.Match! + 1,
-      NoShow: false,
-    });
-    setAuto({ ...defaultAuto });
-    setTeleop(defaultTeleop);
-    console.log(preMatch.NoShow);
-  };
-
   return (
     <div
       className={`transition min-h-screen w-screen font-sans flex flex-col items-center

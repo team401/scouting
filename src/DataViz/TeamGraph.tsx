@@ -99,15 +99,15 @@ export default function TeamGraph() {
       console.log("no team data");
       return [[0], [0], [0], [0], [0], [0], [0]];
     }
-    let climb = await fetchClimbAvg(dataViz.Team);
+    let climb = await fetchClimbAvg(dataViz.Team, dataViz.Playoffs);
     if (climb == null || !climb || climb == undefined) {
       climb = 0;
     }
-    let taxi = await fetchTaxiAvg(dataViz.Team);
+    let taxi = await fetchTaxiAvg(dataViz.Team, dataViz.Playoffs);
     if (taxi == null || taxi == undefined) {
       taxi = 0;
     }
-    let trap = await fetchTrapAvg(dataViz.Team);
+    let trap = await fetchTrapAvg(dataViz.Team, dataViz.Playoffs);
     if ((trap == null || trap == undefined) && trap <= 1) {
       trap = 0;
     }
@@ -180,15 +180,15 @@ export default function TeamGraph() {
       console.log("no team data");
       return [[0], [0], [0], [0], [0], [0], [0]];
     }
-    let climb = await fetchClimbAvg(dataViz.Team);
+    let climb = await fetchClimbAvg(dataViz.Team, dataViz.Playoffs);
     if (climb == null || !climb || climb == undefined) {
       climb = 0;
     }
-    let taxi = await fetchTaxiAvg(dataViz.Team);
+    let taxi = await fetchTaxiAvg(dataViz.Team, dataViz.Playoffs);
     if (taxi == null || !taxi || taxi == undefined) {
       taxi = 0;
     }
-    let trap = await fetchTrapAvg(dataViz.Team);
+    let trap = await fetchTrapAvg(dataViz.Team, dataViz.Playoffs);
     if (trap == null || !trap || trap == undefined) {
       trap = 0;
     }
