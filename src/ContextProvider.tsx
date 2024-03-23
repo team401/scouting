@@ -55,8 +55,8 @@ export enum Boolean {
   TRUE = 1,
 }
 
-export type PreMatch = {
-  Team: string;
+type PreMatch = {
+  Team: String;
   NoShow: boolean;
   Match: number | undefined;
   Playoffs: boolean;
@@ -67,7 +67,7 @@ type PreMatchState = {
   setPreMatch: React.Dispatch<React.SetStateAction<PreMatch>>;
 };
 
-export type Auto = {
+type Auto = {
   Amp_Made: number;
   Amp_Missed: number;
   Speaker_Made: number;
@@ -80,7 +80,7 @@ type AutoState = {
   setAuto: React.Dispatch<React.SetStateAction<Auto>>;
 };
 
-export type Teleop = {
+type Teleop = {
   Amp_Made: number;
   Amp_Missed: number;
   Speaker_Made: number;

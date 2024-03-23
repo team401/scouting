@@ -22,7 +22,7 @@ import TeleopForm from "./Forms/TeleopForm";
 import NavBar from "./Components/NavBar";
 import App from "./App";
 import DataEntry from "./DataEntry";
-import AverageTeamGraph from "./DataViz/AverageTeamGraph";
+import FullTeamGraph from "./DataViz/FullTeamGraph";
 import DataGraphs from "./DataGraphs";
 import TeamLookUp from "./DataViz/TeamLookUp";
 import PitScout from "./Forms/PitScouting";

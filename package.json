@@ -13,7 +13,6 @@
     "@types/react-dom": "latest",
     "axios": "^1.6.5",
     "concurrently": "^8.2.2",
-    "dotenv": "^16.4.5",
     "expo": "^50.0.3",
     "react": "latest",
     "react-dom": "latest",

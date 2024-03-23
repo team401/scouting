@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import AverageTeamGraph from "./AverageTeamGraph";
+import FullTeamGraph from "../DataViz/FullTeamGraph";
 import CompetitionSelector from "../Components/CompetitionSelector";
 import { useDataVizContext, useSettingsContext } from "../ContextProvider";
 import TeamSelector from "../Components/TeamSelector";
@@ -221,8 +221,8 @@ export default function DataGraphs() {
               />
             </Grid>
           </Grid>
-          <Grid>
-            <AverageTeamGraph />
+          <Grid item>
+            <TeamGraph />
           </Grid>
 
           <Grid item>
