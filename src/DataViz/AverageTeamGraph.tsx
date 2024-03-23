@@ -5,14 +5,15 @@ import { BackHand } from "@mui/icons-material";
 import { useDataVizContext } from "../ContextProvider";
 import { useEffect, useState } from "react";
 import { getAverageData } from "../utils/average";
-import {AverageData} from "../types";
-
+import { AverageData } from "../types";
 
 export default function AverageTeamGraph() {
   const { dataViz } = useDataVizContext();
   const [averageData, setAverageData] = useState<AverageData[] | null>(null);
   const [teamsList, setTeamsList] = useState<string[]>(["000", "000"]);
-  const [currentTeamAvg, setCurrentTeamAvg] = useState<AverageData | null | undefined>(null);
+  const [currentTeamAvg, setCurrentTeamAvg] = useState<
+    AverageData | null | undefined
+  >(null);
   const [width, setWidth] = useState(window.innerWidth);
   const [padding, setPadding] = useState(600);
   const [margin, setMargin] = useState(200);
@@ -20,24 +21,26 @@ export default function AverageTeamGraph() {
   useEffect(() => {
     const updateData = async () => {
       const data = await getAverageData(dataViz.Competition);
-      if(data) {
+      if (data) {
         setAverageData(data);
         setTeamsList(data.map((d) => d.teamNumber.toString()));
-        setCurrentTeamAvg(data.find((d) => d.teamNumber === parseInt(dataViz.Team)));
+        setCurrentTeamAvg(
+          data.find((d) => d.teamNumber === parseInt(dataViz.Team))
+        );
       } else {
-        console.error('error fetching averages');
-        setAverageData(null)
+        console.error("error fetching averages");
+        setAverageData(null);
       }
-    }
+    };
     updateData();
-  }, [dataViz.Competition]);
+  }, [dataViz.Competition, dataViz.Team, dataViz.AllComps]);
 
   useEffect(() => {
-    if(averageData) {
+    if (averageData) {
     } else {
       setCurrentTeamAvg(null);
     }
-  }, [dataViz.Team])
+  }, [dataViz.Team]);
 
   const handleResize = () => {
     setWidth(window.innerWidth);
@@ -54,43 +57,48 @@ export default function AverageTeamGraph() {
   window.addEventListener("resize", handleResize);
   return (
     <div>
-      { currentTeamAvg ? (
-          <BarChart
-              width={padding}
-              height={300}
-              margin={{ left: margin }}
-              slotProps={{
-                legend: {
-                  direction: "column",
-                  position: { vertical: "top", horizontal: "left" },
-                  padding: 0,
+      {currentTeamAvg ? (
+        <BarChart
+          width={padding}
+          height={300}
+          margin={{ left: margin }}
+          slotProps={{
+            legend: {
+              direction: "column",
+              position: { vertical: "top", horizontal: "left" },
+              padding: 0,
 
-                  labelStyle: { fontSize: 12, textOverflow: "clip" },
-                },
-              }}
-              series={[
-                {
-                  data: [currentTeamAvg.teleSpeaker],
-                  label: "Teleop Speaker Average",
-                },
-                {
-                  data: [currentTeamAvg.teleAmp],
-                  label: "Teleop Amp Average",
-                },
-                {
-                  data: [currentTeamAvg.autoSpeaker],
-                  label: "Auto Speaker Average",
-                },
-                {
-                  data: [currentTeamAvg.autoAmp],
-                  label: "Auto Amp ",
-                },
-              ]}
-              xAxis={[{ data: [`Team ${currentTeamAvg.teamNumber} Average Points`], scaleType: "band" }]}
-          />
+              labelStyle: { fontSize: 12, textOverflow: "clip" },
+            },
+          }}
+          series={[
+            {
+              data: [currentTeamAvg.teleSpeaker],
+              label: "Teleop Speaker Average",
+            },
+            {
+              data: [currentTeamAvg.teleAmp],
+              label: "Teleop Amp Average",
+            },
+            {
+              data: [currentTeamAvg.autoSpeaker],
+              label: "Auto Speaker Average",
+            },
+            {
+              data: [currentTeamAvg.autoAmp],
+              label: "Auto Amp ",
+            },
+          ]}
+          xAxis={[
+            {
+              data: [`Team ${currentTeamAvg.teamNumber} Average Points`],
+              scaleType: "band",
+            },
+          ]}
+        />
       ) : (
-          <div>No Team selected</div>
-      ) }
+        <div>No Team selected</div>
+      )}
       <script>window.addEventListener('resize', handleResize); const</script>
     </div>
   );

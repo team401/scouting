@@ -335,7 +335,6 @@ export default function FullTeamGraph() {
             <MenuItem value={"All"}>All</MenuItem>
             <MenuItem value={"Speaker"}>Speaker</MenuItem>
             <MenuItem value={"Amp"}>Amp</MenuItem>
-            <MenuItem value={"Endgame"}>Endgame</MenuItem>
           </Select>
         </FormControl>
       </div>
