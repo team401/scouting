@@ -1,9 +1,10 @@
 import React from "react";
-import FullTeamGraph from "./DataViz/FullTeamGraph";
+import AllAveragesGraph from "./DataViz/AllAveragesGraph";
 import CompetitionSelector from "./Components/CompetitionSelector";
 import { useDataVizContext, useSettingsContext } from "./ContextProvider";
 import TeamTable from "./DataViz/TeamTable";
 import CustomCheckbox from "./Components/CustomCheckbox";
+import FullTeamGraph from "./DataViz/FullTeamGraph";
 export default function DataGraphs() {
   const { dataViz, setDataViz } = useDataVizContext();
   const { settings, setSettings } = useSettingsContext();

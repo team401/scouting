@@ -9,15 +9,8 @@ import {
   useSettingsContext,
   useTeleopContext,
 } from "./ContextProvider";
-import { GetTeamsEvent } from "./Data";
-import SettingsForm from "./Forms/SettingsForm";
-import PreMatchForm from "./Forms/PreMatchForm";
-import AutonomousForm from "./Forms/AutonomousForm";
-import TeleopForm from "./Forms/TeleopForm";
 import { useState } from "react";
 import supabase from "./Supabase/supabaseClient";
-import FullTeamGraph from "./DataViz/FullTeamGraph";
-import QR from "./Components/QRCode";
 
 export default function App() {
   const { settings, setSettings } = useSettingsContext();
@@ -33,6 +26,7 @@ export default function App() {
     >
       <NavBar />
       <Outlet />
+      <text>{formError}</text>
     </div>
   );
 }
