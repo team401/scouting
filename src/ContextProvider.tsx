@@ -138,7 +138,7 @@ export const defaultTeleop: Teleop = {
 export const defaultSettings: Settings = {
   Alliance: "Red",
   Position: "1",
-  Competition: "2024vabla",
+  Competition: "2024vafal",
   FrcTeams: [""],
 };
 export const defaultPreMatch: PreMatch = {
