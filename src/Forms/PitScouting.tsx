@@ -43,9 +43,11 @@ export default function PitScout() {
   const handleOnSubmit = async (event: { preventDefault: () => void }) => {
     event.preventDefault();
     if (
-      pitScout.Team == "" ||
+      pitScout.Team === "" ||
       pitScout.Competition == undefined ||
-      pitScout.Competition == ""
+      pitScout.Competition == "" ||
+      pitScout.Team === undefined ||
+      pitScout.Team === null
     ) {
       setFormError("Please fill out form correctly");
       return;
@@ -125,14 +127,17 @@ export default function PitScout() {
                   </div>
                   <div className=" col-span-1 px-2">
                     <FormControl>
-                      <InputLabel id="demo-simple-select-label">
+                      <InputLabel
+                        id="demo-simple-select-autowidth-label"
+                        size="normal"
+                      >
                         Drive
                       </InputLabel>
                       <Select
-                        labelId="demo-simple-select-label"
-                        id="demo-simple-select"
+                        labelId="demo-simple-select-autowidth-label"
+                        id="demo-simple-select-autowidth"
                         value={pitScout.Drive}
-                        label="Age"
+                        label="Drive"
                         onChange={(event, newValue) =>
                           setPitScout({
                             ...pitScout,
@@ -143,13 +148,29 @@ export default function PitScout() {
                         <MenuItem value={"Tank"}>Tank</MenuItem>
                         <MenuItem value={"Swerve"}>Swerve</MenuItem>
                         <MenuItem value={"Mechanum"}>Mechanum</MenuItem>
+                        <MenuItem value={"Other"}>Other</MenuItem>
                       </Select>
                     </FormControl>
                   </div>
                 </div>
               </Grid>
+            </Grid>
+          </div>
+          <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-full h-full">
+            <Grid
+              container
+              spacing={2}
+              direction={"column"}
+              flexGrow={12}
+              justifyContent={"center"}
+              alignItems={"center"}
+              paddingRight={2}
+              paddingTop={1}
+            >
               <Grid item>
-                <MultiAutoComplete />
+                <div className="font-semibold text-2xl text-center">
+                  Capabailities
+                </div>
               </Grid>
               <Grid item>
                 <FormGroup>
@@ -227,30 +248,31 @@ export default function PitScout() {
                   />
                 </FormGroup>
               </Grid>
-              <Grid item>
-                <div className="flex flex-col items-center justify-center p-4">
-                  <label
-                    htmlFor="message"
-                    className="block mb-2 text-sm font-medium text-black"
-                  >
-                    Comments
-                  </label>
-                  <textarea
-                    id="message"
-                    rows={4}
-                    value={pitScout.Comments}
-                    onChange={(event) =>
-                      setPitScout({
-                        ...pitScout,
-                        Comments: event.currentTarget.value,
-                      })
-                    }
-                    className="block p-2.5 w-full text-sm text-black bg-transparent placeholder-black rounded-lg border border-black"
-                    placeholder="Write your thoughts here..."
-                  ></textarea>
-                </div>
-              </Grid>
-              {/* <Grid item>
+            </Grid>
+          </div>
+          <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-full h-full">
+            <div className="flex flex-col items-center justify-center p-4 w-full">
+              <label
+                htmlFor="message"
+                className="block mb-2 text-xs font-medium text-black space-x-3 px-4"
+              >
+                Comments (weight, perimeter)
+              </label>
+              <textarea
+                id="message"
+                rows={4}
+                value={pitScout.Comments}
+                onChange={(event) =>
+                  setPitScout({
+                    ...pitScout,
+                    Comments: event.currentTarget.value,
+                  })
+                }
+                className="block p-2.5 w-full text-sm text-black bg-transparent placeholder-black rounded-lg border border-black"
+                placeholder="Write your thoughts here..."
+              ></textarea>
+            </div>
+            {/* <Grid item>
                 <div className="flex flex-col gap-4 space-y-4 justify-center content-center items-center">
                   <div className=" col-span-1 py-2">
                     <label> Robot Picture</label>
@@ -266,7 +288,6 @@ export default function PitScout() {
                   </div>
                 </div>
               </Grid> */}
-            </Grid>
             <button
               className="bg-black bg-opacity-25 hover:bg-opacity-50 text-white font-bold py-2 px-4 rounded-full "
               type="submit"

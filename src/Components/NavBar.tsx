@@ -66,16 +66,14 @@ export default function NavBar() {
       ${settings.Alliance == "Red" ? "bg-red-bg" : "bg-blue-bg"}`}
     >
       <Link
-        className="md:hidden bg-black bg-opacity-25 hover:bg-opacity-50 basis-1/6 flex-auto py-4 md:py-2 px-2 text-center"
+        className="md:hidden bg-black bg-opacity-25 hover:bg-opacity-50 basis-1/6 flex-auto py-4 md:py-2 text-center h-100"
         to={links.prev.to}
       >
         <ArrowBackIosIcon className="pb-0.5" fontSize="inherit" />{" "}
         {links.prev.text}
       </Link>
       <Link
-
         className="bg-black hidden bg-opacity-25 hover:bg-opacity-50 py-2  md:block px-4  rounded-l-lg "
-
         to="/dataEntry"
       >
         DataEntry
@@ -88,7 +86,6 @@ export default function NavBar() {
       </Link>
       <Link
         className="bg-black bg-opacity-25 hidden hover:bg-opacity-50 py-2  md:block px-4 "
-
         to="/dataGraphs"
       >
         DataGraphs
@@ -115,7 +112,7 @@ export default function NavBar() {
         <AllianceSwitch />
       </button>
       <Link
-        className="md:hidden bg-black bg-opacity-25 hover:bg-opacity-50 basis-1/6 flex-auto py-4 md:py-2 px-2 text-center"
+        className="md:hidden bg-black bg-opacity-25 hover:bg-opacity-50 basis-1/6 flex-auto py-4 md:py-2 pr-1 text-center h-100 text-clip"
         to={links.next.to}
       >
         {links.next.text}{" "}

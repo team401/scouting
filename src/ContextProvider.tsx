@@ -31,6 +31,7 @@ export type DataViz = {
   NickName: string;
   AllComps: boolean;
   Playoffs: boolean;
+  Elements: string;
 };
 type DataVizState = {
   dataViz: DataViz;
@@ -115,6 +116,7 @@ export const defaultData: DataViz = {
   NickName: "",
   AllComps: false,
   Playoffs: false,
+  Elements: "All",
 };
 export const defaultAuto: Auto = {
   Amp_Made: 0,
