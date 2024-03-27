@@ -9,4 +9,6 @@ export type AverageData = {
     climb: number;
     trapPercent: number;
     taxiPercent: number;
+    autoAmpAccuracy: number;
+    teleAmpAccuracy: number;
 }
