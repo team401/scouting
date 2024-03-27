@@ -1,5 +1,6 @@
 import * as React from "react";
 import { BarChart } from "@mui/x-charts/BarChart";
+
 import supabase from "../Supabase/supabaseClient";
 import { BackHand, FitScreen } from "@mui/icons-material";
 import { useDataVizContext } from "../ContextProvider";
@@ -230,7 +231,11 @@ export default function TeamGraph() {
         { data: avgTeamData[5], label: "Taxi (1 = 100%)" },
         { data: avgTeamData[6], label: "Trap (1 = 100%)" },
       ]}
-      xAxis={[{ data: [dataViz.Team], scaleType: "band" }]}
+      xAxis={[
+        {
+          scaleType: 'band',
+          data: [dataViz.Team],
+        }]}
     />
   );
 }

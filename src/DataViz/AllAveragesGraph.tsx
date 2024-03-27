@@ -5,6 +5,7 @@ import { getAverageData } from "../utils/average";
 import { BarChart } from "@mui/x-charts/BarChart";
 import * as React from "react";
 import { FormControl, InputLabel, Select, MenuItem } from "@mui/material";
+import { mangoFusionPalette } from "@mui/x-charts";
 
 export default function allAveragesGraph() {
   const { dataViz, setDataViz } = useDataVizContext();
@@ -69,6 +70,7 @@ export default function allAveragesGraph() {
       {averageData ? (
         dataViz.Elements === "All" ? (
           <BarChart
+          colors={mangoFusionPalette}
             width={padding}
             height={300}
             dataset={averageData}

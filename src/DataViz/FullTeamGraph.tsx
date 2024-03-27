@@ -5,6 +5,7 @@ import { BackHand } from "@mui/icons-material";
 import { useDataVizContext } from "../ContextProvider";
 import { useEffect, useState } from "react";
 import { FormControl, InputLabel, Select, MenuItem } from "@mui/material";
+import { mangoFusionPalette } from "@mui/x-charts";
 
 type eventData = {
   team: Number;
@@ -341,6 +342,7 @@ export default function FullTeamGraph() {
       {dataViz.Elements === "All" ? (
         <>
           <BarChart
+            colors={mangoFusionPalette}
             width={padding}
             height={300}
             margin={{ left: margin }}

@@ -6,6 +6,7 @@ import { useDataVizContext } from "../ContextProvider";
 import { useEffect, useState } from "react";
 import { getAverageData } from "../utils/average";
 import { AverageData } from "../types";
+import { mangoFusionPalette } from "@mui/x-charts";
 
 export default function AverageTeamGraph() {
   const { dataViz } = useDataVizContext();
@@ -59,6 +60,7 @@ export default function AverageTeamGraph() {
     <div>
       {currentTeamAvg ? (
         <BarChart
+          colors={mangoFusionPalette}
           width={padding}
           height={300}
           margin={{ left: margin }}
@@ -75,6 +77,7 @@ export default function AverageTeamGraph() {
             {
               data: [currentTeamAvg.teleSpeaker],
               label: "Teleop Speaker Average",
+              
             },
             {
               data: [currentTeamAvg.teleAmp],
