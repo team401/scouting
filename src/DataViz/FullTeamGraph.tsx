@@ -346,9 +346,9 @@ export default function FullTeamGraph() {
             margin={{ left: margin }}
             slotProps={{
               legend: {
-                direction: "column",
+                direction: "row",
                 position: { vertical: "top", horizontal: "left" },
-                padding: 0,
+                padding: -15,
 
                 labelStyle: { fontSize: 12, textOverflow: "clip" },
               },

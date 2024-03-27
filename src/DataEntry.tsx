@@ -68,7 +68,7 @@ export default function DataEntry() {
     });
 
     setQRContent(
-      "Initials,Event,Match,team,NoShow,Alliance,Position,Auto_Amp_Missed,Auto_Amp_Made,Auto_Speaker_Missed,Auto_Speaker_Made,Taxi,Teleop_Amp_Missed,Teleop_Amp_Made,Teleop_Speaker_Missed,Teleop_Speaker_Made,Endgame,Trap,Comments, Playoffs" +
+      "Initials,Event,Match,team,NoShow,Alliance,Position,Auto_Amp_Missed,Auto_Amp_Made,Auto_Speaker_Missed,Auto_Speaker_Made,Taxi,Teleop_Amp_Missed,Teleop_Amp_Made,Teleop_Speaker_Missed,Teleop_Speaker_Made,Endgame,Trap,Comments,Playoffs" +
         "\n" +
         [
           settings.Initials,

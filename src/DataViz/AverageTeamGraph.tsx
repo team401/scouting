@@ -124,6 +124,7 @@ export default function AverageTeamGraph() {
               {
                 data: [currentTeamAvg.teleAmpAccuracy],
                 label: "Tele Amp Accuracy",
+                color: "#ef4444",
               },
             ]}
             xAxis={[
