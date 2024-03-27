@@ -9,29 +9,27 @@ const average = (oldAvg: number, newVal: number, denom: number) => {
 
 const updateAverage = async (settings: Settings, preMatch: PreMatch, auto: Auto, teleop: Teleop) => {
 // compute and send averages
-    const { data, error: avgError } = await supabase.from("Averages")
-        .select(
-            "teamNumber, matchesPlayed, teleAmp, teleSpeaker, autoAmp, autoSpeaker, climb, trapPercent, taxiPercent"
-        )
-        .eq(
+    const { data, error: avgError } = await supabase.from("Averages").select(
+            "teamNumber, matchesPlayed, teleAmp, teleSpeaker, autoAmp, autoSpeaker, climb, trapPercent, taxiPercent, autoAmpAccuracy, teleAmpAccuracy"
+        ).eq(
             "teamNumber", parseInt(preMatch.Team)
-        )
-        .eq(
+        ).eq(
             "event", settings.Competition
         );
+    const resp = await data;
     if (avgError) {
         console.error(avgError.message);
-    } else if (data == null) {
+    } else if (resp == null || resp.length == 0 || resp == undefined) {
         // create column ( first match added )
         let climbPoints = 0;
         if(teleop.EndGame === "Parked") {
             climbPoints = 1;
         } else if (teleop.EndGame === "Climbed") {
             climbPoints = 3;
-        } else {
+        } else if (teleop.EndGame === "Harmony") {
             climbPoints = 5;
         }
-        const {error: insertError } = await supabase.from("Average").insert({
+        const {error: insertError } = await supabase.from("Averages").insert({
             teamNumber: parseInt(preMatch.Team),
             event: settings.Competition,
             matchesPlayed: 1,
@@ -41,13 +39,15 @@ const updateAverage = async (settings: Settings, preMatch: PreMatch, auto: Auto,
             autoSpeaker: auto.Speaker_Made,
             climb: climbPoints,
             trapPercent: teleop.Trap === "Successful" ? 100 : 0,
-            taxiPercent: auto.Taxi ? 100 : 0
+            taxiPercent: auto.Taxi ? 100 : 0,
+            autoAmpAccuracy: auto.Amp_Made/(auto.Amp_Made+auto.Amp_Missed) * 100,
+            teleAmpAccuracy: teleop.Amp_Made/(teleop.Amp_Made+teleop.Amp_Missed) * 100,
         })
         if(insertError) {
             console.error(insertError.message);
         }
     } else {
-        const oldVals = data[0];
+        const oldVals = resp[0];
         const totalMatches = oldVals.matchesPlayed + 1;
         const {error: updateError } = await supabase.from("Average").update({
             matchesPlayed: totalMatches,
@@ -57,7 +57,9 @@ const updateAverage = async (settings: Settings, preMatch: PreMatch, auto: Auto,
             autoSpeaker: average(oldVals.autoSpeaker, auto.Speaker_Made, totalMatches),
             climb: average(oldVals.climb, findClimbPoints(teleop.EndGame), totalMatches),
             trapPercent: average(oldVals.trapPercent, teleop.Trap === "Successful" ? 100 : 0, totalMatches),
-            taxiPercent: average(oldVals.taxiPercent, auto.Taxi ? 100 : 0, totalMatches)
+            taxiPercent: average(oldVals.taxiPercent, auto.Taxi ? 100 : 0, totalMatches),
+            autoAmpAccuracy: average(oldVals.autoAmpAccuracy, (auto.Amp_Made/(auto.Amp_Made+auto.Amp_Missed) *  100), totalMatches),
+            teleopAmpAccuracy: average(oldVals.teleAmpAccuracy, (teleop.Amp_Made/(teleop.Amp_Made+teleop.Amp_Missed) * 100), totalMatches)
         })
         if (updateError) {
             console.error(updateError.message);
@@ -70,7 +72,7 @@ export async function getAverageData(competition: string): Promise<AverageData[]
         const {data } = await supabase
             .from("Averages")
             .select(
-                "teamNumber, matchesPlayed, teleAmp, teleSpeaker, autoAmp, autoSpeaker, climb, trapPercent, taxiPercent"
+                "teamNumber, matchesPlayed, teleAmp, teleSpeaker, autoAmp, autoSpeaker, climb, trapPercent, taxiPercent, autoAmpAccuracy, teleAmpAccuracy"
             )
             .eq("event", competition);
 

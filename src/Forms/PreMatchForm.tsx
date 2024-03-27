@@ -18,6 +18,7 @@ import {
   FilledTextFieldProps,
   FormControlLabel,
   Grid,
+  Input,
   OutlinedTextFieldProps,
   StandardTextFieldProps,
   TextField,
@@ -46,12 +47,13 @@ export default function PreMatchForm() {
           <TeamSelector
             options={settings.FrcTeams}
             value={preMatch.Team}
-            onChange={(event) =>
-              setPreMatch({
-                ...preMatch,
-                Team: event.currentTarget.textContent!.toString(),
-              })
-            }
+            onInputChange={(event, value, reason) => {
+              if (settings.FrcTeams.includes(value)) {
+                setPreMatch({ ...preMatch, Team: value });
+                console.log("input change called:", preMatch.Team);
+              }
+            }}
+            onChange={undefined}
           />
         </Grid>
         <Grid item>

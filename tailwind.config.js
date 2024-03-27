@@ -12,7 +12,7 @@ module.exports = {
     extend: {
       colors: {
         // Most of these are stolen from https://tailwindcolor.com/
-        "red-bg": "#F87171",
+        "red-bg": "#dc2626",
         "red-light": "#FCA5A5",
         "red-dark": "#DC2626",
         "blue-bg": "#3B82F6",

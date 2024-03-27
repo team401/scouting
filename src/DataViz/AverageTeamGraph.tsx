@@ -56,46 +56,84 @@ export default function AverageTeamGraph() {
 
   window.addEventListener("resize", handleResize);
   return (
-    <div>
+    <div className="flex flex-col gap-2 m-2">
       {currentTeamAvg ? (
-        <BarChart
-          width={padding}
-          height={300}
-          margin={{ left: margin }}
-          slotProps={{
-            legend: {
-              direction: "column",
-              position: { vertical: "top", horizontal: "left" },
-              padding: 0,
+        <>
+          <BarChart
+            width={padding}
+            height={300}
+            margin={{ left: margin }}
+            slotProps={{
+              legend: {
+                direction: "column",
+                position: { vertical: "top", horizontal: "left" },
+                padding: 0,
 
-              labelStyle: { fontSize: 12, textOverflow: "clip" },
-            },
-          }}
-          series={[
-            {
-              data: [currentTeamAvg.teleSpeaker],
-              label: "Teleop Speaker Average",
-            },
-            {
-              data: [currentTeamAvg.teleAmp],
-              label: "Teleop Amp Average",
-            },
-            {
-              data: [currentTeamAvg.autoSpeaker],
-              label: "Auto Speaker Average",
-            },
-            {
-              data: [currentTeamAvg.autoAmp],
-              label: "Auto Amp ",
-            },
-          ]}
-          xAxis={[
-            {
-              data: [`Team ${currentTeamAvg.teamNumber} Average Points`],
-              scaleType: "band",
-            },
-          ]}
-        />
+                labelStyle: { fontSize: 12, textOverflow: "clip" },
+              },
+            }}
+            series={[
+              {
+                data: [currentTeamAvg.teleSpeaker],
+                label: "Teleop Speaker",
+              },
+              {
+                data: [currentTeamAvg.teleAmp],
+                label: "Teleop Amp",
+              },
+              {
+                data: [currentTeamAvg.autoSpeaker],
+                label: "Auto Speaker",
+              },
+              {
+                data: [currentTeamAvg.autoAmp],
+                label: "Auto Amp",
+              },
+              {
+                data: [currentTeamAvg.climb],
+                label: "Climb",
+              },
+            ]}
+            xAxis={[
+              {
+                data: [`Team ${currentTeamAvg.teamNumber} Average Points`],
+                scaleType: "band",
+              },
+            ]}
+          />
+          <BarChart
+            width={padding}
+            height={300}
+            margin={{ left: margin }}
+            slotProps={{
+              legend: {
+                direction: "column",
+                position: { vertical: "top", horizontal: "left" },
+                padding: 0,
+
+                labelStyle: { fontSize: 12, textOverflow: "clip" },
+              },
+            }}
+            series={[
+              { data: [currentTeamAvg.taxiPercent], label: "Taxi" },
+              { data: [currentTeamAvg.trapPercent], label: "Trap" },
+              {
+                data: [currentTeamAvg.autoAmpAccuracy],
+                label: "Auto Amp Accuracy",
+              },
+              {
+                data: [currentTeamAvg.teleAmpAccuracy],
+                label: "Tele Amp Accuracy",
+              },
+            ]}
+            xAxis={[
+              {
+                data: [`Team ${currentTeamAvg.teamNumber} Percentages`],
+                scaleType: "band",
+              },
+            ]}
+          />
+        </>
       ) : (
         <div>No Team selected</div>
       )}

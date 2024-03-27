@@ -33,6 +33,8 @@ import Switch from "@mui/material/Switch";
 import DeleteIcon from "@mui/icons-material/Delete";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import { visuallyHidden } from "@mui/utils";
+import { getAverageData } from "../utils/average";
+import { AverageData } from "../types";
 
 interface Data {
   name: string;
@@ -300,59 +302,39 @@ export default function EnhancedTable() {
   const [rowsPerPage, setRowsPerPage] = React.useState(5);
 
   useEffect(() => {
-    getRows();
-  }, [dataViz.Competition]);
-  const fetchAveragesComp = async (team: string) => {
-    const resp = await getEventData(dataViz.Competition, dataViz.Playoffs);
-    if (resp == null || resp == undefined) {
-      return [];
+    createRows();
+  }, [dataViz.Competition, dataViz.Playoffs]);
+  const createRows = async () => {
+    const data = await getAverageData(dataViz.Competition);
+    console.log(data);
+    if (data!.length == 0 || data == null || data == undefined) {
+      setRows(["", "", 0, 0, 0, 0, 0, 0]);
+      console.log("Table has no data");
+      return;
     }
-    const teams = resp!.filter((arr: { team: any }) => arr.team == team);
-    const matches = teams!.map(
-      (a: {
-        Auto_Amp_Made: any;
-        Auto_Speaker_Made: any;
-        Teleop_Amp_Made: any;
-        Teleop_Speaker_Made: any;
-      }) => ({
-        Auto_Amp_Made: a.Auto_Amp_Made,
-        Auto_Speaker_Made: a.Auto_Speaker_Made,
-        Teleop_Amp_Made: a.Teleop_Amp_Made,
-        Teleop_Speaker_Made: a.Teleop_Speaker_Made,
+    let rows: any[] = [];
+    await Promise.all(
+      data.map(async (value: AverageData) => {
+        let teamNum = value.teamNumber as unknown as string;
+        let nickName = await getNickName(teamNum);
+        console.log(nickName);
+        rows.push(
+          createData(
+            nickName,
+            value.teamNumber as unknown as string,
+            value.autoAmp,
+            value.autoSpeaker,
+            value.teleAmp,
+            value.teleSpeaker,
+            value.climb,
+            value.taxiPercent,
+            value.trapPercent
+          )
+        );
       })
     );
-    let teamData: number[][] = [];
-    for (let i = 0; i < matches.length; i++) {
-      let row: number[] = new Array();
-      row.push(matches[i].Auto_Amp_Made);
-      row.push(matches[i].Auto_Speaker_Made);
-      row.push(matches[i].Teleop_Amp_Made);
-      row.push(matches[i].Teleop_Speaker_Made);
-      teamData.push(row);
-    }
-
-    if (!teamData[0] || teamData[0] == null || teamData[0] == undefined) {
-      console.log("no team data");
-      return [[0], [0], [0], [0]];
-    }
-    let avgTeamData: number[][] = [[], [], [], []];
-    for (let i = 0; i < teamData[0].length; i++) {
-      let sum = 0;
-      for (const element of teamData) {
-        sum += element[i];
-      }
-      let average = sum / teamData.length;
-      avgTeamData[i].push(average);
-    }
-    if (
-      !avgTeamData[0] ||
-      avgTeamData[0] == null ||
-      avgTeamData[0] == undefined
-    ) {
-      console.log("no team data");
-      return [[0], [0], [0], [0]];
-    }
-    return avgTeamData;
+    setRows(rows);
+    return rows;
   };
 
   const getNickName = async (meat: string) => {
@@ -394,38 +376,6 @@ export default function EnhancedTable() {
     const NickName = resp.nickname;
     console.log("NickName", NickName);
     return NickName;
-  };
-  const getRows = async () => {
-    const teamsList = await GetTeamsEvent(dataViz.Competition);
-    let rows: any[] = [];
-    for (const team of teamsList) {
-      const averages = await fetchAveragesComp(team);
-      const nickName = await getNickName(team);
-      const climb = Math.trunc((await fetchClimbAvg(team, dataViz.Playoffs))!);
-      const taxi =
-        Math.trunc((await fetchTaxiAvg(team, dataViz.Playoffs))!) * 100;
-      const trap =
-        Math.trunc((await fetchTrapAvg(team, dataViz.Playoffs))!) * 100;
-      rows.push(
-        createData(
-          nickName,
-          team,
-          averages[0][0],
-          averages[1][0],
-          averages[2][0],
-          averages[3][0],
-          climb!,
-          taxi!,
-          trap!
-        )
-      );
-    }
-    if (rows[0] == null || rows[0] == undefined || rows[0].length == 0) {
-      console.log("no rows");
-      return;
-    }
-    setRows(rows);
-    return rows;
   };
 
   const handleRequestSort = (
@@ -492,7 +442,7 @@ export default function EnhancedTable() {
         page * rowsPerPage,
         page * rowsPerPage + rowsPerPage
       ),
-    [order, orderBy, page, rowsPerPage]
+    [order, orderBy, page, rowsPerPage, rows]
   );
 
   return (
