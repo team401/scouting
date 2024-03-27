@@ -8,8 +8,11 @@ import { FormControl, InputLabel, Select, MenuItem } from "@mui/material";
 
 // @ts-ignore
 function AverageBar ({ averageData, padding, margin, element }) {
-  let sortedAverageData;
   useEffect(() => {
+    console.log('sorting')
+    if(!averageData) {
+      return;
+    }
     averageData.sort((a: AverageData, b: AverageData) => {
       const aTotal = a.teleSpeaker + a.teleAmp + a.autoSpeaker + a.autoAmp + a.climb;
       const bTotal = b.teleSpeaker + b.teleAmp + b.autoSpeaker + b.autoAmp + b.climb;
@@ -21,13 +24,16 @@ function AverageBar ({ averageData, padding, margin, element }) {
         return 0;
       }
     })
-  }, [])
-  if(element === 'all') {
+  }, [averageData])
+  if(!averageData) {
+    return <div>Loading...</div>
+  }
+  if(element === 'All') {
     return (
         <BarChart
             width={padding}
             height={300}
-            dataset={sortedAverageData}
+            dataset={averageData}
             margin={{left: margin}}
             slotProps={{
               legend: {
@@ -58,7 +64,7 @@ function AverageBar ({ averageData, padding, margin, element }) {
             ]}
             xAxis={[{dataKey: "teamNumber", scaleType: "band"}]}
         />
-    ) }else if (element === 'speaker') {
+    ) }else if (element === 'Speaker') {
       return (
           <BarChart
               width={padding}
@@ -177,7 +183,11 @@ export default function allAveragesGraph() {
           </Select>
         </FormControl>
       </div>
-      <AverageBar averageData={averageData} margin={margin} padding={padding} element={dataViz.Elements} />
+      { averageData ? (
+          <AverageBar averageData={averageData} margin={margin} padding={padding} element={dataViz.Elements} />
+      ) : (
+          <div>Loading...</div>
+      )}
 
       <script>window.addEventListener('resize', handleResize); const</script>
     </div>
