@@ -304,7 +304,7 @@ export default function EnhancedTable() {
 
   useEffect(() => {
     createRows();
-  }, [dataViz.Competition, dataViz.Playoffs]);
+  }, [dataViz.Competition, dataViz.Playoffs, averages]);
   const createRows = async () => {
     if (!averages) {
       setRows(["", "", 0, 0, 0, 0, 0, 0]);
