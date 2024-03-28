@@ -2,41 +2,28 @@ import * as React from "react";
 import { BarChart } from "@mui/x-charts/BarChart";
 import supabase from "../Supabase/supabaseClient";
 import { BackHand } from "@mui/icons-material";
-import { useDataVizContext } from "../ContextProvider";
+import {useAverageContext, useDataVizContext} from "../ContextProvider";
 import { useEffect, useState } from "react";
 import { getAverageData } from "../utils/average";
 import { AverageData } from "../types";
 
 export default function AverageTeamGraph() {
   const { dataViz } = useDataVizContext();
-  const [averageData, setAverageData] = useState<AverageData[] | null>(null);
+  const { averages } = useAverageContext();
   const [teamsList, setTeamsList] = useState<string[]>(["000", "000"]);
   const [currentTeamAvg, setCurrentTeamAvg] = useState<
-    AverageData | null | undefined
+    AverageData | null
   >(null);
   const [width, setWidth] = useState(window.innerWidth);
   const [padding, setPadding] = useState(600);
   const [margin, setMargin] = useState(200);
   // calls the fetch teams function everytime settings.Competition is updated
-  useEffect(() => {
-    const updateData = async () => {
-      const data = await getAverageData(dataViz.Competition);
-      if (data) {
-        setAverageData(data);
-        setTeamsList(data.map((d) => d.teamNumber.toString()));
-        setCurrentTeamAvg(
-          data.find((d) => d.teamNumber === parseInt(dataViz.Team))
-        );
-      } else {
-        console.error("error fetching averages");
-        setAverageData(null);
-      }
-    };
-    updateData();
-  }, [dataViz.Competition, dataViz.Team, dataViz.AllComps]);
+
 
   useEffect(() => {
-    if (averageData) {
+    if (averages) {
+      const currentTeam = averages.find((a) => a.teamNumber.toString() === dataViz.Team);
+      setCurrentTeamAvg(currentTeam ? currentTeam : null);
     } else {
       setCurrentTeamAvg(null);
     }
