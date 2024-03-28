@@ -19,6 +19,7 @@ import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import { pink } from "@mui/material/colors";
 import MatchGraph from "./MatchProgression";
+import { UndoRounded } from "@mui/icons-material";
 
 export default function DataGraphs() {
   const { dataViz, setDataViz } = useDataVizContext();
@@ -38,7 +39,7 @@ export default function DataGraphs() {
     }
     getCapabilities(dataViz.Competition, dataViz.Team);
     getDrive(dataViz.Competition, dataViz.Team);
-  }, [dataViz.Competition, dataViz.Team]);
+  }, [dataViz.Competition, dataViz.Team, dataViz.AllComps]);
   const getTeamsListDistrict = async () => {
     const teams = await GetTeamsDistrict();
     setDataViz({ ...dataViz, TeamsList: teams });
@@ -51,32 +52,20 @@ export default function DataGraphs() {
   };
   const getNickName = async (meat: string) => {
     let response;
-    if (dataViz.AllComps) {
-      response = await fetch(
-        "https://www.thebluealliance.com/api/v3/district/2024chs/teams/simple",
-        {
-          method: "GET",
-          headers: {
-            "X-TBA-Auth-Key":
-              "3MbBFKbSOrahWa5SA7GmFv6L9ByIly1nk0vUPPSK1xQnI4ccLvsF5FRknNFz1CAm",
-          },
-        }
-      );
-    } else {
-      if (meat == "" || meat.length == 0) {
-        return setDataViz({ ...dataViz, NickName: "Error" });
-      }
-      response = await fetch(
-        "https://www.thebluealliance.com/api/v3/team/frc" + meat + "/simple",
-        {
-          method: "GET",
-          headers: {
-            "X-TBA-Auth-Key":
-              "3MbBFKbSOrahWa5SA7GmFv6L9ByIly1nk0vUPPSK1xQnI4ccLvsF5FRknNFz1CAm",
-          },
-        }
-      );
+
+    if (meat == "" || meat.length == 0) {
+      return setDataViz({ ...dataViz, NickName: "Error" });
     }
+    response = await fetch(
+      "https://www.thebluealliance.com/api/v3/team/frc" + meat + "/simple",
+      {
+        method: "GET",
+        headers: {
+          "X-TBA-Auth-Key":
+            "3MbBFKbSOrahWa5SA7GmFv6L9ByIly1nk0vUPPSK1xQnI4ccLvsF5FRknNFz1CAm",
+        },
+      }
+    );
     if (!response.ok) {
       const message = `An error has occured: ${response.status}`;
       throw new Error(message);
@@ -184,6 +173,7 @@ export default function DataGraphs() {
                       ),
                     });
                   }}
+                  onInputChange={undefined}
                 />
               </Grid>
             </Grid>
@@ -197,7 +187,7 @@ export default function DataGraphs() {
                   })
                 }
               />
-              <CustomCheckbox
+              {/* <CustomCheckbox
                 label="All Comps"
                 color={settings.Alliance === "Red" ? "#DC2626" : "#2563EB"}
                 value={dataViz.AllComps}
@@ -218,7 +208,7 @@ export default function DataGraphs() {
                     Playoffs: event.target.checked,
                   })
                 }
-              />
+              /> */}
             </Grid>
           </Grid>
           <Grid>

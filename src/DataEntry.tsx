@@ -16,9 +16,7 @@ import AutonomousForm from "./Forms/AutonomousForm";
 import TeleopForm from "./Forms/TeleopForm";
 import { useState } from "react";
 import supabase from "./Supabase/supabaseClient";
-import AverageTeamGraph from "./DataViz/AverageTeamGraph";
 import QR from "./Components/QRCode";
-import average from "./utils/average";
 import findClimbPoints from "./utils/findPoints";
 import updateAverage from "./utils/average";
 
@@ -33,7 +31,16 @@ export default function DataEntry() {
     event: React.FormEvent<HTMLFormElement>
   ) => {
     event.preventDefault();
-    if (preMatch.Team == "" || preMatch.Match == undefined) {
+    if (
+      preMatch.Team == "" ||
+      preMatch.Match == undefined ||
+      preMatch.Match == null ||
+      preMatch.Team == undefined ||
+      preMatch.Team == null ||
+      settings.Initials == "" ||
+      settings.Initials == null ||
+      settings.Initials == undefined
+    ) {
       setFormError("Please fill out form correctly");
       return;
     }
@@ -57,12 +64,14 @@ export default function DataEntry() {
       Trap: teleop.Trap,
       Comments: teleop.Text,
       Playoffs: preMatch.Playoffs,
+      Initials: settings.Initials,
     });
 
     setQRContent(
-      "Event,Match,team,NoShow,Alliance,Position,Auto_Amp_Missed,Auto_Amp_Made,Auto_Speaker_Missed,Auto_Speaker_Made,Taxi,Teleop_Amp_Missed,Teleop_Amp_Made,Teleop_Speaker_Missed,Teleop_Speaker_Made,Endgame,Trap,Comments, Playoffs" +
+      "Initials,Event,Match,team,NoShow,Alliance,Position,Auto_Amp_Missed,Auto_Amp_Made,Auto_Speaker_Missed,Auto_Speaker_Made,Taxi,Teleop_Amp_Missed,Teleop_Amp_Made,Teleop_Speaker_Missed,Teleop_Speaker_Made,Endgame,Trap,Comments, Playoffs" +
         "\n" +
         [
+          settings.Initials,
           settings.Competition,
           preMatch.Match!,
           preMatch.Team!,
@@ -98,16 +107,15 @@ export default function DataEntry() {
       console.log(error);
       setFormError(`Error: ${error.message} (please use QR code)`);
       return;
-    } else {
-      await updateAverage(settings, preMatch, auto, teleop);
     }
-    setFormError("");
+    updateAverage(settings, preMatch, auto, teleop);
+    setFormError("Submitted");
   };
 
   return (
     <div
       className={`transition min-h-screen w-screen font-sans flex flex-col items-center
-      ${settings.Alliance == "Red" ? "bg-red-bg" : "bg-blue-bg"}`}
+      ${settings.Alliance == "Red" ? "bg-RED" : "bg-blue-bg"}`}
     >
       {/* <div className="transition min-h-screen w-screen font-sans flex flex-col items-center bg-white"> */}
       <div className="w-11/12 h-full md:h-min md:w-min">

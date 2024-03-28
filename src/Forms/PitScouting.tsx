@@ -120,8 +120,11 @@ export default function PitScout() {
                     <TeamSelector
                       value={pitScout.Team}
                       options={pitScout.TeamsList}
-                      onChange={(event, newValue) => {
-                        setPitScout({ ...pitScout, Team: newValue! as string });
+                      onChange={undefined}
+                      onInputChange={(event, value, reason) => {
+                        if (pitScout.TeamsList.includes(value)) {
+                          setPitScout({ ...pitScout, Team: value });
+                        }
                       }}
                     />
                   </div>

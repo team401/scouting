@@ -13,10 +13,19 @@ import axios, { isCancel, AxiosError } from "axios";
 type selectprops = {
   options: String[];
   value: String;
-  onChange: (
-    event: SyntheticEvent<Element, Event>,
-    value: string | String | null
-  ) => void;
+  onChange:
+    | ((
+        event: SyntheticEvent<Element, Event>,
+        value: string | String | null
+      ) => void)
+    | undefined;
+  onInputChange:
+    | ((
+        event: React.SyntheticEvent<Element, Event>,
+        value: string,
+        reason: string
+      ) => void)
+    | undefined;
 };
 
 export default function TeamSelector(props: selectprops) {
@@ -29,6 +38,8 @@ export default function TeamSelector(props: selectprops) {
       clearOnEscape
       options={props.options}
       value={props.value}
+      autoComplete
+      onInputChange={props.onInputChange}
       onChange={props.onChange}
       autoSelect={true}
       autoHighlight

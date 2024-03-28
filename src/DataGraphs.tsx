@@ -26,7 +26,7 @@ export default function DataGraphs() {
                   })
                 }
               />
-              <CustomCheckbox
+              {/* <CustomCheckbox
                 label="Playoffs"
                 color={settings.Alliance === "Red" ? "#DC2626" : "#2563EB"}
                 value={dataViz.Playoffs}
@@ -36,9 +36,9 @@ export default function DataGraphs() {
                     Playoffs: event.target.checked,
                   })
                 }
-              />
+              /> */}
 
-              <FullTeamGraph />
+              <AllAveragesGraph />
             </div>
 
             <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-fit overflow-scroll h-full flex flex-col items-center content-center py-6">

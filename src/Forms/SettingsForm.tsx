@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import PositionChooser from "../Components/PositionChooser";
 import CompetitionSelector from "../Components/CompetitionSelector";
 import { GetTeamsEvent } from "../Data";
+import { TextField } from "@mui/material";
 
 export default function SettingsForm() {
   const { settings, setSettings } = useSettingsContext();
@@ -14,6 +15,17 @@ export default function SettingsForm() {
     <div className="flex flex-col items-center">
       <div className="font-semibold text-4xl text-center">Settings</div>
       <br></br>
+      <TextField
+        id="outlined-basic"
+        label="Initials"
+        variant="outlined"
+        color={"primary"}
+        margin="normal"
+        value={settings.Initials}
+        onChange={(event: any) => {
+          setSettings({ ...settings, Initials: event.target.value! });
+        }}
+      />
       <CompetitionSelector
         value={settings.Competition}
         onChange={(event: any, newValue: string | null) => {
