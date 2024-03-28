@@ -26,7 +26,7 @@ function AverageBar ({ averageData, padding, margin, element }) {
     })
   }, [averageData])
   if(!averageData) {
-    return <div>Loading...</div>
+    return <div>No Average Data for Specified Competitoon.</div>
   }
   if(element === 'All') {
     return (
@@ -173,7 +173,7 @@ export default function allAveragesGraph() {
       { averages ? (
           <AverageBar averageData={averages} margin={margin} padding={padding} element={dataViz.Elements} />
       ) : (
-          <div>Loading...</div>
+          <div>No Average Data for Specified Competition</div>
       )}
 
       <script>window.addEventListener('resize', handleResize); const</script>
