@@ -8,14 +8,9 @@ import { alliance, position, useSettingsContext } from "../ContextProvider";
 import { GetTeamsEvent } from "../Data";
 
 const comps = [
-  "2024chcmp",
-  "2024mdowi",
-  "2024mdsev",
-  "2024vaash",
   "2024vabla",
   "2024vafal",
-  "2024vagle",
-  "2024vapor",
+  "2024chcmp",
 ];
 type selectprops = {
   value: string;

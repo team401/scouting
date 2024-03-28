@@ -1,4 +1,4 @@
-import { useDataVizContext } from "../ContextProvider";
+import {useAverageContext, useDataVizContext} from "../ContextProvider";
 import { useEffect, useState } from "react";
 import { AverageData } from "../types";
 import { getAverageData } from "../utils/average";
@@ -129,20 +129,7 @@ export default function allAveragesGraph() {
   const [width, setWidth] = useState(window.innerWidth);
   const [padding, setPadding] = useState(600);
   const [margin, setMargin] = useState(200);
-
-  useEffect(() => {
-    const updateAverage = async () => {
-      const average = await getAverageData(dataViz.Competition);
-      if (!average) {
-        console.error("error fetching averages");
-        setAverageData(null);
-        return;
-      }
-      setAverageData(average);
-    };
-
-    updateAverage();
-  }, [dataViz.Competition, dataViz.Team, dataViz.AllComps]);
+  const {averages } = useAverageContext();
 
   const handleResize = () => {
     setWidth(window.innerWidth);
@@ -183,8 +170,8 @@ export default function allAveragesGraph() {
           </Select>
         </FormControl>
       </div>
-      { averageData ? (
-          <AverageBar averageData={averageData} margin={margin} padding={padding} element={dataViz.Elements} />
+      { averages ? (
+          <AverageBar averageData={averages} margin={margin} padding={padding} element={dataViz.Elements} />
       ) : (
           <div>Loading...</div>
       )}

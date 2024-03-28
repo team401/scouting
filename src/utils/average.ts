@@ -67,20 +67,26 @@ const updateAverage = async (settings: Settings, preMatch: PreMatch, auto: Auto,
     }
 }
 
-export async function getAverageData(competition: string): Promise<AverageData[] | undefined> {
+export async function getAverageData(competition: string): Promise<AverageData[] | null> {
     try {
-        const {data } = await supabase
+        const {data, error } = await supabase
             .from("Averages")
             .select(
                 "teamNumber, matchesPlayed, teleAmp, teleSpeaker, autoAmp, autoSpeaker, climb, trapPercent, taxiPercent, autoAmpAccuracy, teleAmpAccuracy"
             )
             .eq("event", competition);
 
-        if(data) {
+        if(data && data.length !== 0) {
+            console.log(data);
             return data as AverageData[];
         }
+        if(error) {
+            console.error(error);
+        }
+        return null;
     } catch (err: any) {
         console.error('Error grabbbing average:', err.message);
+        return null;
     }
 }
 export default updateAverage;

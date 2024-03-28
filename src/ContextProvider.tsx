@@ -1,6 +1,8 @@
-import React, { PropsWithChildren } from "react";
+import React, {PropsWithChildren, useEffect} from "react";
 import { createContext, useContext, useState } from "react";
 import { GetTeamsEvent } from "./Data";
+import {AverageData} from "./types";
+import {getAverageData} from "./utils/average";
 
 export type alliance = "Red" | "Blue";
 
@@ -81,6 +83,11 @@ type AutoState = {
   setAuto: React.Dispatch<React.SetStateAction<Auto>>;
 };
 
+type AverageState = {
+  averages: AverageData[] | null;
+  setAverages: React.Dispatch<React.SetStateAction<AverageData[] | null>>
+}
+
 export type Teleop = {
   Amp_Made: number;
   Amp_Missed: number;
@@ -111,7 +118,7 @@ export const defaultPit: PitScout = {
 };
 
 export const defaultData: DataViz = {
-  Competition: "2024chcmp",
+  Competition: "2024vabla",
   Team: "401",
   TeamsList: [],
   NickName: "",
@@ -139,7 +146,7 @@ export const defaultTeleop: Teleop = {
 export const defaultSettings: Settings = {
   Alliance: "Red",
   Position: "1",
-  Competition: "2024chcmp",
+  Competition: "2024vabla",
   FrcTeams: [""],
   Initials: "",
 };
@@ -156,6 +163,7 @@ const SettingsContext = createContext<SettingsState | null>(null);
 const PreMatchContext = createContext<PreMatchState | null>(null);
 const AutoContext = createContext<AutoState | null>(null);
 const TeleopContext = createContext<TeleopState | null>(null);
+const AverageContext = createContext<AverageState | null>(null);
 
 export function ContextProvider(props: PropsWithChildren<{}>) {
   const [settings, setSettings] = useState<Settings>(defaultSettings);
@@ -164,6 +172,21 @@ export function ContextProvider(props: PropsWithChildren<{}>) {
   const [teleop, setTeleop] = useState<Teleop>(defaultTeleop);
   const [dataViz, setDataViz] = useState<DataViz>(defaultData);
   const [pitScout, setPitScout] = useState<PitScout>(defaultPit);
+  const [averages, setAverages] = useState<AverageData[] | null>(null);
+
+  useEffect(() => {
+    const updateAverage = async () => {
+      const average = await getAverageData(dataViz.Competition);
+      if (!average) {
+        console.error("error fetching averages");
+        setAverages(null);
+        return;
+      }
+      setAverages(average);
+    };
+
+    updateAverage();
+  }, [dataViz.Competition, dataViz.Team, dataViz.AllComps]);
 
   // const teams = GetTeams(settings.Competition).then((teams) => {
   //   setSettings({
@@ -186,7 +209,9 @@ export function ContextProvider(props: PropsWithChildren<{}>) {
             <TeleopContext.Provider value={{ teleop, setTeleop }}>
               <DataVizContext.Provider value={{ dataViz, setDataViz }}>
                 <PitScoutContext.Provider value={{ pitScout, setPitScout }}>
+                  <AverageContext.Provider value={{ averages, setAverages }}>
                   {children}
+                  </AverageContext.Provider>
                 </PitScoutContext.Provider>
               </DataVizContext.Provider>
             </TeleopContext.Provider>
@@ -244,5 +269,13 @@ export function useTeleopContext(): TeleopState {
     throw Error("useTeleopContext must be used within a ContextProvider");
   }
 
+  return context;
+}
+
+export function useAverageContext(): AverageState {
+  const context = useContext(AverageContext);
+  if(!context) {
+    throw Error("use in provider")
+  }
   return context;
 }

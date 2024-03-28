@@ -1,6 +1,6 @@
 import * as React from "react";
 import supabase from "../Supabase/supabaseClient";
-import { useDataVizContext } from "../ContextProvider";
+import {useAverageContext, useDataVizContext} from "../ContextProvider";
 import { useEffect, useState } from "react";
 import {
   Paper,
@@ -300,24 +300,22 @@ export default function EnhancedTable() {
   const [page, setPage] = React.useState(0);
   const [dense, setDense] = React.useState(false);
   const [rowsPerPage, setRowsPerPage] = React.useState(5);
+  const { averages } = useAverageContext();
 
   useEffect(() => {
     createRows();
   }, [dataViz.Competition, dataViz.Playoffs]);
   const createRows = async () => {
-    const data = await getAverageData(dataViz.Competition);
-    console.log(data);
-    if (data!.length == 0 || data == null || data == undefined) {
+    if (!averages) {
       setRows(["", "", 0, 0, 0, 0, 0, 0]);
       console.log("Table has no data");
       return;
     }
     let rows: any[] = [];
     await Promise.all(
-      data.map(async (value: AverageData) => {
+      averages.map(async (value: AverageData) => {
         let teamNum = value.teamNumber as unknown as string;
         let nickName = await getNickName(teamNum);
-        console.log(nickName);
         rows.push(
           createData(
             nickName,
