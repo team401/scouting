@@ -139,7 +139,9 @@ export const defaultTeleop: Teleop = {
 export const defaultSettings: Settings = {
   Alliance: "Red",
   Position: "1",
+
   Competition: "2024chcmp",
+
   FrcTeams: [""],
   Initials: "",
 };

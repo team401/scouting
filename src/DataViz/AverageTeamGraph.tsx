@@ -135,6 +135,7 @@ export default function AverageTeamGraph() {
             ]}
           />
         </>
+
       ) : (
         <div>No Team selected</div>
       )}
