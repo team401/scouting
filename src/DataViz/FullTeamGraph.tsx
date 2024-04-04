@@ -315,7 +315,7 @@ export default function FullTeamGraph() {
   window.addEventListener("resize", handleResize);
   return (
     <div>
-      <div className=" col-span-1 px-2">
+      <div className=" col-span-1 px-2 mt-5 mb-2">
         <FormControl>
           <InputLabel id="demo-simple-select-autowidth-label" size="normal">
             Elements
@@ -342,13 +342,13 @@ export default function FullTeamGraph() {
         <>
           <BarChart
             width={padding}
-            height={300}
-            margin={{ left: margin }}
+            height={400}
+            margin={{ left: margin, top: 100 }}
             slotProps={{
               legend: {
-                direction: "column",
-                position: { vertical: "top", horizontal: "left" },
-                padding: 0,
+                direction: "row",
+                position: { vertical: "top", horizontal: "middle" },
+                padding: -10,
 
                 labelStyle: { fontSize: 12, textOverflow: "clip" },
               },

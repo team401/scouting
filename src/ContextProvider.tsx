@@ -42,6 +42,7 @@ export type Settings = {
   Position: position;
   Competition: string;
   FrcTeams: Array<String>;
+  Initials: string;
 };
 
 type SettingsState = {
@@ -98,7 +99,7 @@ type TeleopState = {
 
 export const defaultPit: PitScout = {
   TeamsList: [],
-  Competition: "2024vabla",
+  Competition: "2024chcmp",
   Team: "401",
   Drive: "Tank",
   Nomination: ["N/A"],
@@ -110,7 +111,7 @@ export const defaultPit: PitScout = {
 };
 
 export const defaultData: DataViz = {
-  Competition: "2024vabla",
+  Competition: "2024chcmp",
   Team: "401",
   TeamsList: [],
   NickName: "",
@@ -138,8 +139,11 @@ export const defaultTeleop: Teleop = {
 export const defaultSettings: Settings = {
   Alliance: "Red",
   Position: "1",
-  Competition: "2024vafal",
+
+  Competition: "2024chcmp",
+
   FrcTeams: [""],
+  Initials: "",
 };
 export const defaultPreMatch: PreMatch = {
   Team: "",
