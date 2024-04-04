@@ -13,10 +13,10 @@ export default function DataGraphs() {
       className={`transition min-h-screen w-screen font-sans flex flex-col items-center
       `}
     >
-      <div className="w-11/12 h-full md:h-min md:w-fit">
-        <div className="min-h-screen items-center">
-          <div className="grid grid-auto-rows-auto gap-y-3 mb-5 items-center content-center">
-            <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-3/4 overflow-scroll h-full flex flex-col items-center content-center">
+      <div className="w-fit h-full md:h-min md:w-fit">
+        <div className="min-h-screen items-center content-center">
+          <div className="flex flex-col gap-y-3 mb-5 items-center content-center">
+            <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-fit overflow-scroll h-fit flex flex-col items-center content-center">
               <CompetitionSelector
                 value={dataViz.Competition}
                 onChange={(event, newValue: string | null) =>

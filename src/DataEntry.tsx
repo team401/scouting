@@ -127,14 +127,14 @@ export default function DataEntry() {
         {/* <Outlet /> */}
         <div className="min-h-screen">
           <form onSubmit={handleSubmit}>
-            <div className="grid grid-auto-rows-auto gap-y-3 mb-5">
-              <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-full h-full">
+            <div className="grid grid-auto-rows-auto gap-y-3 mb-5 m-5 space-x-2 justify-items-center place-content-center">
+              <div className="bg-white text-black rounded-xl p-10 mt-5 mr-5 shadow-lg h-full">
                 <SettingsForm />
               </div>
-              <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-full h-full">
+              <div className="bg-white text-black rounded-xl p-10 mt-5 w-full shadow-lg h-full">
                 <PreMatchForm />
               </div>
-              <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-full h-full">
+              <div className="bg-white text-black rounded-xl p-10 mt-5 w-flull shadow-lg h-full">
                 <AutonomousForm />
               </div>
               <div className="bg-white text-black rounded-xl p-10 mt-5 shadow-lg w-full h-full gap-y-2 mb-5">
