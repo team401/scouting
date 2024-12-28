@@ -9,19 +9,19 @@ const router = createRouter({
   routes: [
     {
       path: "/",
-      name: "Match Scouting",
-      component: MatchScoutView,
+      name: "Event Analysis",
+      component: EventAnalysisView,
     },
-    {
-      path: "/scout",
-      name: "Match Scouting",
-      component: MatchScoutView,
-    },
-    {
-      path: "/pit-scout",
-      name: "Pit Scouting",
-      component: PitScoutView,
-    },
+    // {
+    //   path: "/scout",
+    //   name: "Match Scouting",
+    //   component: MatchScoutView,
+    // },
+    // {
+    //   path: "/pit-scout",
+    //   name: "Pit Scouting",
+    //   component: PitScoutView,
+    // },
     {
       path: "/team",
       name: "Team Analysis",

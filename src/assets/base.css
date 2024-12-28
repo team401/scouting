@@ -8,6 +8,8 @@
   --header-color: #7c0980;
   --header-hover-color: #9c099e;
   --header-text-color: #FFF;
+
+  --accent-color: #009879;
 }
 
 *,
@@ -51,4 +53,39 @@ div.main-content {
   padding: 2rem;
   flex: 1 1 auto;
   width: 100%;
+}
+
+/* Table styling */
+
+table {
+  border-collapse: collapse;
+  margin: 25px 0;
+  font-size: 0.9em;
+  font-family: sans-serif;
+  min-width: 400px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+  text-align: center;
+}
+
+thead tr {
+  background-color: var(--accent-color);
+  color: #ffffff;
+  text-align: center;
+}
+
+th,
+td {
+  padding: 12px 15px;
+}
+
+tbody tr {
+  border-bottom: thin solid #dddddd;
+}
+
+tbody tr:nth-of-type(even) {
+  background-color: #f3f3f3;
+}
+
+tbody tr:last-of-type {
+  border-bottom: thick solid var(--accent-color);
 }
