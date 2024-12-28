@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase-client';
 
 export const dataEntryTable = "Scout_Data";
+export const eventId = "2024vagi2";
 
 
 export async function aggregateEventData(eventId: String): Promise<{}> {
@@ -28,16 +29,23 @@ export async function aggregateEventData(eventId: String): Promise<{}> {
             // Initialize summations to 0.
             teamData[teamNumber].num_matches = 0;
             teamData[teamNumber].total_teleop_amp = 0;
+            teamData[teamNumber].total_auto_amp = 0;
         }
         
         teamData[teamNumber].num_matches++;
         teamData[teamNumber].total_teleop_amp += data[i].Teleop_Amp_Made;
+        teamData[teamNumber].total_auto_amp += data[i].Auto_Amp_Made;
     }
 
     // Compute averages.
     const teamKeys = Object.keys(teamData);
     for (let i = 0; i < teamKeys.length; i++) {
+        const teamNumber = teamKeys[i];
+        const num_matches = teamData[teamNumber].num_matches;
 
+        if (num_matches > 0) {
+            teamData[teamNumber].avg_teleop_amp = teamData[teamNumber].total_teleop_amp / num_matches;
+        }
     }
 
     return teamData;
