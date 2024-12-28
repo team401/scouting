@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import { aggregateEventData } from "@/lib/2024/data-processing";
-
+import BarChart from "@/components/BarChart.vue";
 </script>
 
 <template>
     <div class="main-content">
         <h1>Event Analysis</h1>
+        <h2>Graph View</h2>
+        <div v-if="eventDataLoaded" class="graph-container">
+            <!-- Data must be loaded before this div is shown -->
+            <BarChart :data="eventData" column="total_teleop_amp">
+            </BarChart>
+        </div>
 
-        <VTable :data="tableData" v-if="tableLoaded">
+        <h2>Table View</h2>
+        <VTable :data="tableData" v-if="eventDataLoaded">
             <template #head>
                 <tr>
                     <VTh v-for="header in tableHeaders" :sortKey="header.key">
@@ -37,12 +44,13 @@ export default {
             // [{"team_number": 401, "avg_teleop_amp": 3.0, "avg_teleop_speaker": 3.0}, ...]
             tableData: [],
             eventData: {},
-            tableLoaded: false
+            eventDataLoaded: false
         }
     },
     methods: {
         async populateEventTable() {
             this.eventData = await aggregateEventData("2024vagi2");
+            console.log(this.eventData)
 
             // Convert the data to a table.
             this.tableData = [];
@@ -62,7 +70,7 @@ export default {
             });
 
             // Mark the table as loaded.
-            this.tableLoaded = true;
+            this.eventDataLoaded = true;
         }
     },
     created() {
@@ -71,5 +79,11 @@ export default {
 }
 </script>
   
-<style></style>
+<style>
+.graph-container {
+    display: flex;
+    max-height: 60vh;
+    justify-content: center;
+}
+</style>
   

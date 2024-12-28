@@ -15,8 +15,10 @@
   "dependencies": {
     "@material/web": "^2.2.0",
     "@supabase/supabase-js": "^2.47.10",
+    "chart.js": "^4.4.7",
     "pinia": "^2.1.7",
     "vue": "^3.4.29",
+    "vue-chartjs": "^5.3.2",
     "vue-router": "^4.3.3",
     "vuejs-smart-table": "^1.0.0-beta.6"
   },
