@@ -24,17 +24,21 @@ export async function aggregateEventData(eventId: String): Promise<{}> {
         // If the team doesn't exist yet, create it.
         const isExistingTeam = Object.keys(teamData).includes(teamNumber);
         if (!isExistingTeam) {
-            teamData[teamNumber] = {};
-
-            // Initialize summations to 0.
-            teamData[teamNumber].num_matches = 0;
-            teamData[teamNumber].total_teleop_amp = 0;
-            teamData[teamNumber].total_auto_amp = 0;
+            // Initialize team data.
+            teamData[teamNumber] = {
+                // Set the team number so a table can be constructed directly from the data.
+                team_number: teamNumber,
+                num_matches: 0,
+                total_auto_amp: 0,
+                total_teleop_amp: 0,
+                total_teleop_speaker: 0,
+            }
         }
         
         teamData[teamNumber].num_matches++;
-        teamData[teamNumber].total_teleop_amp += data[i].Teleop_Amp_Made;
         teamData[teamNumber].total_auto_amp += data[i].Auto_Amp_Made;
+        teamData[teamNumber].total_teleop_amp += data[i].Teleop_Amp_Made;
+        teamData[teamNumber].total_teleop_speaker += data[i].Teleop_Speaker_Made;
     }
 
     // Compute averages.
@@ -43,8 +47,15 @@ export async function aggregateEventData(eventId: String): Promise<{}> {
         const teamNumber = teamKeys[i];
         const num_matches = teamData[teamNumber].num_matches;
 
+        // Set defaults in case averages cannot be computed.
+        teamData[teamNumber].avg_auto_amp = 0;
+        teamData[teamNumber].avg_teleop_amp = 0;
+        teamData[teamNumber].avg_teleop_speaker = 0;
+
         if (num_matches > 0) {
+            teamData[teamNumber].avg_auto_amp = teamData[teamNumber].total_auto_amp / num_matches;
             teamData[teamNumber].avg_teleop_amp = teamData[teamNumber].total_teleop_amp / num_matches;
+            teamData[teamNumber].avg_teleop_speaker = teamData[teamNumber].total_teleop_speaker / num_matches;
         }
     }
 

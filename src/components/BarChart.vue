@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { Bar } from 'vue-chartjs'
 import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js'
+import ChartJSPluginDatalabels from 'chartjs-plugin-datalabels'
 import { sortKeyValueArrays } from "@/lib/util";
 
-ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
+ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale, ChartJSPluginDatalabels)
 
 </script>
 
@@ -19,7 +20,12 @@ export default {
         options: {
             default: {
                 responsive: true,
-                maintainAspectRatio: true
+                maintainAspectRatio: true,
+                plugins: {
+                    datalabels: {
+                        display: false
+                    }
+                }
             }
         },
         isSorted: {

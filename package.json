@@ -16,6 +16,7 @@
     "@material/web": "^2.2.0",
     "@supabase/supabase-js": "^2.47.10",
     "chart.js": "^4.4.7",
+    "chartjs-plugin-datalabels": "^2.2.0",
     "pinia": "^2.1.7",
     "vue": "^3.4.29",
     "vue-chartjs": "^5.3.2",

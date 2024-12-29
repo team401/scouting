@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { aggregateEventData, eventId } from "@/lib/2024/data-processing";
 import BarChart from "@/components/BarChart.vue";
+import ScatterChart from "@/components/ScatterChart.vue";
 
 import '@material/web/select/outlined-select';
 import '@material/web/select/select-option';
@@ -10,34 +11,40 @@ import '@material/web/select/select-option';
     <div class="main-content">
         <h1>Event Analysis</h1>
         <h2>Graph View</h2>
-        <md-outlined-select class="filter-select" v-bind:display-text="graphFilter.text">
-            <md-select-option v-for="filter in getGraphFilters" v-bind:selected="filter.key == graphFilter.key"
-                :key="filter.key" :ref="graphFilter.key" v-bind:aria-label="filter.text" @click="setGraphView(filter)">
+        <md-outlined-select class="filter-select" v-bind:display-text="getActiveGraphFilter.text">
+            <md-select-option v-for="filter, idx in getGraphFilters"
+                v-bind:selected="filter.key == getActiveGraphFilter.key" :key="filter.key" :ref="getActiveGraphFilter.key"
+                v-bind:aria-label="filter.text" @click="setGraphView(idx)">
                 <div slot="headline">{{ filter.text }}</div>
             </md-select-option>
         </md-outlined-select>
 
         <div v-if="eventDataLoaded" class="graph-container">
             <!-- Data must be loaded before this div is shown -->
-            <BarChart :data="eventData" :column="graphFilter.key" v-if="isBarChartView">
-            </BarChart>
+            <!-- Show the relevant chart based on the data being shown -->
+            <BarChart :data="eventData" :column="getActiveGraphFilter.key1" v-if="isBarChartView"></BarChart>
+
+            <ScatterChart :data="eventData" :columnX="getActiveGraphFilter.key1" :columnY="getActiveGraphFilter.key2"
+                v-if="isScatterChartView"></ScatterChart>
         </div>
 
         <h2>Table View</h2>
-        <VTable :data="tableData" v-if="eventDataLoaded">
-            <template #head>
-                <tr>
-                    <VTh v-for="header in tableHeaders" :sortKey="header.key">
-                        {{ header.name }}
-                    </VTh>
-                </tr>
-            </template>
-            <template #body="{ rows }">
-                <tr v-for="row in rows">
-                    <td v-for="col in row">{{ col }}</td>
-                </tr>
-            </template>
-        </VTable>
+        <div class="table-container">
+            <VTable :data="tableData" v-if="eventDataLoaded">
+                <template #head>
+                    <tr>
+                        <VTh v-for="header in tableHeaders" :sortKey="header.key">
+                            {{ header.name }}
+                        </VTh>
+                    </tr>
+                </template>
+                <template #body="{ rows }">
+                    <tr v-for="row in rows">
+                        <td v-for="col in row">{{ col }}</td>
+                    </tr>
+                </template>
+            </VTable>
+        </div>
     </div>
 </template>
 
@@ -46,18 +53,23 @@ export default {
     data() {
         return {
             tableHeaders: [
-                { "name": "#", "key": "team_number", "graphable": false },
-                { "name": "Matches Played", "key": "num_matches", "graphable": false },
-                { "name": "Total Auto Amp", "key": "total_auto_amp", "graphable": true, "graph": "bar" },
-                { "name": "Total Teleop Amp", "key": "total_teleop_amp", "graphable": true, "graph": "bar" },
-                { "name": "Avg. Teleop Amp", "key": "avg_teleop_amp", "graphable": true, "graph": "bar" }
+                { name: "#", key: "team_number" },
+                { name: "Matches Played", key: "num_matches" },
+                { name: "Avg. Auto Amp", key: "avg_auto_amp" },
+                { name: "Avg. Teleop Amp", key: "avg_teleop_amp" },
+                { name: "Avg. Teleop Speaker", key: "avg_teleop_speaker" },
             ],
             // Expected schema:
             // [{"team_number": 401, "avg_teleop_amp": 3.0, "avg_teleop_speaker": 3.0}, ...]
             tableData: [],
             eventData: {},
             eventDataLoaded: false,
-            graphFilter: { "text": "Total Teleop Amp", "key": "total_teleop_amp", "type": "bar" },
+            // Graphing
+            graphFilters: [
+                { text: "Avg. Teleop Amp", key1: "avg_teleop_amp", type: "bar" },
+                { text: "Teleop: Speaker vs. Amp", key1: "avg_teleop_amp", key2: "avg_teleop_speaker", type: "scatter" }
+            ],
+            activeGraphFilterIndex: 0,
         }
     },
     methods: {
@@ -72,13 +84,10 @@ export default {
                 // Get the corresponding entry of aggregated data
                 const teamData = this.eventData[element];
 
-                // Convert data from aggregated dictionary to the table-friendly form.
-                var row = {}
-                row['team_number'] = element;
-                row['num_matches'] = teamData.num_matches;
-                row['total_auto_amp'] = teamData.total_auto_amp;
-                row['total_teleop_amp'] = teamData.total_teleop_amp;
-                row['avg_teleop_amp'] = teamData.avg_teleop_amp;
+                const row = {};
+                this.tableHeaders.forEach(element => {
+                    row[element.key] = teamData[element.key];
+                });
 
                 this.tableData.push(row);
             });
@@ -86,23 +95,22 @@ export default {
             // Mark the table as loaded.
             this.eventDataLoaded = true;
         },
-        setGraphView(filter: String) {
-            this.graphFilter = filter;
+        setGraphView(index: int) {
+            this.activeGraphFilterIndex = index;
         }
     },
     computed: {
         getGraphFilters() {
-            let filters = [];
-            this.tableHeaders.forEach(element => {
-                if (element.graphable) {
-                    filters.push({ "key": element.key, "text": element.name, "type": element.graph });
-                }
-            });
-            return filters;
+            return this.graphFilters;
+        },
+        getActiveGraphFilter() {
+            return this.graphFilters[this.activeGraphFilterIndex];
         },
         isBarChartView() {
-            console.log(this.graphFilter)
-            return this.graphFilter.type == "bar";
+            return this.graphFilters[this.activeGraphFilterIndex].type == "bar";
+        },
+        isScatterChartView() {
+            return this.graphFilters[this.activeGraphFilterIndex].type == "scatter";
         }
     },
     created() {
@@ -116,6 +124,17 @@ export default {
     display: flex;
     max-height: 60vh;
     justify-content: center;
+}
+
+.table-container {
+    display: flex;
+    overflow: scroll;
+    justify-content: safe center;
+    margin: auto;
+}
+
+table {
+    margin: auto;
 }
 </style>
   
