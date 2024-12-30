@@ -19,8 +19,8 @@ import FilterableGraph from "@/components/FilterableGraph.vue";
         </div>
 
         <h2>Table View</h2>
-        <div class="table-container">
-            <VTable :data="tableData" v-if="eventDataLoaded">
+        <div class="table-container" v-if="eventDataLoaded">
+            <VTable :data="tableData">
                 <template #head>
                     <tr>
                         <VTh v-for="header in tableHeaders" :sortKey="header.key">
@@ -62,7 +62,7 @@ export default {
         }
     },
     methods: {
-        async populateEventTable() {
+        async loadEventData() {
             this.eventData = await aggregateEventData(eventId);
 
             // Convert the data to a table.
@@ -86,7 +86,7 @@ export default {
         }
     },
     created() {
-        this.populateEventTable();
+        this.loadEventData();
     }
 }
 </script>

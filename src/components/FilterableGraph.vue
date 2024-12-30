@@ -1,18 +1,14 @@
 <script setup lang="ts">
 import BarChart from "@/components/BarChart.vue";
 import ScatterChart from "@/components/ScatterChart.vue";
+import FilterDropdown from "@/components/FilterDropdown.vue";
 
 import '@material/web/select/outlined-select';
 import '@material/web/select/select-option';
 </script>
 
 <template>
-    <md-outlined-select class="filter-select" v-bind:display-text="getActiveGraphFilter.text">
-        <md-select-option v-for="filter, idx in graphFilters" v-bind:selected="filter.key == getActiveGraphFilter.key"
-            :key="filter.key" :ref="getActiveGraphFilter.key" v-bind:aria-label="filter.text" @click="setGraphView(idx)">
-            <div slot="headline">{{ filter.text }}</div>
-        </md-select-option>
-    </md-outlined-select>
+    <FilterDropdown :filters="graphFilters" @filter-selected="setGraphView"></FilterDropdown>
 
     <div class="graph-container">
         <!-- Show the relevant chart based on the data being shown -->
