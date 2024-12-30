@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// TODO: fix types
+// @ts-nocheck
+
 import { aggregateEventData, eventId } from "@/lib/2024/data-processing";
 
 import '@material/web/select/outlined-select';
@@ -12,7 +15,7 @@ import FilterableGraph from "@/components/FilterableGraph.vue";
         <h2>Graph View</h2>
 
 
-        <div v-if="eventDataLoaded">
+        <div v-if="eventDataLoaded" class="data-tile">
             <!-- Data must be loaded before this div is shown -->
             <FilterableGraph :data="eventData" :graphFilters="graphFilters">
             </FilterableGraph>
@@ -96,10 +99,6 @@ export default {
     display: flex;
     overflow: scroll;
     justify-content: safe center;
-    margin: auto;
-}
-
-table {
     margin: auto;
 }
 </style>

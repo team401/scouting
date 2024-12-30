@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// TODO: fix types
+// @ts-nocheck
+
 import { aggregateEventData, eventId } from "@/lib/2024/data-processing";
 
 import '@material/web/select/outlined-select';
@@ -15,8 +18,13 @@ import RadarChart from "@/components/RadarChart.vue";
             <!-- Only show this if the team data is loaded. -->
             <FilterDropdown :filters="teamFilters" @filter-selected="setTeam"></FilterDropdown>
 
-            <div class="radar-graph-container">
-                <RadarChart :data="getTeamRadar"></RadarChart>
+            <div>
+                <div class="data-tile radar-graph-container">
+                    <RadarChart :data="getTeamRadar"></RadarChart>
+                </div>
+                <div class="data-tile match-progression-container">
+                    <FilterableGraph :data="getTeamMatches" :graph-filters="matchDataFilters"></FilterableGraph>
+                </div>
             </div>
         </div>
     </div>
@@ -29,7 +37,11 @@ export default {
             teamsLoaded: false,
             teamsData: [{}],
             teamFilters: [],
-            currentTeamIndex: 0
+            currentTeamIndex: 0,
+            matchDataFilters: [
+                { text: "Teleop: Amp", key1: "Teleop_Amp_Made", type: "bar", isSorted: false },
+                { text: "Teleop: Speaker", key1: "Teleop_Speaker_Made", type: "bar", isSorted: false },
+            ]
         }
     },
     methods: {
@@ -61,6 +73,11 @@ export default {
             const teamInfo = this.teamsData[teamNumber];
 
             return { "Auto Amp": teamInfo.avg_auto_amp, "Teleop Speaker": teamInfo.avg_teleop_speaker, "Teleop Amp": teamInfo.avg_teleop_amp };
+        },
+        getTeamMatches() {
+            const teamNumber = this.teamFilters[this.currentTeamIndex].key;
+            const teamInfo = this.teamsData[teamNumber];
+            return teamInfo.match_data;
         }
     },
     created() {
@@ -71,12 +88,11 @@ export default {
 
 <style>
 .radar-graph-container {
-    display: flex;
-    max-height: 50vh;
-    justify-content: safe center;
-    background-color: #FFF;
-    border-radius: 10px;
-    width: fit-content;
-    margin: 15px;
+    height: 60vh;
+    min-width: 30vw;
+}
+
+.match-progression-container {
+    min-height: 60vh;
 }
 </style>

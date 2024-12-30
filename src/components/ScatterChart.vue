@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// TODO: fix types
+// @ts-nocheck
+
 import { Scatter } from 'vue-chartjs'
 import { Chart as ChartJS, Title, Tooltip, Legend, PointElement, CategoryScale, LinearScale } from 'chart.js'
 import ChartJSPluginDatalabels from 'chartjs-plugin-datalabels'

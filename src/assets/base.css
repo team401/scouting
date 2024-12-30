@@ -59,12 +59,14 @@ div.main-content {
 
 table {
   border-collapse: collapse;
-  margin: 25px 0;
+  /* margin: 25px 0; */
   font-size: 0.9em;
   font-family: sans-serif;
   min-width: 400px;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
   text-align: center;
+  /* Use margin: auto; to prevent table from being cut off in flex views. */
+  margin: auto;
 }
 
 thead tr {
@@ -88,4 +90,19 @@ tbody tr:nth-of-type(even) {
 
 tbody tr:last-of-type {
   border-bottom: thick solid var(--accent-color);
+}
+
+.data-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: safe center;
+  align-items: safe center;
+  padding: 20px;
+  background-color: #FFF;
+  border-radius: 10px;
+  margin: 15px;
+  /* height: fit-content;
+  width: fit-content; */
+
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
 }

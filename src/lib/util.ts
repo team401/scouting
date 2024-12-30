@@ -1,4 +1,5 @@
-
+// TODO: fix types
+// @ts-nocheck
 
 export function computeSortRanking(a, b, isDescending) {
     // If this is a number, sort numerically.

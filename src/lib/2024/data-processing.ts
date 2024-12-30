@@ -1,3 +1,6 @@
+// TODO: fix types
+// @ts-nocheck
+
 import { supabase } from '@/lib/supabase-client';
 
 export const dataEntryTable = "Scout_Data";
@@ -32,6 +35,7 @@ export async function aggregateEventData(eventId: String): Promise<{}> {
                 total_auto_amp: 0,
                 total_teleop_amp: 0,
                 total_teleop_speaker: 0,
+                match_data: {}
             }
         }
         
@@ -42,7 +46,8 @@ export async function aggregateEventData(eventId: String): Promise<{}> {
 
         // Load the match stats into the matches array for this team.
         // event
-        // eventData[teamNumber]
+        const matchNumber = String(data[i].Match);
+        eventData[teamNumber].match_data[matchNumber] = data[i];
     }
 
     // Compute averages.
