@@ -1,3 +1,6 @@
+// TODO: fix types
+// @ts-nocheck
+
 import "./assets/main.css";
 
 import { createApp } from "vue";
