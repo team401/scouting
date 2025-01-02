@@ -7,7 +7,7 @@ import { aggregateEventData, eventId } from "@/lib/2024/data-processing";
 import '@material/web/select/outlined-select';
 import '@material/web/select/select-option';
 import FilterableGraph from "@/components/FilterableGraph.vue";
-import FilterDropdown from "@/components/FilterDropdown.vue";
+import Dropdown from "@/components/Dropdown.vue";
 import RadarChart from "@/components/RadarChart.vue";
 </script>
 
@@ -16,7 +16,7 @@ import RadarChart from "@/components/RadarChart.vue";
         <h1>Team Analysis</h1>
         <div v-if="teamsLoaded">
             <!-- Only show this if the team data is loaded. -->
-            <FilterDropdown :filters="teamFilters" @filter-selected="setTeam"></FilterDropdown>
+            <Dropdown :choices="teamFilters" v-model="currentTeamIndex" @update:modelValue="setTeam"></Dropdown>
 
             <div>
                 <div class="data-tile radar-graph-container">
