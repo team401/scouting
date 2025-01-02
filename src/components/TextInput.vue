@@ -13,6 +13,9 @@ export default {
     props: {
         modelValue: {
             required: true
+        },
+        label: {
+            default: ""
         }
     },
     computed: {
