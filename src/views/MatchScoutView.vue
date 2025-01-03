@@ -1,6 +1,9 @@
 <script setup lang="ts">
 // @ts-nocheck
 import FormSection from "@/components/FormSection.vue";
+import { submitMatchData } from "@/lib/2024/data-submission";
+
+import "@material/web/button/filled-button";
 </script>
 
 <template>
@@ -9,12 +12,13 @@ import FormSection from "@/components/FormSection.vue";
 
         <form>
             <FormSection v-for="section in scoutForm" :section-key="section.key" :name="section.name"
-                :components="section.components"></FormSection>
+                :components="section.components" :color="getAllianceColor"></FormSection>
         </form>
 
-        <button v-on:click="showFormData">SHOW</button>
-        <button v-on:click="resetFormData">RESET</button>
-
+        <div class="button-container">
+            <md-filled-button v-on:click="submitForm">SUBMIT</md-filled-button>
+            <md-filled-button v-on:click="resetFormData">RESET</md-filled-button>
+        </div>
     </div>
 </template>
 
@@ -33,7 +37,8 @@ export default {
                             type: "text",
                             options: {},
                             defaultValue: "",
-                            value: ""
+                            value: "",
+                            preserveAfterSubmit: true
                         },
                         {
                             key: "match_number",
@@ -56,8 +61,8 @@ export default {
                             label: "Alliance",
                             type: "optionswitch",
                             options: {
-                                unselected: "Red Alliance",
-                                selected: "Blue Alliance"
+                                unselected: "Red",
+                                selected: "Blue"
                             },
                             defaultValue: false,
                             value: false
@@ -156,16 +161,60 @@ export default {
         }
     },
     methods: {
-        showFormData() {
-            console.log(this.scoutForm)
+        async submitForm() {
+            const error = await submitMatchData(this.scoutForm);
+
+            if (error) {
+                console.log(error);
+                return;
+            }
+
+            // Preserve some things that don't need to be re-entered.
+            this.preserveSingleEntryData();
+
+            // Reset all non-preserved data.
+            this.resetFormData();
+
+        },
+        preserveSingleEntryData() {
+            // Iterate over all components and set their default values to be whatever was submitted most recently.
+            this.scoutForm.forEach(section => {
+                section.components.forEach(component => {
+                    if (component.preserveAfterSubmit) {
+                        component.defaultValue = component.value;
+                    }
+                })
+            });
         },
         resetFormData() {
+            // Reset all data to their default values.
             this.scoutForm.forEach(section => {
                 section.components.forEach(component => {
                     component.value = component.defaultValue;
                 })
             });
         }
+    },
+    computed: {
+        getAllianceColor() {
+            // This is hardcoded, so it may need to change.
+            const switchPos = this.scoutForm[0].components[3].value;
+            let allianceColor = switchPos ? "blue" : "red";
+            return allianceColor;
+        }
     }
 }
 </script>
+
+<style scoped>
+.button-container {
+    display: flex;
+    justify-content: safe center;
+    align-items: safe center;
+    width: 100%;
+}
+
+md-filled-button {
+    margin: 10px;
+}
+</style>

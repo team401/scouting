@@ -10,13 +10,22 @@ import TextAreaInput from '@/components/TextAreaInput.vue';
 
 <template>
     <div v-if="type == 'switch'">
-        {{ label }}
-        <Switch :model-value="modelValue" @update:modelValue='updateModel'></Switch>
+        <div class="data-entry-container">
+            {{ label }}
+            <Switch :model-value="modelValue" @update:modelValue='updateModel' class="switch"></Switch>
+        </div>
     </div>
     <div v-else-if="type == 'optionswitch'">
-        {{ options.unselected }}
-        <Switch :model-value="modelValue" @update:modelValue='updateModel'></Switch>
-        {{ options.selected }}
+        <div class="input-container">
+            <div class="label-container">
+                {{ label }}
+            </div>
+            <div class="data-entry-container">
+                {{ options.unselected }}
+                <Switch :model-value="modelValue" @update:modelValue='updateModel' class="switch"></Switch>
+                {{ options.selected }}
+            </div>
+        </div>
     </div>
     <div v-else-if="type == 'dropdown'">
         {{ label }}
@@ -59,3 +68,27 @@ export default {
     }
 }
 </script>
+
+<style scoped>
+.input-container {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+}
+
+.data-entry-container {
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+}
+
+.label-container {
+    display: flex;
+    align-items: center;
+}
+
+.switch {
+    margin-left: 10px;
+    margin-right: 10px;
+}
+</style>
