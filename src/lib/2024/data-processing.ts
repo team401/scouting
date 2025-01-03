@@ -2,14 +2,12 @@
 // @ts-nocheck
 
 import { supabase } from '@/lib/supabase-client';
-
-export const dataEntryTable = "Scout_Data";
-export const eventId = "2024vagi2";
+import { dataVizTable, eventId } from '@/lib/2024/constants';
 
 
 export async function aggregateEventData(eventId: String): Promise<{}> {
     // Pull the relevant data from supabase.
-    const { data, error } = await supabase.from(dataEntryTable).select().eq('Event', eventId);
+    const { data, error } = await supabase.from(dataVizTable).select().eq('Event', eventId);
 
     // If there is an error, report it and do not load the data.
     if (error) {

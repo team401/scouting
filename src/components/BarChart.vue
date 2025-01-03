@@ -79,7 +79,7 @@ export default {
 }
 </script>
 
-<style>
+<style scoped>
 .bar-chart {
     height: 100%;
     width: 100%;

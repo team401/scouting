@@ -86,7 +86,7 @@ export default {
 }
 </script>
 
-<style>
+<style scoped>
 .radar-chart {
     height: 100%;
     width: 100%;

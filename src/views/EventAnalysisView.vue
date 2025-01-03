@@ -2,7 +2,8 @@
 // TODO: fix types
 // @ts-nocheck
 
-import { aggregateEventData, eventId } from "@/lib/2024/data-processing";
+import { aggregateEventData } from "@/lib/2024/data-processing";
+import { eventId } from '@/lib/2024/constants';
 
 import '@material/web/select/outlined-select';
 import '@material/web/select/select-option';

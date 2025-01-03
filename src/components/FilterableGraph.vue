@@ -4,7 +4,7 @@
 
 import BarChart from "@/components/BarChart.vue";
 import ScatterChart from "@/components/ScatterChart.vue";
-import FilterDropdown from "@/components/FilterDropdown.vue";
+import Dropdown from "@/components/Dropdown.vue";
 
 import '@material/web/select/outlined-select';
 import '@material/web/select/select-option';
@@ -12,7 +12,7 @@ import '@material/web/select/select-option';
 
 <template>
     <div>
-        <FilterDropdown :filters="graphFilters" @filter-selected="setGraphView"></FilterDropdown>
+        <Dropdown :choices="graphFilters" v-model="activeGraphFilterIndex" @update:modelValue="setGraphView"></Dropdown>
     </div>
     <div class="graph-container">
         <!-- Show the relevant chart based on the data being shown -->
@@ -66,7 +66,7 @@ export default {
 }
 </script>
 
-<style>
+<style scoped>
 .graph-container {
     display: flex;
     width: 100%;
