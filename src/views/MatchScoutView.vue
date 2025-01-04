@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // @ts-nocheck
 import FormSection from "@/components/FormSection.vue";
-import { submitMatchData } from "@/lib/2024/data-submission";
+import QRCode from "@/components/QRCode.vue";
+import { parseMatchData, submitMatchData } from "@/lib/2024/data-submission";
 
 import "@material/web/button/filled-button";
 </script>
@@ -14,6 +15,18 @@ import "@material/web/button/filled-button";
             <FormSection v-for="section in scoutForm" :section-key="section.key" :name="section.name"
                 :components="section.components" :color="getAllianceColor"></FormSection>
         </form>
+
+        <div class="data-tile" v-if="submitFailed">
+            <h1>DATA UPLOAD FAILED</h1>
+            <h1>SCAN THIS QR CODE</h1>
+            <QRCode :qr-data="submitData"></QRCode>
+
+
+            <h3>Save this text to a file if a scanner is unavailable</h3>
+            <p>
+                {{ getSubmitDataString }}
+            </p>
+        </div>
 
         <div class="button-container">
             <md-filled-button v-on:click="submitForm">SUBMIT</md-filled-button>
@@ -157,17 +170,33 @@ export default {
                         },
                     ]
                 }
-            ]
+            ],
+            // Track data submission in order to fall back to QR code / copy text if it fails.
+            submitData: {},
+            submitFailed: false
         }
     },
     methods: {
         async submitForm() {
-            const error = await submitMatchData(this.scoutForm);
+            // Parse the data to submit separately from the act of submitting the data to the database in case the connection fails.
+            this.submitData = parseMatchData(this.scoutForm)
 
+            // Data submission hasn't failed yet...
+            this.submitFailed = false;
+
+            // Attempt to submit the data.
+            const error = await submitMatchData(this.submitData);
+
+            // If the database submission failed, set the QR code to show and print the error.
             if (error) {
                 console.log(error);
+                this.submitFailed = true;
                 return;
             }
+
+            // Mark the submission as successful and reset the submission data.
+            this.submitFailed = false;
+            this.submitData = {};
 
             // Preserve some things that don't need to be re-entered.
             this.preserveSingleEntryData();
@@ -193,6 +222,9 @@ export default {
                     component.value = component.defaultValue;
                 })
             });
+
+            // The form submission no longer has failed since the data is being reset.
+            this.submitFailed = false;
         }
     },
     computed: {
@@ -201,6 +233,9 @@ export default {
             const switchPos = this.scoutForm[0].components[3].value;
             let allianceColor = switchPos ? "blue" : "red";
             return allianceColor;
+        },
+        getSubmitDataString() {
+            return JSON.stringify(this.submitData);
         }
     }
 }
@@ -216,5 +251,9 @@ export default {
 
 md-filled-button {
     margin: 10px;
+}
+
+p {
+    overflow-wrap: anywhere;
 }
 </style>

@@ -31,7 +31,7 @@ const router = createRouter({
       path: "/event",
       name: "Event Analysis",
       component: EventAnalysisView,
-    },
+    }
   ],
 });
 

@@ -4,7 +4,7 @@
 import { supabase } from '@/lib/supabase-client';
 import { dataEntryTable, eventId } from '@/lib/2024/constants';
 
-export async function submitMatchData(data) {
+export function parseMatchData(data) {
     let db_data = {};
     data.forEach(section => {
         section.components.forEach(component => {
@@ -26,9 +26,13 @@ export async function submitMatchData(data) {
 
     // Add things that the scout doesn't need to enter every time (the event).
     db_data['event'] = eventId;
-    
+
+    return db_data
+}
+
+export async function submitMatchData(data) {
     // Submit the data to the database.
-    const { error } = await supabase.from(dataEntryTable).insert(db_data);
+    const { error } = await supabase.from(dataEntryTable + "dfdfa").insert(data);
 
     return error;
 }
