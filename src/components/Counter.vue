@@ -7,9 +7,9 @@ import "@material/web/button/elevated-button";
     <div class="counter-view-container">
         {{ label }}
         <div class="counter-container">
-            <md-elevated-button @click="incrementCount">+</md-elevated-button>
-            <span class="count-number">{{ getCount }}</span>
             <md-elevated-button @click="decrementCount">-</md-elevated-button>
+            <span class="count-number">{{ getCount }}</span>
+            <md-elevated-button @click="incrementCount">+</md-elevated-button>
         </div>
     </div>
 </template>
@@ -22,6 +22,9 @@ export default {
         },
         label: {
             default: ""
+        },
+        min: {
+            default: 0
         }
     },
     computed: {
@@ -38,6 +41,12 @@ export default {
         decrementCount(event) {
             // Prevent the form from submitting when decrementing.
             event.preventDefault();
+
+            // Prevent decrementing below the min value.
+            if (this.modelValue == this.min) {
+                return;
+            }
+
             this.$emit('update:modelValue', this.modelValue - 1);
         }
     }

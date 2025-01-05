@@ -36,8 +36,6 @@ export default {
                 color = "#0000FF";
             }
 
-            console.log(color)
-
             return "border: 3px solid " + color;
         }
     }

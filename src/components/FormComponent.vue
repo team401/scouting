@@ -4,6 +4,7 @@ import Dropdown from '@/components/Dropdown.vue';
 import Switch from '@/components/Switch.vue';
 import Number from '@/components/Number.vue';
 import Counter from '@/components/Counter.vue';
+import StackedCounter from '@/components/StackedCounters.vue';
 import TextInput from '@/components/TextInput.vue';
 import TextAreaInput from '@/components/TextAreaInput.vue';
 </script>
@@ -22,7 +23,8 @@ import TextAreaInput from '@/components/TextAreaInput.vue';
             </div>
             <div class="data-entry-container">
                 {{ options.unselected }}
-                <Switch :model-value="modelValue" @update:modelValue='updateModel' class="switch"></Switch>
+                <Switch :model-value="modelValue" @update:modelValue='updateModel' :selected-color="options?.selectedColor"
+                    :unselected-color="options?.unselectedColor" class="switch"></Switch>
                 {{ options.selected }}
             </div>
         </div>
@@ -36,6 +38,11 @@ import TextAreaInput from '@/components/TextAreaInput.vue';
     </div>
     <div v-else-if="type == 'counter'">
         <Counter :model-value="modelValue" @update:modelValue="updateModel" :label="label"></Counter>
+    </div>
+    <div v-else-if="type == 'stacked-counters'">
+        <StackedCounter :model-value="modelValue" @update:modelValue="updateModel" :label="label"
+            :sub-labels="options.labels">
+        </StackedCounter>
     </div>
     <div v-else-if="type == 'text'">
         <TextInput :model-value="modelValue" @update:modelValue="updateModel" :label="label"></TextInput>

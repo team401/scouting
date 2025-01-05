@@ -2,7 +2,8 @@
 // @ts-nocheck
 import FormSection from "@/components/FormSection.vue";
 import QRCode from "@/components/QRCode.vue";
-import { parseMatchData, submitMatchData } from "@/lib/2024/data-submission";
+import { getMatchScoutSchema } from "@/lib/2025/match-scouting-form";
+import { parseMatchData, submitMatchData } from "@/lib/data-submission";
 
 import "@material/web/button/filled-button";
 </script>
@@ -39,138 +40,7 @@ import "@material/web/button/filled-button";
 export default {
     data() {
         return {
-            scoutForm: [
-                {
-                    key: "prematch",
-                    name: "Pre-match",
-                    components: [
-                        {
-                            key: "scout_name",
-                            label: "Scout Name",
-                            type: "text",
-                            options: {},
-                            defaultValue: "",
-                            value: "",
-                            preserveAfterSubmit: true
-                        },
-                        {
-                            key: "match_number",
-                            label: "Match Number",
-                            type: "number",
-                            options: {},
-                            defaultValue: "0",
-                            value: "0"
-                        },
-                        {
-                            key: "team_number",
-                            label: "Team Number",
-                            type: "number",
-                            options: {},
-                            defaultValue: 0,
-                            value: 0
-                        },
-                        {
-                            key: "alliance",
-                            label: "Alliance",
-                            type: "optionswitch",
-                            options: {
-                                unselected: "Red",
-                                selected: "Blue"
-                            },
-                            defaultValue: false,
-                            value: false
-                        },
-                        {
-                            key: "position",
-                            label: "Start Position",
-                            type: "dropdown",
-                            options: {
-                                choices: [
-                                    { key: "source", text: "Source" },
-                                    { key: "middle", text: "Middle" },
-                                    { key: "amp", text: "Amp" }
-                                ]
-                            },
-                            defaultValue: 0,
-                            value: 0
-                        },
-                        {
-                            key: "noshow",
-                            label: "No Show",
-                            type: "switch",
-                            options: {},
-                            defaultValue: false,
-                            value: false
-                        },
-                    ]
-                },
-                {
-                    key: "auto",
-                    name: "Autonomous",
-                    components: [
-                        {
-                            key: "moved",
-                            label: "Moved?",
-                            type: "switch",
-                            options: {},
-                            defaultValue: false,
-                            value: false
-                        },
-                        {
-                            key: "speaker_scored",
-                            label: "Speaker Scored",
-                            type: "counter",
-                            options: {},
-                            defaultValue: 0,
-                            value: 0
-                        },
-                        {
-                            key: "speaker_missed",
-                            label: "Speaker Missed",
-                            type: "counter",
-                            options: {},
-                            defaultValue: 0,
-                            value: 0
-                        },
-                    ]
-                },
-                {
-                    key: "teleop",
-                    name: "Teleop",
-                    components: [
-                        {
-                            key: "speaker_scored",
-                            label: "Speaker Scored",
-                            type: "counter",
-                            options: {},
-                            defaultValue: 0,
-                            value: 0
-                        },
-                        {
-                            key: "speaker_missed",
-                            label: "Speaker Missed",
-                            type: "counter",
-                            options: {},
-                            defaultValue: 0,
-                            value: 0
-                        },
-                    ]
-                },
-                {
-                    key: "postmatch",
-                    name: "Post Match",
-                    components: [
-                        {
-                            key: "comments",
-                            label: "Comments",
-                            type: "textarea",
-                            options: {},
-                            defaultValue: "",
-                            value: ""
-                        },
-                    ]
-                }
-            ],
+            scoutForm: getMatchScoutSchema(),
             // Track data submission in order to fall back to QR code / copy text if it fails.
             submitData: {},
             submitFailed: false
