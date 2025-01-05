@@ -5,18 +5,18 @@ import TeamAnalysisView from "@/views/TeamAnalysisView.vue";
 import EventAnalysisView from "@/views/EventAnalysisView.vue";
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHistory(),
   routes: [
     {
       path: "/",
-      name: "Event Analysis",
-      component: EventAnalysisView,
+      name: "Home",
+      component: MatchScoutView,
     },
-    // {
-    //   path: "/scout",
-    //   name: "Match Scouting",
-    //   component: MatchScoutView,
-    // },
+    {
+      path: "/scout",
+      name: "Match Scouting",
+      component: MatchScoutView,
+    },
     // {
     //   path: "/pit-scout",
     //   name: "Pit Scouting",
@@ -31,7 +31,7 @@ const router = createRouter({
       path: "/event",
       name: "Event Analysis",
       component: EventAnalysisView,
-    },
+    }
   ],
 });
 
