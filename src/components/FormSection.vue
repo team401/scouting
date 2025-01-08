@@ -7,8 +7,8 @@ import FormComponent from './FormComponent.vue';
     <div class="data-tile" :style="getStyle">
         <h2>{{ name }}</h2>
         <div v-for="component in components" v-if="components.length > 0">
-            <FormComponent :label="component.label" :type="component.type" :options="component.options"
-                v-model="component.value"></FormComponent>
+            <FormComponent :label="component.label" :type="component.type" :options="component?.options"
+                v-model="component.value" :required="component?.required" :error="component?.error"></FormComponent>
         </div>
     </div>
 </template>
@@ -44,6 +44,6 @@ export default {
 
 <style scoped>
 div {
-    margin: 15px;
+    margin-top: 15px;
 }
 </style>

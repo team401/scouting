@@ -54,9 +54,9 @@ export function getMatchScoutSchema() {
                     type: "dropdown",
                     options: {
                         choices: [
-                            { key: "processor", text: "Processor" },
-                            { key: "center", text: "center" },
-                            { key: "other", text: "Other" }
+                            { key: "processor", text: "Processor Side" },
+                            { key: "center", text: "Center" },
+                            { key: "other", text: "Other Side" }
                         ]
                     },
                     defaultValue: 0,
@@ -91,7 +91,7 @@ export function getMatchScoutSchema() {
                     required: false
                 },
                 {
-                    key: "coral_scored",
+                    key: "coral",
                     label: "Coral Scored",
                     type: "stacked-counters",
                     options: {
@@ -102,6 +102,30 @@ export function getMatchScoutSchema() {
                     preserveAfterSubmit: false,
                     required: false
                 },
+                {
+                    key: "algae",
+                    label: "Algae",
+                    type: "stacked-counters",
+                    options: {
+                        labels: ["Processed", "Net", "Missed"]
+                    },
+                    defaultValue: [0, 0, 0],
+                    value: [0, 0, 0]    ,
+                    preserveAfterSubmit: false,
+                    required: false
+                },
+                {
+                    key: "fouls",
+                    label: "Fouls",
+                    type: "stacked-counters",
+                    options: {
+                        labels: ["Foul", "TechFoul"]
+                    },
+                    defaultValue: [0, 0],
+                    value: [0, 0]    ,
+                    preserveAfterSubmit: false,
+                    required: false
+                },
             ]
         },
         {
@@ -109,31 +133,86 @@ export function getMatchScoutSchema() {
             name: "Teleop",
             components: [
                 {
-                    key: "speaker_scored",
-                    label: "Speaker Scored",
-                    type: "counter",
-                    options: {},
-                    defaultValue: 0,
-                    value: 0,
+                    key: "coral",
+                    label: "Coral Scored",
+                    type: "stacked-counters",
+                    options: {
+                        labels: ["L4", "L3", "L2", "L1"]
+                    },
+                    defaultValue: [0, 0, 0, 0],
+                    value: [0, 0, 0, 0],
                     preserveAfterSubmit: false,
                     required: false
                 },
                 {
-                    key: "speaker_missed",
-                    label: "Speaker Missed",
-                    type: "counter",
-                    options: {},
-                    defaultValue: 0,
-                    value: 0,
+                    key: "algae",
+                    label: "Algae",
+                    type: "stacked-counters",
+                    options: {
+                        labels: ["Processed", "Net", "Missed"]
+                    },
+                    defaultValue: [0, 0, 0],
+                    value: [0, 0, 0],
+                    preserveAfterSubmit: false,
+                    required: false
+                },
+                {
+                    key: "fouls",
+                    label: "Fouls",
+                    type: "stacked-counters",
+                    options: {
+                        labels: ["Foul", "TechFoul"]
+                    },
+                    defaultValue: [0, 0],
+                    value: [0, 0]    ,
                     preserveAfterSubmit: false,
                     required: false
                 },
             ]
         },
         {
+            key: "endgame",
+            name: "Endgame",
+            components: [
+                {
+                    key: "endgame",
+                    label: "Endgame Result",
+                    type: "radio",
+                    options: {
+                        choices: [
+                            { key: "none", text: "No Points" },
+                            { key: "park", text: "Park" },
+                            { key: "shallow", text: "Shallow Cage" },
+                            { key: "deep", text: "Deep Cage" }
+                        ]
+                    },
+                    defaultValue: 'none',
+                    value: 'none',
+                    preserveAfterSubmit: false,
+                    required: false
+                }
+            ]
+        },
+        {
             key: "postmatch",
             name: "Post Match",
             components: [
+                {
+                    key: "cards",
+                    label: "Cards?",
+                    type: "dropdown",
+                    options: {
+                        choices: [
+                            {key: "none", text: "No Card"},
+                            {key: "yellow", text: "Yellow Card"},
+                            {key: "red", text: "Red Card"},
+                        ]
+                    },
+                    defaultValue: 0,
+                    value: 0,
+                    preserveAfterSubmit: false,
+                    required: false
+                },
                 {
                     key: "comments",
                     label: "Comments",

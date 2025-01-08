@@ -3,7 +3,7 @@
 import FormSection from "@/components/FormSection.vue";
 import QRCode from "@/components/QRCode.vue";
 import { getMatchScoutSchema } from "@/lib/2025/match-scouting-form";
-import { parseMatchData, submitMatchData } from "@/lib/data-submission";
+import { validateForm, parseMatchData, submitMatchData } from "@/lib/data-submission";
 
 import "@material/web/button/filled-button";
 </script>
@@ -48,11 +48,21 @@ export default {
     },
     methods: {
         async submitForm() {
-            // Parse the data to submit separately from the act of submitting the data to the database in case the connection fails.
-            this.submitData = parseMatchData(this.scoutForm)
 
             // Data submission hasn't failed yet...
             this.submitFailed = false;
+
+            // Validate the form.
+            const { data, isValid } = validateForm(this.scoutForm);
+            this.scoutForm = data;
+
+            // If the form isn't valid, wait for the user to fix it.
+            if (!isValid) {
+                return;
+            }
+
+            // Parse the data to submit separately from the act of submitting the data to the database in case the connection fails.
+            this.submitData = parseMatchData(this.scoutForm)
 
             // Attempt to submit the data.
             const error = await submitMatchData(this.submitData);

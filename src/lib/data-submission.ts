@@ -3,6 +3,23 @@
 
 import { supabase } from '@/lib/supabase-client';
 
+export function validateForm(data) {
+    var isValid = true;
+    data.forEach(section => {
+        section.forEach(component => {
+            if (component.required) {
+                component.error = component.value == component.defaultValue;
+                isValid = false;
+            }
+        });
+    });
+
+    return {
+        data: data,
+        valid: isValid 
+    };
+}
+
 export function parseMatchData(data, eventId) {
     let db_data = {};
     data.forEach(section => {
@@ -23,9 +40,7 @@ export function parseMatchData(data, eventId) {
             } else {
                 db_data[key] = val;
             }
-            
-            
-        })
+        });
     });
 
     // Add things that the scout doesn't need to enter every time (the event).

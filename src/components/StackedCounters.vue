@@ -5,14 +5,18 @@ import Counter from '@/components/Counter.vue';
 </script>
 
 <template>
-    <div class="counter-stack-container">
-        {{ label }}
-        <div v-for="val, idx in modelValue" class="counter-container">
-            <div class="counter-container">
-                <span class="label-container">{{ subLabels[idx] }}</span>
-                <Counter :model-value="val" @update:modelValue="updateModel($event, idx)"></Counter>
-            </div>
-        </div>
+    <div>
+        <u>{{ label }}</u>
+        <table>
+            <tr v-for="val, idx in modelValue">
+                <td>
+                    <span class="label-container">{{ subLabels[idx] }}</span>
+                </td>
+                <td>
+                    <Counter :model-value="val" @update:modelValue="updateModel($event, idx)"></Counter>
+                </td>
+            </tr>
+        </table>
     </div>
 </template>
 
@@ -42,19 +46,21 @@ export default {
 </script>
 
 <style scoped>
-.counter-stack-container {
+div {
     display: flex;
-    flex-direction: column;
     align-items: center;
-}
-
-.counter-container {
-    display: flex;
-    flex-direction: row;
-    align-items: safe center;
 }
 
 .label-container {
     margin: 15px;
+}
+
+table {
+    border-collapse: collapse;
+    box-shadow: none;
+}
+
+td {
+    padding: 8px 10px;
 }
 </style>
