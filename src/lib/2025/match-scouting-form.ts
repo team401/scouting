@@ -13,7 +13,8 @@ export function getMatchScoutSchema() {
                     defaultValue: "",
                     value: "",
                     preserveAfterSubmit: true,
-                    required: true
+                    required: true,
+                    error: false
                 },
                 {
                     key: "match_number",
@@ -23,7 +24,8 @@ export function getMatchScoutSchema() {
                     defaultValue: 0,
                     value: 0,
                     preserveAfterSubmit: false,
-                    required: false
+                    required: false,
+                    error: false
                 },
                 {
                     key: "team_number",
@@ -33,7 +35,8 @@ export function getMatchScoutSchema() {
                     defaultValue: 0,
                     value: 0,
                     preserveAfterSubmit: false,
-                    required: false
+                    required: false,
+                    error: false
                 },
                 {
                     key: "alliance",
@@ -46,7 +49,8 @@ export function getMatchScoutSchema() {
                     defaultValue: false,
                     value: false,
                     preserveAfterSubmit: false,
-                    required: false
+                    required: false,
+                    error: false
                 },
                 {
                     key: "position",
@@ -62,7 +66,8 @@ export function getMatchScoutSchema() {
                     defaultValue: 0,
                     value: 0,
                     preserveAfterSubmit: false,
-                    required: false
+                    required: false,
+                    error: false
                 },
                 {
                     key: "noshow",
@@ -72,7 +77,8 @@ export function getMatchScoutSchema() {
                     defaultValue: false,
                     value: false,
                     preserveAfterSubmit: false,
-                    required: false
+                    required: false,
+                    error: false
                 },
             ]
         },
@@ -88,7 +94,8 @@ export function getMatchScoutSchema() {
                     defaultValue: false,
                     value: false,
                     preserveAfterSubmit: false,
-                    required: false
+                    required: false,
+                    error: false
                 },
                 {
                     key: "coral",
@@ -100,7 +107,8 @@ export function getMatchScoutSchema() {
                     defaultValue: [0, 0, 0, 0],
                     value: [0, 0, 0, 0],
                     preserveAfterSubmit: false,
-                    required: false
+                    required: false,
+                    error: false
                 },
                 {
                     key: "algae",
@@ -112,7 +120,8 @@ export function getMatchScoutSchema() {
                     defaultValue: [0, 0, 0],
                     value: [0, 0, 0]    ,
                     preserveAfterSubmit: false,
-                    required: false
+                    required: false,
+                    error: false
                 },
                 {
                     key: "fouls",
@@ -124,7 +133,8 @@ export function getMatchScoutSchema() {
                     defaultValue: [0, 0],
                     value: [0, 0]    ,
                     preserveAfterSubmit: false,
-                    required: false
+                    required: false,
+                    error: false
                 },
             ]
         },
@@ -142,7 +152,8 @@ export function getMatchScoutSchema() {
                     defaultValue: [0, 0, 0, 0],
                     value: [0, 0, 0, 0],
                     preserveAfterSubmit: false,
-                    required: false
+                    required: false,
+                    error: false
                 },
                 {
                     key: "algae",
@@ -154,7 +165,8 @@ export function getMatchScoutSchema() {
                     defaultValue: [0, 0, 0],
                     value: [0, 0, 0],
                     preserveAfterSubmit: false,
-                    required: false
+                    required: false,
+                    error: false
                 },
                 {
                     key: "fouls",
@@ -166,7 +178,8 @@ export function getMatchScoutSchema() {
                     defaultValue: [0, 0],
                     value: [0, 0]    ,
                     preserveAfterSubmit: false,
-                    required: false
+                    required: false,
+                    error: false
                 },
             ]
         },
@@ -189,7 +202,8 @@ export function getMatchScoutSchema() {
                     defaultValue: 'none',
                     value: 'none',
                     preserveAfterSubmit: false,
-                    required: false
+                    required: false,
+                    error: false
                 }
             ]
         },
@@ -211,7 +225,8 @@ export function getMatchScoutSchema() {
                     defaultValue: 0,
                     value: 0,
                     preserveAfterSubmit: false,
-                    required: false
+                    required: false,
+                    error: false
                 },
                 {
                     key: "comments",
@@ -221,7 +236,8 @@ export function getMatchScoutSchema() {
                     defaultValue: "",
                     value: "",
                     preserveAfterSubmit: false,
-                    required: false
+                    required: false,
+                    error: false
                 },
             ]
         }

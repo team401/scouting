@@ -8,7 +8,8 @@ import FormComponent from './FormComponent.vue';
         <h2>{{ name }}</h2>
         <div v-for="component in components" v-if="components.length > 0">
             <FormComponent :label="component.label" :type="component.type" :options="component?.options"
-                v-model="component.value" :required="component?.required" :error="component?.error"></FormComponent>
+                v-model="component.value" :required="component?.required" :error="component?.error" @input="notifyInput">
+            </FormComponent>
         </div>
     </div>
 </template>
@@ -37,6 +38,11 @@ export default {
             }
 
             return "border: 3px solid " + color;
+        }
+    },
+    methods: {
+        notifyInput() {
+            this.$emit("form-update", true);
         }
     }
 }

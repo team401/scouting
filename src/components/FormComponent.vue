@@ -82,6 +82,9 @@ export default {
         },
         required: {
             default: false
+        },
+        error: {
+            default: false
         }
     },
     methods: {

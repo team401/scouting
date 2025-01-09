@@ -14,8 +14,12 @@ import "@material/web/button/filled-button";
 
         <form>
             <FormSection v-for="section in scoutForm" :section-key="section.key" :name="section.name"
-                :components="section.components" :color="getAllianceColor"></FormSection>
+                :components="section.components" :color="getAllianceColor" @form-update="formValidation"></FormSection>
         </form>
+
+        <div class="data-tile error-tile" v-if="formInvalid">
+            <h1>^^^ Form is invalid. Please check the form for errors ^^^</h1>
+        </div>
 
         <div class="data-tile" v-if="submitFailed">
             <h1>DATA UPLOAD FAILED</h1>
@@ -43,21 +47,27 @@ export default {
             scoutForm: getMatchScoutSchema(),
             // Track data submission in order to fall back to QR code / copy text if it fails.
             submitData: {},
-            submitFailed: false
+            submitFailed: false,
+            formInvalid: false
         }
     },
     methods: {
-        async submitForm() {
+        formValidation() {
+            // The form isn't invalid yet.
+            this.formInvalid = false;
 
+            const { data, valid } = validateForm(this.scoutForm);
+            this.scoutForm = data;
+            this.formInvalid = !valid;
+
+            return valid;
+        },
+        async submitForm() {
             // Data submission hasn't failed yet...
             this.submitFailed = false;
 
-            // Validate the form.
-            const { data, isValid } = validateForm(this.scoutForm);
-            this.scoutForm = data;
-
             // If the form isn't valid, wait for the user to fix it.
-            if (!isValid) {
+            if (!this.formValidation()) {
                 return;
             }
 
@@ -100,11 +110,13 @@ export default {
             this.scoutForm.forEach(section => {
                 section.components.forEach(component => {
                     component.value = component.defaultValue;
+                    component.error = false;
                 })
             });
 
             // The form submission no longer has failed since the data is being reset.
             this.submitFailed = false;
+            this.formInvalid = false;
         }
     },
     computed: {
@@ -135,5 +147,10 @@ md-filled-button {
 
 p {
     overflow-wrap: anywhere;
+}
+
+.error-tile {
+    background-color: red;
+    color: white;
 }
 </style>

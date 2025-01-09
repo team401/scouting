@@ -3,19 +3,28 @@
 
 import { supabase } from '@/lib/supabase-client';
 
-export function validateForm(data) {
+export function validateForm(form) {
     var isValid = true;
-    data.forEach(section => {
-        section.forEach(component => {
+
+    // TODO: form validation needs more thought.
+    form.forEach(section => {
+        section.components.forEach(component => {
             if (component.required) {
-                component.error = component.value == component.defaultValue;
-                isValid = false;
+                // Text validation.
+                const isText = component.type == "text" || component.type == "textarea";
+                if (isText && component.value == "") {
+                    // isValid is latching.
+                    isValid = false;
+                    component.error = true;
+                } else {
+                    component.error = false;
+                }
             }
         });
     });
 
     return {
-        data: data,
+        data: form,
         valid: isValid 
     };
 }
