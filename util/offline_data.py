@@ -6,9 +6,6 @@ from supabase import create_client, Client, ClientOptions
 
 from public_credentials import SUPABASE_URL, SUPABASE_TOKEN
 
-UPLOAD_TABLE = "raw_data"
-
-
 def create_supabase_client(credentials) -> Client:
     supabase_client: Client = create_client(
             supabase_url=credentials['url'], 
@@ -37,8 +34,13 @@ def upload_data(data, table: str, credentials: dict) -> None:
         logging.error(e)
 
 
-def process_offline_data_file(in_file, out_file, mode, table="MatchData", credentials={"url": SUPABASE_URL, "token": SUPABASE_TOKEN}) -> None:
+def process_offline_data_file(in_file, out_file, mode, type, credentials={"url": SUPABASE_URL, "token": SUPABASE_TOKEN}) -> None:
     data_dict = load_offline_data(in_file)
+
+    # Pick table based on type of data.
+    table = "MatchData"
+    if type == "pit":
+        table = "PitData"
 
     if mode == "csv":
         convert_data_to_csv(data_dict, out_file)
