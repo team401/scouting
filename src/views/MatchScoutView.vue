@@ -72,10 +72,13 @@ export default {
             }
 
             // Parse the data to submit separately from the act of submitting the data to the database in case the connection fails.
-            this.submitData = parseScoutData(this.scoutForm)
+            this.submitData = parseScoutData(this.scoutForm, "")
 
             // Attempt to submit the data.
             const error = await submitScoutData(this.submitData, "");
+
+            // Preserve some things that don't need to be re-entered.
+            this.preserveSingleEntryData();
 
             // If the database submission failed, set the QR code to show and print the error.
             if (error) {
@@ -87,9 +90,6 @@ export default {
             // Mark the submission as successful and reset the submission data.
             this.submitFailed = false;
             this.submitData = {};
-
-            // Preserve some things that don't need to be re-entered.
-            this.preserveSingleEntryData();
 
             // Reset all non-preserved data.
             this.resetFormData();

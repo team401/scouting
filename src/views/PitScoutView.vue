@@ -14,7 +14,7 @@ import "@material/web/button/filled-button";
 
         <form>
             <FormSection v-for="section in scoutForm" :section-key="section.key" :name="section.name"
-                :components="section.components" :color="getAllianceColor" @form-update="formValidation"></FormSection>
+                :components="section.components" color="gray" @form-update="formValidation"></FormSection>
         </form>
 
         <div class="data-tile error-tile" v-if="formInvalid">
@@ -72,10 +72,13 @@ export default {
             }
 
             // Parse the data to submit separately from the act of submitting the data to the database in case the connection fails.
-            this.submitData = parseScoutData(this.scoutForm)
+            this.submitData = parseScoutData(this.scoutForm, "")
 
             // Attempt to submit the data.
-            const error = await submitScoutData(this.submitData);
+            const error = await submitScoutData(this.submitData, "");
+
+            // Preserve some things that don't need to be re-entered.
+            this.preserveSingleEntryData();
 
             // If the database submission failed, set the QR code to show and print the error.
             if (error) {
@@ -87,9 +90,6 @@ export default {
             // Mark the submission as successful and reset the submission data.
             this.submitFailed = false;
             this.submitData = {};
-
-            // Preserve some things that don't need to be re-entered.
-            this.preserveSingleEntryData();
 
             // Reset all non-preserved data.
             this.resetFormData();
@@ -120,12 +120,6 @@ export default {
         }
     },
     computed: {
-        getAllianceColor() {
-            // This is hardcoded, so it may need to change.
-            const switchPos = this.scoutForm[0].components[3].value;
-            let allianceColor = switchPos ? "blue" : "red";
-            return allianceColor;
-        },
         getSubmitDataString() {
             return JSON.stringify(this.submitData);
         }
