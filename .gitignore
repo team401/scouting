@@ -1,2 +1,9 @@
 node_modules
 .idea/*
+
+
+__pycache__
+
+# Ignore credentials
+private_credentials.json
+.env
