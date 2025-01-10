@@ -6,12 +6,30 @@ import '@material/web/radio/radio';
 </script>
 
 <template>
-    <div class="radio-group-container">
+    <span v-if="required">{{ label }}*</span>
+    <span v-else>{{ label }}</span>
+
+    <div class="radio-group-container" v-if="isVertical">
         <div v-for="choice in choices" class="radio-input-container">
-            <md-radio :name="label" :value="choice.key" v-bind:checked="isChecked(choice.key)"
-                @input="setChoice"></md-radio>
+            <md-radio :name="label" :value="choice.key" v-bind:checked="isChecked(choice.key)" @input="setChoice"
+                :required="required" :class="getRadioClass"></md-radio>
             <span>{{ choice.text }}</span>
         </div>
+    </div>
+    <div v-else>
+        <table>
+            <thead>
+                <th v-for="choice in choices">
+                    {{ choice.text }}
+                </th>
+            </thead>
+            <tr>
+                <td v-for="choice in choices">
+                    <md-radio :name="label" :value="choice.key" v-bind:checked="isChecked(choice.key)" @input="setChoice"
+                        :required="required" :class="getRadioClass"></md-radio>
+                </td>
+            </tr>
+        </table>
     </div>
 </template>
 
@@ -24,7 +42,18 @@ export default {
         modelValue: {
             required: true
         },
-        label: {}
+        label: {
+            default: ""
+        },
+        required: {
+            default: false
+        },
+        error: {
+            default: false
+        },
+        isVertical: {
+            default: true
+        }
     },
     methods: {
         setChoice(event: int) {
@@ -42,6 +71,12 @@ export default {
             }
             return this.choices[this.modelValue];
         },
+        getRadioClass() {
+            if (this.error) {
+                return "radio-error";
+            }
+            return "";
+        }
     }
 }
 </script>
@@ -58,7 +93,20 @@ export default {
     flex-direction: row;
 }
 
+.radio-error {
+    border: 3px solid red;
+}
+
 span {
     margin: 10px;
+}
+
+table {
+    border-collapse: collapse;
+    box-shadow: none;
+}
+
+td {
+    padding: 8px 10px;
 }
 </style>

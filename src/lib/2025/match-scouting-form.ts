@@ -99,13 +99,17 @@ export function getMatchScoutSchema() {
                 },
                 {
                     key: "coral",
-                    label: "Coral Scored",
-                    type: "stacked-counters",
+                    label: "Coral",
+                    type: "grid-counters",
                     options: {
-                        labels: ["L4", "L3", "L2", "L1"]
+                        labels: ["L4", "L3", "L2", "L1"],
+                        sections: [
+                            { key: "scored", text: "Scored" },
+                            { key: "missed", text: "Missed" }
+                        ]
                     },
-                    defaultValue: [0, 0, 0, 0],
-                    value: [0, 0, 0, 0],
+                    defaultValue: [[0, 0], [0, 0], [0, 0], [0, 0]],
+                    value: [[0, 0], [0, 0], [0, 0], [0, 0]],
                     preserveAfterSubmit: false,
                     required: false,
                     error: false
@@ -113,25 +117,29 @@ export function getMatchScoutSchema() {
                 {
                     key: "algae",
                     label: "Algae",
-                    type: "stacked-counters",
+                    type: "grid-counters",
                     options: {
-                        labels: ["Processed", "Net", "Missed"]
+                        labels: ["Processor", "Net", "Dislodged"],
+                        sections: [
+                            { key: "success", text: "Succcess" },
+                            { key: "fail", text: "Failed" }
+                        ]
                     },
-                    defaultValue: [0, 0, 0],
-                    value: [0, 0, 0]    ,
+                    defaultValue: [[0, 0], [0, 0], [0, 0]],
+                    value: [[0, 0], [0, 0], [0, 0]],
                     preserveAfterSubmit: false,
                     required: false,
                     error: false
                 },
                 {
-                    key: "fouls",
+                    key: "foul",
                     label: "Fouls",
                     type: "stacked-counters",
                     options: {
                         labels: ["Foul", "TechFoul"]
                     },
                     defaultValue: [0, 0],
-                    value: [0, 0]    ,
+                    value: [0, 0],
                     preserveAfterSubmit: false,
                     required: false,
                     error: false
@@ -144,13 +152,17 @@ export function getMatchScoutSchema() {
             components: [
                 {
                     key: "coral",
-                    label: "Coral Scored",
-                    type: "stacked-counters",
+                    label: "Coral",
+                    type: "grid-counters",
                     options: {
-                        labels: ["L4", "L3", "L2", "L1"]
+                        labels: ["L4", "L3", "L2", "L1"],
+                        sections: [
+                            { key: "scored", text: "Scored" },
+                            { key: "missed", text: "Missed" }
+                        ]
                     },
-                    defaultValue: [0, 0, 0, 0],
-                    value: [0, 0, 0, 0],
+                    defaultValue: [[0, 0], [0, 0], [0, 0], [0, 0]],
+                    value: [[0, 0], [0, 0], [0, 0], [0, 0]],
                     preserveAfterSubmit: false,
                     required: false,
                     error: false
@@ -158,25 +170,29 @@ export function getMatchScoutSchema() {
                 {
                     key: "algae",
                     label: "Algae",
-                    type: "stacked-counters",
+                    type: "grid-counters",
                     options: {
-                        labels: ["Processed", "Net", "Missed"]
+                        labels: ["Processor", "Net", "Dislodged"],
+                        sections: [
+                            { key: "success", text: "Succcess" },
+                            { key: "fail", text: "Failed" }
+                        ]
                     },
-                    defaultValue: [0, 0, 0],
-                    value: [0, 0, 0],
+                    defaultValue: [[0, 0], [0, 0], [0, 0]],
+                    value: [[0, 0], [0, 0], [0, 0]],
                     preserveAfterSubmit: false,
                     required: false,
                     error: false
                 },
                 {
-                    key: "fouls",
+                    key: "foul",
                     label: "Fouls",
                     type: "stacked-counters",
                     options: {
                         labels: ["Foul", "TechFoul"]
                     },
                     defaultValue: [0, 0],
-                    value: [0, 0]    ,
+                    value: [0, 0],
                     preserveAfterSubmit: false,
                     required: false,
                     error: false
@@ -193,16 +209,18 @@ export function getMatchScoutSchema() {
                     type: "radio",
                     options: {
                         choices: [
-                            { key: "none", text: "No Points" },
+                            { key: "none", text: "None" },
                             { key: "park", text: "Park" },
                             { key: "shallow", text: "Shallow Cage" },
-                            { key: "deep", text: "Deep Cage" }
+                            { key: "shallow_fail", text: "Shallow Cage Failed" },
+                            { key: "deep", text: "Deep Cage" },
+                            { key: "deep_fail", text: "Deep Cage Failed" }
                         ]
                     },
-                    defaultValue: 'none',
-                    value: 'none',
+                    defaultValue: '',
+                    value: '',
                     preserveAfterSubmit: false,
-                    required: false,
+                    required: true,
                     error: false
                 }
             ]
@@ -217,15 +235,75 @@ export function getMatchScoutSchema() {
                     type: "dropdown",
                     options: {
                         choices: [
-                            {key: "none", text: "No Card"},
-                            {key: "yellow", text: "Yellow Card"},
-                            {key: "red", text: "Red Card"},
+                            { key: "none", text: "No Card" },
+                            { key: "yellow", text: "Yellow Card" },
+                            { key: "red", text: "Red Card" },
                         ]
                     },
                     defaultValue: 0,
                     value: 0,
                     preserveAfterSubmit: false,
                     required: false,
+                    error: false
+                },
+                {
+                    key: "driving",
+                    label: "Driving",
+                    type: "radio",
+                    options: {
+                        choices: [
+                            { key: "1", text: "1" },
+                            { key: "2", text: "2" },
+                            { key: "3", text: "3" },
+                            { key: "4", text: "4" },
+                            { key: "5", text: "5" },
+                        ],
+                        isVertical: false
+                    },
+                    defaultValue: '',
+                    value: '',
+                    preserveAfterSubmit: false,
+                    required: true,
+                    error: false
+                },
+                {
+                    key: "defense",
+                    label: "Defense",
+                    type: "radio",
+                    options: {
+                        choices: [
+                            { key: "1", text: "1" },
+                            { key: "2", text: "2" },
+                            { key: "3", text: "3" },
+                            { key: "4", text: "4" },
+                            { key: "5", text: "5" },
+                        ],
+                        isVertical: false
+                    },
+                    defaultValue: '',
+                    value: '',
+                    preserveAfterSubmit: false,
+                    required: true,
+                    error: false
+                },
+                {
+                    key: "stability",
+                    label: "Stability",
+                    type: "radio",
+                    options: {
+                        choices: [
+                            { key: "1", text: "1" },
+                            { key: "2", text: "2" },
+                            { key: "3", text: "3" },
+                            { key: "4", text: "4" },
+                            { key: "5", text: "5" },
+                        ],
+                        isVertical: false
+                    },
+                    defaultValue: '',
+                    value: '',
+                    preserveAfterSubmit: false,
+                    required: true,
                     error: false
                 },
                 {

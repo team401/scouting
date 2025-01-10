@@ -8,6 +8,7 @@ import RadioButtons from '@/components/RadioButtons.vue';
 import StackedCounter from '@/components/StackedCounters.vue';
 import TextInput from '@/components/TextInput.vue';
 import TextAreaInput from '@/components/TextAreaInput.vue';
+import GridCounter from '@/components/GridCounters.vue';
 </script>
 
 <template>
@@ -36,9 +37,8 @@ import TextAreaInput from '@/components/TextAreaInput.vue';
             :error="error"></Dropdown>
     </div>
     <div v-else-if="type == 'radio'">
-        {{ label }}
         <RadioButtons :choices="options.choices" :model-value="modelValue" :label="label" @update:modelValue="updateModel"
-            :required="required" :error="error">
+            :required="required" :error="error" :is-vertical="options?.isVertical">
         </RadioButtons>
     </div>
     <div v-else-if="type == 'number'">
@@ -52,6 +52,11 @@ import TextAreaInput from '@/components/TextAreaInput.vue';
         <StackedCounter :model-value="modelValue" @update:modelValue="updateModel" :label="label"
             :sub-labels="options.labels">
         </StackedCounter>
+    </div>
+    <div v-else-if="type == 'grid-counters'">
+        <GridCounter :model-value="modelValue" @update:modelValue="updateModel" :label="label" :sub-labels="options.labels"
+            :sections="options?.sections">
+        </GridCounter>
     </div>
     <div v-else-if="type == 'text'">
         <TextInput :model-value="modelValue" @update:modelValue="updateModel" :label="label" :required="required"

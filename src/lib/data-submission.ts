@@ -12,7 +12,12 @@ export function validateForm(form) {
             if (component.required) {
                 // Text validation.
                 const isText = component.type == "text" || component.type == "textarea";
+                const isRadio = component.type == "radio";
                 if (isText && component.value == "") {
+                    // isValid is latching.
+                    isValid = false;
+                    component.error = true;
+                } else if (isRadio && component.value == component.defaultValue) {
                     // isValid is latching.
                     isValid = false;
                     component.error = true;
@@ -25,7 +30,7 @@ export function validateForm(form) {
 
     return {
         data: form,
-        valid: isValid 
+        valid: isValid
     };
 }
 
@@ -46,6 +51,15 @@ export function parseMatchData(data, eventId) {
                     const subKey = key + "." + component.options.labels[i];
                     db_data[subKey] = v;
                 });
+            } else if (type == 'grid-counters') {
+                const sections = component.options.sections;
+                const labels = component.options.labels;
+                for (var row = 0; row < labels.length; row++) {
+                    for (var col = 0; col < sections.length; col++) {
+                        const subKey = key + "." + labels[row] + "." + sections[col].key;
+                        db_data[subKey] = val[row][col];
+                    }
+                }
             } else {
                 db_data[key] = val;
             }
