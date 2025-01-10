@@ -20,6 +20,9 @@ import "@material/web/button/filled-button";
         <div class="data-tile error-tile" v-if="formInvalid">
             <h1>^^^ Form is invalid. Please check the form for errors ^^^</h1>
         </div>
+        <div class="data-tile success-tile" v-if="submitSuccess">
+            <h1>Submitted successfully!</h1>
+        </div>
 
         <div class="data-tile" v-if="submitFailed">
             <h1>DATA UPLOAD FAILED</h1>
@@ -48,6 +51,7 @@ export default {
             // Track data submission in order to fall back to QR code / copy text if it fails.
             submitData: {},
             submitFailed: false,
+            submitSuccess: false,
             formInvalid: false
         }
     },
@@ -63,8 +67,9 @@ export default {
             return valid;
         },
         async submitForm() {
-            // Data submission hasn't failed yet...
+            // Data submission hasn't failed or succeeded yet...
             this.submitFailed = false;
+            this.submitSuccess = false;
 
             // If the form isn't valid, wait for the user to fix it.
             if (!this.formValidation()) {
@@ -75,7 +80,7 @@ export default {
             this.submitData = parseScoutData(this.scoutForm, "")
 
             // Attempt to submit the data.
-            const error = await submitScoutData(this.submitData, "");
+            const error = await submitScoutData(this.submitData, "MatchData");
 
             // Preserve some things that don't need to be re-entered.
             this.preserveSingleEntryData();
@@ -87,12 +92,14 @@ export default {
                 return;
             }
 
-            // Mark the submission as successful and reset the submission data.
-            this.submitFailed = false;
-            this.submitData = {};
 
-            // Reset all non-preserved data.
+            // Reset all non-preserved data. This marks submitFailed as false and also submitSuccess as false. 
+            // So we mark submitSuccess as true below to update the UI.
             this.resetFormData();
+
+            // Mark the submission as successful and reset the submission data.
+            this.submitSuccess = true;
+            this.submitData = {};
 
         },
         preserveSingleEntryData() {
@@ -117,6 +124,7 @@ export default {
             // The form submission no longer has failed since the data is being reset.
             this.submitFailed = false;
             this.formInvalid = false;
+            this.submitSuccess = false;
         }
     },
     computed: {
@@ -151,6 +159,11 @@ p {
 
 .error-tile {
     background-color: red;
+    color: white;
+}
+
+.success-tile {
+    background-color: green;
     color: white;
 }
 </style>
