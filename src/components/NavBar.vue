@@ -17,7 +17,7 @@ import { useViewModeStore } from '@/stores/view-mode-store';
         <HamburgerMenu>
             <template v-slot:menu-content>
                 <RouterLink to="/scout" class="nav-link nav-link-mobile">Match Scouting</RouterLink>
-                <!-- <RouterLink to="/pit-scout" class="nav-link nav-link-mobile">Pit Scouting</RouterLink> -->
+                <RouterLink to="/pit-scout" class="nav-link nav-link-mobile">Pit Scouting</RouterLink>
                 <RouterLink to="/event" class="nav-link nav-link-mobile">Event Analysis</RouterLink>
                 <RouterLink to="/team" class="nav-link nav-link-mobile">Team Analysis</RouterLink>
 
@@ -26,7 +26,7 @@ import { useViewModeStore } from '@/stores/view-mode-store';
     </div>
     <div class="nav" v-else>
         <RouterLink to="/scout" class="nav-link">Match Scouting</RouterLink>
-        <!-- <RouterLink to="/pit-scout" class="nav-link">Pit Scouting</RouterLink> -->
+        <RouterLink to="/pit-scout" class="nav-link">Pit Scouting</RouterLink>
         <RouterLink to="/event" class="nav-link">Event Analysis</RouterLink>
         <RouterLink to="/team" class="nav-link">Team Analysis</RouterLink>
     </div>

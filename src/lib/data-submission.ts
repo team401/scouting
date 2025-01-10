@@ -34,7 +34,7 @@ export function validateForm(form) {
     };
 }
 
-export function parseMatchData(data, eventId) {
+export function parseScoutData(data, eventId) {
     let db_data = {};
     data.forEach(section => {
         section.components.forEach(component => {
@@ -72,7 +72,7 @@ export function parseMatchData(data, eventId) {
     return db_data
 }
 
-export async function submitMatchData(data, table) {
+export async function submitScoutData(data, table) {
     // Submit the data to the database.
     const { error } = await supabase.from(table).insert(data);
 
