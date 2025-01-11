@@ -32,7 +32,6 @@ export default {
     },
     computed: {
         getStyle() {
-            console.log(this.color)
             var color = "#FF0000";
             if (this.color == "blue") {
                 color = "#0000FF";
