@@ -1,0 +1,66 @@
+name: 'Nightly Data Update'
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '00 9 * * *' # once a day at 9:00 AM UTC / 4:00 AM EST
+  
+jobs:
+  # A helpful guide on installing poetry in Github Actions can be found here:
+  # https://jacobian.org/til/github-actions-poetry/
+  set_up_environment:
+    name: Set up environment
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./util
+    steps:
+      - name: Check out default branch
+        uses: actions/checkout@v4
+      
+      - name: Install poetry
+        run: pipx install poetry
+
+      # Ensure the correct version of python is installed.
+      - uses: actions/setup-python@v5.2.0
+        with:
+          python-version: '3.10'
+          cache: 'poetry'
+
+      - name: Python Version Test
+        run: python3 --version
+
+      # Install dependencies. `--no-root` means "install all dependencies but not the project
+      # itself", which is what you want to avoid caching _your_ code. The `if` statement
+      # ensures this only runs on a cache miss.
+      - run: poetry install --no-interaction --no-root
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+
+  # Update the event information in case it has changed.
+  load_event_info:
+    name: Update Event Data
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: ./util
+    steps:
+      - name: Check out default branch
+        uses: actions/checkout@v4
+
+      - name: Install poetry
+        run: pipx install poetry
+
+      # Load the cached poetry install from the environment set up step.
+      - uses: actions/setup-python@v5.2.0
+        with:
+          python-version: '3.10'
+          cache: 'poetry'
+
+      # Install dependencies. `--no-root` means "install all dependencies but not the project
+      # itself", which is what you want to avoid caching _your_ code. The `if` statement
+      # ensures this only runs on a cache miss.
+      - run: poetry install --no-interaction --no-root
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+
+      - name: Update team data
+        run: poetry run python main.py --mode=event --tba_creds=${{ secrets.TBA_CREDENTIALS }}
