@@ -68,6 +68,6 @@ table {
 }
 
 td {
-    padding: 8px 10px;
+    padding: 8px 30px;
 }
 </style>

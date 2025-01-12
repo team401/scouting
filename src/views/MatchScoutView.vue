@@ -116,7 +116,11 @@ export default {
             // Reset all data to their default values.
             this.scoutForm.forEach(section => {
                 section.components.forEach(component => {
-                    component.value = component.defaultValue;
+                    if (!component.incrementAfterSubmit) {
+                        component.value = component.defaultValue;
+                    } else {
+                        component.value = component.value + 1;
+                    }
                     component.error = false;
                 })
             });

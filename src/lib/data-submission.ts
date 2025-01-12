@@ -13,11 +13,17 @@ export function validateForm(form) {
                 // Text validation.
                 const isText = component.type == "text" || component.type == "textarea";
                 const isRadio = component.type == "radio";
+                const isNumber = component.type == "number";
+
                 if (isText && component.value == "") {
                     // isValid is latching.
                     isValid = false;
                     component.error = true;
                 } else if (isRadio && component.value == component.defaultValue) {
+                    // isValid is latching.
+                    isValid = false;
+                    component.error = true;
+                } else if (isNumber && component.value == component.defaultValue) {
                     // isValid is latching.
                     isValid = false;
                     component.error = true;

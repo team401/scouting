@@ -13,6 +13,7 @@ export function getMatchScoutSchema() {
                     defaultValue: "",
                     value: "",
                     preserveAfterSubmit: true,
+                    incrementAfterSubmit: false,
                     required: true,
                     error: false
                 },
@@ -21,10 +22,11 @@ export function getMatchScoutSchema() {
                     label: "Match Number",
                     type: "number",
                     options: {},
-                    defaultValue: 0,
-                    value: 0,
+                    defaultValue: null,
+                    value: null,
                     preserveAfterSubmit: false,
-                    required: false,
+                    incrementAfterSubmit: true,
+                    required: true,
                     error: false
                 },
                 {
@@ -35,6 +37,7 @@ export function getMatchScoutSchema() {
                     defaultValue: 0,
                     value: 0,
                     preserveAfterSubmit: false,
+                    incrementAfterSubmit: false,
                     required: false,
                     error: false
                 },
@@ -49,6 +52,7 @@ export function getMatchScoutSchema() {
                     defaultValue: false,
                     value: false,
                     preserveAfterSubmit: false,
+                    incrementAfterSubmit: false,
                     required: false,
                     error: false
                 },
@@ -66,6 +70,7 @@ export function getMatchScoutSchema() {
                     defaultValue: 0,
                     value: 0,
                     preserveAfterSubmit: false,
+                    incrementAfterSubmit: false,
                     required: false,
                     error: false
                 },
@@ -77,6 +82,7 @@ export function getMatchScoutSchema() {
                     defaultValue: false,
                     value: false,
                     preserveAfterSubmit: false,
+                    incrementAfterSubmit: false,
                     required: false,
                     error: false
                 },
@@ -94,6 +100,7 @@ export function getMatchScoutSchema() {
                     defaultValue: false,
                     value: false,
                     preserveAfterSubmit: false,
+                    incrementAfterSubmit: false,
                     required: false,
                     error: false
                 },
@@ -111,6 +118,7 @@ export function getMatchScoutSchema() {
                     defaultValue: [[0, 0], [0, 0], [0, 0], [0, 0]],
                     value: [[0, 0], [0, 0], [0, 0], [0, 0]],
                     preserveAfterSubmit: false,
+                    incrementAfterSubmit: false,
                     required: false,
                     error: false
                 },
@@ -128,6 +136,7 @@ export function getMatchScoutSchema() {
                     defaultValue: [[0, 0], [0, 0], [0, 0]],
                     value: [[0, 0], [0, 0], [0, 0]],
                     preserveAfterSubmit: false,
+                    incrementAfterSubmit: false,
                     required: false,
                     error: false
                 },
@@ -141,6 +150,7 @@ export function getMatchScoutSchema() {
                     defaultValue: [0, 0],
                     value: [0, 0],
                     preserveAfterSubmit: false,
+                    incrementAfterSubmit: false,
                     required: false,
                     error: false
                 },
@@ -164,6 +174,7 @@ export function getMatchScoutSchema() {
                     defaultValue: [[0, 0], [0, 0], [0, 0], [0, 0]],
                     value: [[0, 0], [0, 0], [0, 0], [0, 0]],
                     preserveAfterSubmit: false,
+                    incrementAfterSubmit: false,
                     required: false,
                     error: false
                 },
@@ -181,6 +192,7 @@ export function getMatchScoutSchema() {
                     defaultValue: [[0, 0], [0, 0], [0, 0]],
                     value: [[0, 0], [0, 0], [0, 0]],
                     preserveAfterSubmit: false,
+                    incrementAfterSubmit: false,
                     required: false,
                     error: false
                 },
@@ -194,6 +206,7 @@ export function getMatchScoutSchema() {
                     defaultValue: [0, 0],
                     value: [0, 0],
                     preserveAfterSubmit: false,
+                    incrementAfterSubmit: false,
                     required: false,
                     error: false
                 },
@@ -220,9 +233,32 @@ export function getMatchScoutSchema() {
                     defaultValue: '',
                     value: '',
                     preserveAfterSubmit: false,
+                    incrementAfterSubmit: false,
                     required: true,
                     error: false
-                }
+                },
+                {
+                    key: "climb_Speed",
+                    label: "Climb Speed",
+                    type: "radio",
+                    options: {
+                        choices: [
+                            { key: "0", text: "0" },
+                            { key: "1", text: "1" },
+                            { key: "2", text: "2" },
+                            { key: "3", text: "3" },
+                            { key: "4", text: "4" },
+                            { key: "5", text: "5" },
+                        ],
+                        isVertical: false
+                    },
+                    defaultValue: '',
+                    value: '',
+                    preserveAfterSubmit: false,
+                    incrementAfterSubmit: false,
+                    required: true,
+                    error: false
+                },
             ]
         },
         {
@@ -243,6 +279,7 @@ export function getMatchScoutSchema() {
                     defaultValue: 0,
                     value: 0,
                     preserveAfterSubmit: false,
+                    incrementAfterSubmit: false,
                     required: false,
                     error: false
                 },
@@ -263,6 +300,7 @@ export function getMatchScoutSchema() {
                     defaultValue: '',
                     value: '',
                     preserveAfterSubmit: false,
+                    incrementAfterSubmit: false,
                     required: true,
                     error: false
                 },
@@ -283,6 +321,7 @@ export function getMatchScoutSchema() {
                     defaultValue: '',
                     value: '',
                     preserveAfterSubmit: false,
+                    incrementAfterSubmit: false,
                     required: true,
                     error: false
                 },
@@ -303,6 +342,7 @@ export function getMatchScoutSchema() {
                     defaultValue: '',
                     value: '',
                     preserveAfterSubmit: false,
+                    incrementAfterSubmit: false,
                     required: true,
                     error: false
                 },
@@ -314,6 +354,7 @@ export function getMatchScoutSchema() {
                     defaultValue: "",
                     value: "",
                     preserveAfterSubmit: false,
+                    incrementAfterSubmit: false,
                     required: false,
                     error: false
                 },

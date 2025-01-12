@@ -24,7 +24,7 @@ export function getPitScoutSchema() {
                     defaultValue: 0,
                     value: 0,
                     preserveAfterSubmit: false,
-                    required: false,
+                    required: true,
                     error: false
                 },
                 {
@@ -42,7 +42,7 @@ export function getPitScoutSchema() {
                     defaultValue: 0,
                     value: 0,
                     preserveAfterSubmit: true,
-                    required: true,
+                    required: false,
                     error: false
                 },
                 {
@@ -72,6 +72,27 @@ export function getPitScoutSchema() {
                         choices: [
                             { key: "none", text: "None" },
                             { key: "ground", text: "Ground" },
+                            { key: "reef", text: "Reef" },
+                            { key: "both", text: "Both" },
+                        ],
+                        isVertical: false
+                    },
+                    defaultValue: '',
+                    value: '',
+                    preserveAfterSubmit: false,
+                    required: true,
+                    error: false
+                },
+                {
+                    key: "climb",
+                    label: "Climb Type",
+                    type: "radio",
+                    options: {
+                        choices: [
+                            { key: "none", text: "None" },
+                            { key: "shallow", text: "Shallow only" },
+                            { key: "deep", text: "Deep only" },
+                            { key: "both", text: "Both" },
                         ],
                         isVertical: false
                     },
