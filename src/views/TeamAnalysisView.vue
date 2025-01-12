@@ -3,7 +3,8 @@
 // @ts-nocheck
 
 import { aggregateEventData } from "@/lib/2024/data-processing";
-import { eventId } from '@/lib/2024/constants';
+import { teamRadar } from "@/lib/2024/data-visualization";
+import { useEventStore } from "@/stores/event-store";
 
 import '@material/web/select/outlined-select';
 import '@material/web/select/select-option';
@@ -35,6 +36,7 @@ import RadarChart from "@/components/RadarChart.vue";
 export default {
     data() {
         return {
+            eventStore: null,
             teamsLoaded: false,
             teamsData: [{}],
             teamFilters: [],
@@ -47,7 +49,10 @@ export default {
     },
     methods: {
         async loadTeamsData() {
-            this.teamsData = await aggregateEventData(eventId);
+            // Note: do this to avoid stale data on page refresh.
+            await this.eventStore.updateEvent();
+
+            this.teamsData = await aggregateEventData(this.eventStore.eventId);
 
             this.teamFilters = [];
             Object.keys(this.teamsData).forEach(element => {
@@ -63,25 +68,34 @@ export default {
     },
     computed: {
         getCurrentTeam() {
-            if (this.currentTeamIndex >= this.teamFilters.length) {
+            if (this.currentTeamIndex >= this.teamFilters.length || this.teamFilters.length == 0) {
                 return {};
             }
 
             return this.teamFilters[this.currentTeamIndex];
         },
         getTeamRadar() {
+            if (this.teamFilters.length == 0) {
+                return {};
+            }
+
             const teamNumber = this.teamFilters[this.currentTeamIndex].key;
             const teamInfo = this.teamsData[teamNumber];
 
-            return { "Auto Amp": teamInfo.avg_auto_amp, "Teleop Speaker": teamInfo.avg_teleop_speaker, "Teleop Amp": teamInfo.avg_teleop_amp };
+            return teamRadar(teamInfo);
         },
         getTeamMatches() {
+            if (this.teamFilters.length == 0) {
+                return {};
+            }
+
             const teamNumber = this.teamFilters[this.currentTeamIndex].key;
             const teamInfo = this.teamsData[teamNumber];
             return teamInfo.match_data;
         }
     },
     created() {
+        this.eventStore = useEventStore();
         this.loadTeamsData();
     }
 }

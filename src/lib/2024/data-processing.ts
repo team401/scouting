@@ -2,7 +2,7 @@
 // @ts-nocheck
 
 import { supabase } from '@/lib/supabase-client';
-import { dataVizTable, eventId } from '@/lib/2024/constants';
+import { dataVizTable } from '@/lib/constants';
 
 
 export async function aggregateEventData(eventId: String): Promise<{}> {
@@ -36,7 +36,7 @@ export async function aggregateEventData(eventId: String): Promise<{}> {
                 match_data: {}
             }
         }
-        
+
         eventData[teamNumber].num_matches++;
         eventData[teamNumber].total_auto_amp += data[i].Auto_Amp_Made;
         eventData[teamNumber].total_teleop_amp += data[i].Teleop_Amp_Made;
