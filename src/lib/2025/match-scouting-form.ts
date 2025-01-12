@@ -121,7 +121,7 @@ export function getMatchScoutSchema() {
                     options: {
                         labels: ["Processor", "Net", "Dislodged"],
                         sections: [
-                            { key: "success", text: "Succcess" },
+                            { key: "success", text: "Success" },
                             { key: "fail", text: "Failed" }
                         ]
                     },
@@ -136,7 +136,7 @@ export function getMatchScoutSchema() {
                     label: "Fouls",
                     type: "stacked-counters",
                     options: {
-                        labels: ["Foul", "TechFoul"]
+                        labels: ["Minor", "Major"]
                     },
                     defaultValue: [0, 0],
                     value: [0, 0],
@@ -174,7 +174,7 @@ export function getMatchScoutSchema() {
                     options: {
                         labels: ["Processor", "Net", "Dislodged"],
                         sections: [
-                            { key: "success", text: "Succcess" },
+                            { key: "success", text: "Success" },
                             { key: "fail", text: "Failed" }
                         ]
                     },
@@ -189,7 +189,7 @@ export function getMatchScoutSchema() {
                     label: "Fouls",
                     type: "stacked-counters",
                     options: {
-                        labels: ["Foul", "TechFoul"]
+                        labels: ["Minor", "Major"]
                     },
                     defaultValue: [0, 0],
                     value: [0, 0],
