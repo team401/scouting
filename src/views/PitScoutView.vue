@@ -2,8 +2,12 @@
 // @ts-nocheck
 import FormSection from "@/components/FormSection.vue";
 import QRCode from "@/components/QRCode.vue";
+
+
+import { pitScoutTable } from "@/lib/constants";
 import { getPitScoutSchema } from "@/lib/2025/pit-scouting-form";
 import { validateForm, parseScoutData, submitScoutData } from "@/lib/data-submission";
+import { useEventStore } from "@/stores/event-store";
 
 import "@material/web/button/filled-button";
 </script>
@@ -47,6 +51,7 @@ import "@material/web/button/filled-button";
 export default {
     data() {
         return {
+            eventStore: null,
             scoutForm: getPitScoutSchema(),
             // Track data submission in order to fall back to QR code / copy text if it fails.
             submitData: {},
@@ -77,10 +82,10 @@ export default {
             }
 
             // Parse the data to submit separately from the act of submitting the data to the database in case the connection fails.
-            this.submitData = parseScoutData(this.scoutForm, "")
+            this.submitData = parseScoutData(this.scoutForm, this.eventStore.eventId)
 
             // Attempt to submit the data.
-            const error = await submitScoutData(this.submitData, "PitData");
+            const error = await submitScoutData(this.submitData, pitScoutTable);
 
             // Preserve some things that don't need to be re-entered.
             this.preserveSingleEntryData();
@@ -128,6 +133,9 @@ export default {
         getSubmitDataString() {
             return JSON.stringify(this.submitData);
         }
+    },
+    created() {
+        this.eventStore = useEventStore();
     }
 }
 </script>

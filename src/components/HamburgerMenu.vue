@@ -8,6 +8,9 @@ import '@material/web/icon/icon';
 
 <template>
     <div class="hamburger-container">
+        <div class="menu-title">
+            <slot name="menu-title"></slot>
+        </div>
         <div class="hamburger-button-container">
             <a class="hamburger-button" v-if="enabled" @click="expanded = !expanded">
                 <md-icon slot="icon" v-if="expanded">close </md-icon>
@@ -15,7 +18,7 @@ import '@material/web/icon/icon';
             </a>
         </div>
         <Transition name="slide">
-            <div class="hamburger-menu-container" v-if="expanded">
+            <div class="hamburger-menu-container" v-if="expanded" @click="expanded = false">
                 <slot name="menu-content"></slot>
             </div>
         </Transition>
@@ -85,5 +88,13 @@ export default {
 .slide-enter-from,
 .slide-leave-to {
     opacity: 0;
+}
+
+.menu-title {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    color: #FFF;
+    padding: 20px;
 }
 </style>
