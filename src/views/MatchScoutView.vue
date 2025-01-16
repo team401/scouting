@@ -3,7 +3,7 @@
 import FormSection from "@/components/FormSection.vue";
 import QRCode from "@/components/QRCode.vue";
 import { getMatchScoutSchema } from "@/lib/2025/match-scouting-form";
-import { parseMatchData, submitMatchData } from "@/lib/data-submission";
+import { validateForm, parseScoutData, submitScoutData } from "@/lib/data-submission";
 
 import "@material/web/button/filled-button";
 </script>
@@ -14,8 +14,15 @@ import "@material/web/button/filled-button";
 
         <form>
             <FormSection v-for="section in scoutForm" :section-key="section.key" :name="section.name"
-                :components="section.components" :color="getAllianceColor"></FormSection>
+                :components="section.components" :color="getAllianceColor" @form-update="formValidation"></FormSection>
         </form>
+
+        <div class="data-tile error-tile" v-if="formInvalid">
+            <h1>^^^ Form is invalid. Please check the form for errors ^^^</h1>
+        </div>
+        <div class="data-tile success-tile" v-if="submitSuccess">
+            <h1>Submitted successfully!</h1>
+        </div>
 
         <div class="data-tile" v-if="submitFailed">
             <h1>DATA UPLOAD FAILED</h1>
@@ -43,19 +50,40 @@ export default {
             scoutForm: getMatchScoutSchema(),
             // Track data submission in order to fall back to QR code / copy text if it fails.
             submitData: {},
-            submitFailed: false
+            submitFailed: false,
+            submitSuccess: false,
+            formInvalid: false
         }
     },
     methods: {
-        async submitForm() {
-            // Parse the data to submit separately from the act of submitting the data to the database in case the connection fails.
-            this.submitData = parseMatchData(this.scoutForm)
+        formValidation() {
+            // The form isn't invalid yet.
+            this.formInvalid = false;
 
-            // Data submission hasn't failed yet...
+            const { data, valid } = validateForm(this.scoutForm);
+            this.scoutForm = data;
+            this.formInvalid = !valid;
+
+            return valid;
+        },
+        async submitForm() {
+            // Data submission hasn't failed or succeeded yet...
             this.submitFailed = false;
+            this.submitSuccess = false;
+
+            // If the form isn't valid, wait for the user to fix it.
+            if (!this.formValidation()) {
+                return;
+            }
+
+            // Parse the data to submit separately from the act of submitting the data to the database in case the connection fails.
+            this.submitData = parseScoutData(this.scoutForm, "")
 
             // Attempt to submit the data.
-            const error = await submitMatchData(this.submitData);
+            const error = await submitScoutData(this.submitData, "MatchData");
+
+            // Preserve some things that don't need to be re-entered.
+            this.preserveSingleEntryData();
 
             // If the database submission failed, set the QR code to show and print the error.
             if (error) {
@@ -64,15 +92,14 @@ export default {
                 return;
             }
 
-            // Mark the submission as successful and reset the submission data.
-            this.submitFailed = false;
-            this.submitData = {};
 
-            // Preserve some things that don't need to be re-entered.
-            this.preserveSingleEntryData();
-
-            // Reset all non-preserved data.
+            // Reset all non-preserved data. This marks submitFailed as false and also submitSuccess as false. 
+            // So we mark submitSuccess as true below to update the UI.
             this.resetFormData();
+
+            // Mark the submission as successful and reset the submission data.
+            this.submitSuccess = true;
+            this.submitData = {};
 
         },
         preserveSingleEntryData() {
@@ -89,12 +116,19 @@ export default {
             // Reset all data to their default values.
             this.scoutForm.forEach(section => {
                 section.components.forEach(component => {
-                    component.value = component.defaultValue;
+                    if (!component.incrementAfterSubmit) {
+                        component.value = component.defaultValue;
+                    } else {
+                        component.value = component.value + 1;
+                    }
+                    component.error = false;
                 })
             });
 
             // The form submission no longer has failed since the data is being reset.
             this.submitFailed = false;
+            this.formInvalid = false;
+            this.submitSuccess = false;
         }
     },
     computed: {
@@ -125,5 +159,15 @@ md-filled-button {
 
 p {
     overflow-wrap: anywhere;
+}
+
+.error-tile {
+    background-color: red;
+    color: white;
+}
+
+.success-tile {
+    background-color: green;
+    color: white;
 }
 </style>

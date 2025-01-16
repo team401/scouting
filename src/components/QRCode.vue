@@ -44,7 +44,6 @@ export default {
     },
     computed: {
         getQrValue() {
-            console.log(JSON.stringify(this.qrData))
             return JSON.stringify(this.qrData);
         },
     },

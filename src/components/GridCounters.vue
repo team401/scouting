@@ -8,12 +8,16 @@ import Counter from '@/components/Counter.vue';
     <div>
         <u>{{ label }}</u>
         <table>
-            <tr v-for="val, idx in modelValue">
+            <thead>
+                <th></th>
+                <th v-for="section, sIdx in sections">{{ section.text }}</th>
+            </thead>
+            <tr v-for="row, vIdx in modelValue">
                 <td>
-                    <span class="label-container">{{ subLabels[idx] }}</span>
+                    <span class="label-container">{{ subLabels[vIdx] }}</span>
                 </td>
-                <td>
-                    <Counter :model-value="val" @update:modelValue="updateModel($event, idx)"></Counter>
+                <td v-for="section, sIdx in sections">
+                    <Counter :model-value="row[sIdx]" @update:modelValue="updateModel($event, vIdx, sIdx)"></Counter>
                 </td>
             </tr>
         </table>
@@ -32,13 +36,16 @@ export default {
         subLabels: {
             default: []
         },
+        sections: {
+            default: []
+        }
     },
     computed: {
     },
     methods: {
-        updateModel(data, idx) {
+        updateModel(data, col, row) {
             var stackedValues = this.modelValue;
-            stackedValues[idx] = data;
+            stackedValues[col][row] = data;
             this.$emit('update:modelValue', stackedValues);
         }
     }
@@ -61,6 +68,6 @@ table {
 }
 
 td {
-    padding: 8px 10px;
+    padding: 8px 30px;
 }
 </style>

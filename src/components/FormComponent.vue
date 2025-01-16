@@ -4,16 +4,18 @@ import Dropdown from '@/components/Dropdown.vue';
 import Switch from '@/components/Switch.vue';
 import Number from '@/components/Number.vue';
 import Counter from '@/components/Counter.vue';
+import RadioButtons from '@/components/RadioButtons.vue';
 import StackedCounter from '@/components/StackedCounters.vue';
 import TextInput from '@/components/TextInput.vue';
 import TextAreaInput from '@/components/TextAreaInput.vue';
+import GridCounter from '@/components/GridCounters.vue';
 </script>
 
 <template>
     <div v-if="type == 'switch'">
         <div class="data-entry-container">
             {{ label }}
-            <Switch :model-value="modelValue" @update:modelValue='updateModel' class="switch"></Switch>
+            <Switch :model-value="modelValue" @update:modelValue='updateModel' class="switch" :required="required"></Switch>
         </div>
     </div>
     <div v-else-if="type == 'optionswitch'">
@@ -31,10 +33,17 @@ import TextAreaInput from '@/components/TextAreaInput.vue';
     </div>
     <div v-else-if="type == 'dropdown'">
         {{ label }}
-        <Dropdown :choices="options.choices" :model-value="modelValue" @update:modelValue="updateModel"></Dropdown>
+        <Dropdown :choices="options.choices" :model-value="modelValue" @update:modelValue="updateModel" :required="required"
+            :error="error"></Dropdown>
+    </div>
+    <div v-else-if="type == 'radio'">
+        <RadioButtons :choices="options.choices" :model-value="modelValue" :label="label" @update:modelValue="updateModel"
+            :required="required" :error="error" :is-vertical="options?.isVertical">
+        </RadioButtons>
     </div>
     <div v-else-if="type == 'number'">
-        <Number :model-value="modelValue" @update:modelValue="updateModel" :label="label"></Number>
+        <Number :model-value="modelValue" @update:modelValue="updateModel" :label="label" :required="required"
+            :error="error"></Number>
     </div>
     <div v-else-if="type == 'counter'">
         <Counter :model-value="modelValue" @update:modelValue="updateModel" :label="label"></Counter>
@@ -44,11 +53,20 @@ import TextAreaInput from '@/components/TextAreaInput.vue';
             :sub-labels="options.labels">
         </StackedCounter>
     </div>
+    <div v-else-if="type == 'grid-counters'">
+        <GridCounter :model-value="modelValue" @update:modelValue="updateModel" :label="label" :sub-labels="options.labels"
+            :sections="options?.sections">
+        </GridCounter>
+    </div>
     <div v-else-if="type == 'text'">
-        <TextInput :model-value="modelValue" @update:modelValue="updateModel" :label="label"></TextInput>
+        <TextInput :model-value="modelValue" @update:modelValue="updateModel" :label="label" :required="required"
+            :error="error">
+        </TextInput>
     </div>
     <div v-else-if="type == 'textarea'">
-        <TextAreaInput :model-value="modelValue" @update:modelValue="updateModel" :label="label"></TextAreaInput>
+        <TextAreaInput :model-value="modelValue" @update:modelValue="updateModel" :label="label" :required="required"
+            :error="error">
+        </TextAreaInput>
     </div>
 </template>
 
@@ -66,6 +84,12 @@ export default {
         },
         type: {
             default: ""
+        },
+        required: {
+            default: false
+        },
+        error: {
+            default: false
         }
     },
     methods: {

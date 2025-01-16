@@ -3,11 +3,48 @@
 
 import { supabase } from '@/lib/supabase-client';
 
-export function parseMatchData(data, eventId) {
+export function validateForm(form) {
+    var isValid = true;
+
+    // TODO: form validation needs more thought.
+    form.forEach(section => {
+        section.components.forEach(component => {
+            if (component.required) {
+                // Text validation.
+                const isText = component.type == "text" || component.type == "textarea";
+                const isRadio = component.type == "radio";
+                const isNumber = component.type == "number";
+
+                if (isText && component.value == "") {
+                    // isValid is latching.
+                    isValid = false;
+                    component.error = true;
+                } else if (isRadio && component.value == component.defaultValue) {
+                    // isValid is latching.
+                    isValid = false;
+                    component.error = true;
+                } else if (isNumber && component.value == component.defaultValue) {
+                    // isValid is latching.
+                    isValid = false;
+                    component.error = true;
+                } else {
+                    component.error = false;
+                }
+            }
+        });
+    });
+
+    return {
+        data: form,
+        valid: isValid
+    };
+}
+
+export function parseScoutData(data, eventId) {
     let db_data = {};
     data.forEach(section => {
         section.components.forEach(component => {
-            const key = section.key + "." + component.key;
+            const key = (section.key + "." + component.key).toLowerCase();
             const type = component.type;
             const val = component.value;
 
@@ -17,15 +54,22 @@ export function parseMatchData(data, eventId) {
                 db_data[key] = val ? component.options.selected : component.options.unselected;
             } else if (type == 'stacked-counters') {
                 val.forEach((v, i) => {
-                    const subKey = key + "." + component.options.labels[i];
+                    const subKey = (key + "." + component.options.labels[i]).toLowerCase();
                     db_data[subKey] = v;
                 });
+            } else if (type == 'grid-counters') {
+                const sections = component.options.sections;
+                const labels = component.options.labels;
+                for (var row = 0; row < labels.length; row++) {
+                    for (var col = 0; col < sections.length; col++) {
+                        const subKey = (key + "." + labels[row] + "." + sections[col].key).toLowerCase();
+                        db_data[subKey] = val[row][col];
+                    }
+                }
             } else {
                 db_data[key] = val;
             }
-            
-            
-        })
+        });
     });
 
     // Add things that the scout doesn't need to enter every time (the event).
@@ -34,7 +78,7 @@ export function parseMatchData(data, eventId) {
     return db_data
 }
 
-export async function submitMatchData(data, table) {
+export async function submitScoutData(data, table) {
     // Submit the data to the database.
     const { error } = await supabase.from(table).insert(data);
 

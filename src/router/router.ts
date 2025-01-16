@@ -17,11 +17,11 @@ const router = createRouter({
       name: "Match Scouting",
       component: MatchScoutView,
     },
-    // {
-    //   path: "/pit-scout",
-    //   name: "Pit Scouting",
-    //   component: PitScoutView,
-    // },
+    {
+      path: "/pit-scout",
+      name: "Pit Scouting",
+      component: PitScoutView,
+    },
     {
       path: "/team",
       name: "Team Analysis",
