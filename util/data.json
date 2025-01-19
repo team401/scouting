@@ -1,0 +1,10 @@
+[
+    {
+        "pit.scout_name": "jk",
+        "pit.team_number": 0,
+        "pit.drivetrain": "swerve",
+        "pit.coral_intake": "feeder",
+        "pit.algae_intake": "ground",
+        "event": ""
+    }
+]
