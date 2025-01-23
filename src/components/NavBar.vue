@@ -7,20 +7,21 @@ import { RouterLink } from 'vue-router';
 import HamburgerMenu from '@/components/HamburgerMenu.vue';
 
 import { useViewModeStore } from '@/stores/view-mode-store';
+import { useEventStore } from '@/stores/event-store';
 </script>
 
 <template>
     <!-- Mobile navigation bar (hamburger menu) -->
     <div class="nav" v-if="viewMode?.isMobile">
-        <RouterLink to="/" class="nav-home"></RouterLink>
-
         <HamburgerMenu>
+            <template v-slot:menu-title>
+                {{ eventName }}
+            </template>
             <template v-slot:menu-content>
                 <RouterLink to="/scout" class="nav-link nav-link-mobile">Match Scouting</RouterLink>
                 <RouterLink to="/pit-scout" class="nav-link nav-link-mobile">Pit Scouting</RouterLink>
                 <RouterLink to="/event" class="nav-link nav-link-mobile">Event Analysis</RouterLink>
                 <RouterLink to="/team" class="nav-link nav-link-mobile">Team Analysis</RouterLink>
-
             </template>
         </HamburgerMenu>
     </div>
@@ -29,6 +30,7 @@ import { useViewModeStore } from '@/stores/view-mode-store';
         <RouterLink to="/pit-scout" class="nav-link">Pit Scouting</RouterLink>
         <RouterLink to="/event" class="nav-link">Event Analysis</RouterLink>
         <RouterLink to="/team" class="nav-link">Team Analysis</RouterLink>
+        <div class="nav-text nav-right">{{ eventName }}</div>
     </div>
 </template>
 
@@ -43,11 +45,18 @@ export default {
     data() {
         return {
             windowWidth: window.innerWidth,
-            viewMode: null
+            viewMode: null,
+            eventStore: null
         }
     },
-    mounted() {
+    created() {
         this.viewMode = useViewModeStore();
+        this.eventStore = useEventStore();
+    },
+    computed: {
+        eventName() {
+            return this.eventStore?.eventName;
+        }
     }
 }
 </script>
@@ -121,5 +130,21 @@ a.nav-link:active {
 a.nav-link-mobile {
     width: 100%;
     padding: 15px;
+}
+
+.nav-right {
+    display: flex;
+    align-items: center;
+    float: right;
+    position: relative;
+    height: 100%;
+    background-color: var(--accent-color);
+    padding: 20px;
+}
+
+.nav-text {
+    font-size: 16px;
+    text-decoration: none;
+    color: #FFF;
 }
 </style>

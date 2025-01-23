@@ -2,16 +2,8 @@
 import json
 import logging
 import pandas as pd
-from supabase import create_client, Client, ClientOptions
 
-from public_credentials import SUPABASE_URL, SUPABASE_TOKEN
-
-def create_supabase_client(credentials) -> Client:
-    supabase_client: Client = create_client(
-            supabase_url=credentials['url'], 
-            supabase_key=credentials['token'], 
-            options=ClientOptions(auto_refresh_token=False, postgrest_client_timeout=30))
-    return supabase_client
+from supabase_client_interface import create_supabase_client
 
 def load_offline_data(file) -> list:
     data = []
@@ -34,7 +26,7 @@ def upload_data(data, table: str, credentials: dict) -> None:
         logging.error(e)
 
 
-def process_offline_data_file(in_file, out_file, mode, type, credentials={"url": SUPABASE_URL, "token": SUPABASE_TOKEN}) -> None:
+def process_offline_data_file(in_file, out_file, mode, type, sb_credentials) -> None:
     data_dict = load_offline_data(in_file)
 
     # Pick table based on type of data.
@@ -45,4 +37,4 @@ def process_offline_data_file(in_file, out_file, mode, type, credentials={"url":
     if mode == "csv":
         convert_data_to_csv(data_dict, out_file)
     else:
-        upload_data(data_dict, table, credentials)
+        upload_data(data_dict, table, sb_credentials)

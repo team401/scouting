@@ -3,7 +3,7 @@
 // @ts-nocheck
 
 import { aggregateEventData } from "@/lib/2024/data-processing";
-import { eventId } from '@/lib/2024/constants';
+import { useEventStore } from "@/stores/event-store";
 
 import '@material/web/select/outlined-select';
 import '@material/web/select/select-option';
@@ -46,6 +46,7 @@ import FilterableGraph from "@/components/FilterableGraph.vue";
 export default {
     data() {
         return {
+            eventStore: null,
             tableHeaders: [
                 { name: "#", key: "team_number" },
                 { name: "Matches Played", key: "num_matches" },
@@ -67,7 +68,10 @@ export default {
     },
     methods: {
         async loadEventData() {
-            this.eventData = await aggregateEventData(eventId);
+            // Note: do this to avoid stale data on page refresh.
+            await this.eventStore.updateEvent();
+
+            this.eventData = await aggregateEventData(this.eventStore.eventId);
 
             // Convert the data to a table.
             this.tableData = [];
@@ -90,6 +94,7 @@ export default {
         }
     },
     created() {
+        this.eventStore = useEventStore();
         this.loadEventData();
     }
 }
