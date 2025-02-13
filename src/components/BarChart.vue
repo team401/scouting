@@ -11,7 +11,7 @@ ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale,
 </script>
 
 <template>
-    <Bar :options="chartOptions" :data="chartData" class="bar-chart" />
+    <Bar :options="chartOptions" :data="chartData" :height="100" class="bar-chart" />
 </template>
 
 <script lang="ts">
@@ -81,7 +81,7 @@ export default {
 
 <style scoped>
 .bar-chart {
-    height: 100%;
-    width: 100%;
+    /* height: 100%;
+    width: 100%; */
 }
 </style>

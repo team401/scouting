@@ -2,8 +2,8 @@
 // TODO: fix types
 // @ts-nocheck
 
-import { aggregateEventData } from "@/lib/2024/data-processing";
-import { teamRadar } from "@/lib/2024/data-visualization";
+import { aggregateEventData } from "@/lib/2025/data-processing";
+import { teamRadar } from "@/lib/2025/data-visualization";
 import { useEventStore } from "@/stores/event-store";
 
 import '@material/web/select/outlined-select';

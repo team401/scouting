@@ -2,8 +2,9 @@
 // TODO: fix types
 // @ts-nocheck
 
-import { aggregateEventData } from "@/lib/2024/data-processing";
+import { aggregateEventData } from "@/lib/2025/data-processing";
 import { useEventStore } from "@/stores/event-store";
+import { matchScoutTable } from "@/lib/constants";
 
 import '@material/web/select/outlined-select';
 import '@material/web/select/select-option';
@@ -16,7 +17,7 @@ import FilterableGraph from "@/components/FilterableGraph.vue";
         <h2>Graph View</h2>
 
 
-        <div v-if="eventDataLoaded" class="data-tile">
+        <div v-if="eventDataLoaded" class="graph-tile">
             <!-- Data must be loaded before this div is shown -->
             <FilterableGraph :data="eventData" :graphFilters="graphFilters">
             </FilterableGraph>
@@ -50,19 +51,25 @@ export default {
             tableHeaders: [
                 { name: "#", key: "team_number" },
                 { name: "Matches Played", key: "num_matches" },
-                { name: "Avg. Auto Amp", key: "avg_auto_amp" },
-                { name: "Avg. Teleop Amp", key: "avg_teleop_amp" },
-                { name: "Avg. Teleop Speaker", key: "avg_teleop_speaker" },
+                { name: "Avg. Points", key: "avg_points" },
+                { name: "Avg. Coral Points", key: "avg_coral_points" },
+                { name: "Avg. Algae Points", key: "avg_algae_points" },
+                { name: "Avg. Auto Coral Points", key: "avg_auto_coral_points" },
+                { name: "Avg. Teleop Coral Points", key: "avg_teleop_coral_points" },
+                { name: "Avg. Teleop Algae Points", key: "avg_teleop_algae_points" },
+                { name: "Avg. Barge Points", key: "avg_barge_points" },
             ],
             // Expected schema:
-            // [{"team_number": 401, "avg_teleop_amp": 3.0, "avg_teleop_speaker": 3.0}, ...]
+            // [{"team_number": 401, "metric_name_1": 3.0, "metric_name_2": 3.0}, ...]
             tableData: [],
             eventData: {},
             eventDataLoaded: false,
             // Graphing
             graphFilters: [
-                { text: "Avg. Teleop Amp", key1: "avg_teleop_amp", type: "bar" },
-                { text: "Teleop: Speaker vs. Amp", key1: "avg_teleop_amp", key2: "avg_teleop_speaker", type: "scatter" }
+                { text: "Avg. Points", key1: "avg_points", type: "bar" },
+                { text: "Coral vs. Algae", key1: "avg_coral_points", key2: "avg_algae_points", type: "scatter" },
+                { text: "Auto: Coral vs. Algae", key1: "avg_auto_coral_points", key2: "avg_auto_algae_points", type: "scatter" },
+                { text: "Teleop: Coral vs. Algae", key1: "avg_teleop_coral_points", key2: "avg_teleop_algae_points", type: "scatter" },
             ]
         }
     },
@@ -71,7 +78,7 @@ export default {
             // Note: do this to avoid stale data on page refresh.
             await this.eventStore.updateEvent();
 
-            this.eventData = await aggregateEventData(this.eventStore.eventId);
+            this.eventData = await aggregateEventData(matchScoutTable, this.eventStore.eventId);
 
             // Convert the data to a table.
             this.tableData = [];

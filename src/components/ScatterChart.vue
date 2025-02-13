@@ -9,9 +9,9 @@ import ChartJSPluginDatalabels from 'chartjs-plugin-datalabels'
 ChartJS.register(Title, Tooltip, Legend, PointElement, CategoryScale, LinearScale, ChartJSPluginDatalabels);
 
 </script>
-
+<!-- TODO: set height based on viewport -->
 <template>
-    <Scatter :options="chartOptions" :data="chartData" class="scatter-chart" />
+    <Scatter :options="chartOptions" :data="chartData" :height="500" class="scatter-chart" />
 </template>
 
 <script lang="ts">
@@ -27,7 +27,7 @@ export default {
                 plugins: {
                     datalabels: {
                         color: '#333',
-                        align: 'right',
+                        align: 'top',
                         offset: 8,
                         font: {
                             weight: 'bold'
