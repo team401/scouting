@@ -11,7 +11,9 @@ ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale,
 </script>
 
 <template>
-    <Bar :options="chartOptions" :data="chartData" :height="100" class="bar-chart" />
+    <div :style="chartStyle">
+        <Bar :options="chartOptions" :data="chartData" />
+    </div>
 </template>
 
 <script lang="ts">
@@ -35,6 +37,9 @@ export default {
         },
         barColor: {
             default: "#ff55ec80"
+        },
+        height: {
+            default: 100
         }
     },
     computed: {
@@ -74,14 +79,16 @@ export default {
         },
         chartOptions() {
             return this.options;
+        },
+        chartStyle() {
+            return {
+                "display": "flex",
+                "height": this.height + "px",
+                "width": "100%",
+                "align-items": "safe center",
+                "justify-content": "safe center"
+            }
         }
     }
 }
 </script>
-
-<style scoped>
-.bar-chart {
-    /* height: 100%;
-    width: 100%; */
-}
-</style>

@@ -9,9 +9,11 @@ import ChartJSPluginDatalabels from 'chartjs-plugin-datalabels'
 ChartJS.register(Title, Tooltip, Legend, PointElement, CategoryScale, LinearScale, ChartJSPluginDatalabels);
 
 </script>
-<!-- TODO: set height based on viewport -->
+
 <template>
-    <Scatter :options="chartOptions" :data="chartData" :height="500" class="scatter-chart" />
+    <div :style="chartStyle">
+        <Scatter :options="chartOptions" :data="chartData" />
+    </div>
 </template>
 
 <script lang="ts">
@@ -47,6 +49,9 @@ export default {
         },
         pointHoverRadius: {
             default: 8
+        },
+        height: {
+            default: 300
         }
     },
     computed: {
@@ -77,14 +82,16 @@ export default {
         },
         chartOptions() {
             return this.options;
+        },
+        chartStyle() {
+            return {
+                "display": "flex",
+                "height": this.height + "px",
+                "width": "100%",
+                "align-items": "safe center",
+                "justify-content": "safe center"
+            }
         }
     }
 }
 </script>
-
-<style scoped>
-.scatter-chart {
-    height: 100%;
-    width: 100%;
-}
-</style>

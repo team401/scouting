@@ -70,6 +70,7 @@ export default {
                 { text: "Coral vs. Algae", key1: "avg_coral_points", key2: "avg_algae_points", type: "scatter" },
                 { text: "Auto: Coral vs. Algae", key1: "avg_auto_coral_points", key2: "avg_auto_algae_points", type: "scatter" },
                 { text: "Teleop: Coral vs. Algae", key1: "avg_teleop_coral_points", key2: "avg_teleop_algae_points", type: "scatter" },
+                { text: "Avg. Barge Points", key1: "avg_barge_points", type: "bar" },
             ]
         }
     },

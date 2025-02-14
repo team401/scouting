@@ -2,6 +2,8 @@
 // TODO: fix types
 // @ts-nocheck
 
+import { useViewModeStore } from '@/stores/view-mode-store';
+
 import BarChart from "@/components/BarChart.vue";
 import ScatterChart from "@/components/ScatterChart.vue";
 import Dropdown from "@/components/Dropdown.vue";
@@ -16,11 +18,12 @@ import '@material/web/select/select-option';
     </div>
     <div class="graph-container">
         <!-- Show the relevant chart based on the data being shown -->
-        <BarChart :data="data" :column="getActiveGraphFilter.key1" :isSorted="isChartSorted" v-if="isBarChartView">
+        <BarChart :data="data" :column="getActiveGraphFilter.key1" :isSorted="isChartSorted" :height="maxChartHeight"
+            v-if="isBarChartView">
         </BarChart>
 
         <ScatterChart :data="data" :columnX="getActiveGraphFilter.key1" :columnY="getActiveGraphFilter.key2"
-            v-if="isScatterChartView"></ScatterChart>
+            :height="maxChartHeight" v-if="isScatterChartView"></ScatterChart>
     </div>
 </template>
 
@@ -32,11 +35,15 @@ export default {
         },
         graphFilters: {
             default: []
+        },
+        maxHeightRatio: {
+            default: 0.7
         }
     },
     data() {
         return {
-            activeGraphFilterIndex: 0
+            activeGraphFilterIndex: 0,
+            viewMode: null,
         }
     },
     methods: {
@@ -61,7 +68,13 @@ export default {
         },
         isScatterChartView() {
             return this.graphFilters[this.activeGraphFilterIndex]?.type == "scatter";
+        },
+        maxChartHeight() {
+            return this.maxHeightRatio * this.viewMode.windowHeight;
         }
+    },
+    created() {
+        this.viewMode = useViewModeStore();
     }
 }
 </script>
