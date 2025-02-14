@@ -116,7 +116,6 @@ tbody tr:last-of-type {
   border-radius: 10px;
   margin: 15px;
   overflow: scroll;
-  /* height: 90vh; */
 
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
 }

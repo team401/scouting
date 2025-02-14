@@ -3,14 +3,17 @@
 // @ts-nocheck
 
 import { aggregateEventData } from "@/lib/2025/data-processing";
-import { teamRadar } from "@/lib/2025/data-visualization";
+import { teamLikertRadar, getTeamOverview } from "@/lib/2025/data-visualization";
 import { useEventStore } from "@/stores/event-store";
+import { useViewModeStore } from '@/stores/view-mode-store';
+import { matchScoutTable } from "@/lib/constants";
 
 import '@material/web/select/outlined-select';
 import '@material/web/select/select-option';
 import FilterableGraph from "@/components/FilterableGraph.vue";
 import Dropdown from "@/components/Dropdown.vue";
 import RadarChart from "@/components/RadarChart.vue";
+import StatHighlight from "@/components/StatHighlight.vue";
 </script>
 
 <template>
@@ -21,11 +24,17 @@ import RadarChart from "@/components/RadarChart.vue";
             <Dropdown :choices="teamFilters" v-model="currentTeamIndex" @update:modelValue="setTeam"></Dropdown>
 
             <div>
-                <div class="data-tile radar-graph-container">
-                    <RadarChart :data="getTeamRadar"></RadarChart>
+                <div class="data-tile">
+                    <StatHighlight :stats="teamHighlights"></StatHighlight>
                 </div>
-                <div class="data-tile match-progression-container">
+                <div class="graph-tile radar-graph-container">
+                    <RadarChart :data="getTeamRadar('likert')" :height="0.5 * viewMode.height"></RadarChart>
+                </div>
+                <div class="graph-tile match-progression-container">
                     <FilterableGraph :data="getTeamMatches" :graph-filters="matchDataFilters"></FilterableGraph>
+                </div>
+                <div>
+
                 </div>
             </div>
         </div>
@@ -36,14 +45,15 @@ import RadarChart from "@/components/RadarChart.vue";
 export default {
     data() {
         return {
+            viewMode: null,
             eventStore: null,
             teamsLoaded: false,
             teamsData: [{}],
             teamFilters: [],
             currentTeamIndex: 0,
             matchDataFilters: [
-                { text: "Teleop: Amp", key1: "Teleop_Amp_Made", type: "bar", isSorted: false },
-                { text: "Teleop: Speaker", key1: "Teleop_Speaker_Made", type: "bar", isSorted: false },
+                { text: "Auto: Coral", key1: "coralAutoPoints", type: "bar", isSorted: false },
+                { text: "Teleop: Coral", key1: "coralTeleopPoints", type: "bar", isSorted: false },
             ]
         }
     },
@@ -52,7 +62,7 @@ export default {
             // Note: do this to avoid stale data on page refresh.
             await this.eventStore.updateEvent();
 
-            this.teamsData = await aggregateEventData(this.eventStore.eventId);
+            this.teamsData = await aggregateEventData(matchScoutTable, this.eventStore.eventId);
 
             this.teamFilters = [];
             Object.keys(this.teamsData).forEach(element => {
@@ -64,6 +74,20 @@ export default {
         },
         setTeam(idx: int) {
             this.currentTeamIndex = idx;
+        },
+        getTeamRadar(radarType) {
+            if (this.teamFilters.length == 0) {
+                return {};
+            }
+
+            const teamNumber = this.teamFilters[this.currentTeamIndex].key;
+            const teamInfo = this.teamsData[teamNumber];
+
+            if (radarType == "likert") {
+                return teamLikertRadar(teamInfo);
+            }
+
+            return {};
         }
     },
     computed: {
@@ -74,16 +98,6 @@ export default {
 
             return this.teamFilters[this.currentTeamIndex];
         },
-        getTeamRadar() {
-            if (this.teamFilters.length == 0) {
-                return {};
-            }
-
-            const teamNumber = this.teamFilters[this.currentTeamIndex].key;
-            const teamInfo = this.teamsData[teamNumber];
-
-            return teamRadar(teamInfo);
-        },
         getTeamMatches() {
             if (this.teamFilters.length == 0) {
                 return {};
@@ -92,9 +106,19 @@ export default {
             const teamNumber = this.teamFilters[this.currentTeamIndex].key;
             const teamInfo = this.teamsData[teamNumber];
             return teamInfo.match_data;
+        },
+        teamHighlights() {
+            if (this.teamFilters.length == 0) {
+                return {};
+            }
+
+            const teamNumber = this.teamFilters[this.currentTeamIndex].key;
+            const teamInfo = this.teamsData[teamNumber];
+            return getTeamOverview(teamInfo);
         }
     },
     created() {
+        this.viewMode = useViewModeStore();
         this.eventStore = useEventStore();
         this.loadTeamsData();
     }

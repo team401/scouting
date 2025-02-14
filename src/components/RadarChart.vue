@@ -34,7 +34,7 @@ export default {
         options: {
             default: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 plugins: {
                     datalabels: {
                         display: false
