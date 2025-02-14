@@ -51,13 +51,13 @@ export default {
             tableHeaders: [
                 { name: "#", key: "team_number" },
                 { name: "Matches Played", key: "num_matches" },
-                { name: "Avg. Points", key: "avg_points" },
-                { name: "Avg. Coral Points", key: "avg_coral_points" },
-                { name: "Avg. Algae Points", key: "avg_algae_points" },
-                { name: "Avg. Auto Coral Points", key: "avg_auto_coral_points" },
-                { name: "Avg. Teleop Coral Points", key: "avg_teleop_coral_points" },
-                { name: "Avg. Teleop Algae Points", key: "avg_teleop_algae_points" },
-                { name: "Avg. Barge Points", key: "avg_barge_points" },
+                { name: "Avg. Points", key: "mean_matchPoints" },
+                { name: "Avg. Coral Points", key: "mean_coralPoints" },
+                { name: "Avg. Algae Points", key: "mean_algaePoints" },
+                { name: "Avg. Auto Coral Points", key: "mean_coralAutoPoints" },
+                { name: "Avg. Teleop Coral Points", key: "mean_coralTeleopPoints" },
+                { name: "Avg. Teleop Algae Points", key: "mean_algaeTeleopPoints" },
+                { name: "Avg. Barge Points", key: "mean_bargePoints" },
             ],
             // Expected schema:
             // [{"team_number": 401, "metric_name_1": 3.0, "metric_name_2": 3.0}, ...]
@@ -66,11 +66,11 @@ export default {
             eventDataLoaded: false,
             // Graphing
             graphFilters: [
-                { text: "Avg. Points", key1: "avg_points", type: "bar" },
-                { text: "Coral vs. Algae", key1: "avg_coral_points", key2: "avg_algae_points", type: "scatter" },
-                { text: "Auto: Coral vs. Algae", key1: "avg_auto_coral_points", key2: "avg_auto_algae_points", type: "scatter" },
-                { text: "Teleop: Coral vs. Algae", key1: "avg_teleop_coral_points", key2: "avg_teleop_algae_points", type: "scatter" },
-                { text: "Avg. Barge Points", key1: "avg_barge_points", type: "bar" },
+                { text: "Avg. Points", key1: "mean_matchPoints", type: "bar" },
+                { text: "Coral vs. Algae", key1: "mean_coralPoints", key2: "mean_algaePoints", type: "scatter" },
+                { text: "Auto: Coral vs. Algae", key1: "mean_coralAutoPoints", key2: "mean_algaeAutoPoints", type: "scatter" },
+                { text: "Teleop: Coral vs. Algae", key1: "mean_coralTeleopPoints", key2: "mean_algaeTeleopPoints", type: "scatter" },
+                { text: "Avg. Barge Points", key1: "mean_bargePoints", type: "bar" },
             ]
         }
     },

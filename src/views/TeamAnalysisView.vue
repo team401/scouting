@@ -31,7 +31,8 @@ import StatHighlight from "@/components/StatHighlight.vue";
                     <RadarChart :data="getTeamRadar('likert')" :height="0.5 * viewMode.height"></RadarChart>
                 </div>
                 <div class="graph-tile match-progression-container">
-                    <FilterableGraph :data="getTeamMatches" :graph-filters="matchDataFilters"></FilterableGraph>
+                    <FilterableGraph :data="getTeamMatches" :graph-filters="matchDataFilters">
+                    </FilterableGraph>
                 </div>
                 <div>
 
@@ -105,7 +106,21 @@ export default {
 
             const teamNumber = this.teamFilters[this.currentTeamIndex].key;
             const teamInfo = this.teamsData[teamNumber];
-            return teamInfo.match_data;
+
+            let teamMatches = {};
+            for (var i = 0; i < teamInfo.match_data.matchNumber.length; i++) {
+                let matchData = {};
+                Object.keys(teamInfo.match_data).forEach(key => {
+                    if (key != "matchNumber") {
+                        matchData[key] = teamInfo.match_data[key][i];
+                    }
+                });
+
+                const matchNumber = teamInfo.match_data.matchNumber[i];
+                teamMatches[matchNumber] = matchData;
+            }
+
+            return teamMatches;
         },
         teamHighlights() {
             if (this.teamFilters.length == 0) {
