@@ -22,10 +22,24 @@ export default {
         columnX: "",
         columnY: "",
         data: {},
-        options: {
-            default: {
+        pointColor: {
+            default: "#ff55ec"
+        },
+        pointRadius: {
+            default: 6
+        },
+        pointHoverRadius: {
+            default: 8
+        },
+        height: {
+            default: 300
+        }
+    },
+    data() {
+        return {
+            options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 plugins: {
                     datalabels: {
                         color: '#333',
@@ -40,18 +54,6 @@ export default {
                     }
                 }
             }
-        },
-        pointColor: {
-            default: "#ff55ec"
-        },
-        pointRadius: {
-            default: 6
-        },
-        pointHoverRadius: {
-            default: 8
-        },
-        height: {
-            default: 300
         }
     },
     computed: {
@@ -71,13 +73,30 @@ export default {
             const chart = {
                 labels: labels,
                 datasets: [{
-                    label: "Y-axis: " + this.columnY + ", X-axis: " + this.columnX,
+                    label: "data",
                     backgroundColor: this.pointColor,
                     data: values,
                     pointRadius: this.pointRadius,
                     pointHoverRadius: this.pointHoverRadius
                 }]
             };
+
+            // Label the axes.
+            this.options.scales = {
+                x: {
+                    title: {
+                        text: this.columnX,
+                        display: true
+                    }
+                },
+                y: {
+                    title: {
+                        text: this.columnY,
+                        display: true
+                    }
+                }
+            }
+
             return chart;
         },
         chartOptions() {
