@@ -119,3 +119,11 @@ tbody tr:last-of-type {
 
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
 }
+
+.analysis-row-tile {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: safe center;
+  justify-content: safe center;
+}

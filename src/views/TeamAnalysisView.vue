@@ -14,6 +14,7 @@ import FilterableGraph from "@/components/FilterableGraph.vue";
 import Dropdown from "@/components/Dropdown.vue";
 import RadarChart from "@/components/RadarChart.vue";
 import StatHighlight from "@/components/StatHighlight.vue";
+import BarChart from "@/components/BarChart.vue";
 </script>
 
 <template>
@@ -27,9 +28,16 @@ import StatHighlight from "@/components/StatHighlight.vue";
                 <div class="data-tile">
                     <StatHighlight :stats="teamHighlights"></StatHighlight>
                 </div>
-                <div class="graph-tile radar-graph-container">
-                    <RadarChart :data="getTeamRadar('likert')" :height="0.5 * viewMode.height"></RadarChart>
+
+                <div class="analysis-row-tile">
+                    <div class="graph-tile radar-graph-container">
+                        <RadarChart :data="getTeamRadar('likert')" :height="maxChartHeight"></RadarChart>
+                    </div>
+                    <div class="graph-tile">
+                        <BarChart :data="getTeamReef" :height="maxChartHeight" />
+                    </div>
                 </div>
+
                 <div class="graph-tile match-progression-container">
                     <FilterableGraph :data="getTeamMatches" :graph-filters="matchDataFilters">
                     </FilterableGraph>
@@ -53,8 +61,9 @@ export default {
             teamFilters: [],
             currentTeamIndex: 0,
             matchDataFilters: [
-                { text: "Auto: Coral", key1: "coralAutoPoints", type: "bar", isSorted: false },
-                { text: "Teleop: Coral", key1: "coralTeleopPoints", type: "bar", isSorted: false },
+                { text: "Auto: Coral", key1: "coralAutoPoints", type: "line" },
+                { text: "Teleop: Coral", key1: "coralTeleopPoints", type: "line" },
+                { text: "Barge Points", key1: "bargePoints", type: "line" },
             ]
         }
     },
@@ -89,6 +98,16 @@ export default {
             }
 
             return {};
+        },
+        getTeamReef() {
+            if (this.teamFilters.length == 0) {
+                return {};
+            }
+
+            const teamNumber = this.teamFilters[this.currentTeamIndex].key;
+            const teamInfo = this.teamsData[teamNumber];
+
+            console.log(teamInfo);
         }
     },
     computed: {
@@ -130,6 +149,9 @@ export default {
             const teamNumber = this.teamFilters[this.currentTeamIndex].key;
             const teamInfo = this.teamsData[teamNumber];
             return getTeamOverview(teamInfo);
+        },
+        maxChartHeight() {
+            return 0.5 * this.viewMode.height;
         }
     },
     created() {
