@@ -23,6 +23,14 @@ const parkPoints = 2;
 const shallowCagePoints = 6;
 const deepCagePoints = 12;
 
+export function computeAccuracy(made: Number, missed: Number) {
+    let accuracy = 0;
+    if (made > 0) {
+        accuracy = made / (made + missed);
+    }
+    return accuracy;
+}
+
 
 export async function aggregateEventData(eventTable: String, eventId: String): Promise<{}> {
     // Pull the relevant data from supabase.
@@ -87,6 +95,14 @@ function parseMatchData(rawData, eventData) {
                     coralTeleopL3Points: [],
                     coralTeleopL4Points: [],
                     coralTeleopPoints: [],
+                    coralAutoL4Missed: [],
+                    coralAutoL3Missed: [],
+                    coralAutoL2Missed: [],
+                    coralAutoL1Missed: [],
+                    coralTeleopL4Missed: [],
+                    coralTeleopL3Missed: [],
+                    coralTeleopL2Missed: [],
+                    coralTeleopL1Missed: [],
                     algaeTeleopPoints: [],
                     teleopPoints: [],
                     bargePoints: [],
@@ -120,6 +136,14 @@ function parseMatchData(rawData, eventData) {
         const coralTeleopL2Points = coralL2TeleopValue * coralTeleopL2Count;
         const coralTeleopL1Points = coralL1TeleopValue * coralTeleopL1Count;
 
+        const coralAutoL4Missed = Number(rawData[i]["auto.coral.l4.missed"]);
+        const coralAutoL3Missed = Number(rawData[i]["auto.coral.l3.missed"]);
+        const coralAutoL2Missed = Number(rawData[i]["auto.coral.l2.missed"]);
+        const coralAutoL1Missed = Number(rawData[i]["auto.coral.l1.missed"]);
+        const coralTeleopL4Missed = Number(rawData[i]["teleop.coral.l4.missed"]);
+        const coralTeleopL3Missed = Number(rawData[i]["teleop.coral.l3.missed"]);
+        const coralTeleopL2Missed = Number(rawData[i]["teleop.coral.l2.missed"]);
+        const coralTeleopL1Missed = Number(rawData[i]["teleop.coral.l1.missed"]);
 
         const moveAutoPoints = Boolean(rawData[i]["auto.moved"]) ? autoMovePoints : 0;
         const coralAutoPoints = coralAutoL4Points + coralAutoL3Points + coralAutoL2Points
@@ -188,6 +212,14 @@ function parseMatchData(rawData, eventData) {
             coralTeleopL3Points: coralTeleopL3Points,
             coralTeleopL4Points: coralTeleopL4Points,
             coralTeleopPoints: coralTeleopPoints,
+            coralAutoL4Missed: coralAutoL4Missed,
+            coralAutoL3Missed: coralAutoL3Missed,
+            coralAutoL2Missed: coralAutoL2Missed,
+            coralAutoL1Missed: coralAutoL1Missed,
+            coralTeleopL4Missed: coralTeleopL4Missed,
+            coralTeleopL3Missed: coralTeleopL3Missed,
+            coralTeleopL2Missed: coralTeleopL2Missed,
+            coralTeleopL1Missed: coralTeleopL1Missed,
             algaeTeleopPoints: algaeTeleopPoints,
             teleopPoints: teleopPoints,
             bargePoints: bargePoints,

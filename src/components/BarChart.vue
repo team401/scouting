@@ -21,17 +21,6 @@ export default {
     props: {
         column: "",
         data: {},
-        options: {
-            default: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    datalabels: {
-                        display: false
-                    }
-                }
-            }
-        },
         isSorted: {
             default: true
         },
@@ -43,6 +32,15 @@ export default {
         },
         maxLabels: {
             default: null
+        },
+        isHorizontal: {
+            default: false
+        },
+        xScale: {
+            default: {}
+        },
+        yScale: {
+            default: {}
         }
     },
     computed: {
@@ -87,7 +85,27 @@ export default {
             return chart;
         },
         chartOptions() {
-            return this.options;
+            let indexAxis = 'x';
+            if (this.isHorizontal) {
+                indexAxis = 'y';
+            }
+
+            let options = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    datalabels: {
+                        display: false
+                    }
+                },
+                indexAxis: indexAxis,
+                scales: {
+                    x: this.xScale,
+                    y: this.yScale
+                }
+            };
+
+            return options;
         },
         chartStyle() {
             return {

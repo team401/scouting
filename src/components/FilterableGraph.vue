@@ -20,7 +20,8 @@ import '@material/web/select/select-option';
     <div class="graph-container">
         <!-- Show the relevant chart based on the data being shown -->
         <BarChart :data="data" :column="getActiveGraphFilter.key1" :isSorted="isChartSorted" :height="maxChartHeight"
-            :max-labels="maxDataPoints" v-if="isBarChartView">
+            :max-labels="maxDataPoints" :is-horizontal="isChartHorizontal" :x-scale="chartXScale" :y-scale="chartYScale"
+            v-if="isBarChartView">
         </BarChart>
         <ScatterChart :data="data" :columnX="getActiveGraphFilter.key1" :columnY="getActiveGraphFilter.key2"
             :height="maxChartHeight" v-else-if="isScatterChartView"></ScatterChart>
@@ -67,6 +68,20 @@ export default {
             }
             // Default to sorted.
             return true;
+        },
+        isChartHorizontal() {
+            const activeFilter = this.graphFilters[this.activeGraphFilterIndex];
+            if ("isHorizontal" in activeFilter) {
+                return activeFilter.isHorizontal;
+            }
+            // Default to vertical.
+            return false;
+        },
+        chartXScale() {
+            return this.graphFilters[this.activeGraphFilterIndex]?.xScale;
+        },
+        chartYScale() {
+            return this.graphFilters[this.activeGraphFilterIndex]?.yScale;
         },
         isBarChartView() {
             return this.graphFilters[this.activeGraphFilterIndex]?.type == "bar";

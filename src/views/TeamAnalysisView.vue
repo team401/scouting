@@ -3,7 +3,7 @@
 // @ts-nocheck
 
 import { aggregateEventData } from "@/lib/2025/data-processing";
-import { teamLikertRadar, getTeamOverview } from "@/lib/2025/data-visualization";
+import { teamLikertRadar, getTeamOverview, teamReefData } from "@/lib/2025/data-visualization";
 import { useEventStore } from "@/stores/event-store";
 import { useViewModeStore } from '@/stores/view-mode-store';
 import { matchScoutTable } from "@/lib/constants";
@@ -14,7 +14,7 @@ import FilterableGraph from "@/components/FilterableGraph.vue";
 import Dropdown from "@/components/Dropdown.vue";
 import RadarChart from "@/components/RadarChart.vue";
 import StatHighlight from "@/components/StatHighlight.vue";
-import BarChart from "@/components/BarChart.vue";
+
 </script>
 
 <template>
@@ -30,11 +30,13 @@ import BarChart from "@/components/BarChart.vue";
                 </div>
 
                 <div class="analysis-row-tile">
-                    <div class="graph-tile radar-graph-container">
+                    <div class="graph-tile">
                         <RadarChart :data="getTeamRadar('likert')" :height="maxChartHeight"></RadarChart>
                     </div>
                     <div class="graph-tile">
-                        <BarChart :data="getTeamReef" :height="maxChartHeight" />
+                        <h2>Reef Heatmap</h2>
+                        <FilterableGraph :data="getTeamReef" :graph-filters="reefFilters" max-height-ratio="0.5">
+                        </FilterableGraph>
                     </div>
                 </div>
 
@@ -64,6 +66,28 @@ export default {
                 { text: "Auto: Coral", key1: "coralAutoPoints", type: "line" },
                 { text: "Teleop: Coral", key1: "coralTeleopPoints", type: "line" },
                 { text: "Barge Points", key1: "bargePoints", type: "line" },
+            ],
+            reefFilters: [
+                { text: "Auto Avg. Count", key1: "auto_mean_count", type: "bar", isHorizontal: true, isSorted: false },
+                { text: "Teleop Avg. Count", key1: "teleop_mean_count", type: "bar", isHorizontal: true, isSorted: false },
+                {
+                    text: "Total Accuracy", key1: "total_accuracy", type: "bar", isHorizontal: true, isSorted: false, xScale: {
+                        min: 0,
+                        max: 100
+                    }
+                },
+                {
+                    text: "Auto Accuracy", key1: "auto_accuracy", type: "bar", isHorizontal: true, isSorted: false, xScale: {
+                        min: 0,
+                        max: 100
+                    }
+                },
+                {
+                    text: "Teleop Accuracy", key1: "teleop_accuracy", type: "bar", isHorizontal: true, isSorted: false, xScale: {
+                        min: 0,
+                        max: 100
+                    }
+                },
             ]
         }
     },
@@ -99,16 +123,6 @@ export default {
 
             return {};
         },
-        getTeamReef() {
-            if (this.teamFilters.length == 0) {
-                return {};
-            }
-
-            const teamNumber = this.teamFilters[this.currentTeamIndex].key;
-            const teamInfo = this.teamsData[teamNumber];
-
-            console.log(teamInfo);
-        }
     },
     computed: {
         getCurrentTeam() {
@@ -150,8 +164,20 @@ export default {
             const teamInfo = this.teamsData[teamNumber];
             return getTeamOverview(teamInfo);
         },
+
+        getTeamReef() {
+            if (this.teamFilters.length == 0) {
+                return {};
+            }
+
+            const teamNumber = this.teamFilters[this.currentTeamIndex].key;
+            const teamInfo = this.teamsData[teamNumber];
+            const reefData = teamReefData(teamInfo);
+
+            return reefData;
+        },
         maxChartHeight() {
-            return 0.5 * this.viewMode.height;
+            return 0.5 * this.viewMode.windowHeight;
         }
     },
     created() {
@@ -164,7 +190,7 @@ export default {
 
 <style>
 .radar-graph-container {
-    height: 60vh;
+    /* height: 60vh; */
     min-width: 30vw;
 }
 

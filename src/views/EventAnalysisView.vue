@@ -4,6 +4,7 @@
 
 import { aggregateEventData } from "@/lib/2025/data-processing";
 import { useEventStore } from "@/stores/event-store";
+import { useViewModeStore } from "@/stores/view-mode-store";
 import { matchScoutTable } from "@/lib/constants";
 
 import '@material/web/select/outlined-select';
@@ -19,7 +20,7 @@ import FilterableGraph from "@/components/FilterableGraph.vue";
 
         <div v-if="eventDataLoaded" class="graph-tile">
             <!-- Data must be loaded before this div is shown -->
-            <FilterableGraph :data="eventData" :graphFilters="graphFilters">
+            <FilterableGraph :data="eventData" :graphFilters="graphFilters" :max-data-points="maxDataPoints">
             </FilterableGraph>
         </div>
 
@@ -48,6 +49,7 @@ export default {
     data() {
         return {
             eventStore: null,
+            viewMode: null,
             tableHeaders: [
                 { name: "#", key: "team_number" },
                 { name: "Matches Played", key: "num_matches" },
@@ -101,8 +103,18 @@ export default {
             this.eventDataLoaded = true;
         }
     },
+    computed: {
+        maxDataPoints() {
+            // Only show the top 6 bar graph items if this is on a phone.
+            if (this.viewMode.isMobile) {
+                return 6;
+            }
+            return null;
+        }
+    },
     created() {
         this.eventStore = useEventStore();
+        this.viewMode = useViewModeStore();
         this.loadEventData();
     }
 }
