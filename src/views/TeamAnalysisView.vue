@@ -25,11 +25,10 @@ import StatHighlight from "@/components/StatHighlight.vue";
             <Dropdown :choices="teamFilters" v-model="currentTeamIndex" @update:modelValue="setTeam"></Dropdown>
 
             <div>
-                <div class="data-tile">
-                    <StatHighlight :stats="teamHighlights"></StatHighlight>
-                </div>
-
                 <div class="analysis-row-tile">
+                    <div class="data-tile">
+                        <StatHighlight :stats="teamHighlights" :is-vertical="true"></StatHighlight>
+                    </div>
                     <div class="graph-tile">
                         <RadarChart :data="getTeamRadar('likert')" :height="maxChartHeight"></RadarChart>
                     </div>

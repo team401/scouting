@@ -3,7 +3,7 @@
 </script>
 
 <template>
-    <div class="stat-highlight-view-container">
+    <div class="highlightClass">
         <div v-for="stat in stats" class="stat-highlight-container">
             <h3>{{ stat.name }}</h3>
             <div class="stat-highlight-value">
@@ -18,9 +18,18 @@ export default {
     props: {
         stats: {
             default: []
+        },
+        isVertical: {
+            default: false
         }
     },
     computed: {
+        highlightClass() {
+            if (this.isVertical) {
+                return "stat-highlight-view-container-vertical";
+            }
+            return "stat-highlight-view-container";
+        }
     },
     methods: {
     }
@@ -31,6 +40,15 @@ export default {
 .stat-highlight-view-container {
     display: flex;
     flex-direction: row;
+    align-items: center;
+    text-align: center;
+    justify-content: safe center;
+    flex-wrap: wrap;
+}
+
+.stat-highlight-view-container-vertical {
+    display: flex;
+    flex-direction: column;
     align-items: center;
     text-align: center;
     justify-content: safe center;
