@@ -66,6 +66,7 @@ export default {
                 { text: "Breakdown", keyList: ['coralPoints', 'algaePoints', 'bargePoints'], colorList: ['#ff55ec80', '#00ff0080', '#0000ff80'], type: "stacked-bar" },
                 { text: "Auto: Coral", key1: "coralAutoPoints", type: "line" },
                 { text: "Teleop: Coral", key1: "coralTeleopPoints", type: "line" },
+                { text: "Teleop: Algae", key1: "algaeTeleopPoints", type: "line" },
                 { text: "Barge Points", key1: "bargePoints", type: "line" },
             ],
             reefFilters: [

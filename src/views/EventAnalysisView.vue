@@ -69,8 +69,8 @@ export default {
             // Graphing
             graphFilters: [
                 { text: "Avg. Points", key1: "mean_matchPoints", type: "bar" },
+                { text: "Avg. Auto Points", key1: "mean_autoPoints", type: "bar" },
                 { text: "Coral vs. Algae", key1: "mean_coralPoints", key2: "mean_algaePoints", type: "scatter" },
-                { text: "Auto: Coral vs. Algae", key1: "mean_coralAutoPoints", key2: "mean_algaeAutoPoints", type: "scatter" },
                 { text: "Teleop: Coral vs. Algae", key1: "mean_coralTeleopPoints", key2: "mean_algaeTeleopPoints", type: "scatter" },
                 { text: "Avg. Barge Points", key1: "mean_bargePoints", type: "bar" },
             ]
