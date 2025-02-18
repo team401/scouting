@@ -14,7 +14,6 @@ import FilterableGraph from "@/components/FilterableGraph.vue";
 import Dropdown from "@/components/Dropdown.vue";
 import RadarChart from "@/components/RadarChart.vue";
 import StatHighlight from "@/components/StatHighlight.vue";
-import StackedBarChart from "@/components/StackedBarChart.vue";
 
 </script>
 
@@ -39,16 +38,9 @@ import StackedBarChart from "@/components/StackedBarChart.vue";
                         </FilterableGraph>
                     </div>
                 </div>
-                <div class="analysis-row-tile">
-                    <div class="graph-tile half-page-width">
-                        <h2>Match Breakdown</h2>
-                        <StackedBarChart :data="getTeamMatches" :columns="['coralPoints', 'algaePoints', 'bargePoints']"
-                            :bar-colors="['#ff55ec80', '#00ff0080', '#0000ff80']" :height="maxChartHeight">
-                        </StackedBarChart>
-                    </div>
-                </div>
 
                 <div class="graph-tile match-progression-container">
+                    <h2>Match Analysis</h2>
                     <FilterableGraph :data="getTeamMatches" :graph-filters="matchDataFilters">
                     </FilterableGraph>
                 </div>
@@ -71,6 +63,7 @@ export default {
             teamFilters: [],
             currentTeamIndex: 0,
             matchDataFilters: [
+                { text: "Breakdown", keyList: ['coralPoints', 'algaePoints', 'bargePoints'], colorList: ['#ff55ec80', '#00ff0080', '#0000ff80'], type: "stacked-bar" },
                 { text: "Auto: Coral", key1: "coralAutoPoints", type: "line" },
                 { text: "Teleop: Coral", key1: "coralTeleopPoints", type: "line" },
                 { text: "Barge Points", key1: "bargePoints", type: "line" },

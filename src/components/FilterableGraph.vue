@@ -7,6 +7,7 @@ import { useViewModeStore } from '@/stores/view-mode-store';
 import BarChart from "@/components/BarChart.vue";
 import LineChart from "@/components/LineChart.vue";
 import ScatterChart from "@/components/ScatterChart.vue";
+import StackedBarChart from "@/components/StackedBarChart.vue";
 import Dropdown from "@/components/Dropdown.vue";
 
 import '@material/web/select/outlined-select';
@@ -27,6 +28,9 @@ import '@material/web/select/select-option';
             :height="maxChartHeight" v-else-if="isScatterChartView"></ScatterChart>
         <LineChart :data="data" :column="getActiveGraphFilter.key1" :height="maxChartHeight" v-else-if="isLineChartView">
         </LineChart>
+        <StackedBarChart :data="data" :columns="getActiveGraphFilter.keyList" :bar-colors="getActiveGraphFilter.colorList"
+            :height="maxChartHeight" v-else-if="isStackedBarChartView">
+        </StackedBarChart>
     </div>
 </template>
 
@@ -91,6 +95,9 @@ export default {
         },
         isLineChartView() {
             return this.graphFilters[this.activeGraphFilterIndex]?.type == "line";
+        },
+        isStackedBarChartView() {
+            return this.graphFilters[this.activeGraphFilterIndex]?.type == "stacked-bar";
         },
         maxChartHeight() {
             return this.maxHeightRatio * this.viewMode.windowHeight;
