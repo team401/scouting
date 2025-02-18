@@ -14,6 +14,7 @@ import FilterableGraph from "@/components/FilterableGraph.vue";
 import Dropdown from "@/components/Dropdown.vue";
 import RadarChart from "@/components/RadarChart.vue";
 import StatHighlight from "@/components/StatHighlight.vue";
+import StackedBarChart from "@/components/StackedBarChart.vue";
 
 </script>
 
@@ -36,6 +37,14 @@ import StatHighlight from "@/components/StatHighlight.vue";
                         <h2>Reef Heatmap</h2>
                         <FilterableGraph :data="getTeamReef" :graph-filters="reefFilters" max-height-ratio="0.5">
                         </FilterableGraph>
+                    </div>
+                </div>
+                <div class="analysis-row-tile">
+                    <div class="graph-tile half-page-width">
+                        <h2>Match Breakdown</h2>
+                        <StackedBarChart :data="getTeamMatches" :columns="['coralPoints', 'algaePoints', 'bargePoints']"
+                            :bar-colors="['#ff55ec80', '#00ff0080', '#0000ff80']" :height="maxChartHeight">
+                        </StackedBarChart>
                     </div>
                 </div>
 
@@ -195,5 +204,17 @@ export default {
 
 .match-progression-container {
     min-height: 60vh;
+}
+
+.quarter-page-width {
+    min-width: 25vw;
+}
+
+.half-page-width {
+    min-width: 50vw;
+}
+
+.three-quarter-page-width {
+    min-width: 75vw;
 }
 </style>
