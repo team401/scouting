@@ -70,8 +70,8 @@ export default {
                 { text: "Barge Points", key1: "bargePoints", type: "line" },
             ],
             reefFilters: [
-                { text: "Auto Avg. Count", key1: "auto_mean_count", type: "bar", isHorizontal: true, isSorted: false },
-                { text: "Teleop Avg. Count", key1: "teleop_mean_count", type: "bar", isHorizontal: true, isSorted: false },
+                { text: "Auto Count", key1: "auto_count", type: "boxplot", isHorizontal: true, isSorted: false },
+                { text: "Teleop Count", key1: "teleop_count", type: "boxplot", isHorizontal: true, isSorted: false },
                 {
                     text: "Total Accuracy", key1: "total_accuracy", type: "bar", isHorizontal: true, isSorted: false, xScale: {
                         min: 0,

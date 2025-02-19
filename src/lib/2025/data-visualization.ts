@@ -88,6 +88,8 @@ export function teamReefData(teamInfo) {
             "total_accuracy": coralL4Accuracy,
             "auto_mean_count": coralAutoL4MeanCount,
             "teleop_mean_count": coralTeleopL4MeanCount,
+            "auto_count": teamInfo.match_data.coralAutoL4Count,
+            "teleop_count": teamInfo.match_data.coralTeleopL4Count
         },
         "L3": {
             "auto": coralAutoL3Count,
@@ -98,6 +100,8 @@ export function teamReefData(teamInfo) {
             "total_accuracy": coralL3Accuracy,
             "auto_mean_count": coralAutoL3MeanCount,
             "teleop_mean_count": coralTeleopL3MeanCount,
+            "auto_count": teamInfo.match_data.coralAutoL3Count,
+            "teleop_count": teamInfo.match_data.coralTeleopL3Count
         },
         "L2": {
             "auto": coralAutoL2Count,
@@ -108,6 +112,8 @@ export function teamReefData(teamInfo) {
             "total_accuracy": coralL2Accuracy,
             "auto_mean_count": coralAutoL2MeanCount,
             "teleop_mean_count": coralTeleopL2MeanCount,
+            "auto_count": teamInfo.match_data.coralAutoL2Count,
+            "teleop_count": teamInfo.match_data.coralTeleopL2Count
         },
         "L1": {
             "auto": coralAutoL1Count,
@@ -118,6 +124,8 @@ export function teamReefData(teamInfo) {
             "total_accuracy": coralL1Accuracy,
             "auto_mean_count": coralAutoL1MeanCount,
             "teleop_mean_count": coralTeleopL1MeanCount,
+            "auto_count": teamInfo.match_data.coralAutoL1Count,
+            "teleop_count": teamInfo.match_data.coralTeleopL1Count
         }
     }
 }

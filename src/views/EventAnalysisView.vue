@@ -10,6 +10,7 @@ import { matchScoutTable } from "@/lib/constants";
 import '@material/web/select/outlined-select';
 import '@material/web/select/select-option';
 import FilterableGraph from "@/components/FilterableGraph.vue";
+import BoxPlotVue from "@/components/BoxPlot.vue";
 </script>
 
 <template>
@@ -68,11 +69,11 @@ export default {
             eventDataLoaded: false,
             // Graphing
             graphFilters: [
-                { text: "Avg. Points", key1: "mean_matchPoints", type: "bar" },
-                { text: "Avg. Auto Points", key1: "mean_autoPoints", type: "bar" },
+                { text: "Match Points", key1: "match_data", key2: "matchPoints", type: "boxplot" },
+                { text: "Auto Points", key1: "match_data", key2: "autoPoints", type: "boxplot" },
                 { text: "Coral vs. Algae", key1: "mean_coralPoints", key2: "mean_algaePoints", type: "scatter" },
                 { text: "Teleop: Coral vs. Algae", key1: "mean_coralTeleopPoints", key2: "mean_algaeTeleopPoints", type: "scatter" },
-                { text: "Avg. Barge Points", key1: "mean_bargePoints", type: "bar" },
+                { text: "Barge Points", key1: "match_data", key2: "bargePoints", type: "boxplot" },
             ]
         }
     },
