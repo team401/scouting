@@ -20,7 +20,9 @@ ChartJS.register(Title, Tooltip, Legend, PointElement, RadialLinearScale, LineEl
 </script>
 
 <template>
-    <Radar :options="chartOptions" :data="chartData" class="radar-chart" />
+    <div :style="chartStyle">
+        <Radar :options="chartOptions" :data="chartData" class="radar-chart" />
+    </div>
 </template>
 
 <script lang="ts">
@@ -32,7 +34,7 @@ export default {
         options: {
             default: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 plugins: {
                     datalabels: {
                         display: false
@@ -53,6 +55,9 @@ export default {
                 pointBackgroundColors: ['rgba(255,99,132,1)'],
                 pointHoverBorderColors: ['rgba(255,99,132,1)']
             }
+        },
+        height: {
+            default: 200
         }
     },
     computed: {
@@ -81,14 +86,16 @@ export default {
         },
         chartOptions() {
             return this.options;
+        },
+        chartStyle() {
+            return {
+                "display": "flex",
+                "height": this.height + "px",
+                "width": "100%",
+                "align-items": "safe center",
+                "justify-content": "safe center"
+            }
         }
     }
 }
 </script>
-
-<style scoped>
-.radar-chart {
-    height: 100%;
-    width: 100%;
-}
-</style>

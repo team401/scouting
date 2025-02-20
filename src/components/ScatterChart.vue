@@ -11,7 +11,9 @@ ChartJS.register(Title, Tooltip, Legend, PointElement, CategoryScale, LinearScal
 </script>
 
 <template>
-    <Scatter :options="chartOptions" :data="chartData" class="scatter-chart" />
+    <div :style="chartStyle">
+        <Scatter :options="chartOptions" :data="chartData" />
+    </div>
 </template>
 
 <script lang="ts">
@@ -20,14 +22,28 @@ export default {
         columnX: "",
         columnY: "",
         data: {},
-        options: {
-            default: {
+        pointColor: {
+            default: "#ff55ec"
+        },
+        pointRadius: {
+            default: 6
+        },
+        pointHoverRadius: {
+            default: 8
+        },
+        height: {
+            default: 300
+        }
+    },
+    data() {
+        return {
+            options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 plugins: {
                     datalabels: {
                         color: '#333',
-                        align: 'right',
+                        align: 'top',
                         offset: 8,
                         font: {
                             weight: 'bold'
@@ -38,15 +54,6 @@ export default {
                     }
                 }
             }
-        },
-        pointColor: {
-            default: "#ff55ec"
-        },
-        pointRadius: {
-            default: 6
-        },
-        pointHoverRadius: {
-            default: 8
         }
     },
     computed: {
@@ -66,25 +73,44 @@ export default {
             const chart = {
                 labels: labels,
                 datasets: [{
-                    label: "Y-axis: " + this.columnY + ", X-axis: " + this.columnX,
+                    label: "data",
                     backgroundColor: this.pointColor,
                     data: values,
                     pointRadius: this.pointRadius,
                     pointHoverRadius: this.pointHoverRadius
                 }]
             };
+
+            // Label the axes.
+            this.options.scales = {
+                x: {
+                    title: {
+                        text: this.columnX,
+                        display: true
+                    }
+                },
+                y: {
+                    title: {
+                        text: this.columnY,
+                        display: true
+                    }
+                }
+            }
+
             return chart;
         },
         chartOptions() {
             return this.options;
+        },
+        chartStyle() {
+            return {
+                "display": "flex",
+                "height": this.height + "px",
+                "width": "100%",
+                "align-items": "safe center",
+                "justify-content": "safe center"
+            }
         }
     }
 }
 </script>
-
-<style scoped>
-.scatter-chart {
-    height: 100%;
-    width: 100%;
-}
-</style>

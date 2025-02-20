@@ -8,6 +8,7 @@ import NavBar from "./components/NavBar.vue";
 const viewMode = useViewModeStore();
 window.addEventListener('resize', () => {
   viewMode.updateScreenWidth(window.innerWidth);
+  viewMode.updateScreenHeight(window.innerHeight);
 })
 
 const eventStore = useEventStore();

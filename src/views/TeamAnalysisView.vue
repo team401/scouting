@@ -2,15 +2,19 @@
 // TODO: fix types
 // @ts-nocheck
 
-import { aggregateEventData } from "@/lib/2024/data-processing";
-import { teamRadar } from "@/lib/2024/data-visualization";
+import { aggregateEventData, eventStatisticsKeys } from "@/lib/2025/data-processing";
+import { teamLikertRadar, getTeamOverview, teamReefData } from "@/lib/2025/data-visualization";
 import { useEventStore } from "@/stores/event-store";
+import { useViewModeStore } from '@/stores/view-mode-store';
+import { matchScoutTable } from "@/lib/constants";
 
 import '@material/web/select/outlined-select';
 import '@material/web/select/select-option';
 import FilterableGraph from "@/components/FilterableGraph.vue";
 import Dropdown from "@/components/Dropdown.vue";
 import RadarChart from "@/components/RadarChart.vue";
+import StatHighlight from "@/components/StatHighlight.vue";
+
 </script>
 
 <template>
@@ -21,11 +25,33 @@ import RadarChart from "@/components/RadarChart.vue";
             <Dropdown :choices="teamFilters" v-model="currentTeamIndex" @update:modelValue="setTeam"></Dropdown>
 
             <div>
-                <div class="data-tile radar-graph-container">
-                    <RadarChart :data="getTeamRadar"></RadarChart>
+                <div class="analysis-row-tile">
+                    <div class="data-tile">
+                        <StatHighlight :stats="teamHighlights" :is-vertical="true"></StatHighlight>
+                    </div>
+                    <div class="graph-tile">
+                        <RadarChart :data="getTeamRadar('likert')" :height="maxChartHeight"></RadarChart>
+                    </div>
+                    <div class="graph-tile">
+                        <h2>Reef Heatmap</h2>
+                        <FilterableGraph :data="getTeamReef" :graph-filters="reefFilters" max-height-ratio="0.5">
+                        </FilterableGraph>
+                    </div>
                 </div>
-                <div class="data-tile match-progression-container">
-                    <FilterableGraph :data="getTeamMatches" :graph-filters="matchDataFilters"></FilterableGraph>
+
+                <div class="graph-tile match-progression-container">
+                    <h2>Match Analysis</h2>
+                    <FilterableGraph :data="getTeamMatches" :graph-filters="matchDataFilters">
+                    </FilterableGraph>
+                </div>
+
+                <div class="data-tile">
+                    <h2>Comments</h2>
+                    <div v-for="comment in getComments">
+                        <div v-if="comment && comment.text.length > 0" class="comment-tile">
+                            Match {{ comment.match }} ({{ comment.scoutName }}): {{ comment.text }}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -36,14 +62,40 @@ import RadarChart from "@/components/RadarChart.vue";
 export default {
     data() {
         return {
+            viewMode: null,
             eventStore: null,
             teamsLoaded: false,
             teamsData: [{}],
             teamFilters: [],
             currentTeamIndex: 0,
             matchDataFilters: [
-                { text: "Teleop: Amp", key1: "Teleop_Amp_Made", type: "bar", isSorted: false },
-                { text: "Teleop: Speaker", key1: "Teleop_Speaker_Made", type: "bar", isSorted: false },
+                { text: "Breakdown", keyList: ['coralPoints', 'algaePoints', 'bargePoints'], colorList: ['#ff55ec80', '#00ff0080', '#0000ff80'], type: "stacked-bar" },
+                { text: "Auto: Coral", key1: "coralAutoPoints", type: "line" },
+                { text: "Teleop: Coral", key1: "coralTeleopPoints", type: "line" },
+                { text: "Teleop: Algae", key1: "algaeTeleopPoints", type: "line" },
+                { text: "Barge Points", key1: "bargePoints", type: "line" },
+            ],
+            reefFilters: [
+                { text: "Auto Count", key1: "auto_count", type: "boxplot", isHorizontal: true, isSorted: false },
+                { text: "Teleop Count", key1: "teleop_count", type: "boxplot", isHorizontal: true, isSorted: false },
+                {
+                    text: "Total Accuracy", key1: "total_accuracy", type: "bar", isHorizontal: true, isSorted: false, xScale: {
+                        min: 0,
+                        max: 100
+                    }
+                },
+                {
+                    text: "Auto Accuracy", key1: "auto_accuracy", type: "bar", isHorizontal: true, isSorted: false, xScale: {
+                        min: 0,
+                        max: 100
+                    }
+                },
+                {
+                    text: "Teleop Accuracy", key1: "teleop_accuracy", type: "bar", isHorizontal: true, isSorted: false, xScale: {
+                        min: 0,
+                        max: 100
+                    }
+                },
             ]
         }
     },
@@ -52,11 +104,13 @@ export default {
             // Note: do this to avoid stale data on page refresh.
             await this.eventStore.updateEvent();
 
-            this.teamsData = await aggregateEventData(this.eventStore.eventId);
+            this.teamsData = await aggregateEventData(matchScoutTable, this.eventStore.eventId);
 
             this.teamFilters = [];
             Object.keys(this.teamsData).forEach(element => {
-                this.teamFilters.push({ key: element, text: String(element) });
+                if (!eventStatisticsKeys.includes(element)) {
+                    this.teamFilters.push({ key: element, text: String(element) });
+                }
             })
 
             // Mark the data as ready for the view to display.
@@ -64,6 +118,29 @@ export default {
         },
         setTeam(idx: int) {
             this.currentTeamIndex = idx;
+        },
+        getEventStats() {
+            // Downselect the event stats to only those relevant for comparing a team to the population.
+            let eventStats = {
+                rankings: this.teamsData.rankings,
+                distributions: this.teamsData.distributions
+            }
+
+            return eventStats;
+        },
+        getTeamRadar(radarType) {
+            if (this.teamFilters.length == 0) {
+                return {};
+            }
+
+            const teamNumber = this.teamFilters[this.currentTeamIndex].key;
+            const teamInfo = this.teamsData[teamNumber];
+
+            if (radarType == "likert") {
+                return teamLikertRadar(teamInfo, this.getEventStats());
+            }
+
+            return {};
         }
     },
     computed: {
@@ -74,16 +151,6 @@ export default {
 
             return this.teamFilters[this.currentTeamIndex];
         },
-        getTeamRadar() {
-            if (this.teamFilters.length == 0) {
-                return {};
-            }
-
-            const teamNumber = this.teamFilters[this.currentTeamIndex].key;
-            const teamInfo = this.teamsData[teamNumber];
-
-            return teamRadar(teamInfo);
-        },
         getTeamMatches() {
             if (this.teamFilters.length == 0) {
                 return {};
@@ -91,10 +158,68 @@ export default {
 
             const teamNumber = this.teamFilters[this.currentTeamIndex].key;
             const teamInfo = this.teamsData[teamNumber];
-            return teamInfo.match_data;
+
+            let teamMatches = {};
+            for (var i = 0; i < teamInfo.match_data.matchNumber.length; i++) {
+                let matchData = {};
+                Object.keys(teamInfo.match_data).forEach(key => {
+                    if (key != "matchNumber") {
+                        matchData[key] = teamInfo.match_data[key][i];
+                    }
+                });
+
+                const matchNumber = teamInfo.match_data.matchNumber[i];
+                teamMatches[matchNumber] = matchData;
+            }
+
+            return teamMatches;
+        },
+        teamHighlights() {
+            if (this.teamFilters.length == 0) {
+                return {};
+            }
+
+            const teamNumber = this.teamFilters[this.currentTeamIndex].key;
+            const teamInfo = this.teamsData[teamNumber];
+            return getTeamOverview(teamInfo, teamNumber, this.getEventStats());
+        },
+
+        getTeamReef() {
+            if (this.teamFilters.length == 0) {
+                return {};
+            }
+
+            const teamNumber = this.teamFilters[this.currentTeamIndex].key;
+            const teamInfo = this.teamsData[teamNumber];
+            const reefData = teamReefData(teamInfo);
+
+            return reefData;
+        },
+        getComments() {
+            if (this.teamFilters.length == 0) {
+                return [];
+            }
+
+            const teamNumber = this.teamFilters[this.currentTeamIndex].key;
+            const teamInfo = this.teamsData[teamNumber];
+
+            let comments = teamInfo.match_data.comments;
+            let matchNumbers = teamInfo.match_data.matchNumber;
+            let scoutNames = teamInfo.match_data.scoutName;
+
+            let commentData = []
+            for (var i = 0; i < comments.length; i++) {
+                commentData.push({ text: comments[i], match: matchNumbers[i], scoutName: scoutNames[i] });
+            }
+
+            return commentData;
+        },
+        maxChartHeight() {
+            return 0.5 * this.viewMode.windowHeight;
         }
     },
     created() {
+        this.viewMode = useViewModeStore();
         this.eventStore = useEventStore();
         this.loadTeamsData();
     }
@@ -103,11 +228,23 @@ export default {
 
 <style>
 .radar-graph-container {
-    height: 60vh;
+    /* height: 60vh; */
     min-width: 30vw;
 }
 
 .match-progression-container {
     min-height: 60vh;
+}
+
+.quarter-page-width {
+    min-width: 25vw;
+}
+
+.half-page-width {
+    min-width: 50vw;
+}
+
+.three-quarter-page-width {
+    min-width: 75vw;
 }
 </style>

@@ -19,13 +19,15 @@ ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale,
 <script lang="ts">
 export default {
     props: {
-        column: "",
+        columns: {
+            default: []
+        },
         data: {},
         isSorted: {
             default: true
         },
-        barColor: {
-            default: "#ff55ec80"
+        barColors: {
+            default: []
         },
         height: {
             default: 100
@@ -36,10 +38,10 @@ export default {
         isHorizontal: {
             default: false
         },
-        xScale: {
+        xRange: {
             default: {}
         },
-        yScale: {
+        yRange: {
             default: {}
         }
     },
@@ -48,39 +50,28 @@ export default {
             // Initialize the labels to the keys of the dictionary
             let labels = Object.keys(this.data);
 
-            // Populate an array of values.
-            let values = [];
-            labels.forEach(element => {
-                values.push(this.data[element][this.column])
-            });
+            let datasets = [];
+            for (var i = 0; i < this.columns.length; i++) {
+                const columnName = this.columns[i];
 
-            // Sort the data if requested.
-            if (this.isSorted) {
-                const sorted = sortKeyValueArrays(labels, values);
+                // Populate an array of values.
+                let values = [];
+                labels.forEach(element => {
+                    values.push(this.data[element][columnName])
+                });
 
-                // Reconstruct a key array and a value array.
-                labels = [];
-                values = [];
-                for (const [key, val] of sorted) {
-                    labels.push(key);
-                    values.push(val);
-                }
-            }
-
-            // Limit the amount of data shown if requested.
-            if (this.maxLabels != null) {
-                labels = labels.slice(0, this.maxLabels);
-                values = values.slice(0, this.maxLabels);
+                const dataset = {
+                    label: columnName,
+                    backgroundColor: this.barColors[i],
+                    data: values
+                };
+                datasets.push(dataset)
             }
 
             // Build the chart based on the processing above.
             const chart = {
                 labels: labels,
-                datasets: [{
-                    label: this.column,
-                    backgroundColor: this.barColor,
-                    data: values
-                }]
+                datasets: datasets
             };
             return chart;
         },
@@ -100,8 +91,16 @@ export default {
                 },
                 indexAxis: indexAxis,
                 scales: {
-                    x: this.xScale,
-                    y: this.yScale
+                    x: {
+                        min: this.xRange?.min,
+                        max: this.xRange?.max,
+                        stacked: true
+                    },
+                    y: {
+                        min: this.yRange?.min,
+                        max: this.yRange?.max,
+                        stacked: true
+                    },
                 }
             };
 

@@ -238,7 +238,7 @@ export function getMatchScoutSchema() {
                     error: false
                 },
                 {
-                    key: "climb_Speed",
+                    key: "climb_speed",
                     label: "Climb Speed",
                     type: "radio",
                     options: {
