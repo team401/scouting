@@ -22,6 +22,7 @@ import { useEventStore } from '@/stores/event-store';
                 <RouterLink to="/pit-scout" class="nav-link nav-link-mobile">Pit Scouting</RouterLink>
                 <RouterLink to="/event" class="nav-link nav-link-mobile">Event Analysis</RouterLink>
                 <RouterLink to="/team" class="nav-link nav-link-mobile">Team Analysis</RouterLink>
+                <RouterLink to="/match" class="nav-link nav-link-mobile">Match Planning</RouterLink>
             </template>
         </HamburgerMenu>
     </div>
@@ -30,6 +31,7 @@ import { useEventStore } from '@/stores/event-store';
         <RouterLink to="/pit-scout" class="nav-link">Pit Scouting</RouterLink>
         <RouterLink to="/event" class="nav-link">Event Analysis</RouterLink>
         <RouterLink to="/team" class="nav-link">Team Analysis</RouterLink>
+        <RouterLink to="/match" class="nav-link">Match Planning</RouterLink>
         <div class="nav-text nav-right">{{ eventName }}</div>
     </div>
 </template>
