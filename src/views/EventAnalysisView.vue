@@ -2,10 +2,11 @@
 // TODO: fix types
 // @ts-nocheck
 
-import { aggregateEventData } from "@/lib/2025/data-processing";
+import { aggregateEventData, eventStatisticsKeys } from "@/lib/2025/data-processing";
 import { useEventStore } from "@/stores/event-store";
 import { useViewModeStore } from "@/stores/view-mode-store";
 import { matchScoutTable } from "@/lib/constants";
+import { filterOutKeys } from "@/lib/util";
 
 import '@material/web/select/outlined-select';
 import '@material/web/select/select-option';
@@ -21,7 +22,7 @@ import BoxPlotVue from "@/components/BoxPlot.vue";
 
         <div v-if="eventDataLoaded" class="graph-tile">
             <!-- Data must be loaded before this div is shown -->
-            <FilterableGraph :data="eventData" :graphFilters="graphFilters" :max-data-points="maxDataPoints">
+            <FilterableGraph :data="teamEventData" :graphFilters="graphFilters" :max-data-points="maxDataPoints">
             </FilterableGraph>
         </div>
 
@@ -52,8 +53,8 @@ export default {
             eventStore: null,
             viewMode: null,
             tableHeaders: [
-                { name: "#", key: "team_number" },
-                { name: "Matches Played", key: "num_matches" },
+                { name: "#", key: "team_number", isDiscrete: true },
+                { name: "Matches Played", key: "num_matches", isDiscrete: true },
                 { name: "Avg. Points", key: "mean_matchPoints" },
                 { name: "Avg. Coral Points", key: "mean_coralPoints" },
                 { name: "Avg. Algae Points", key: "mean_algaePoints" },
@@ -89,15 +90,20 @@ export default {
 
             // Iterate over the keys in the dataset to populate the teams list.
             Object.keys(this.eventData).forEach(element => {
-                // Get the corresponding entry of aggregated data
-                const teamData = this.eventData[element];
+                if (!eventStatisticsKeys.includes(element)) {
+                    // Get the corresponding entry of aggregated data
+                    const teamData = this.eventData[element];
 
-                const row = {};
-                this.tableHeaders.forEach(element => {
-                    row[element.key] = teamData[element.key];
-                });
+                    const row = {};
+                    this.tableHeaders.forEach(element => {
+                        row[element.key] = Number(teamData[element.key]);
+                        if (element.isDiscrete != true) {
+                            row[element.key] = row[element.key].toFixed(2);
+                        }
+                    });
 
-                this.tableData.push(row);
+                    this.tableData.push(row);
+                }
             });
 
             // Mark the table as loaded.
@@ -105,6 +111,9 @@ export default {
         }
     },
     computed: {
+        teamEventData() {
+            return filterOutKeys(this.eventData, eventStatisticsKeys);
+        },
         maxDataPoints() {
             // Only show the top 6 bar graph items if this is on a phone.
             if (this.viewMode.isMobile) {

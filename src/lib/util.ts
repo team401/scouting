@@ -18,8 +18,6 @@ export function computeSortRanking(a, b, isDescending) {
     } else if (Array.isArray(a) && typeof a[0] == 'number') {
         return mean(a) - mean(b);
     } else if (isDescending) {
-        console.log(typeof a)
-        console.log(a)
         return b.localeCompare(a);
     }
 
@@ -51,4 +49,20 @@ export function sortKeyValueArrays(keys: Array<String>, values: Array<any>): Arr
     });
 
     return keyValueArraySort(items);
+}
+
+export function filterOutKeys(data: Object, keysToRemove: Array): Object {
+    let filteredData = {};
+    Object.keys(data).forEach(key => {
+        if (!keysToRemove.includes(key)) {
+            filteredData[key] = data[key];
+        }
+    });
+    return filteredData;
+}
+
+export function getNumberWithOrdinal(n) {
+    const s = ["th", "st", "nd", "rd"];
+    const v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }

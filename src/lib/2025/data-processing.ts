@@ -3,6 +3,7 @@
 
 import { supabase } from '@/lib/supabase-client';
 import { mean, standardDeviation, min, max } from 'simple-statistics';
+import { sortKeyValueArrays } from '../util';
 
 const autoMovePoints = 2;
 
@@ -23,6 +24,10 @@ const parkPoints = 2;
 const shallowCagePoints = 6;
 const deepCagePoints = 12;
 
+export const eventStatisticsKeys = [
+    "rankings", "distributions"
+];
+
 export function computeAccuracy(made: Number, missed: Number) {
     let accuracy = 0;
     if (made > 0) {
@@ -30,7 +35,6 @@ export function computeAccuracy(made: Number, missed: Number) {
     }
     return accuracy;
 }
-
 
 export async function aggregateEventData(eventTable: String, eventId: String): Promise<{}> {
     // Pull the relevant data from supabase.
@@ -50,6 +54,9 @@ export async function aggregateEventData(eventTable: String, eventId: String): P
 
     // Compute team statistics such as mean and standard deviation.
     eventData = computeTeamStatistics(eventData);
+
+    // Compute event-wide statistics such as rankings and overall distributions.
+    eventData = computeEventStatistics(eventData);
 
     return eventData;
 }
@@ -112,7 +119,9 @@ function parseMatchData(rawData, eventData) {
                     climbSpeed: [],
                     drivingScore: [],
                     defenseScore: [],
-                    stabilityScore: []
+                    stabilityScore: [],
+                    comments: [],
+                    scoutName: []
                 }
             }
         }
@@ -187,6 +196,10 @@ function parseMatchData(rawData, eventData) {
         // Total points.
         const matchPoints = autoPoints + teleopPoints + bargePoints;
 
+        // Scout comments.
+        const scoutComment = String(rawData[i]["postmatch.comments"]);
+        const scoutName = String(rawData[i]["prematch.scout_name"])
+
         // Aggregate all match data.
         const matchNumber = String(rawData[i]["prematch.match_number"]);
         const matchData = {
@@ -229,7 +242,9 @@ function parseMatchData(rawData, eventData) {
             climbSpeed: climbSpeed,
             drivingScore: drivingScore,
             defenseScore: defenseScore,
-            stabilityScore: stabilityScore
+            stabilityScore: stabilityScore,
+            comments: scoutComment,
+            scoutName: scoutName
         }
 
         // Load the match stats into the matches array for this team.
@@ -243,11 +258,10 @@ function parseMatchData(rawData, eventData) {
 
 function computeTeamStatistics(eventData) {
     const excludeKeysFromStats = [
-        "matchNumber"
+        "matchNumber",
+        "comments",
+        "scoutName"
     ];
-
-
-    // console.log(eventData)
 
     const teamKeys = Object.keys(eventData);
     for (let i = 0; i < teamKeys.length; i++) {
@@ -283,6 +297,59 @@ function computeTeamStatistics(eventData) {
                 eventData[teamNumber][maxKeyName] = maxValue;
             }
         });
+    }
+
+    return eventData;
+}
+
+function computeEventStatistics(eventData) {
+    const excludeKeysFromStats = [
+        "matchNumber",
+        "match_data",
+        "team_number",
+    ];
+
+    const teamNumbers = Object.keys(eventData);
+
+    // Create rankings and statistical distributions for each metric if there are more than 0 teams.
+    if (teamNumbers.length > 0) {
+        let matchKeys = Object.keys(eventData[teamNumbers[0]]);
+        let rankings = {}
+        let eventDists = {}
+
+        matchKeys.forEach((element) => {
+            if (!excludeKeysFromStats.includes(element)) {
+                let labels = teamNumbers.slice();
+                let values = [];
+
+                for (var i = 0; i < teamNumbers.length; i++) {
+                    const val = eventData[teamNumbers[i]][element];
+                    values.push(val);
+                }
+
+                // Sort to find the team order.
+                const sorted = sortKeyValueArrays(labels, values);
+                labels = [];
+                values = [];
+                for (const [key, val] of sorted) {
+                    labels.push(key);
+                    values.push(val);
+                }
+
+                // Set the rankings
+                rankings[element] = labels.slice();
+
+                // Compute distributions
+                eventDists[element] = {};
+                eventDists[element]["mean"] = mean(values);
+                eventDists[element]["std"] = standardDeviation(values);
+                eventDists[element]["min"] = min(values);
+                eventDists[element]["max"] = max(values);
+            }
+        });
+
+        eventData.rankings = rankings;
+        eventData.distributions = eventDists;
     }
 
     return eventData;

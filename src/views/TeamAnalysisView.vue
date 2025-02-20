@@ -2,7 +2,7 @@
 // TODO: fix types
 // @ts-nocheck
 
-import { aggregateEventData } from "@/lib/2025/data-processing";
+import { aggregateEventData, eventStatisticsKeys } from "@/lib/2025/data-processing";
 import { teamLikertRadar, getTeamOverview, teamReefData } from "@/lib/2025/data-visualization";
 import { useEventStore } from "@/stores/event-store";
 import { useViewModeStore } from '@/stores/view-mode-store';
@@ -44,8 +44,14 @@ import StatHighlight from "@/components/StatHighlight.vue";
                     <FilterableGraph :data="getTeamMatches" :graph-filters="matchDataFilters">
                     </FilterableGraph>
                 </div>
-                <div>
 
+                <div class="data-tile">
+                    <h2>Comments</h2>
+                    <div v-for="comment in getComments">
+                        <div v-if="comment && comment.text.length > 0" class="comment-tile">
+                            Match {{ comment.match }} ({{ comment.scoutName }}): {{ comment.text }}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -102,7 +108,9 @@ export default {
 
             this.teamFilters = [];
             Object.keys(this.teamsData).forEach(element => {
-                this.teamFilters.push({ key: element, text: String(element) });
+                if (!eventStatisticsKeys.includes(element)) {
+                    this.teamFilters.push({ key: element, text: String(element) });
+                }
             })
 
             // Mark the data as ready for the view to display.
@@ -110,6 +118,15 @@ export default {
         },
         setTeam(idx: int) {
             this.currentTeamIndex = idx;
+        },
+        getEventStats() {
+            // Downselect the event stats to only those relevant for comparing a team to the population.
+            let eventStats = {
+                rankings: this.teamsData.rankings,
+                distributions: this.teamsData.distributions
+            }
+
+            return eventStats;
         },
         getTeamRadar(radarType) {
             if (this.teamFilters.length == 0) {
@@ -120,11 +137,11 @@ export default {
             const teamInfo = this.teamsData[teamNumber];
 
             if (radarType == "likert") {
-                return teamLikertRadar(teamInfo);
+                return teamLikertRadar(teamInfo, this.getEventStats());
             }
 
             return {};
-        },
+        }
     },
     computed: {
         getCurrentTeam() {
@@ -164,7 +181,7 @@ export default {
 
             const teamNumber = this.teamFilters[this.currentTeamIndex].key;
             const teamInfo = this.teamsData[teamNumber];
-            return getTeamOverview(teamInfo);
+            return getTeamOverview(teamInfo, teamNumber, this.getEventStats());
         },
 
         getTeamReef() {
@@ -177,6 +194,25 @@ export default {
             const reefData = teamReefData(teamInfo);
 
             return reefData;
+        },
+        getComments() {
+            if (this.teamFilters.length == 0) {
+                return [];
+            }
+
+            const teamNumber = this.teamFilters[this.currentTeamIndex].key;
+            const teamInfo = this.teamsData[teamNumber];
+
+            let comments = teamInfo.match_data.comments;
+            let matchNumbers = teamInfo.match_data.matchNumber;
+            let scoutNames = teamInfo.match_data.scoutName;
+
+            let commentData = []
+            for (var i = 0; i < comments.length; i++) {
+                commentData.push({ text: comments[i], match: matchNumbers[i], scoutName: scoutNames[i] });
+            }
+
+            return commentData;
         },
         maxChartHeight() {
             return 0.5 * this.viewMode.windowHeight;

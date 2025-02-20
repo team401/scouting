@@ -71,7 +71,6 @@ export default {
         uniqueKey() {
             // TODO: make this better. This is a hack to ensure plots reload if data or filters change.
             const key = JSON.stringify(this.data) + JSON.stringify(this.graphFilters[this.activeGraphFilterIndex]);
-            console.log(key)
             return key;
         },
         getActiveGraphFilter() {

@@ -127,3 +127,17 @@ tbody tr:last-of-type {
   align-items: safe center;
   justify-content: safe center;
 }
+
+.comment-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: safe center;
+  align-items: safe center;
+  padding: 20px;
+  border-color: #c3c3c3;
+  border-width: 2px;
+  border-style: solid;
+  border-radius: 10px;
+  margin: 15px;
+  overflow: scroll;
+}

@@ -4,29 +4,60 @@
 import { sum, mean } from 'simple-statistics';
 import { computeAccuracy } from './data-processing';
 
-export function getTeamOverview(teamInfo) {
+export function getTeamOverview(teamInfo, teamNumber, eventStats) {
+
+    const meanPointsRanking = eventStats.rankings.mean_matchPoints.indexOf(teamNumber) + 1;
+    const meanAutoPointsRanking = eventStats.rankings.mean_autoPoints.indexOf(teamNumber) + 1;
+    const meanTeleopPointsRanking = eventStats.rankings.mean_teleopPoints.indexOf(teamNumber) + 1;
+    const meanBargePointsRanking = eventStats.rankings.mean_bargePoints.indexOf(teamNumber) + 1;
+
+    // Get the number of teams to produce a normalized ranking.
+    const numTeams = eventStats.rankings.mean_matchPoints.length;
+
     return [
         {
             name: "Average Points",
-            value: teamInfo.mean_matchPoints.toFixed(2)
+            value: teamInfo.mean_matchPoints.toFixed(2),
+            ranking: meanPointsRanking,
+            normalized: meanPointsRanking / numTeams
         },
         {
             name: "Average Auto Points",
-            value: teamInfo.mean_autoPoints.toFixed(2)
+            value: teamInfo.mean_autoPoints.toFixed(2),
+            ranking: meanAutoPointsRanking,
+            normalized: meanAutoPointsRanking / numTeams
         },
         {
             name: "Average Teleop Points",
-            value: teamInfo.mean_teleopPoints.toFixed(2)
+            value: teamInfo.mean_teleopPoints.toFixed(2),
+            ranking: meanTeleopPointsRanking,
+            normalized: meanTeleopPointsRanking / numTeams
         },
         {
             name: "Average Barge Points",
-            value: teamInfo.mean_bargePoints.toFixed(2)
+            value: teamInfo.mean_bargePoints.toFixed(2),
+            ranking: meanBargePointsRanking,
+            normalized: meanBargePointsRanking / numTeams
         }
     ];
 }
 
-export function teamLikertRadar(teamInfo) {
-    return { "Climb Speed": teamInfo.mean_climbSpeed, "Driving": teamInfo.mean_drivingScore, "Defense": teamInfo.mean_defenseScore, "Stability": teamInfo.mean_stabilityScore };
+export function teamLikertRadar(teamInfo, eventStats) {
+    // Get normalized team points.
+    const meanTeamPoints = teamInfo.mean_matchPoints;
+    const maxPoints = eventStats.distributions.mean_matchPoints.max;
+    const minPoints = eventStats.distributions.mean_matchPoints.min;
+    const teamNormalizedPoints = 5.0 * (meanTeamPoints - minPoints) / (maxPoints - minPoints);
+
+    let radarData = {
+        "Climb Speed": teamInfo.mean_climbSpeed,
+        "Driving": teamInfo.mean_drivingScore,
+        "Defense": teamInfo.mean_defenseScore,
+        "Stability": teamInfo.mean_stabilityScore,
+        "Scoring": teamNormalizedPoints
+    };
+
+    return radarData;
 }
 
 export function teamReefData(teamInfo) {
