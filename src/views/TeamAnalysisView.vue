@@ -2,11 +2,11 @@
 // TODO: fix types
 // @ts-nocheck
 
-import { aggregateEventData, eventStatisticsKeys } from "@/lib/2025/data-processing";
+import { aggregateEventData, eventStatisticsKeys, getPitScoutData } from "@/lib/2025/data-processing";
 import { teamLikertRadar, getTeamOverview, teamReefData } from "@/lib/2025/data-visualization";
 import { useEventStore } from "@/stores/event-store";
 import { useViewModeStore } from '@/stores/view-mode-store';
-import { matchScoutTable } from "@/lib/constants";
+import { matchScoutTable, pitScoutTable } from "@/lib/constants";
 
 import '@material/web/select/outlined-select';
 import '@material/web/select/select-option';
@@ -53,6 +53,13 @@ import StatHighlight from "@/components/StatHighlight.vue";
                         </div>
                     </div>
                 </div>
+
+                <div class="data-tile">
+                    <h2>Pit Scouting Report</h2>
+                    <div v-for="data, key in getTeamPitReport">
+                        {{ key }}: {{ data }}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -66,6 +73,7 @@ export default {
             eventStore: null,
             teamsLoaded: false,
             teamsData: [{}],
+            pitData: [{}],
             teamFilters: [],
             currentTeamIndex: 0,
             matchDataFilters: [
@@ -78,24 +86,24 @@ export default {
             reefFilters: [
                 { text: "Auto Count", key1: "auto_count", type: "boxplot", isHorizontal: true, isSorted: false },
                 { text: "Teleop Count", key1: "teleop_count", type: "boxplot", isHorizontal: true, isSorted: false },
-                {
-                    text: "Total Accuracy", key1: "total_accuracy", type: "bar", isHorizontal: true, isSorted: false, xScale: {
-                        min: 0,
-                        max: 100
-                    }
-                },
-                {
-                    text: "Auto Accuracy", key1: "auto_accuracy", type: "bar", isHorizontal: true, isSorted: false, xScale: {
-                        min: 0,
-                        max: 100
-                    }
-                },
-                {
-                    text: "Teleop Accuracy", key1: "teleop_accuracy", type: "bar", isHorizontal: true, isSorted: false, xScale: {
-                        min: 0,
-                        max: 100
-                    }
-                },
+                // {
+                //     text: "Total Accuracy", key1: "total_accuracy", type: "bar", isHorizontal: true, isSorted: false, xScale: {
+                //         min: 0,
+                //         max: 100
+                //     }
+                // },
+                // {
+                //     text: "Auto Accuracy", key1: "auto_accuracy", type: "bar", isHorizontal: true, isSorted: false, xScale: {
+                //         min: 0,
+                //         max: 100
+                //     }
+                // },
+                // {
+                //     text: "Teleop Accuracy", key1: "teleop_accuracy", type: "bar", isHorizontal: true, isSorted: false, xScale: {
+                //         min: 0,
+                //         max: 100
+                //     }
+                // },
             ]
         }
     },
@@ -112,6 +120,8 @@ export default {
                     this.teamFilters.push({ key: element, text: String(element) });
                 }
             })
+
+            this.pitData = await getPitScoutData(pitScoutTable, this.eventStore.eventId);
 
             // Mark the data as ready for the view to display.
             this.teamsLoaded = true;
@@ -183,7 +193,6 @@ export default {
             const teamInfo = this.teamsData[teamNumber];
             return getTeamOverview(teamInfo, teamNumber, this.getEventStats());
         },
-
         getTeamReef() {
             if (this.teamFilters.length == 0) {
                 return {};
@@ -213,6 +222,16 @@ export default {
             }
 
             return commentData;
+        },
+        getTeamPitReport() {
+            if (this.teamFilters.length == 0) {
+                return {};
+            }
+
+            const teamNumber = this.teamFilters[this.currentTeamIndex].key;
+            const teamPit = this.pitData[teamNumber];
+
+            return teamPit;
         },
         maxChartHeight() {
             return 0.5 * this.viewMode.windowHeight;

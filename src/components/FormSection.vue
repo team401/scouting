@@ -4,7 +4,7 @@ import FormComponent from './FormComponent.vue';
 </script>
 
 <template>
-    <div class="data-tile" :style="getStyle">
+    <div class="scout-form-tile" :style="getStyle">
         <h2>{{ name }}</h2>
         <div v-for="component in components" v-if="components.length > 0">
             <FormComponent :label="component.label" :type="component.type" :options="component?.options"
@@ -53,5 +53,10 @@ export default {
 <style scoped>
 div {
     margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: safe center;
+    justify-content: safe center;
+    width: 100%;
 }
 </style>

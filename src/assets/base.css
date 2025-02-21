@@ -62,7 +62,6 @@ table {
   /* margin: 25px 0; */
   font-size: 0.9em;
   font-family: sans-serif;
-  min-width: 400px;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
   text-align: center;
   /* Use margin: auto; to prevent table from being cut off in flex views. */
@@ -101,6 +100,19 @@ tbody tr:last-of-type {
   background-color: #FFF;
   border-radius: 10px;
   margin: 15px;
+  overflow: scroll;
+
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+}
+
+.scout-form-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: safe center;
+  align-items: safe center;
+  padding: 20px 5px;
+  background-color: #FFF;
+  border-radius: 10px;
   overflow: scroll;
 
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
