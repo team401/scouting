@@ -49,6 +49,7 @@ export default {
 div {
     display: flex;
     align-items: center;
+    flex-direction: column;
 }
 
 .label-container {

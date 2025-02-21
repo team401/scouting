@@ -58,6 +58,7 @@ export default {
     display: flex;
     flex-direction: column;
     align-items: center;
+    width: fit-content;
 }
 
 .counter-container {

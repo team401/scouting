@@ -112,7 +112,6 @@ export function getMatchScoutSchema() {
                         labels: ["L4", "L3", "L2", "L1"],
                         sections: [
                             { key: "scored", text: "Scored" },
-                            { key: "missed", text: "Missed" }
                         ]
                     },
                     defaultValue: [[0, 0], [0, 0], [0, 0], [0, 0]],
@@ -130,7 +129,6 @@ export function getMatchScoutSchema() {
                         labels: ["Processor", "Net", "Dislodged"],
                         sections: [
                             { key: "success", text: "Success" },
-                            { key: "fail", text: "Failed" }
                         ]
                     },
                     defaultValue: [[0, 0], [0, 0], [0, 0]],
@@ -168,7 +166,6 @@ export function getMatchScoutSchema() {
                         labels: ["L4", "L3", "L2", "L1"],
                         sections: [
                             { key: "scored", text: "Scored" },
-                            { key: "missed", text: "Missed" }
                         ]
                     },
                     defaultValue: [[0, 0], [0, 0], [0, 0], [0, 0]],
@@ -186,7 +183,6 @@ export function getMatchScoutSchema() {
                         labels: ["Processor", "Net", "Dislodged"],
                         sections: [
                             { key: "success", text: "Success" },
-                            { key: "fail", text: "Failed" }
                         ]
                     },
                     defaultValue: [[0, 0], [0, 0], [0, 0]],

@@ -31,7 +31,7 @@ import GridCounter from '@/components/GridCounters.vue';
             </div>
         </div>
     </div>
-    <div v-else-if="type == 'dropdown'">
+    <div v-else-if="type == 'dropdown'" class="dropdown">
         {{ label }}
         <Dropdown :choices="options.choices" :model-value="modelValue" @update:modelValue="updateModel" :required="required"
             :error="error"></Dropdown>
@@ -121,5 +121,12 @@ export default {
 .switch {
     margin-left: 10px;
     margin-right: 10px;
+}
+
+.dropdown {
+    display: flex;
+    flex-direction: column;
+    align-items: safe center;
+    justify-content: safe center;
 }
 </style>
