@@ -1,6 +1,9 @@
 <script setup lang="ts">
 // TODO: fix types
 // @ts-nocheck
+
+import { dataPointColorTranslucent, getThemeColors } from '@/lib/theme';
+
 import { Line } from 'vue-chartjs'
 import { Chart as ChartJS, Title, Tooltip, Legend, LineElement, PointElement, CategoryScale, LinearScale } from 'chart.js'
 import ChartJSPluginDatalabels from 'chartjs-plugin-datalabels'
@@ -12,7 +15,7 @@ ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, CategoryScal
 
 <template>
     <div :style="chartStyle">
-        <Line :options="chartOptions" :data="chartData" />
+        <Line :options="chartOptions" :data="chartData" :key="uniqueKey" />
     </div>
 </template>
 
@@ -33,16 +36,19 @@ export default {
             }
         },
         lineColor: {
-            default: "#ff55ec80"
+            default: dataPointColorTranslucent
         },
         pointColor: {
-            default: "#ff55ec80"
+            default: dataPointColorTranslucent
         },
         height: {
             default: 100
         }
     },
     computed: {
+        uniqueKey() {
+            return JSON.stringify(this.data) + JSON.stringify(getThemeColors());
+        },
         chartData() {
             // Initialize the labels to the keys of the dictionary
             let labels = Object.keys(this.data);
@@ -63,6 +69,32 @@ export default {
                     data: values
                 }]
             };
+
+            this.options.scales = {
+                x: {
+                    grid: {
+                        color: getThemeColors().grid.lines
+                    },
+                    ticks: {
+                        color: getThemeColors().text.axesText
+                    }
+                },
+                y: {
+                    grid: {
+                        color: getThemeColors().grid.lines
+                    },
+                    ticks: {
+                        color: getThemeColors().text.axesText
+                    }
+                }
+            };
+
+            this.options.plugins.legend = {
+                labels: {
+                    color: getThemeColors().text.legend
+                }
+            };
+
             return chart;
         },
         chartOptions() {

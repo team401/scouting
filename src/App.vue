@@ -10,6 +10,10 @@ window.addEventListener('resize', () => {
   viewMode.updateScreenWidth(window.innerWidth);
   viewMode.updateScreenHeight(window.innerHeight);
 })
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  viewMode.updateDarkMode();
+})
+viewMode.updateDarkMode();
 
 const eventStore = useEventStore();
 eventStore.updateEvent();

@@ -77,7 +77,7 @@ export default {
             teamFilters: [],
             currentTeamIndex: 0,
             matchDataFilters: [
-                { text: "Breakdown", keyList: ['coralPoints', 'algaePoints', 'bargePoints'], colorList: ['#ff55ec80', '#00ff0080', '#0000ff80'], type: "stacked-bar" },
+                { text: "Breakdown", keyList: ['coralPoints', 'algaePoints', 'bargePoints'], colorList: ['#ff55ecff', '#5dfc75ff', '#647afaff'], type: "stacked-bar" },
                 { text: "Auto: Coral", key1: "coralAutoPoints", type: "line" },
                 { text: "Teleop: Coral", key1: "coralTeleopPoints", type: "line" },
                 { text: "Teleop: Algae", key1: "algaeTeleopPoints", type: "line" },

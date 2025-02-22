@@ -17,6 +17,12 @@ import { useEventStore } from '@/stores/event-store';
             <template v-slot:menu-title>
                 {{ eventName }}
             </template>
+            <template v-slot:theme-button>
+                <div class="nav-dark-mode nav-mobile-right" @click="toggleUserDarkMode">
+                    <md-icon slot="icon" v-if="isDarkMode">dark_mode</md-icon>
+                    <md-icon slot="icon" v-else>light_mode</md-icon>
+                </div>
+            </template>
             <template v-slot:menu-content>
                 <RouterLink to="/scout" class="nav-link nav-link-mobile">Match Scouting</RouterLink>
                 <RouterLink to="/pit-scout" class="nav-link nav-link-mobile">Pit Scouting</RouterLink>
@@ -24,12 +30,18 @@ import { useEventStore } from '@/stores/event-store';
                 <RouterLink to="/team" class="nav-link nav-link-mobile">Team Analysis</RouterLink>
             </template>
         </HamburgerMenu>
+
     </div>
     <div class="nav" v-else>
         <RouterLink to="/scout" class="nav-link">Match Scouting</RouterLink>
         <RouterLink to="/pit-scout" class="nav-link">Pit Scouting</RouterLink>
         <RouterLink to="/event" class="nav-link">Event Analysis</RouterLink>
         <RouterLink to="/team" class="nav-link">Team Analysis</RouterLink>
+
+        <div class="nav-dark-mode nav-right" @click="toggleUserDarkMode">
+            <md-icon slot="icon" v-if="isDarkMode">dark_mode</md-icon>
+            <md-icon slot="icon" v-else>light_mode</md-icon>
+        </div>
         <div class="nav-text nav-right">{{ eventName }}</div>
     </div>
 </template>
@@ -56,6 +68,14 @@ export default {
     computed: {
         eventName() {
             return this.eventStore?.eventName;
+        },
+        isDarkMode() {
+            return this.viewMode.isDarkMode;
+        }
+    },
+    methods: {
+        toggleUserDarkMode() {
+            this.viewMode.toggleUserDarkMode();
         }
     }
 }
@@ -142,9 +162,25 @@ a.nav-link-mobile {
     padding: 20px;
 }
 
+.nav-mobile-right {
+    display: flex;
+    align-items: center;
+    float: right;
+    position: relative;
+    height: 100%;
+    background-color: var(--accent-color);
+    padding: 20px;
+}
+
 .nav-text {
     font-size: 16px;
     text-decoration: none;
     color: #FFF;
+}
+
+.nav-dark-mode {
+    background-color: var(--primary-color);
+    color: var(--primary-text-color);
+    cursor: pointer;
 }
 </style>

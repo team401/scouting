@@ -17,6 +17,8 @@ import '@material/web/icon/icon';
                 <md-icon slot="icon" v-if="!expanded">menu</md-icon>
             </a>
         </div>
+
+        <slot name="theme-button"></slot>
         <Transition name="slide">
             <div class="hamburger-menu-container" v-if="expanded" @click="expanded = false">
                 <slot name="menu-content"></slot>

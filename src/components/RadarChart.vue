@@ -2,6 +2,8 @@
 // TODO: fix types
 // @ts-nocheck
 
+import { radarRedTheme, getThemeColors } from '@/lib/theme';
+
 import {
     Chart as ChartJS,
     RadialLinearScale,
@@ -21,7 +23,7 @@ ChartJS.register(Title, Tooltip, Legend, PointElement, RadialLinearScale, LineEl
 
 <template>
     <div :style="chartStyle">
-        <Radar :options="chartOptions" :data="chartData" class="radar-chart" />
+        <Radar :options="chartOptions" :data="chartData" class="radar-chart" :key="uniqueKey" />
     </div>
 </template>
 
@@ -50,10 +52,10 @@ export default {
         },
         colors: {
             default: {
-                backgroundColors: ['rgba(255,99,132,0.2)'],
-                borderColors: ['rgba(255,99,132,1)'],
-                pointBackgroundColors: ['rgba(255,99,132,1)'],
-                pointHoverBorderColors: ['rgba(255,99,132,1)']
+                backgroundColors: [radarRedTheme.background],
+                borderColors: [radarRedTheme.border],
+                pointBackgroundColors: [radarRedTheme.pointBackground],
+                pointHoverBorderColors: [radarRedTheme.pointHoverBorder]
             }
         },
         height: {
@@ -61,6 +63,9 @@ export default {
         }
     },
     computed: {
+        uniqueKey() {
+            return JSON.stringify(this.data) + JSON.stringify(getThemeColors());
+        },
         chartData() {
             // Initialize the labels to the keys of the dictionary
             let labels = Object.keys(this.data);
@@ -82,6 +87,31 @@ export default {
                     pointHoverBorderColor: this.colors.pointHoverBorderColors[0],
                 }]
             };
+
+            this.options.plugins.legend = {
+                labels: {
+                    color: getThemeColors().text.legend
+                }
+            }
+
+            this.options.scales = {
+                r: {
+                    grid: {
+                        color: getThemeColors().grid.lines
+                    },
+                    angleLines: {
+                        color: getThemeColors().grid.lines
+                    },
+                    ticks: {
+                        color: getThemeColors().text.axesText,
+                        showLabelBackdrop: false
+                    },
+                    pointLabels: {
+                        color: getThemeColors().text.axesText
+                    }
+                },
+            }
+
             return chart;
         },
         chartOptions() {

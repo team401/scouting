@@ -1,6 +1,9 @@
 <script setup lang="ts">
 // TODO: fix types
 // @ts-nocheck
+
+import { getThemeColors } from '@/lib/theme';
+
 import { Bar } from 'vue-chartjs'
 import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js'
 import ChartJSPluginDatalabels from 'chartjs-plugin-datalabels'
@@ -12,7 +15,7 @@ ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale,
 
 <template>
     <div :style="chartStyle">
-        <Bar :options="chartOptions" :data="chartData" />
+        <Bar :options="chartOptions" :data="chartData" :key="uniqueKey" />
     </div>
 </template>
 
@@ -46,6 +49,9 @@ export default {
         }
     },
     computed: {
+        uniqueKey() {
+            return JSON.stringify(this.data) + JSON.stringify(getThemeColors());
+        },
         chartData() {
             // Initialize the labels to the keys of the dictionary
             let labels = Object.keys(this.data);
@@ -87,6 +93,11 @@ export default {
                 plugins: {
                     datalabels: {
                         display: false
+                    },
+                    legend: {
+                        labels: {
+                            color: getThemeColors().text.legend
+                        }
                     }
                 },
                 indexAxis: indexAxis,
@@ -94,12 +105,24 @@ export default {
                     x: {
                         min: this.xRange?.min,
                         max: this.xRange?.max,
-                        stacked: true
+                        stacked: true,
+                        grid: {
+                            color: getThemeColors().grid.lines
+                        },
+                        ticks: {
+                            color: getThemeColors().text.axesText
+                        }
                     },
                     y: {
                         min: this.yRange?.min,
                         max: this.yRange?.max,
-                        stacked: true
+                        stacked: true,
+                        grid: {
+                            color: getThemeColors().grid.lines
+                        },
+                        ticks: {
+                            color: getThemeColors().text.axesText
+                        }
                     },
                 }
             };

@@ -69,4 +69,9 @@ export default {
 span.count-number {
     margin: 10px;
 }
+
+md-elevated-button {
+    font-size: large;
+    font-weight: bold;
+}
 </style>

@@ -1,11 +1,13 @@
 <script setup lang="ts">
 // TODO: fix types
 // @ts-nocheck
+
+import { dataPointColorTranslucent, dataPointAccentColorTranslucent, getThemeColors } from '@/lib/theme';
+
 import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js'
 import ChartJSPluginDatalabels from 'chartjs-plugin-datalabels'
 import { sortKeyValueArrays } from "@/lib/util";
 import { BoxPlotChart } from '@sgratzl/chartjs-chart-boxplot';
-import { mean } from 'simple-statistics';
 
 ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale, ChartJSPluginDatalabels)
 
@@ -33,13 +35,13 @@ export default {
         },
         borderStyle: {
             default: {
-                color: "#ff55ec80",
+                color: dataPointColorTranslucent,
                 width: 3
             }
         },
         itemStyle: {
             default: {
-                color: "#00987980"
+                color: dataPointAccentColorTranslucent
             }
         },
         height: {
@@ -51,10 +53,10 @@ export default {
         isHorizontal: {
             default: false
         },
-        xScale: {
+        xRange: {
             default: {}
         },
-        yScale: {
+        yRange: {
             default: {}
         }
     },
@@ -129,7 +131,7 @@ export default {
                     itemRadius: 2,
                     itemStyle: 'circle',
                     itemBackgroundColor: this.itemStyle?.color,
-                    backgroundColor: "white",
+                    backgroundColor: getThemeColors().background,
                     data: values
                 }]
             };
@@ -173,8 +175,28 @@ export default {
                 },
                 indexAxis: indexAxis,
                 scales: {
-                    x: this.xScale,
-                    y: this.yScale
+                    x: {
+                        min: this.xRange?.min,
+                        max: this.xRange?.max,
+                        stacked: true,
+                        grid: {
+                            color: getThemeColors().grid.lines
+                        },
+                        ticks: {
+                            color: getThemeColors().text.axesText
+                        }
+                    },
+                    y: {
+                        min: this.yRange?.min,
+                        max: this.yRange?.max,
+                        stacked: true,
+                        grid: {
+                            color: getThemeColors().grid.lines
+                        },
+                        ticks: {
+                            color: getThemeColors().text.axesText
+                        }
+                    },
                 }
             };
 
