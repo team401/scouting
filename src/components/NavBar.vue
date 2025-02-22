@@ -30,6 +30,11 @@ import { useEventStore } from '@/stores/event-store';
         <RouterLink to="/pit-scout" class="nav-link">Pit Scouting</RouterLink>
         <RouterLink to="/event" class="nav-link">Event Analysis</RouterLink>
         <RouterLink to="/team" class="nav-link">Team Analysis</RouterLink>
+
+        <div class="nav-dark-mode nav-right" @click="toggleUserDarkMode">
+            <md-icon slot="icon" v-if="isDarkMode">dark_mode</md-icon>
+            <md-icon slot="icon" v-else>light_mode</md-icon>
+        </div>
         <div class="nav-text nav-right">{{ eventName }}</div>
     </div>
 </template>
@@ -56,6 +61,14 @@ export default {
     computed: {
         eventName() {
             return this.eventStore?.eventName;
+        },
+        isDarkMode() {
+            return this.viewMode.isDarkMode;
+        }
+    },
+    methods: {
+        toggleUserDarkMode() {
+            this.viewMode.toggleUserDarkMode();
         }
     }
 }
@@ -146,5 +159,11 @@ a.nav-link-mobile {
     font-size: 16px;
     text-decoration: none;
     color: #FFF;
+}
+
+.nav-dark-mode {
+    background-color: var(--primary-color);
+    color: var(--primary-text-color);
+    cursor: pointer;
 }
 </style>

@@ -13,6 +13,7 @@ window.addEventListener('resize', () => {
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
   viewMode.updateDarkMode();
 })
+viewMode.updateDarkMode();
 
 const eventStore = useEventStore();
 eventStore.updateEvent();

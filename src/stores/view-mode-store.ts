@@ -17,6 +17,9 @@ export const useViewModeStore = defineStore('viewMode', {
         },
         isDarkMode(): boolean {
             return this.darkMode;
+        },
+        themeString(): String {
+            return this.darkMode ? "dark" : "light";
         }
     },
     actions: {
@@ -28,6 +31,11 @@ export const useViewModeStore = defineStore('viewMode', {
         },
         updateDarkMode() {
             this.darkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.querySelector('html')?.setAttribute('theme', this.darkMode ? "dark" : "light");
+        },
+        toggleUserDarkMode() {
+            this.darkMode = !this.darkMode;
+            document.querySelector('html')?.setAttribute('theme', this.darkMode ? "dark" : "light");
         }
     }
 });
