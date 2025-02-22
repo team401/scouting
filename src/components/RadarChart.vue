@@ -23,7 +23,7 @@ ChartJS.register(Title, Tooltip, Legend, PointElement, RadialLinearScale, LineEl
 
 <template>
     <div :style="chartStyle">
-        <Radar :options="chartOptions" :data="chartData" class="radar-chart" />
+        <Radar :options="chartOptions" :data="chartData" class="radar-chart" :key="uniqueKey" />
     </div>
 </template>
 
@@ -63,6 +63,9 @@ export default {
         }
     },
     computed: {
+        uniqueKey() {
+            return JSON.stringify(this.data) + JSON.stringify(getThemeColors());
+        },
         chartData() {
             // Initialize the labels to the keys of the dictionary
             let labels = Object.keys(this.data);

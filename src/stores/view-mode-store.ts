@@ -25,6 +25,9 @@ export const useViewModeStore = defineStore('viewMode', {
         },
         updateScreenHeight(height: number) {
             this.screenHeight = height;
+        },
+        updateDarkMode() {
+            this.darkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
         }
     }
 });

@@ -15,7 +15,7 @@ ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale,
 
 <template>
     <div :style="chartStyle">
-        <Bar :options="chartOptions" :data="chartData" />
+        <Bar :options="chartOptions" :data="chartData" :key="uniqueKey" />
     </div>
 </template>
 
@@ -47,6 +47,9 @@ export default {
         }
     },
     computed: {
+        uniqueKey() {
+            return JSON.stringify(this.data) + JSON.stringify(getThemeColors());
+        },
         chartData() {
             // Initialize the labels to the keys of the dictionary
             let labels = Object.keys(this.data);
