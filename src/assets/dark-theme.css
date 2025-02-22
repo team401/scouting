@@ -1,0 +1,49 @@
+@media (prefers-color-scheme: dark) {
+
+    :root {
+        /* Basic colors */
+        --background-color: #0d1117;
+        --primary-text-color: #FFF;
+
+        /* Color Scheme */
+        --primary-color: orange;
+        --accent-color: #009879;
+
+        /* Header */
+        --header-color: #66000a;
+        --header-hover-color: #80030f;
+        --header-text-color: #FFF;
+
+        /* Tiles */
+        --tile-background-color: #272727;
+        --tile-shadow-color: rgba(0, 0, 0, 0.15);
+
+        /* Tables */
+        --table-header-background-color: var(--accent-color);
+        --table-header-text-color: #FFF;
+        --table-body-text-color: var(--primary-text-color);
+        --table-odd-row-background: #302f2f;
+        --table-even-row-background: #202020;
+        --table-row-border-color: #414141;
+        --table-shadow-color: rgba(0, 0, 0, 0.15);
+
+        /* Comments */
+        --comment-color: #c3c3c3;
+
+        /* Material Design Colors */
+        --md-sys-color-primary: rgb(172, 96, 3);
+        --md-sys-color-secondary-container: #e69533;
+
+        /* Material Design Neutrals */
+        --md-sys-color-on-surface: var(--primary-text-color);
+        --md-sys-color-surface-container: #333;
+        --md-sys-color-on-surface-container: #FFF;
+        --md-sys-color-primary-container: #383838;
+        --md-sys-color-on-primary-container: #FFF;
+        --md-sys-color-surface-container-low: #383737;
+        --md-sys-color-on-surface-container-low: #FFF;
+        --md-sys-color-on-surface-variant: #999;
+        --md-sys-color-outline: #888;
+    }
+
+}

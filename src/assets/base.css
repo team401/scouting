@@ -1,16 +1,7 @@
 @import url("https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined");
+@import "dark-theme.css";
+@import "light-theme.css";
 
-:root {
-  --background-color: #dfdfdf;
-  --primary-color: magenta;
-  --primary-text-color: #000;
-
-  --header-color: #7c0980;
-  --header-hover-color: #9c099e;
-  --header-text-color: #FFF;
-
-  --accent-color: #009879;
-}
 
 *,
 *::before,
@@ -22,8 +13,8 @@
 
 body {
   min-height: 100vh;
-  color: var(--color-text);
-  background: var(--color-background);
+  color: var(--primary-text-color);
+  background: var(--background-color);
   transition:
     color 0.5s,
     background-color 0.5s;
@@ -62,15 +53,15 @@ table {
   /* margin: 25px 0; */
   font-size: 0.9em;
   font-family: sans-serif;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 0 20px var(--table-shadow-color);
   text-align: center;
   /* Use margin: auto; to prevent table from being cut off in flex views. */
   margin: auto;
 }
 
 thead tr {
-  background-color: var(--accent-color);
-  color: #ffffff;
+  background-color: var(--table-header-background-color);
+  color: var(--table-header-text-color);
   text-align: center;
 }
 
@@ -80,11 +71,15 @@ td {
 }
 
 tbody tr {
-  border-bottom: thin solid #dddddd;
+  border-bottom: thin solid var(--table-row-border-color);
+}
+
+tbody tr:nth-of-type(odd) {
+  background-color: var(--table-odd-row-background);
 }
 
 tbody tr:nth-of-type(even) {
-  background-color: #f3f3f3;
+  background-color: var(--table-even-row-background);
 }
 
 tbody tr:last-of-type {
@@ -97,12 +92,20 @@ tbody tr:last-of-type {
   justify-content: safe center;
   align-items: safe center;
   padding: 20px;
-  background-color: #FFF;
+  background-color: var(--tile-background-color);
   border-radius: 10px;
   margin: 15px;
   overflow: scroll;
 
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+  /* Taken from https://codyhouse.co/nuggets/beautiful-css-shadows */
+  /* 1. inner glow - for dark mode 👇 */
+  box-shadow: inset 0 0 0.5px 1px hsla(0, 0%, 100%, 0.1),
+    /* 2. shadow ring  */
+    0 0 0 1px hsla(230, 13%, 9%, 0.075),
+    /* 3. multiple soft shadows */
+    0 0.3px 0.4px hsla(230, 13%, 9%, 0.02),
+    0 0.9px 1.5px hsla(230, 13%, 9%, 0.045),
+    0 3.5px 6px hsla(230, 13%, 9%, 0.09);
 }
 
 .scout-form-tile {
@@ -111,11 +114,19 @@ tbody tr:last-of-type {
   justify-content: safe center;
   align-items: safe center;
   padding: 20px 5px;
-  background-color: #FFF;
+  background-color: var(--tile-background-color);
   border-radius: 10px;
   overflow: scroll;
 
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+  /* Taken from https://codyhouse.co/nuggets/beautiful-css-shadows */
+  /* 1. inner glow - for dark mode 👇 */
+  box-shadow: inset 0 0 0.5px 1px hsla(0, 0%, 100%, 0.1),
+    /* 2. shadow ring  */
+    0 0 0 1px hsla(230, 13%, 9%, 0.075),
+    /* 3. multiple soft shadows */
+    0 0.3px 0.4px hsla(230, 13%, 9%, 0.02),
+    0 0.9px 1.5px hsla(230, 13%, 9%, 0.045),
+    0 3.5px 6px hsla(230, 13%, 9%, 0.09);
 }
 
 .graph-tile {
@@ -124,12 +135,20 @@ tbody tr:last-of-type {
   justify-content: safe center;
   align-items: safe center;
   padding: 20px;
-  background-color: #FFF;
+  background-color: var(--tile-background-color);
   border-radius: 10px;
   margin: 15px;
   overflow: scroll;
 
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+  /* Taken from https://codyhouse.co/nuggets/beautiful-css-shadows */
+  /* 1. inner glow - for dark mode 👇 */
+  box-shadow: inset 0 0 0.5px 1px hsla(0, 0%, 100%, 0.1),
+    /* 2. shadow ring  */
+    0 0 0 1px hsla(230, 13%, 9%, 0.075),
+    /* 3. multiple soft shadows */
+    0 0.3px 0.4px hsla(230, 13%, 9%, 0.02),
+    0 0.9px 1.5px hsla(230, 13%, 9%, 0.045),
+    0 3.5px 6px hsla(230, 13%, 9%, 0.09);
 }
 
 .analysis-row-tile {
@@ -146,7 +165,7 @@ tbody tr:last-of-type {
   justify-content: safe center;
   align-items: safe center;
   padding: 20px;
-  border-color: #c3c3c3;
+  border-color: var(--comment-color);
   border-width: 2px;
   border-style: solid;
   border-radius: 10px;
