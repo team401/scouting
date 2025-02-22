@@ -5,6 +5,7 @@ export const useViewModeStore = defineStore('viewMode', {
         return {
             screenWidth: window.innerWidth,
             screenHeight: window.innerHeight,
+            darkMode: window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
         }
     },
     getters: {
@@ -13,6 +14,9 @@ export const useViewModeStore = defineStore('viewMode', {
         },
         windowHeight(): number {
             return this.screenHeight;
+        },
+        isDarkMode(): boolean {
+            return this.darkMode;
         }
     },
     actions: {

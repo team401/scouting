@@ -35,7 +35,7 @@ import '@material/web/select/select-option';
         <!-- Set :key in order to force remount. this needs to happen since box plot rendering is done in mounted() rather than dynamically -->
         <BoxPlot :key="uniqueKey" :data="data" :column="getActiveGraphFilter.key1" :sub-column="getActiveGraphFilter.key2"
             :isSorted="isChartSorted" :height="maxChartHeight" :max-labels="maxDataPoints"
-            :is-horizontal="isChartHorizontal" :x-scale="chartXScale" :y-scale="chartYScale" v-else-if="isBoxPlotView">
+            :is-horizontal="isChartHorizontal" :x-range="chartXScale" :y-range="chartYScale" v-else-if="isBoxPlotView">
         </BoxPlot>
     </div>
 </template>

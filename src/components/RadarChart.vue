@@ -2,6 +2,8 @@
 // TODO: fix types
 // @ts-nocheck
 
+import { radarRedTheme, getThemeColors } from '@/lib/theme';
+
 import {
     Chart as ChartJS,
     RadialLinearScale,
@@ -50,10 +52,10 @@ export default {
         },
         colors: {
             default: {
-                backgroundColors: ['rgba(255,99,132,0.2)'],
-                borderColors: ['rgba(255,99,132,1)'],
-                pointBackgroundColors: ['rgba(255,99,132,1)'],
-                pointHoverBorderColors: ['rgba(255,99,132,1)']
+                backgroundColors: [radarRedTheme.background],
+                borderColors: [radarRedTheme.border],
+                pointBackgroundColors: [radarRedTheme.pointBackground],
+                pointHoverBorderColors: [radarRedTheme.pointHoverBorder]
             }
         },
         height: {
@@ -82,6 +84,31 @@ export default {
                     pointHoverBorderColor: this.colors.pointHoverBorderColors[0],
                 }]
             };
+
+            this.options.plugins.legend = {
+                labels: {
+                    color: getThemeColors().text.legend
+                }
+            }
+
+            this.options.scales = {
+                r: {
+                    grid: {
+                        color: getThemeColors().grid.lines
+                    },
+                    angleLines: {
+                        color: getThemeColors().grid.lines
+                    },
+                    ticks: {
+                        color: getThemeColors().text.axesText,
+                        showLabelBackdrop: false
+                    },
+                    pointLabels: {
+                        color: getThemeColors().text.axesText
+                    }
+                },
+            }
+
             return chart;
         },
         chartOptions() {

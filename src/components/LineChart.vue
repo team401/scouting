@@ -1,6 +1,9 @@
 <script setup lang="ts">
 // TODO: fix types
 // @ts-nocheck
+
+import { dataPointColorTranslucent, getThemeColors } from '@/lib/theme';
+
 import { Line } from 'vue-chartjs'
 import { Chart as ChartJS, Title, Tooltip, Legend, LineElement, PointElement, CategoryScale, LinearScale } from 'chart.js'
 import ChartJSPluginDatalabels from 'chartjs-plugin-datalabels'
@@ -33,10 +36,10 @@ export default {
             }
         },
         lineColor: {
-            default: "#ff55ec80"
+            default: dataPointColorTranslucent
         },
         pointColor: {
-            default: "#ff55ec80"
+            default: dataPointColorTranslucent
         },
         height: {
             default: 100
@@ -63,6 +66,32 @@ export default {
                     data: values
                 }]
             };
+
+            this.options.scales = {
+                x: {
+                    grid: {
+                        color: getThemeColors().grid.lines
+                    },
+                    ticks: {
+                        color: getThemeColors().text.axesText
+                    }
+                },
+                y: {
+                    grid: {
+                        color: getThemeColors().grid.lines
+                    },
+                    ticks: {
+                        color: getThemeColors().text.axesText
+                    }
+                }
+            };
+
+            this.options.plugins.legend = {
+                labels: {
+                    color: getThemeColors().text.legend
+                }
+            };
+
             return chart;
         },
         chartOptions() {

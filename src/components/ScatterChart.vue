@@ -2,9 +2,12 @@
 // TODO: fix types
 // @ts-nocheck
 
+import { dataPointColor, getThemeColors } from '@/lib/theme';
+
 import { Scatter } from 'vue-chartjs'
 import { Chart as ChartJS, Title, Tooltip, Legend, PointElement, CategoryScale, LinearScale } from 'chart.js'
 import ChartJSPluginDatalabels from 'chartjs-plugin-datalabels'
+import { useViewModeStore } from '@/stores/view-mode-store';
 
 ChartJS.register(Title, Tooltip, Legend, PointElement, CategoryScale, LinearScale, ChartJSPluginDatalabels);
 
@@ -23,7 +26,7 @@ export default {
         columnY: "",
         data: {},
         pointColor: {
-            default: "#ff55ec"
+            default: dataPointColor
         },
         pointRadius: {
             default: 6
@@ -42,7 +45,7 @@ export default {
                 maintainAspectRatio: false,
                 plugins: {
                     datalabels: {
-                        color: '#333',
+                        color: getThemeColors().text.dataLabels,
                         align: 'top',
                         offset: 8,
                         font: {
@@ -77,7 +80,8 @@ export default {
                     backgroundColor: this.pointColor,
                     data: values,
                     pointRadius: this.pointRadius,
-                    pointHoverRadius: this.pointHoverRadius
+                    pointHoverRadius: this.pointHoverRadius,
+                    color: getThemeColors().text.axes
                 }]
             };
 
@@ -86,13 +90,27 @@ export default {
                 x: {
                     title: {
                         text: this.columnX,
-                        display: true
+                        display: true,
+                        color: getThemeColors().text.axesText
+                    },
+                    grid: {
+                        color: getThemeColors().grid.lines
+                    },
+                    ticks: {
+                        color: getThemeColors().text.axesText
                     }
                 },
                 y: {
                     title: {
                         text: this.columnY,
-                        display: true
+                        display: true,
+                        color: getThemeColors().text.axesText
+                    },
+                    grid: {
+                        color: getThemeColors().grid.lines
+                    },
+                    ticks: {
+                        color: getThemeColors().text.axesText
                     }
                 }
             }
