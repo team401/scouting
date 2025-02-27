@@ -139,6 +139,20 @@ export function getMatchScoutSchema() {
                     error: false
                 },
                 {
+                    key: "missed",
+                    label: "Missed",
+                    type: "stacked-counters",
+                    options: {
+                        labels: ["Coral", "Algae"]
+                    },
+                    defaultValue: [0, 0],
+                    value: [0, 0],
+                    preserveAfterSubmit: false,
+                    incrementAfterSubmit: false,
+                    required: false,
+                    error: false
+                },
+                {
                     key: "foul",
                     label: "Fouls",
                     type: "stacked-counters",
@@ -187,6 +201,20 @@ export function getMatchScoutSchema() {
                     },
                     defaultValue: [[0, 0], [0, 0], [0, 0]],
                     value: [[0, 0], [0, 0], [0, 0]],
+                    preserveAfterSubmit: false,
+                    incrementAfterSubmit: false,
+                    required: false,
+                    error: false
+                },
+                {
+                    key: "missed",
+                    label: "Missed",
+                    type: "stacked-counters",
+                    options: {
+                        labels: ["Coral", "Algae"]
+                    },
+                    defaultValue: [0, 0],
+                    value: [0, 0],
                     preserveAfterSubmit: false,
                     incrementAfterSubmit: false,
                     required: false,

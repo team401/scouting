@@ -10,6 +10,7 @@ export function getTeamOverview(teamInfo, teamNumber, eventStats) {
     const meanAutoPointsRanking = eventStats.rankings.mean_autoPoints.indexOf(teamNumber) + 1;
     const meanTeleopPointsRanking = eventStats.rankings.mean_teleopPoints.indexOf(teamNumber) + 1;
     const meanBargePointsRanking = eventStats.rankings.mean_bargePoints.indexOf(teamNumber) + 1;
+    const meanFoulPointsRanking = eventStats.rankings.mean_foulPoints.indexOf(teamNumber) + 1;
 
     // Get the number of teams to produce a normalized ranking.
     const numTeams = eventStats.rankings.mean_matchPoints.length;
@@ -38,6 +39,13 @@ export function getTeamOverview(teamInfo, teamNumber, eventStats) {
             value: teamInfo.mean_bargePoints.toFixed(2),
             ranking: meanBargePointsRanking,
             normalized: meanBargePointsRanking / numTeams
+        },
+        {
+            name: "Average Foul Points",
+            value: Math.abs(teamInfo.mean_foulPoints.toFixed(2)),
+            ranking: meanFoulPointsRanking,
+            // Fouls are bad, but points are more negative if a team has more fouls. So no adjustment is needed here.
+            normalized: meanFoulPointsRanking / numTeams
         }
     ];
 }
