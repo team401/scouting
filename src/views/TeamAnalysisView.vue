@@ -6,7 +6,7 @@ import { aggregateEventData, eventStatisticsKeys, getPitScoutData } from "@/lib/
 import { teamLikertRadar, getTeamOverview, teamReefData } from "@/lib/2025/data-visualization";
 import { useEventStore } from "@/stores/event-store";
 import { useViewModeStore } from '@/stores/view-mode-store';
-import { matchScoutTable, pitScoutTable } from "@/lib/constants";
+import { matchScoutTable, pitScoutTable, teamInfoTable } from "@/lib/constants";
 
 import '@material/web/select/outlined-select';
 import '@material/web/select/select-option';
@@ -15,13 +15,14 @@ import Dropdown from "@/components/Dropdown.vue";
 import BarChart from "@/components/BarChart.vue";
 import RadarChart from "@/components/RadarChart.vue";
 import StatHighlight from "@/components/StatHighlight.vue";
+import { supabase } from "@/lib/supabase-client";
 
 </script>
 
 <template>
     <div class="main-content">
         <h1>Team Analysis</h1>
-        <div v-if="teamsLoaded">
+        <div v-if="teamsLoaded && isDataAvailable">
             <!-- Only show this if the team data is loaded. -->
             <Dropdown :choices="teamFilters" v-model="currentTeamIndex" @update:modelValue="setTeam"></Dropdown>
 
@@ -67,6 +68,9 @@ import StatHighlight from "@/components/StatHighlight.vue";
                 </div>
             </div>
         </div>
+        <div v-else-if="teamsLoaded">
+            <h2>No Data Available</h2>
+        </div>
     </div>
 </template>
 
@@ -104,10 +108,27 @@ export default {
 
             this.teamsData = await aggregateEventData(matchScoutTable, this.eventStore.eventId);
 
+            const { data, error } = await supabase.from(teamInfoTable).select("*").eq("event_id", this.eventStore.eventId);
+            let teamTextMap = {};
+            if (error) {
+                console.log(error);
+            } else {
+                for (var team of data) {
+                    teamTextMap[team.team_number] = String(team.team_number) + " - " + String(team.name);
+                }
+            }
+
+            console.log(teamTextMap)
+            console.log(Object.keys(teamTextMap))
+
             this.teamFilters = [];
             Object.keys(this.teamsData).forEach(element => {
                 if (!eventStatisticsKeys.includes(element)) {
-                    this.teamFilters.push({ key: element, text: String(element) });
+                    let teamText = String(element);
+                    if (Object.keys(teamTextMap).includes(element)) {
+                        teamText = teamTextMap[element];
+                    }
+                    this.teamFilters.push({ key: element, text: teamText });
                 }
             })
 
@@ -144,6 +165,9 @@ export default {
         },
     },
     computed: {
+        isDataAvailable() {
+            return this.teamFilters.length > 0;
+        },
         getCurrentTeam() {
             if (this.currentTeamIndex >= this.teamFilters.length || this.teamFilters.length == 0) {
                 return {};
@@ -214,8 +238,6 @@ export default {
                     };
                 }
             }
-
-            console.log(startPositions)
 
             return startPositions;
         },

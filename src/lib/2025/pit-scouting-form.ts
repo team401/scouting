@@ -1,5 +1,10 @@
+// @ts-nocheck
 
-export function getPitScoutSchema() {
+import { getTeamInputElement } from "@/lib/data-submission";
+
+export async function getPitScoutSchema() {
+    const teamInputElement = await getTeamInputElement();
+
     return [
         {
             key: "pit",
@@ -16,17 +21,7 @@ export function getPitScoutSchema() {
                     required: true,
                     error: false
                 },
-                {
-                    key: "team_number",
-                    label: "Team Number",
-                    type: "number",
-                    options: {},
-                    defaultValue: 0,
-                    value: 0,
-                    preserveAfterSubmit: false,
-                    required: true,
-                    error: false
-                },
+                teamInputElement,
                 {
                     key: "drivetrain",
                     label: "Drivetrain Type",

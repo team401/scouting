@@ -1,5 +1,10 @@
+// @ts-nocheck
 
-export function getMatchScoutSchema() {
+import { getTeamInputElement } from "@/lib/data-submission";
+
+export async function getMatchScoutSchema() {
+    const teamInputElement = await getTeamInputElement();
+
     return [
         {
             key: "prematch",
@@ -29,18 +34,7 @@ export function getMatchScoutSchema() {
                     required: true,
                     error: false
                 },
-                {
-                    key: "team_number",
-                    label: "Team Number",
-                    type: "number",
-                    options: {},
-                    defaultValue: 0,
-                    value: 0,
-                    preserveAfterSubmit: false,
-                    incrementAfterSubmit: false,
-                    required: false,
-                    error: false
-                },
+                teamInputElement,
                 {
                     key: "alliance",
                     label: "Alliance",

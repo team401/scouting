@@ -3,7 +3,7 @@
 import argparse
 
 from offline_data import process_offline_data_file 
-from event_info import update_event_info_for_team
+from event_info import update_event_info_for_team, update_attendance_list_for_all_events
 
 from credentials import get_supabase_credentials, get_tba_credentials
 
@@ -27,4 +27,5 @@ if __name__ == "__main__":
         process_offline_data_file(args.infile, args.outfile, args.offline_mode, args.type, sb_creds)
     elif args.mode == "event":
         update_event_info_for_team(sb_creds, tba_creds, args.team_number)
+        update_attendance_list_for_all_events(sb_creds, tba_creds)
 
