@@ -24,6 +24,9 @@ const parkPoints = 2;
 const shallowCagePoints = 6;
 const deepCagePoints = 12;
 
+const minorFoulPoints = -2;
+const majorFoulPoints = -6;
+
 export const eventStatisticsKeys = [
     "rankings", "distributions"
 ];
@@ -81,15 +84,21 @@ function parseMatchData(rawData, eventData) {
 
                 match_data: {
                     matchNumber: [],
+                    startPosition: [],
                     coralAutoL1Count: [],
                     coralAutoL2Count: [],
                     coralAutoL3Count: [],
                     coralAutoL4Count: [],
+                    coralAutoMissed: [],
                     coralAutoL1Points: [],
                     coralAutoL2Points: [],
                     coralAutoL3Points: [],
                     coralAutoL4Points: [],
                     coralAutoPoints: [],
+                    algaeAutoProcessorCount: [],
+                    algaeAutoNetCount: [],
+                    algaeAutoDislodgedCount: [],
+                    algaeAutoMissed: [],
                     algaeAutoPoints: [],
                     moveAutoPoints: [],
                     autoPoints: [],
@@ -97,22 +106,25 @@ function parseMatchData(rawData, eventData) {
                     coralTeleopL2Count: [],
                     coralTeleopL3Count: [],
                     coralTeleopL4Count: [],
+                    coralTeleopMissed: [],
                     coralTeleopL1Points: [],
                     coralTeleopL2Points: [],
                     coralTeleopL3Points: [],
                     coralTeleopL4Points: [],
                     coralTeleopPoints: [],
-                    // coralAutoL4Missed: [],
-                    // coralAutoL3Missed: [],
-                    // coralAutoL2Missed: [],
-                    // coralAutoL1Missed: [],
-                    // coralTeleopL4Missed: [],
-                    // coralTeleopL3Missed: [],
-                    // coralTeleopL2Missed: [],
-                    // coralTeleopL1Missed: [],
+                    algaeTeleopProcessorCount: [],
+                    algaeTeleopNetCount: [],
+                    algaeTeleopDislodgedCount: [],
+                    algaeTeleopMissed: [],
                     algaeTeleopPoints: [],
+                    algaeTotalDislodgedCount: [],
                     teleopPoints: [],
                     bargePoints: [],
+                    autoMinorFoulCount: [],
+                    autoMajorFoulCount: [],
+                    teleopMinorFoulCount: [],
+                    teleopMajorFoulCount: [],
+                    foulPoints: [],
                     matchPoints: [],
                     coralPoints: [],
                     algaePoints: [],
@@ -121,7 +133,7 @@ function parseMatchData(rawData, eventData) {
                     defenseScore: [],
                     stabilityScore: [],
                     comments: [],
-                    scoutName: []
+                    scoutName: [],
                 }
             }
         }
@@ -145,26 +157,30 @@ function parseMatchData(rawData, eventData) {
         const coralTeleopL2Points = coralL2TeleopValue * coralTeleopL2Count;
         const coralTeleopL1Points = coralL1TeleopValue * coralTeleopL1Count;
 
-        // const coralAutoL4Missed = Number(rawData[i]["auto.coral.l4.missed"]);
-        // const coralAutoL3Missed = Number(rawData[i]["auto.coral.l3.missed"]);
-        // const coralAutoL2Missed = Number(rawData[i]["auto.coral.l2.missed"]);
-        // const coralAutoL1Missed = Number(rawData[i]["auto.coral.l1.missed"]);
-        // const coralTeleopL4Missed = Number(rawData[i]["teleop.coral.l4.missed"]);
-        // const coralTeleopL3Missed = Number(rawData[i]["teleop.coral.l3.missed"]);
-        // const coralTeleopL2Missed = Number(rawData[i]["teleop.coral.l2.missed"]);
-        // const coralTeleopL1Missed = Number(rawData[i]["teleop.coral.l1.missed"]);
+        const coralAutoMissed = Number(rawData[i]["auto.missed.coral"]);
+        const coralTeleopMissed = Number(rawData[i]["teleop.missed.coral"]);
+        const algaeAutoMissed = Number(rawData[i]["auto.missed.algae"]);
+        const algaeTeleopMissed = Number(rawData[i]["teleop.missed.algae"]);
+
+        const algaeAutoProcessorCount = Number(rawData[i]["auto.algae.processor.success"]);
+        const algaeAutoNetCount = Number(rawData[i]["auto.algae.net.success"]);
+        const algaeAutoDislodgedCount = Number(rawData[i]["auto.algae.dislodged.success"]);
+        const algaeTeleopProcessorCount = Number(rawData[i]["teleop.algae.processor.success"]);
+        const algaeTeleopNetCount = Number(rawData[i]["teleop.algae.net.success"]);
+        const algaeTeleopDislodgedCount = Number(rawData[i]["teleop.algae.dislodged.success"]);
+        const algaeTotalDislodgedCount = algaeAutoDislodgedCount + algaeTeleopDislodgedCount;
 
         const moveAutoPoints = Boolean(rawData[i]["auto.moved"]) ? autoMovePoints : 0;
         const coralAutoPoints = coralAutoL4Points + coralAutoL3Points + coralAutoL2Points
             + coralAutoL1Points;
-        const algaeAutoPoints = (algaeNetValue * Number(rawData[i]["auto.algae.net.success"]))
-            + (algaeProcessorValue * Number(rawData[i]["auto.algae.processor.success"]));
+        const algaeAutoPoints = (algaeNetValue * algaeAutoNetCount)
+            + (algaeProcessorValue * algaeAutoProcessorCount);
         const autoPoints = moveAutoPoints + coralAutoPoints + algaeAutoPoints;
 
         const coralTeleopPoints = coralTeleopL4Points + coralTeleopL3Points + coralTeleopL2Points
             + coralTeleopL1Points;
-        const algaeTeleopPoints = (algaeNetValue * Number(rawData[i]["teleop.algae.net.success"]))
-            + (algaeProcessorValue * Number(rawData[i]["teleop.algae.processor.success"]));
+        const algaeTeleopPoints = (algaeNetValue * algaeTeleopNetCount)
+            + (algaeProcessorValue * algaeTeleopProcessorCount);
         const teleopPoints = coralTeleopPoints + algaeTeleopPoints;
 
         const coralPoints = coralAutoPoints + coralTeleopPoints;
@@ -193,17 +209,29 @@ function parseMatchData(rawData, eventData) {
         const defenseScore = Number(rawData[i]["postmatch.defense"]);
         const stabilityScore = Number(rawData[i]["postmatch.stability"]);
 
+        // Foul points (count against the team's score).
+        const autoMinorFoulCount = Number(rawData[i]["auto.foul.minor"]);
+        const autoMajorFoulCount = Number(rawData[i]["auto.foul.major"]);
+        const teleopMinorFoulCount = Number(rawData[i]["teleop.foul.minor"]);
+        const teleopMajorFoulCount = Number(rawData[i]["teleop.foul.major"]);
+        const foulPoints = minorFoulPoints * (autoMinorFoulCount + teleopMinorFoulCount)
+            + majorFoulPoints * (autoMajorFoulCount + teleopMajorFoulCount);
+
         // Total points.
-        const matchPoints = autoPoints + teleopPoints + bargePoints;
+        const matchPoints = autoPoints + teleopPoints + bargePoints + foulPoints;
 
         // Scout comments.
         const scoutComment = String(rawData[i]["postmatch.comments"]);
-        const scoutName = String(rawData[i]["prematch.scout_name"])
+        const scoutName = String(rawData[i]["prematch.scout_name"]);
+
+        // Starting position.
+        const startPosition = String(rawData[i]["prematch.position"]);
 
         // Aggregate all match data.
         const matchNumber = String(rawData[i]["prematch.match_number"]);
         const matchData = {
             matchNumber: matchNumber,
+            startPosition: startPosition,
             coralAutoL1Count: coralAutoL1Count,
             coralAutoL2Count: coralAutoL2Count,
             coralAutoL3Count: coralAutoL3Count,
@@ -212,7 +240,12 @@ function parseMatchData(rawData, eventData) {
             coralAutoL2Points: coralAutoL2Points,
             coralAutoL3Points: coralAutoL3Points,
             coralAutoL4Points: coralAutoL4Points,
+            coralAutoMissed: coralAutoMissed,
             coralAutoPoints: coralAutoPoints,
+            algaeAutoProcessorCount: algaeAutoProcessorCount,
+            algaeAutoNetCount: algaeAutoNetCount,
+            algaeAutoDislodgedCount: algaeAutoDislodgedCount,
+            algaeAutoMissed: algaeAutoMissed,
             algaeAutoPoints: algaeAutoPoints,
             moveAutoPoints: moveAutoPoints,
             autoPoints: autoPoints,
@@ -224,18 +257,21 @@ function parseMatchData(rawData, eventData) {
             coralTeleopL2Points: coralTeleopL2Points,
             coralTeleopL3Points: coralTeleopL3Points,
             coralTeleopL4Points: coralTeleopL4Points,
+            coralTeleopMissed: coralTeleopMissed,
             coralTeleopPoints: coralTeleopPoints,
-            // coralAutoL4Missed: coralAutoL4Missed,
-            // coralAutoL3Missed: coralAutoL3Missed,
-            // coralAutoL2Missed: coralAutoL2Missed,
-            // coralAutoL1Missed: coralAutoL1Missed,
-            // coralTeleopL4Missed: coralTeleopL4Missed,
-            // coralTeleopL3Missed: coralTeleopL3Missed,
-            // coralTeleopL2Missed: coralTeleopL2Missed,
-            // coralTeleopL1Missed: coralTeleopL1Missed,
+            algaeTeleopProcessorCount: algaeTeleopProcessorCount,
+            algaeTeleopNetCount: algaeTeleopNetCount,
+            algaeTeleopDislodgedCount: algaeTeleopDislodgedCount,
+            algaeTeleopMissed: algaeTeleopMissed,
+            algaeTotalDislodgedCount: algaeTotalDislodgedCount,
             algaeTeleopPoints: algaeTeleopPoints,
             teleopPoints: teleopPoints,
             bargePoints: bargePoints,
+            autoMinorFoulCount: autoMinorFoulCount,
+            autoMajorFoulCount: autoMajorFoulCount,
+            teleopMinorFoulCount: teleopMinorFoulCount,
+            teleopMajorFoulCount: teleopMajorFoulCount,
+            foulPoints: foulPoints,
             matchPoints: matchPoints,
             coralPoints: coralPoints,
             algaePoints: algaePoints,
@@ -259,6 +295,7 @@ function parseMatchData(rawData, eventData) {
 function computeTeamStatistics(eventData) {
     const excludeKeysFromStats = [
         "matchNumber",
+        "startPosition",
         "comments",
         "scoutName"
     ];
@@ -305,6 +342,7 @@ function computeTeamStatistics(eventData) {
 function computeEventStatistics(eventData) {
     const excludeKeysFromStats = [
         "matchNumber",
+        "startPosition",
         "match_data",
         "team_number",
     ];

@@ -60,6 +60,12 @@ export default {
         },
         height: {
             default: 200
+        },
+        range: {
+            default: {
+                min: 0,
+                max: 5
+            }
         }
     },
     computed: {
@@ -96,6 +102,8 @@ export default {
 
             this.options.scales = {
                 r: {
+                    min: this.range.min,
+                    max: this.range.max,
                     grid: {
                         color: getThemeColors().grid.lines
                     },

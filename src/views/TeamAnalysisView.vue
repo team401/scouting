@@ -12,6 +12,7 @@ import '@material/web/select/outlined-select';
 import '@material/web/select/select-option';
 import FilterableGraph from "@/components/FilterableGraph.vue";
 import Dropdown from "@/components/Dropdown.vue";
+import BarChart from "@/components/BarChart.vue";
 import RadarChart from "@/components/RadarChart.vue";
 import StatHighlight from "@/components/StatHighlight.vue";
 
@@ -36,6 +37,10 @@ import StatHighlight from "@/components/StatHighlight.vue";
                         <h2>Reef Heatmap</h2>
                         <FilterableGraph :data="getTeamReef" :graph-filters="reefFilters" max-height-ratio="0.5">
                         </FilterableGraph>
+                    </div>
+                    <div class="graph-tile">
+                        <h2>Start Position</h2>
+                        <BarChart :data="getTeamStart" column="count" :height="maxChartHeight"></BarChart>
                     </div>
                 </div>
 
@@ -78,32 +83,17 @@ export default {
             currentTeamIndex: 0,
             matchDataFilters: [
                 { text: "Breakdown", keyList: ['coralPoints', 'algaePoints', 'bargePoints'], colorList: ['#ff55ecff', '#5dfc75ff', '#647afaff'], type: "stacked-bar" },
+                { text: "Auto vs. Teleop", keyList: ["autoPoints", "teleopPoints"], colorList: ['#ff55ecff', '#5dfc75ff'], type: "stacked-bar" },
                 { text: "Auto: Coral", key1: "coralAutoPoints", type: "line" },
                 { text: "Teleop: Coral", key1: "coralTeleopPoints", type: "line" },
                 { text: "Teleop: Algae", key1: "algaeTeleopPoints", type: "line" },
                 { text: "Barge Points", key1: "bargePoints", type: "line" },
+                { text: "Foul Points", key1: "foulPoints", type: "line" },
+                { text: "Algae Dislodged", key1: "algaeTotalDislodgedCount", type: "line" },
             ],
             reefFilters: [
                 { text: "Auto Count", key1: "auto_count", type: "boxplot", isHorizontal: true, isSorted: false },
                 { text: "Teleop Count", key1: "teleop_count", type: "boxplot", isHorizontal: true, isSorted: false },
-                // {
-                //     text: "Total Accuracy", key1: "total_accuracy", type: "bar", isHorizontal: true, isSorted: false, xScale: {
-                //         min: 0,
-                //         max: 100
-                //     }
-                // },
-                // {
-                //     text: "Auto Accuracy", key1: "auto_accuracy", type: "bar", isHorizontal: true, isSorted: false, xScale: {
-                //         min: 0,
-                //         max: 100
-                //     }
-                // },
-                // {
-                //     text: "Teleop Accuracy", key1: "teleop_accuracy", type: "bar", isHorizontal: true, isSorted: false, xScale: {
-                //         min: 0,
-                //         max: 100
-                //     }
-                // },
             ]
         }
     },
@@ -151,7 +141,7 @@ export default {
             }
 
             return {};
-        }
+        },
     },
     computed: {
         getCurrentTeam() {
@@ -203,6 +193,31 @@ export default {
             const reefData = teamReefData(teamInfo);
 
             return reefData;
+        },
+        getTeamStart() {
+            if (this.teamFilters.length == 0) {
+                return {};
+            }
+
+            const teamNumber = this.teamFilters[this.currentTeamIndex].key;
+            const teamInfo = this.teamsData[teamNumber];
+
+            let startPositions = {};
+            for (var i = 0; i < teamInfo.match_data.startPosition.length; i++) {
+                const position = teamInfo.match_data.startPosition[i];
+
+                if (Object.keys(startPositions).includes(position)) {
+                    startPositions[position].count += 1;
+                } else {
+                    startPositions[position] = {
+                        count: 1
+                    };
+                }
+            }
+
+            console.log(startPositions)
+
+            return startPositions;
         },
         getComments() {
             if (this.teamFilters.length == 0) {
