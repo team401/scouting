@@ -261,7 +261,7 @@ export async function getMatchScoutSchema() {
                     type: "radio",
                     options: {
                         choices: [
-                            { key: "0", text: "0" },
+                            { key: "-1", text: "N/A" },
                             { key: "1", text: "1" },
                             { key: "2", text: "2" },
                             { key: "3", text: "3" },
@@ -307,6 +307,7 @@ export async function getMatchScoutSchema() {
                     type: "radio",
                     options: {
                         choices: [
+                            { key: "-1", text: "N/A" },
                             { key: "1", text: "1" },
                             { key: "2", text: "2" },
                             { key: "3", text: "3" },
@@ -328,6 +329,7 @@ export async function getMatchScoutSchema() {
                     type: "radio",
                     options: {
                         choices: [
+                            { key: "-1", text: "N/A" },
                             { key: "1", text: "1" },
                             { key: "2", text: "2" },
                             { key: "3", text: "3" },
@@ -349,6 +351,7 @@ export async function getMatchScoutSchema() {
                     type: "radio",
                     options: {
                         choices: [
+                            { key: "-1", text: "N/A" },
                             { key: "1", text: "1" },
                             { key: "2", text: "2" },
                             { key: "3", text: "3" },
