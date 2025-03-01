@@ -15,7 +15,7 @@ import "@material/web/button/filled-button";
     <div class="main-content">
         <h1>Match Scouting</h1>
 
-        <form>
+        <form v-if="formLoaded">
             <FormSection v-for="section in scoutForm" :section-key="section.key" :name="section.name"
                 :components="section.components" :color="getAllianceColor" @form-update="formValidation"></FormSection>
         </form>
@@ -39,7 +39,7 @@ import "@material/web/button/filled-button";
             </p>
         </div>
 
-        <div class="button-container">
+        <div class="button-container" v-if="formLoaded">
             <md-filled-button v-on:click="submitForm">SUBMIT</md-filled-button>
             <md-filled-button v-on:click="resetFormData">RESET</md-filled-button>
         </div>
@@ -51,7 +51,8 @@ export default {
     data() {
         return {
             eventStore: null,
-            scoutForm: getMatchScoutSchema(),
+            formLoaded: false,
+            scoutForm: null,
             // Track data submission in order to fall back to QR code / copy text if it fails.
             submitData: {},
             submitFailed: false,
@@ -60,6 +61,11 @@ export default {
         }
     },
     methods: {
+        async loadScoutForm() {
+            this.formLoaded = false;
+            this.scoutForm = await getMatchScoutSchema();
+            this.formLoaded = true;
+        },
         formValidation() {
             // The form isn't invalid yet.
             this.formInvalid = false;
@@ -148,6 +154,7 @@ export default {
     },
     created() {
         this.eventStore = useEventStore();
+        this.loadScoutForm();
     },
 }
 </script>

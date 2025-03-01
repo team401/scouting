@@ -8,7 +8,8 @@ import FormComponent from './FormComponent.vue';
         <h2>{{ name }}</h2>
         <div v-for="component in components" v-if="components.length > 0">
             <FormComponent :label="component.label" :type="component.type" :options="component?.options"
-                v-model="component.value" :required="component?.required" :error="component?.error" @input="notifyInput">
+                v-model="component.value" :required="component?.required" :error="component?.error"
+                @update:modelValue="notifyInput">
             </FormComponent>
         </div>
     </div>

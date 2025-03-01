@@ -31,6 +31,8 @@
     /* Material Design Colors */
     --md-sys-color-primary: rgb(172, 96, 3);
     --md-sys-color-secondary-container: #ffcd90;
+    --md-sys-color-error: #ff0000;
+    --md-sys-color-on-error-container: #d00202;
 
     /* Material Design Neutrals */
     --md-sys-color-on-surface: var(--primary-text-color);

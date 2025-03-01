@@ -2,6 +2,49 @@
 // @ts-nocheck
 
 import { supabase } from '@/lib/supabase-client';
+import { useEventStore } from "@/stores/event-store";
+import { teamInfoTable } from "@/lib/constants";
+
+export async function getTeamInputElement() {
+    let eventStore = useEventStore();
+    await eventStore.updateEvent();
+    const eventId = eventStore.eventId;
+
+    // Load teams for dropdowns
+    const { data, error } = await supabase.from(teamInfoTable).select("*").eq("event_id", eventId).order("team_number", { ascending: true });
+
+    let teamInputElement = {
+        key: "team_number",
+        label: "Team",
+        type: "number",
+        options: {},
+        defaultValue: null,
+        value: null,
+        preserveAfterSubmit: false,
+        incrementAfterSubmit: false,
+        required: true,
+        error: false
+    };
+
+    if (error) {
+        console.log(error);
+        return teamInputElement;
+    }
+
+    teamInputElement.type = "dropdown";
+    teamInputElement.defaultValue = 0;
+    teamInputElement.value = 0;
+    teamInputElement.options.choices = [{ key: "none", text: "Select team..." }];
+    for (var i = 0; i < data.length; i++) {
+        var teamItem = {
+            key: data[i].team_number,
+            text: data[i].team_number + ": " + data[i].name
+        };
+        teamInputElement.options.choices.push(teamItem);
+    }
+
+    return teamInputElement;
+}
 
 export function validateForm(form) {
     var isValid = true;
@@ -14,6 +57,7 @@ export function validateForm(form) {
                 const isText = component.type == "text" || component.type == "textarea";
                 const isRadio = component.type == "radio";
                 const isNumber = component.type == "number";
+                const isDropdown = component.type == "dropdown";
 
                 if (isText && component.value == "") {
                     // isValid is latching.
@@ -24,6 +68,10 @@ export function validateForm(form) {
                     isValid = false;
                     component.error = true;
                 } else if (isNumber && component.value == component.defaultValue) {
+                    // isValid is latching.
+                    isValid = false;
+                    component.error = true;
+                } else if (isDropdown && component.value == component.defaultValue) {
                     // isValid is latching.
                     isValid = false;
                     component.error = true;
