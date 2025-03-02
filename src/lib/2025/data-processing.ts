@@ -300,6 +300,13 @@ function computeTeamStatistics(eventData) {
         "scoutName"
     ];
 
+    const negativeValuesNA = [
+        "climbSpeed",
+        "drivingScore",
+        "defenseScore",
+        "stabilityScore"
+    ];
+
     const teamKeys = Object.keys(eventData);
     for (let i = 0; i < teamKeys.length; i++) {
         const teamNumber = teamKeys[i];
@@ -319,7 +326,14 @@ function computeTeamStatistics(eventData) {
                 let minValue = 0;
                 let maxValue = 0;
 
-                const samples = matchData[key];
+                let samples = matchData[key];
+
+                // Take out samples that are N/A if applicable.
+                if (negativeValuesNA.includes(key)) {
+                    samples = samples.filter(function (x) {
+                        return x >= 0;
+                    });
+                }
 
                 if (numMatches > 0) {
                     meanValue = mean(samples);
