@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase-client';
 import { mean, standardDeviation, min, max } from 'simple-statistics';
 import { sortKeyValueArrays } from '../util';
 
-const autoMovePoints = 2;
+const autoMovePoints = 3;
 
 const coralL1AutoValue = 3;
 const coralL2AutoValue = 4;
