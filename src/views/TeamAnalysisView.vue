@@ -118,9 +118,6 @@ export default {
                 }
             }
 
-            console.log(teamTextMap)
-            console.log(Object.keys(teamTextMap))
-
             this.teamFilters = [];
             Object.keys(this.teamsData).forEach(element => {
                 if (!eventStatisticsKeys.includes(element)) {
