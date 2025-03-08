@@ -335,7 +335,7 @@ function computeTeamStatistics(eventData) {
                     });
                 }
 
-                if (numMatches > 0) {
+                if (samples.length > 0) {
                     meanValue = mean(samples);
                     stddev = standardDeviation(samples);
                     minValue = min(samples);
