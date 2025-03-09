@@ -39,7 +39,7 @@ import "@material/web/button/filled-button";
             </p>
         </div>
 
-        <div class="button-container" v-if="formLoaded">
+        <div class="button-container" v-if="formLoaded && !isSubmitting">
             <md-filled-button v-on:click="submitForm">SUBMIT</md-filled-button>
             <md-filled-button v-on:click="resetFormData">RESET</md-filled-button>
         </div>
@@ -57,7 +57,8 @@ export default {
             submitData: {},
             submitFailed: false,
             submitSuccess: false,
-            formInvalid: false
+            formInvalid: false,
+            isSubmitting: false
         }
     },
     methods: {
@@ -80,9 +81,11 @@ export default {
             // Data submission hasn't failed or succeeded yet...
             this.submitFailed = false;
             this.submitSuccess = false;
+            this.isSubmitting = true;
 
             // If the form isn't valid, wait for the user to fix it.
             if (!this.formValidation()) {
+                this.isSubmitting = false;
                 return;
             }
 
@@ -99,6 +102,7 @@ export default {
             if (error) {
                 console.log(error);
                 this.submitFailed = true;
+                this.isSubmitting = false;
                 return;
             }
 
@@ -110,7 +114,7 @@ export default {
             // Mark the submission as successful and reset the submission data.
             this.submitSuccess = true;
             this.submitData = {};
-
+            this.isSubmitting = false;
         },
         preserveSingleEntryData() {
             // Iterate over all components and set their default values to be whatever was submitted most recently.
