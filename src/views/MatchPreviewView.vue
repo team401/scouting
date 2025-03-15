@@ -2,8 +2,8 @@
 // TODO: fix types
 // @ts-nocheck
 
-import { aggregateEventData, eventStatisticsKeys, getPitScoutData } from "@/lib/2025/data-processing";
-import { teamLikertRadar, getTeamOverview, teamReefData } from "@/lib/2025/data-visualization";
+import { aggregateEventData, getPitScoutData } from "@/lib/2025/data-processing";
+import { teamLikertRadar, getAllianceOverview, getRankedStyle, getRanking } from "@/lib/2025/data-visualization";
 import { useEventStore } from "@/stores/event-store";
 import { useViewModeStore } from '@/stores/view-mode-store';
 import { matchScoutTable, pitScoutTable, teamInfoTable } from "@/lib/constants";
@@ -11,7 +11,6 @@ import { matchScoutTable, pitScoutTable, teamInfoTable } from "@/lib/constants";
 import '@material/web/select/outlined-select';
 import '@material/web/select/select-option';
 import Dropdown from "@/components/Dropdown.vue";
-import StatHighlight from "@/components/StatHighlight.vue";
 import { supabase } from "@/lib/supabase-client";
 
 </script>
@@ -23,45 +22,63 @@ import { supabase } from "@/lib/supabase-client";
             <!-- Only show this if the team data is loaded. -->
             <h2>Red Alliance</h2>
             <div class="data-tile red-alliance">
-                <Dropdown :choices="teamFilters" v-model="teamIndices[0]" @update:modelValue="setTeam(0, $event)">
+                Red 1: <Dropdown :choices="teamFilters" v-model="teamIndices[0]" @update:modelValue="setTeam(0, $event)">
                 </Dropdown>
 
-                <StatHighlight :stats="teamHighlights(0)" :is-vertical="false"></StatHighlight>
+                Red 2: <Dropdown :choices="teamFilters" v-model="teamIndices[1]" @update:modelValue="setTeam(1, $event)">
+                </Dropdown>
+
+                Red 3: <Dropdown :choices="teamFilters" v-model="teamIndices[2]" @update:modelValue="setTeam(2, $event)">
+                </Dropdown>
             </div>
+
             <div class="data-tile red-alliance">
-                <Dropdown :choices="teamFilters" v-model="teamIndices[1]" @update:modelValue="setTeam(1, $event)">
-                </Dropdown>
-
-                <StatHighlight :stats="teamHighlights(1)" :is-vertical="false"></StatHighlight>
+                <div>
+                    <div v-for="data, col in allianceHighlights([0, 1, 2])" class="alliance-data-container">
+                        <h3>{{ col }}</h3>
+                        <div class="alliance-stat-view">
+                            <div v-for="team, idx in getTeamNumbers([0, 1, 2])" class="alliance-col-data">
+                                <u>{{ team }}</u>
+                                {{ data.value[idx].toFixed(2) }}
+                                <div v-if="data.rank[idx] > 0">
+                                    <span :style="getRankedStyle(data.normalized[idx])">{{ getRanking(data.rank[idx])
+                                    }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="data-tile red-alliance">
-                <Dropdown :choices="teamFilters" v-model="teamIndices[2]" @update:modelValue="setTeam(2, $event)">
-                </Dropdown>
-
-                <StatHighlight :stats="teamHighlights(2)" :is-vertical="false"></StatHighlight>
-            </div>
-
 
             <h2>Blue Alliance</h2>
-            <div class="data-tile red-alliance">
-                <Dropdown :choices="teamFilters" v-model="teamIndices[3]" @update:modelValue="setTeam(3, $event)">
+            <div class="data-tile blue-alliance">
+                Blue 1: <Dropdown :choices="teamFilters" v-model="teamIndices[3]" @update:modelValue="setTeam(3, $event)">
                 </Dropdown>
 
-                <StatHighlight :stats="teamHighlights(3)" :is-vertical="false"></StatHighlight>
-            </div>
-            <div class="data-tile red-alliance">
-                <Dropdown :choices="teamFilters" v-model="teamIndices[4]" @update:modelValue="setTeam(4, $event)">
+                Blue 2: <Dropdown :choices="teamFilters" v-model="teamIndices[4]" @update:modelValue="setTeam(4, $event)">
                 </Dropdown>
 
-                <StatHighlight :stats="teamHighlights(4)" :is-vertical="false"></StatHighlight>
-            </div>
-            <div class="data-tile red-alliance">
-                <Dropdown :choices="teamFilters" v-model="teamIndices[5]" @update:modelValue="setTeam(5, $event)">
+                Blue 3: <Dropdown :choices="teamFilters" v-model="teamIndices[5]" @update:modelValue="setTeam(5, $event)">
                 </Dropdown>
-
-                <StatHighlight :stats="teamHighlights(5)" :is-vertical="false"></StatHighlight>
             </div>
 
+            <div class="data-tile blue-alliance">
+                <div>
+                    <div v-for="data, col in allianceHighlights([3, 4, 5])" class="alliance-data-container">
+                        <h3>{{ col }}</h3>
+                        <div class="alliance-stat-view">
+                            <div v-for="team, idx in getTeamNumbers([3, 4, 5])" class="alliance-col-data">
+                                <u>{{ team }}</u>
+                                {{ data.value[idx].toFixed(2) }}
+                                <div v-if="data.rank[idx] > 0">
+                                    <span :style="getRankedStyle(data.normalized[idx])">{{ getRanking(data.rank[idx])
+                                    }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         <div v-else-if="teamsLoaded">
             <h2>No Data Available</h2>
@@ -110,8 +127,6 @@ export default {
 
             this.pitData = await getPitScoutData(pitScoutTable, this.eventStore.eventId);
 
-            console.log(this.teamFilters)
-
             // Mark the data as ready for the view to display.
             this.teamsLoaded = true;
         },
@@ -141,17 +156,35 @@ export default {
 
             return {};
         },
-        teamHighlights(team) {
-            if (this.teamFilters.length == 0) {
-                return {};
+        allianceHighlights(teams) {
+            // Get team information.
+            let teamNumbers = [];
+            let teamInfos = [];
+
+            for (var i = 0; i < teams.length; i++) {
+                const teamIndex = this.teamIndices[teams[i]];
+                const teamNumber = this.teamFilters[teamIndex].key;
+                const teamInfo = this.teamsData[teamNumber];
+                teamNumbers.push(teamNumber);
+                teamInfos.push(teamInfo);
             }
 
-            const teamIndex = this.teamIndices[team];
-            const teamNumber = this.teamFilters[teamIndex].key;
-            const teamInfo = this.teamsData[teamNumber];
-
-            return getTeamOverview(teamInfo, teamNumber, this.getEventStats());
+            let overview = getAllianceOverview(teamInfos, teamNumbers, this.getEventStats());
+            return overview;
         },
+        getTeamNumbers(teams) {
+            let teamNumbers = [];
+
+            for (var i = 0; i < teams.length; i++) {
+                const teamIndex = this.teamIndices[teams[i]];
+                const teamNumber = this.teamFilters[teamIndex].key;
+                teamNumbers.push(teamNumber);
+            }
+
+            teamNumbers.push("Total")
+
+            return teamNumbers;
+        }
     },
     computed: {
         isDataAvailable() {
@@ -166,4 +199,28 @@ export default {
 }
 </script>
 
-<style></style>
+<style>
+.alliance-stat-view {
+    display: flex;
+    flex-direction: row;
+}
+
+.alliance-data-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.alliance-col-data {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+}
+
+.red-alliance {
+    border: 2px solid red;
+}
+
+.blue-alliance {
+    border: 2px solid blue;
+}
+</style>
