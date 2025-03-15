@@ -4,7 +4,7 @@ import { getNumberWithOrdinal } from "@/lib/util";
 </script>
 
 <template>
-    <div class="highlightClass">
+    <div :class="highlightClass">
         <div v-for="stat in stats" class="stat-highlight-container">
             <h3>{{ stat.name }}</h3>
             <div class="stat-highlight-value">
