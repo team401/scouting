@@ -75,6 +75,9 @@ export default {
             this.scoutForm = data;
             this.formInvalid = !valid;
 
+            // reset the submit success flag because the form has changed and has not been submitted yet.
+            this.submitSuccess = false;
+
             return valid;
         },
         async submitForm() {

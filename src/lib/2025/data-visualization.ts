@@ -2,9 +2,11 @@
 // @ts-nocheck
 
 import { sum, mean } from 'simple-statistics';
-import { computeAccuracy } from './data-processing';
 
 export function getTeamOverview(teamInfo, teamNumber, eventStats) {
+    if (!eventStats.rankings) {
+        return {};
+    }
 
     const meanPointsRanking = eventStats.rankings.mean_matchPoints.indexOf(teamNumber) + 1;
     const meanAutoPointsRanking = eventStats.rankings.mean_autoPoints.indexOf(teamNumber) + 1;
@@ -51,6 +53,10 @@ export function getTeamOverview(teamInfo, teamNumber, eventStats) {
 }
 
 export function teamLikertRadar(teamInfo, eventStats) {
+    if (!teamInfo) {
+        return {};
+    }
+
     // Get normalized team points.
     const meanTeamPoints = teamInfo.mean_matchPoints;
     const maxPoints = eventStats.distributions.mean_matchPoints.max;
@@ -69,6 +75,10 @@ export function teamLikertRadar(teamInfo, eventStats) {
 }
 
 export function teamReefData(teamInfo) {
+    if (!teamInfo) {
+        return {};
+    }
+
     const coralAutoL4Count = sum(teamInfo.match_data.coralAutoL4Count);
     // const coralAutoL4Missed = sum(teamInfo.match_data.coralAutoL4Missed);
     const coralTeleopL4Count = sum(teamInfo.match_data.coralTeleopL4Count);
