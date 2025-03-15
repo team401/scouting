@@ -28,6 +28,7 @@ import { useEventStore } from '@/stores/event-store';
                 <RouterLink to="/pit-scout" class="nav-link nav-link-mobile">Pit Scouting</RouterLink>
                 <RouterLink to="/event" class="nav-link nav-link-mobile">Event Analysis</RouterLink>
                 <RouterLink to="/team" class="nav-link nav-link-mobile">Team Analysis</RouterLink>
+                <RouterLink to="/match" class="nav-link nav-link-mobile">Match Preview</RouterLink>
             </template>
         </HamburgerMenu>
 
@@ -37,6 +38,7 @@ import { useEventStore } from '@/stores/event-store';
         <RouterLink to="/pit-scout" class="nav-link">Pit Scouting</RouterLink>
         <RouterLink to="/event" class="nav-link">Event Analysis</RouterLink>
         <RouterLink to="/team" class="nav-link">Team Analysis</RouterLink>
+        <RouterLink to="/match" class="nav-link">Match Preview</RouterLink>
 
         <div class="nav-dark-mode nav-right" @click="toggleUserDarkMode">
             <md-icon slot="icon" v-if="isDarkMode">dark_mode</md-icon>
@@ -168,7 +170,6 @@ a.nav-link-mobile {
     float: right;
     position: relative;
     height: 100%;
-    background-color: var(--accent-color);
     padding: 20px;
 }
 

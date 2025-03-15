@@ -119,15 +119,19 @@ export default {
             }
 
             this.teamFilters = [];
-            Object.keys(this.teamsData).forEach(element => {
-                if (!eventStatisticsKeys.includes(element)) {
-                    let teamText = String(element);
-                    if (Object.keys(teamTextMap).includes(element)) {
-                        teamText = teamTextMap[element];
-                    }
-                    this.teamFilters.push({ key: element, text: teamText });
+            Object.keys(teamTextMap).forEach(element => {
+                let teamText = String(element);
+                if (Object.keys(teamTextMap).includes(element)) {
+                    teamText = teamTextMap[element];
                 }
+                this.teamFilters.push({ key: element, text: teamText });
             })
+
+            // Object.keys(this.teamsData).forEach(element => {
+            //     if (!eventStatisticsKeys.includes(element)) {
+
+            //     }
+            // })
 
             this.pitData = await getPitScoutData(pitScoutTable, this.eventStore.eventId);
 
@@ -179,6 +183,9 @@ export default {
 
             const teamNumber = this.teamFilters[this.currentTeamIndex].key;
             const teamInfo = this.teamsData[teamNumber];
+            if (!teamInfo) {
+                return {};
+            }
 
             let teamMatches = {};
             for (var i = 0; i < teamInfo.match_data.matchNumber.length; i++) {
@@ -222,6 +229,9 @@ export default {
 
             const teamNumber = this.teamFilters[this.currentTeamIndex].key;
             const teamInfo = this.teamsData[teamNumber];
+            if (!teamInfo) {
+                return {};
+            }
 
             let startPositions = {};
             for (var i = 0; i < teamInfo.match_data.startPosition.length; i++) {
@@ -245,6 +255,9 @@ export default {
 
             const teamNumber = this.teamFilters[this.currentTeamIndex].key;
             const teamInfo = this.teamsData[teamNumber];
+            if (!teamInfo) {
+                return {};
+            }
 
             let comments = teamInfo.match_data.comments;
             let matchNumbers = teamInfo.match_data.matchNumber;
@@ -264,6 +277,9 @@ export default {
 
             const teamNumber = this.teamFilters[this.currentTeamIndex].key;
             const teamPit = this.pitData[teamNumber];
+            if (!teamPit) {
+                return {};
+            }
 
             return teamPit;
         },

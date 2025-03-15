@@ -2,9 +2,67 @@
 // @ts-nocheck
 
 import { sum, mean } from 'simple-statistics';
-import { computeAccuracy } from './data-processing';
+import { getNumberWithOrdinal } from "@/lib/util";
+
+export function getAllianceOverview(teamInfos, teamNumbers, eventStats) {
+    if (!eventStats.rankings) {
+        return {};
+    }
+
+    const highlightColumns = {
+        mean_matchPoints: "Avg. Points",
+        mean_autoPoints: "Avg. Auto Points",
+        mean_teleopPoints: "Avg. Teleop Points",
+        mean_bargePoints: "Avg. Barge Points",
+        mean_foulPoints: "Avg. Foul Points"
+    };
+
+    const colKeys = Object.keys(highlightColumns);
+
+    let augmentedTeamNumbers = teamNumbers.slice();
+    augmentedTeamNumbers.push("Total");
+    let allianceHighlight = {}
+
+    for (var i = 0; i < colKeys.length; i++) {
+        const col = colKeys[i];
+        const numTeams = eventStats.rankings[col].length;
+
+        const prettyColName = highlightColumns[col];
+        let colData = {
+            rank: [],
+            value: [],
+            normalized: []
+        };
+
+        for (var j = 0; j < teamNumbers.length; j++) {
+            const teamNumber = teamNumbers[j];
+            const teamInfo = teamInfos[j];
+
+            const teamRank = eventStats.rankings[col].indexOf(teamNumber) + 1;
+            const normalizedRank = teamRank / numTeams;
+            const teamValue = Number(teamInfo[col]);
+
+            colData.rank.push(teamRank);
+            colData.normalized.push(normalizedRank);
+            colData.value.push(teamValue);
+        }
+
+        const colTotal = sum(colData.value);
+        colData.value.push(colTotal);
+        colData.normalized.push(-1);
+        colData.rank.push(-1);
+
+        allianceHighlight[prettyColName] = colData;
+
+    }
+
+    return allianceHighlight;
+}
 
 export function getTeamOverview(teamInfo, teamNumber, eventStats) {
+    if (!eventStats.rankings) {
+        return {};
+    }
 
     const meanPointsRanking = eventStats.rankings.mean_matchPoints.indexOf(teamNumber) + 1;
     const meanAutoPointsRanking = eventStats.rankings.mean_autoPoints.indexOf(teamNumber) + 1;
@@ -51,6 +109,10 @@ export function getTeamOverview(teamInfo, teamNumber, eventStats) {
 }
 
 export function teamLikertRadar(teamInfo, eventStats) {
+    if (!teamInfo) {
+        return {};
+    }
+
     // Get normalized team points.
     const meanTeamPoints = teamInfo.mean_matchPoints;
     const maxPoints = eventStats.distributions.mean_matchPoints.max;
@@ -69,6 +131,10 @@ export function teamLikertRadar(teamInfo, eventStats) {
 }
 
 export function teamReefData(teamInfo) {
+    if (!teamInfo) {
+        return {};
+    }
+
     const coralAutoL4Count = sum(teamInfo.match_data.coralAutoL4Count);
     // const coralAutoL4Missed = sum(teamInfo.match_data.coralAutoL4Missed);
     const coralTeleopL4Count = sum(teamInfo.match_data.coralTeleopL4Count);
@@ -167,4 +233,33 @@ export function teamReefData(teamInfo) {
             "teleop_count": teamInfo.match_data.coralTeleopL1Count
         }
     }
+}
+
+export function getRanking(ranking) {
+    return getNumberWithOrdinal(ranking);
+}
+
+export function getRankedStyle(normalizedRank) {
+    const greenLimit = 0.33;
+    const redLimit = 0.6;
+    const baseColor = 100;
+    const maxColor = 255;
+    const multiplier = maxColor - baseColor;
+
+    let style = {};
+
+    // Teams in the top part get a increasingly dark green number as they get closer to the top.
+    if (normalizedRank < greenLimit) {
+        let greenColor = multiplier * ((greenLimit - normalizedRank) / greenLimit) + baseColor;
+        style.color = "rgb(0, " + greenColor + ", 0)";
+        style["font-weight"] = "bold";
+
+    } else if (normalizedRank > redLimit) {
+        // Teams in the bottom part get an increasingly dark red number as they get closer to the bottom.
+        let redColor = multiplier * (normalizedRank - redLimit) / (1.0 - redLimit) + baseColor;
+        style.color = "rgb(" + redColor + ", 0, 0)";
+        style["font-weight"] = "bold";
+    }
+
+    return style;
 }
