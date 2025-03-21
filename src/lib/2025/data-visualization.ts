@@ -5,7 +5,7 @@ import { sum, mean } from 'simple-statistics';
 import { getNumberWithOrdinal } from "@/lib/util";
 
 export function getAllianceOverview(teamInfos, teamNumbers, eventStats) {
-    if (!eventStats.rankings) {
+    if (!eventStats.rankings || !teamInfos) {
         return {};
     }
 
@@ -38,6 +38,13 @@ export function getAllianceOverview(teamInfos, teamNumbers, eventStats) {
             const teamNumber = teamNumbers[j];
             const teamInfo = teamInfos[j];
 
+            if (!teamInfo) {
+                colData.rank.push(-1);
+                colData.normalized.push(-1);
+                colData.value.push(0);
+                continue;
+            }
+
             const teamRank = eventStats.rankings[col].indexOf(teamNumber) + 1;
             const normalizedRank = teamRank / numTeams;
             const teamValue = Number(teamInfo[col]);
@@ -60,7 +67,7 @@ export function getAllianceOverview(teamInfos, teamNumbers, eventStats) {
 }
 
 export function getTeamOverview(teamInfo, teamNumber, eventStats) {
-    if (!eventStats.rankings) {
+    if (!eventStats.rankings || !teamInfo) {
         return {};
     }
 
