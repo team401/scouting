@@ -10,7 +10,7 @@ export const useViewModeStore = defineStore('viewMode', {
     },
     getters: {
         isMobile(): boolean {
-            return this.screenWidth <= 720;
+            return this.screenWidth <= 820;
         },
         windowHeight(): number {
             return this.screenHeight;

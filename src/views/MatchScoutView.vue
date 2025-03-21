@@ -41,7 +41,8 @@ import "@material/web/button/filled-button";
 
         <div class="button-container" v-if="formLoaded && !isSubmitting">
             <md-filled-button v-on:click="submitForm">SUBMIT</md-filled-button>
-            <md-filled-button v-on:click="resetFormData">RESET</md-filled-button>
+            <!-- Fully reset the form if the reset button is clicked -->
+            <md-filled-button v-on:click="resetFormData(false)">RESET</md-filled-button>
         </div>
     </div>
 </template>
@@ -74,6 +75,9 @@ export default {
             const { data, valid } = validateForm(this.scoutForm);
             this.scoutForm = data;
             this.formInvalid = !valid;
+
+            // reset the submit success flag because the form has changed and has not been submitted yet.
+            this.submitSuccess = false;
 
             return valid;
         },
@@ -109,7 +113,8 @@ export default {
 
             // Reset all non-preserved data. This marks submitFailed as false and also submitSuccess as false. 
             // So we mark submitSuccess as true below to update the UI.
-            this.resetFormData();
+            // After submission allow incrementing of data in the form reset.
+            this.resetFormData(true);
 
             // Mark the submission as successful and reset the submission data.
             this.submitSuccess = true;
@@ -126,16 +131,18 @@ export default {
                 })
             });
         },
-        resetFormData() {
+        resetFormData(isIncrement) {
             // Reset all data to their default values.
             this.scoutForm.forEach(section => {
                 section.components.forEach(component => {
-                    if (!component.incrementAfterSubmit) {
+                    if (!component.incrementAfterSubmit || !isIncrement) {
                         component.value = component.defaultValue;
                     } else {
                         component.value = component.value + 1;
                     }
                     component.error = false;
+
+                    console.log(section.key + "-" + component.key + ": " + component.value);
                 })
             });
 
