@@ -5,6 +5,6 @@ export const eventInfoTable = "Event";
 export const teamInfoTable = "Team";
 
 // Event information.
-export const defaultEventId = "2025vapor";
+export const defaultEventId = "2025vabla";
 // Flag to force override to the default event. Useful if you are playing two tournaments on the same day.
-export const useDefaultEvent = false;
+export const useDefaultEvent = true;
