@@ -41,8 +41,8 @@ import "@material/web/button/filled-button";
         </div>
 
         <div class="button-container" v-if="formLoaded">
-            <md-filled-button v-on:click="submitForm">SUBMIT</md-filled-button>
-            <md-filled-button v-on:click="resetFormData">RESET</md-filled-button>
+            <md-filled-button v-on:click="resetFormData" class="reset-button">RESET</md-filled-button>
+            <md-filled-button v-on:click="submitForm" class="submit-button">SUBMIT</md-filled-button>
         </div>
     </div>
 </template>

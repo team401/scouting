@@ -176,3 +176,13 @@ tbody tr:last-of-type {
   margin: 15px;
   overflow: scroll;
 }
+
+.submit-button {
+  --md-sys-color-primary: var(--submit-button-color);
+  --md-sys-color-on-primary: var(--submit-button-text-color);
+}
+
+.reset-button {
+  --md-sys-color-primary: var(--reset-button-color);
+  --md-sys-color-on-primary: var(--reset-button-text-color);
+}
