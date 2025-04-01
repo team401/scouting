@@ -55,7 +55,7 @@ import { supabase } from "@/lib/supabase-client";
                     <h2>Comments</h2>
                     <div v-for="comment in getComments">
                         <div v-if="comment && comment.text.length > 0" class="comment-tile">
-                            Match {{ comment.match }} ({{ comment.scoutName }}): {{ comment.text }}
+                            Match {{ comment.match }} ({{ comment.scoutInfo }}): {{ comment.text }}
                         </div>
                     </div>
                 </div>
@@ -262,10 +262,15 @@ export default {
             let comments = teamInfo.match_data.comments;
             let matchNumbers = teamInfo.match_data.matchNumber;
             let scoutNames = teamInfo.match_data.scoutName;
+            let scoutTeams = teamInfo.match_data.scoutTeam;
 
             let commentData = []
             for (var i = 0; i < comments.length; i++) {
-                commentData.push({ text: comments[i], match: matchNumbers[i], scoutName: scoutNames[i] });
+                var scoutInfo = scoutNames[i];
+                if (scoutTeams && scoutTeams[i]) {
+                    scoutInfo += " - " + scoutTeams[i];
+                }
+                commentData.push({ text: comments[i], match: matchNumbers[i], scoutInfo: scoutInfo });
             }
 
             return commentData;

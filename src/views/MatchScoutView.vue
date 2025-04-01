@@ -155,7 +155,7 @@ export default {
     computed: {
         getAllianceColor() {
             // This is hardcoded, so it may need to change.
-            const switchPos = this.scoutForm[0].components[3].value;
+            const switchPos = this.scoutForm[0].components[4].value;
             let allianceColor = switchPos ? "blue" : "red";
             return allianceColor;
         },
