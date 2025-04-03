@@ -26,6 +26,9 @@ import "@material/web/button/filled-button";
         <div class="data-tile success-tile" v-if="submitSuccess">
             <h1>Submitted successfully!</h1>
         </div>
+        <div class="data-tile notification-tile" v-if="resetSuccess">
+            <h1>Reset form successfully!</h1>
+        </div>
 
         <div class="data-tile" v-if="submitFailed">
             <h1>DATA UPLOAD FAILED</h1>
@@ -60,7 +63,8 @@ export default {
             submitFailed: false,
             submitSuccess: false,
             formInvalid: false,
-            isSubmitting: false
+            isSubmitting: false,
+            resetSuccess: false
         }
     },
     methods: {
@@ -77,8 +81,9 @@ export default {
             this.scoutForm = data;
             this.formInvalid = !valid;
 
-            // reset the submit success flag because the form has changed and has not been submitted yet.
+            // reset the submit/reset success flag because the form has changed and has not been submitted yet.
             this.submitSuccess = false;
+            this.resetSuccess = false;
 
             return valid;
         },
@@ -87,6 +92,7 @@ export default {
             this.submitFailed = false;
             this.submitSuccess = false;
             this.isSubmitting = true;
+            this.resetSuccess = false;
 
             // If the form isn't valid, wait for the user to fix it.
             if (!this.formValidation()) {
@@ -151,6 +157,7 @@ export default {
             this.submitFailed = false;
             this.formInvalid = false;
             this.submitSuccess = false;
+            this.resetSuccess = true;
         }
     },
     computed: {
@@ -195,5 +202,10 @@ p {
 .success-tile {
     background-color: green;
     color: white;
+}
+
+.notification-tile {
+    background-color: rgb(88, 88, 232);
+    color: white
 }
 </style>

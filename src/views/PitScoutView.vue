@@ -27,6 +27,9 @@ import "@material/web/button/filled-button";
         <div class="data-tile success-tile" v-if="submitSuccess">
             <h1>Submitted successfully!</h1>
         </div>
+        <div class="data-tile notification-tile" v-if="resetSuccess">
+            <h1>Reset form successfully!</h1>
+        </div>
 
         <div class="data-tile" v-if="submitFailed">
             <h1>DATA UPLOAD FAILED</h1>
@@ -40,7 +43,7 @@ import "@material/web/button/filled-button";
             </p>
         </div>
 
-        <div class="button-container" v-if="formLoaded">
+        <div class="button-container" v-if="formLoaded && !isSubmitting">
             <md-filled-button v-on:click="resetFormData" class="reset-button">RESET</md-filled-button>
             <md-filled-button v-on:click="submitForm" class="submit-button">SUBMIT</md-filled-button>
         </div>
@@ -58,7 +61,9 @@ export default {
             submitData: {},
             submitSuccess: false,
             submitFailed: false,
-            formInvalid: false
+            formInvalid: false,
+            isSubmitting: false,
+            resetSuccess: false
         }
     },
     methods: {
@@ -75,15 +80,22 @@ export default {
             this.scoutForm = data;
             this.formInvalid = !valid;
 
+            // reset the submit/reset success flag because the form has changed and has not been submitted yet.
+            this.submitSuccess = false;
+            this.resetSuccess = false;
+
             return valid;
         },
         async submitForm() {
             // Data submission hasn't failed yet...
             this.submitFailed = false;
             this.submitSuccess = false;
+            this.isSubmitting = true;
+            this.resetSuccess = false;
 
             // If the form isn't valid, wait for the user to fix it.
             if (!this.formValidation()) {
+                this.isSubmitting = false;
                 return;
             }
 
@@ -100,6 +112,7 @@ export default {
             if (error) {
                 console.log(error);
                 this.submitFailed = true;
+                this.isSubmitting = false;
                 return;
             }
 
@@ -109,6 +122,7 @@ export default {
             // Mark the submission as successful and reset the submission data.
             this.submitSuccess = true;
             this.submitData = {};
+            this.isSubmitting = false;
         },
         preserveSingleEntryData() {
             // Iterate over all components and set their default values to be whatever was submitted most recently.
@@ -133,6 +147,7 @@ export default {
             this.submitFailed = false;
             this.formInvalid = false;
             this.submitSuccess = false;
+            this.resetSuccess = true;
         }
     },
     computed: {
@@ -171,5 +186,10 @@ p {
 .success-tile {
     background-color: green;
     color: white;
+}
+
+.notification-tile {
+    background-color: rgb(88, 88, 232);
+    color: white
 }
 </style>

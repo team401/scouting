@@ -33,7 +33,8 @@ import { supabase } from "@/lib/supabase-client";
                 <div class="analysis-row-tile">
                     <input ref="file" type="file" v-on:change="uploadImage" hidden>
                     <div class="image-tile" v-if="isRobotPhotoAvailable">
-                        <img :src="getRobotPhotoUrl" width="300" height="300" />
+                        <!-- Assuming a 4:3 aspect ratio for now -->
+                        <img :src="getRobotPhotoUrl" width="300" height="400" />
                         <md-filled-button v-on:click="chooseFiles" v-if="!teamPhotoUploading">Upload a Different
                             Image</md-filled-button>
                         <md-filled-button v-on:click="chooseFiles" disabled v-else>Uploading...</md-filled-button>
