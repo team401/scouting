@@ -4,12 +4,15 @@
 
 import { aggregateEventData, eventStatisticsKeys, getPitScoutData } from "@/lib/2025/data-processing";
 import { teamLikertRadar, getTeamOverview, teamReefData } from "@/lib/2025/data-visualization";
+import { uploadFile, updatePhoto } from "@/lib/data-submission";
 import { useEventStore } from "@/stores/event-store";
 import { useViewModeStore } from '@/stores/view-mode-store';
-import { matchScoutTable, pitScoutTable, teamInfoTable } from "@/lib/constants";
+import { matchScoutTable, pitScoutTable, teamInfoTable, robotPhotoTable, robotPhotoBucket } from "@/lib/constants";
+import { projectId } from "@/lib/supabase-client";
 
 import '@material/web/select/outlined-select';
 import '@material/web/select/select-option';
+import "@material/web/button/filled-button";
 import FilterableGraph from "@/components/FilterableGraph.vue";
 import Dropdown from "@/components/Dropdown.vue";
 import BarChart from "@/components/BarChart.vue";
@@ -28,6 +31,19 @@ import { supabase } from "@/lib/supabase-client";
 
             <div>
                 <div class="analysis-row-tile">
+                    <input ref="file" type="file" v-on:change="uploadImage" hidden>
+                    <div class="image-tile" v-if="isRobotPhotoAvailable">
+                        <!-- Assuming a 4:3 aspect ratio for now -->
+                        <img :src="getRobotPhotoUrl" width="300" height="400" />
+                        <md-filled-button v-on:click="chooseFiles" v-if="!teamPhotoUploading">Upload a Different
+                            Image</md-filled-button>
+                        <md-filled-button v-on:click="chooseFiles" disabled v-else>Uploading...</md-filled-button>
+                    </div>
+                    <div class="file-upload-tile" v-else>
+                        <md-filled-button v-on:click="chooseFiles" v-if="!teamPhotoUploading">Upload
+                            Image</md-filled-button>
+                        <md-filled-button v-on:click="chooseFiles" disabled v-else>Uploading...</md-filled-button>
+                    </div>
                     <div class="data-tile">
                         <StatHighlight :stats="teamHighlights" :is-vertical="true"></StatHighlight>
                     </div>
@@ -55,7 +71,7 @@ import { supabase } from "@/lib/supabase-client";
                     <h2>Comments</h2>
                     <div v-for="comment in getComments">
                         <div v-if="comment && comment.text.length > 0" class="comment-tile">
-                            Match {{ comment.match }} ({{ comment.scoutName }}): {{ comment.text }}
+                            Match {{ comment.match }} ({{ comment.scoutInfo }}): {{ comment.text }}
                         </div>
                     </div>
                 </div>
@@ -81,6 +97,10 @@ export default {
             viewMode: null,
             eventStore: null,
             teamsLoaded: false,
+            teamPhotoLoaded: false,
+            teamPhotoAvailable: false,
+            teamPhotoUrl: "",
+            teamPhotoUploading: false,
             teamsData: [{}],
             pitData: [{}],
             teamFilters: [],
@@ -137,9 +157,52 @@ export default {
 
             // Mark the data as ready for the view to display.
             this.teamsLoaded = true;
+
+            this.getRobotPhoto();
+        },
+        async getRobotPhoto() {
+            // This function can only work once teams are loaded due to the dependence on getTeamNumber.
+            const teamNumber = this.getTeamNumber();
+
+            // If the team number is negative, this function has been called before the teams are loaded.
+            if (teamNumber < 0) {
+                this.teamPhotoAvailable = false;
+                this.teamPhotoLoaded = true;
+                return;
+            }
+
+            // get the team photo URL
+            const { data, error } = await supabase.from(robotPhotoTable).select("*").eq("team_number", teamNumber);
+
+            if (error) {
+                console.log(error);
+
+                // Even if there is an error, mark the photo as loaded to indicate that we tried to load it and failed (via the lack of photo availability).
+                this.teamPhotoLoaded = true;
+                this.teamPhotoAvailable = false;
+                return;
+            } else if (data.length == 0) {
+                // Even if there is no photo, mark the photo as loaded to indicate that we tried to load it and failed (via the lack of photo availability).
+                this.teamPhotoLoaded = true;
+                this.teamPhotoAvailable = false;
+                return;
+            }
+
+            this.teamPhotoUrl = data[0].photo_url;
+            this.teamPhotoAvailable = true;
+
+            this.teamPhotoLoaded = true;
+        },
+        getTeamNumber() {
+            if (this.currentTeamIndex >= this.teamFilters.length || this.teamFilters.length == 0) {
+                return -1;
+            }
+
+            return this.teamFilters[this.currentTeamIndex].key;
         },
         setTeam(idx: int) {
             this.currentTeamIndex = idx;
+            this.getRobotPhoto();
         },
         getEventStats() {
             // Downselect the event stats to only those relevant for comparing a team to the population.
@@ -164,10 +227,48 @@ export default {
 
             return {};
         },
+        chooseFiles() {
+            let fileInputElement = this.$refs.file;
+            fileInputElement.click();
+        },
+        async uploadImage() {
+            let fileInputElement = this.$refs.file;
+            if (fileInputElement.files.length > 0 && fileInputElement.files[0]) {
+                let selectedFile = fileInputElement.files[0];
+                const teamNumber = this.getTeamNumber();
+
+                this.teamPhotoUploading = true;
+                const fileResult = await uploadFile(selectedFile, robotPhotoBucket, String(teamNumber) + "_photo");
+                this.teamPhotoUploading = false;
+
+                if (fileResult) {
+                    const data = {
+                        team_number: Number(teamNumber),
+                        photo_url: "https://" + projectId + ".supabase.co/storage/v1/object/public/" + robotPhotoBucket + "/" + fileResult
+                    };
+                    updatePhoto(data, robotPhotoTable);
+                    // this.teamPhotoAvailable = true;
+                    this.teamPhotoLoaded = false;
+                    this.teamPhotoUrl = "";
+
+                    // Refresh the robot photo.
+                    this.getRobotPhoto();
+                }
+            }
+        }
     },
     computed: {
         isDataAvailable() {
             return this.teamFilters.length > 0;
+        },
+        isRobotPhotoAvailable() {
+            return this.teamPhotoAvailable;
+        },
+        getRobotPhotoUrl() {
+            if (this.teamPhotoLoaded) {
+                return this.teamPhotoUrl + "?" + + new Date().getTime();
+            }
+            return "";
         },
         getCurrentTeam() {
             if (this.currentTeamIndex >= this.teamFilters.length || this.teamFilters.length == 0) {
@@ -262,10 +363,15 @@ export default {
             let comments = teamInfo.match_data.comments;
             let matchNumbers = teamInfo.match_data.matchNumber;
             let scoutNames = teamInfo.match_data.scoutName;
+            let scoutTeams = teamInfo.match_data.scoutTeam;
 
             let commentData = []
             for (var i = 0; i < comments.length; i++) {
-                commentData.push({ text: comments[i], match: matchNumbers[i], scoutName: scoutNames[i] });
+                var scoutInfo = scoutNames[i];
+                if (scoutTeams && scoutTeams[i]) {
+                    scoutInfo += " - " + scoutTeams[i];
+                }
+                commentData.push({ text: comments[i], match: matchNumbers[i], scoutInfo: scoutInfo });
             }
 
             return commentData;

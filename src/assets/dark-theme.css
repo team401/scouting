@@ -28,6 +28,12 @@
     /* Comments */
     --comment-color: #c3c3c3;
 
+    /* Buttons */
+    --submit-button-color: green;
+    --submit-button-text-color: #FFF;
+    --reset-button-color: rgb(156, 0, 0);
+    --reset-button-text-color: #FFF;
+
     /* Material Design Colors */
     --md-sys-color-primary: rgb(172, 96, 3);
     --md-sys-color-secondary-container: #e69533;

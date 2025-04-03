@@ -23,6 +23,25 @@ export async function getMatchScoutSchema() {
                     error: false
                 },
                 {
+                    key: "scout_team",
+                    label: "Scout Team",
+                    type: "dropdown",
+                    options: {
+                        choices: [
+                            { key: "invalid", text: "" },
+                            { key: "401", text: "401 - Copperhead Robotics" },
+                            { key: "1629", text: "1629 - Garrett Coalition (GaCo)" },
+                            { key: "5804", text: "5804 - TORCH" }
+                        ]
+                    },
+                    defaultValue: 0,
+                    value: 0,
+                    preserveAfterSubmit: true,
+                    incrementAfterSubmit: false,
+                    required: true,
+                    error: false
+                },
+                {
                     key: "match_number",
                     label: "Match Number",
                     type: "number",

@@ -134,6 +134,7 @@ function parseMatchData(rawData, eventData) {
                     stabilityScore: [],
                     comments: [],
                     scoutName: [],
+                    scoutTeam: [],
                 }
             }
         }
@@ -223,6 +224,7 @@ function parseMatchData(rawData, eventData) {
         // Scout comments.
         const scoutComment = String(rawData[i]["postmatch.comments"]);
         const scoutName = String(rawData[i]["prematch.scout_name"]);
+        const scoutTeam = String(rawData[i]["prematch.scout_team"]);
 
         // Starting position.
         const startPosition = String(rawData[i]["prematch.position"]);
@@ -280,7 +282,8 @@ function parseMatchData(rawData, eventData) {
             defenseScore: defenseScore,
             stabilityScore: stabilityScore,
             comments: scoutComment,
-            scoutName: scoutName
+            scoutName: scoutName,
+            scoutTeam: scoutTeam
         }
 
         // Load the match stats into the matches array for this team.
@@ -297,7 +300,8 @@ function computeTeamStatistics(eventData) {
         "matchNumber",
         "startPosition",
         "comments",
-        "scoutName"
+        "scoutName",
+        "scoutTeam"
     ];
 
     const negativeValuesNA = [
