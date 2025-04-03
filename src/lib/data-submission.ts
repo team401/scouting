@@ -134,8 +134,21 @@ export async function submitScoutData(data, table) {
 }
 
 // Upload file using standard upload
-export async function uploadFile(file) {
-    const { data, error } = await supabase.storage.from(robotPhotoBucket).upload('photos', file, { upsert: true });
+export async function uploadFile(file, bucket, filename) {
+    const { data, error } = await supabase.storage.from(bucket).upload(filename, file, { upsert: true });
+
+    // IF there is an error, let the user know.
+    if (error) {
+        console.log(error);
+        return null;
+    }
+
+    return filename;
+}
+
+export async function updatePhoto(data, table) {
+    // Submit the data to the database.
+    const { error } = await supabase.from(table).insert(data);
 
     return error;
 }

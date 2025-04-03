@@ -4,9 +4,11 @@
 
 import { aggregateEventData, eventStatisticsKeys, getPitScoutData } from "@/lib/2025/data-processing";
 import { teamLikertRadar, getTeamOverview, teamReefData } from "@/lib/2025/data-visualization";
+import { uploadFile, updatePhoto } from "@/lib/data-submission";
 import { useEventStore } from "@/stores/event-store";
 import { useViewModeStore } from '@/stores/view-mode-store';
-import { matchScoutTable, pitScoutTable, teamInfoTable, robotPhotoTable } from "@/lib/constants";
+import { matchScoutTable, pitScoutTable, teamInfoTable, robotPhotoTable, robotPhotoBucket } from "@/lib/constants";
+import { projectId } from "@/lib/supabase-client";
 
 import '@material/web/select/outlined-select';
 import '@material/web/select/select-option';
@@ -225,11 +227,25 @@ export default {
         },
         uploadImage() {
             let fileInputElement = this.$refs.file;
-            if (fileInputElement.files[0]) {
+            if (fileInputElement.files.length > 0 && fileInputElement.files[0]) {
                 let selectedFile = fileInputElement.files[0];
                 console.log('Selected file:', selectedFile.name);
                 console.log('File size:', selectedFile.size);
                 console.log('File type:', selectedFile.type);
+
+                const teamNumber = this.getTeamNumber();
+                const fileResult = uploadFile(selectedFile, robotPhotoBucket, String(teamNumber) + "_photo");
+
+                if (fileResult) {
+                    const data = {
+                        team_number: Number(teamNumber),
+                        photo_url: "https://" + projectId + ".supabase.co/storage/v1/object/public/" + robotPhotoBucket + "/" + fileResult
+                    };
+                    updatePhoto(data, robotPhotoTable);
+
+                    // Refresh the robot photo.
+                    this.getRobotPhoto();
+                }
             }
         }
     },
