@@ -6,10 +6,11 @@ import { aggregateEventData, eventStatisticsKeys, getPitScoutData } from "@/lib/
 import { teamLikertRadar, getTeamOverview, teamReefData } from "@/lib/2025/data-visualization";
 import { useEventStore } from "@/stores/event-store";
 import { useViewModeStore } from '@/stores/view-mode-store';
-import { matchScoutTable, pitScoutTable, teamInfoTable } from "@/lib/constants";
+import { matchScoutTable, pitScoutTable, teamInfoTable, robotPhotoTable } from "@/lib/constants";
 
 import '@material/web/select/outlined-select';
 import '@material/web/select/select-option';
+import "@material/web/button/filled-button";
 import FilterableGraph from "@/components/FilterableGraph.vue";
 import Dropdown from "@/components/Dropdown.vue";
 import BarChart from "@/components/BarChart.vue";
@@ -28,6 +29,14 @@ import { supabase } from "@/lib/supabase-client";
 
             <div>
                 <div class="analysis-row-tile">
+                    <input ref="file" type="file" v-on:change="uploadImage" hidden>
+                    <div class="image-tile" v-if="isRobotPhotoAvailable">
+                        <img :src="getRobotPhotoUrl" />
+                        <md-filled-button v-on:click="chooseFiles" type="file">Upload a Different Image</md-filled-button>
+                    </div>
+                    <div class="file-upload-tile" v-else>
+                        <md-filled-button v-on:click="chooseFiles" type="file">Upload Image</md-filled-button>
+                    </div>
                     <div class="data-tile">
                         <StatHighlight :stats="teamHighlights" :is-vertical="true"></StatHighlight>
                     </div>
@@ -81,6 +90,9 @@ export default {
             viewMode: null,
             eventStore: null,
             teamsLoaded: false,
+            teamPhotoLoaded: false,
+            teamPhotoAvailable: false,
+            teamPhotoUrl: "",
             teamsData: [{}],
             pitData: [{}],
             teamFilters: [],
@@ -137,9 +149,52 @@ export default {
 
             // Mark the data as ready for the view to display.
             this.teamsLoaded = true;
+
+            this.getRobotPhoto();
+        },
+        async getRobotPhoto() {
+            // Initialize to the team photo not being available.
+            this.teamPhotoAvailable = false;
+
+            // This function can only work once teams are loaded due to the dependence on getTeamNumber.
+            const teamNumber = this.getTeamNumber();
+
+            // If the team number is negative, this function has been called before the teams are loaded.
+            if (teamNumber < 0) {
+                this.teamPhotoLoaded = true;
+                return;
+            }
+
+            // get the team photo URL
+            const { data, error } = await supabase.from(robotPhotoTable).select("*").eq("team_number", teamNumber);
+
+            if (error) {
+                console.log(error);
+
+                // Even if there is an error, mark the photo as loaded to indicate that we tried to load it and failed (via the lack of photo availability).
+                this.teamPhotoLoaded = true;
+                return;
+            } else if (data.length == 0) {
+                // Even if there is no photo, mark the photo as loaded to indicate that we tried to load it and failed (via the lack of photo availability).
+                this.teamPhotoLoaded = true;
+                return;
+            }
+
+            this.teamPhotoUrl = data[0].photo_url;
+            this.teamPhotoAvailable = true;
+
+            this.teamPhotoLoaded = true;
+        },
+        getTeamNumber() {
+            if (this.currentTeamIndex >= this.teamFilters.length || this.teamFilters.length == 0) {
+                return -1;
+            }
+
+            return this.teamFilters[this.currentTeamIndex].key;
         },
         setTeam(idx: int) {
             this.currentTeamIndex = idx;
+            this.getRobotPhoto();
         },
         getEventStats() {
             // Downselect the event stats to only those relevant for comparing a team to the population.
@@ -164,10 +219,32 @@ export default {
 
             return {};
         },
+        chooseFiles() {
+            let fileInputElement = this.$refs.file;
+            fileInputElement.click();
+        },
+        uploadImage() {
+            let fileInputElement = this.$refs.file;
+            if (fileInputElement.files[0]) {
+                let selectedFile = fileInputElement.files[0];
+                console.log('Selected file:', selectedFile.name);
+                console.log('File size:', selectedFile.size);
+                console.log('File type:', selectedFile.type);
+            }
+        }
     },
     computed: {
         isDataAvailable() {
             return this.teamFilters.length > 0;
+        },
+        isRobotPhotoAvailable() {
+            return this.teamPhotoAvailable;
+        },
+        getRobotPhotoUrl() {
+            if (this.teamPhotoLoaded) {
+                return this.teamPhotoUrl;
+            }
+            return "";
         },
         getCurrentTeam() {
             if (this.currentTeamIndex >= this.teamFilters.length || this.teamFilters.length == 0) {

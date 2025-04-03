@@ -177,6 +177,50 @@ tbody tr:last-of-type {
   overflow: scroll;
 }
 
+.image-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: safe center;
+  align-items: safe center;
+  padding: 20px;
+  background-color: var(--tile-background-color);
+  border-radius: 10px;
+  margin: 15px;
+  overflow: scroll;
+
+  /* Taken from https://codyhouse.co/nuggets/beautiful-css-shadows */
+  /* 1. inner glow - for dark mode 👇 */
+  box-shadow: inset 0 0 0.5px 1px hsla(0, 0%, 100%, 0.1),
+    /* 2. shadow ring  */
+    0 0 0 1px hsla(230, 13%, 9%, 0.075),
+    /* 3. multiple soft shadows */
+    0 0.3px 0.4px hsla(230, 13%, 9%, 0.02),
+    0 0.9px 1.5px hsla(230, 13%, 9%, 0.045),
+    0 3.5px 6px hsla(230, 13%, 9%, 0.09);
+}
+
+.file-upload-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: safe center;
+  align-items: safe center;
+  padding: 20px;
+  background-color: var(--tile-background-color);
+  border-radius: 10px;
+  margin: 15px;
+  overflow: scroll;
+
+  /* Taken from https://codyhouse.co/nuggets/beautiful-css-shadows */
+  /* 1. inner glow - for dark mode 👇 */
+  box-shadow: inset 0 0 0.5px 1px hsla(0, 0%, 100%, 0.1),
+    /* 2. shadow ring  */
+    0 0 0 1px hsla(230, 13%, 9%, 0.075),
+    /* 3. multiple soft shadows */
+    0 0.3px 0.4px hsla(230, 13%, 9%, 0.02),
+    0 0.9px 1.5px hsla(230, 13%, 9%, 0.045),
+    0 3.5px 6px hsla(230, 13%, 9%, 0.09);
+}
+
 .submit-button {
   --md-sys-color-primary: var(--submit-button-color);
   --md-sys-color-on-primary: var(--submit-button-text-color);

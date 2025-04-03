@@ -1,8 +1,13 @@
 
+// Database tables
 export const matchScoutTable = "MatchData";
 export const pitScoutTable = "PitData";
 export const eventInfoTable = "Event";
 export const teamInfoTable = "Team";
+export const robotPhotoTable = "RobotPhoto";
+
+// Storage buckets
+export const robotPhotoBucket = "robot-photos";
 
 // Event information.
 export const defaultEventId = "2025vapor";
