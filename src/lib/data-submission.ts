@@ -148,7 +148,7 @@ export async function uploadFile(file, bucket, filename) {
 
 export async function updatePhoto(data, table) {
     // Submit the data to the database.
-    const { error } = await supabase.from(table).insert(data);
+    const { error } = await supabase.from(table).upsert(data, { onConflict: 'team_number', ignoreDuplicates: false }).select();
 
     return error;
 }

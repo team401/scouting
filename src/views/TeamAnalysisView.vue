@@ -33,11 +33,15 @@ import { supabase } from "@/lib/supabase-client";
                 <div class="analysis-row-tile">
                     <input ref="file" type="file" v-on:change="uploadImage" hidden>
                     <div class="image-tile" v-if="isRobotPhotoAvailable">
-                        <img :src="getRobotPhotoUrl" />
-                        <md-filled-button v-on:click="chooseFiles" type="file">Upload a Different Image</md-filled-button>
+                        <img :src="getRobotPhotoUrl" width="300" height="300" />
+                        <md-filled-button v-on:click="chooseFiles" v-if="!teamPhotoUploading">Upload a Different
+                            Image</md-filled-button>
+                        <md-filled-button v-on:click="chooseFiles" disabled v-else>Uploading...</md-filled-button>
                     </div>
                     <div class="file-upload-tile" v-else>
-                        <md-filled-button v-on:click="chooseFiles" type="file">Upload Image</md-filled-button>
+                        <md-filled-button v-on:click="chooseFiles" v-if="!teamPhotoUploading">Upload
+                            Image</md-filled-button>
+                        <md-filled-button v-on:click="chooseFiles" disabled v-else>Uploading...</md-filled-button>
                     </div>
                     <div class="data-tile">
                         <StatHighlight :stats="teamHighlights" :is-vertical="true"></StatHighlight>
@@ -95,6 +99,7 @@ export default {
             teamPhotoLoaded: false,
             teamPhotoAvailable: false,
             teamPhotoUrl: "",
+            teamPhotoUploading: false,
             teamsData: [{}],
             pitData: [{}],
             teamFilters: [],
@@ -155,14 +160,12 @@ export default {
             this.getRobotPhoto();
         },
         async getRobotPhoto() {
-            // Initialize to the team photo not being available.
-            this.teamPhotoAvailable = false;
-
             // This function can only work once teams are loaded due to the dependence on getTeamNumber.
             const teamNumber = this.getTeamNumber();
 
             // If the team number is negative, this function has been called before the teams are loaded.
             if (teamNumber < 0) {
+                this.teamPhotoAvailable = false;
                 this.teamPhotoLoaded = true;
                 return;
             }
@@ -175,10 +178,12 @@ export default {
 
                 // Even if there is an error, mark the photo as loaded to indicate that we tried to load it and failed (via the lack of photo availability).
                 this.teamPhotoLoaded = true;
+                this.teamPhotoAvailable = false;
                 return;
             } else if (data.length == 0) {
                 // Even if there is no photo, mark the photo as loaded to indicate that we tried to load it and failed (via the lack of photo availability).
                 this.teamPhotoLoaded = true;
+                this.teamPhotoAvailable = false;
                 return;
             }
 
@@ -225,16 +230,15 @@ export default {
             let fileInputElement = this.$refs.file;
             fileInputElement.click();
         },
-        uploadImage() {
+        async uploadImage() {
             let fileInputElement = this.$refs.file;
             if (fileInputElement.files.length > 0 && fileInputElement.files[0]) {
                 let selectedFile = fileInputElement.files[0];
-                console.log('Selected file:', selectedFile.name);
-                console.log('File size:', selectedFile.size);
-                console.log('File type:', selectedFile.type);
-
                 const teamNumber = this.getTeamNumber();
-                const fileResult = uploadFile(selectedFile, robotPhotoBucket, String(teamNumber) + "_photo");
+
+                this.teamPhotoUploading = true;
+                const fileResult = await uploadFile(selectedFile, robotPhotoBucket, String(teamNumber) + "_photo");
+                this.teamPhotoUploading = false;
 
                 if (fileResult) {
                     const data = {
@@ -242,6 +246,9 @@ export default {
                         photo_url: "https://" + projectId + ".supabase.co/storage/v1/object/public/" + robotPhotoBucket + "/" + fileResult
                     };
                     updatePhoto(data, robotPhotoTable);
+                    // this.teamPhotoAvailable = true;
+                    this.teamPhotoLoaded = false;
+                    this.teamPhotoUrl = "";
 
                     // Refresh the robot photo.
                     this.getRobotPhoto();
@@ -258,7 +265,7 @@ export default {
         },
         getRobotPhotoUrl() {
             if (this.teamPhotoLoaded) {
-                return this.teamPhotoUrl;
+                return this.teamPhotoUrl + "?" + + new Date().getTime();
             }
             return "";
         },
