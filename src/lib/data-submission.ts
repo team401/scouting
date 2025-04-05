@@ -71,7 +71,7 @@ export function validateForm(form) {
                     // isValid is latching.
                     isValid = false;
                     component.error = true;
-                } else if (isDropdown && component.value == component.defaultValue) {
+                } else if (isDropdown && component.value == 0) {
                     // isValid is latching.
                     isValid = false;
                     component.error = true;
