@@ -4,6 +4,7 @@ import PitScoutView from "@/views/PitScoutView.vue";
 import TeamAnalysisView from "@/views/TeamAnalysisView.vue";
 import EventAnalysisView from "@/views/EventAnalysisView.vue";
 import MatchPreviewView from "@/views/MatchPreviewView.vue";
+import MatchAnalysisView from "@/views/MatchAnalysisView.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -29,15 +30,26 @@ const router = createRouter({
       component: TeamAnalysisView,
     },
     {
+  path: "/team/:teamNumber",
+  name: "Team Analysis Detail",
+  component: TeamAnalysisView,
+  props: true,
+},
+    {
       path: "/event",
       name: "Event Analysis",
       component: EventAnalysisView,
     },
     {
-      path: "/match",
+      path: "/matchPreview",
       name: "Match Preview",
       component: MatchPreviewView,
-    }
+    },
+    {
+      path: "/match",
+      name: "Match Analysis",
+      component: MatchAnalysisView,
+    },
   ],
 });
 

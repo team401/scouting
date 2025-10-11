@@ -9,6 +9,7 @@ import { useEventStore } from "@/stores/event-store";
 import { useViewModeStore } from '@/stores/view-mode-store';
 import { matchScoutTable, pitScoutTable, teamInfoTable, robotPhotoTable, robotPhotoBucket } from "@/lib/constants";
 import { projectId } from "@/lib/supabase-client";
+import { useRoute, useRouter } from "vue-router";
 
 import '@material/web/select/outlined-select';
 import '@material/web/select/select-option';
@@ -201,9 +202,14 @@ export default {
             return this.teamFilters[this.currentTeamIndex].key;
         },
         setTeam(idx: int) {
-            this.currentTeamIndex = idx;
-            this.getRobotPhoto();
-        },
+
+  this.currentTeamIndex = idx;
+  this.getRobotPhoto();
+
+  const router = useRouter();
+  this.$router.push(`/team/${this.teamFilters[idx].key}`);
+
+},
         getEventStats() {
             // Downselect the event stats to only those relevant for comparing a team to the population.
             let eventStats = {
@@ -394,10 +400,36 @@ export default {
         }
     },
     created() {
-        this.viewMode = useViewModeStore();
-        this.eventStore = useEventStore();
-        this.loadTeamsData();
+  this.viewMode = useViewModeStore();
+  this.eventStore = useEventStore();
+
+  const route = useRoute();
+  const router = useRouter();
+
+  this.loadTeamsData().then(() => {
+    // If the URL has a team number param (like /team/401)
+    const teamNumber = route.params.teamNumber;
+    if (teamNumber) {
+      const idx = this.teamFilters.findIndex(t => t.key == teamNumber);
+      if (idx !== -1) {
+        this.currentTeamIndex = idx;
+      }
     }
+  });
+
+  // Watch for URL changes (if the user navigates between /team/5804 and /team/401)
+  this.$watch(
+    () => route.params.teamNumber,
+    (newTeam) => {
+      if (!newTeam) return;
+      const idx = this.teamFilters.findIndex(t => t.key == newTeam);
+      if (idx !== -1) {
+        this.currentTeamIndex = idx;
+      }
+    }
+  );
+}
+
 }
 </script>
 
