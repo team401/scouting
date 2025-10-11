@@ -10,6 +10,6 @@ export const robotPhotoTable = "RobotPhoto";
 export const robotPhotoBucket = "robot-photos";
 
 // Event information.
-export const defaultEventId = "2025vapor";
+export const defaultEventId = "2025vagle2";
 // Flag to force override to the default event. Useful if you are playing two tournaments on the same day.
-export const useDefaultEvent = false;
+export const useDefaultEvent = true;
