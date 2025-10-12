@@ -64,6 +64,73 @@ export async function aggregateEventData(eventTable: String, eventId: String): P
     return eventData;
 }
 
+// Aggregate match-level scores for all matches in an event
+export async function aggregateMatchScores(eventId: string): Promise<any> {
+    // Pull all match data for the event
+    const { data, error } = await supabase
+        .from('MatchData')
+        .select()
+        .eq('event', eventId);
+
+    if (error) {
+        console.error('Supabase error:', error);
+        return {};
+    }
+
+    // Parse team-level stats using existing function
+    let eventData = {};
+    eventData = parseMatchData(data, eventData); // keeps all team stats
+
+    // Compute team-level stats like averages, totals
+    eventData = computeTeamStatistics(eventData);
+
+    // Compute event-level distributions and rankings
+    eventData = computeEventStatistics(eventData);
+
+    // Aggregate matches
+    const matches: Record<
+        string,
+        {
+            matchNumber: string;
+            Blue: { teams: string[]; score: number };
+            Red: { teams: string[]; score: number };
+        }
+    > = {};
+
+    data.forEach((row: any) => {
+        const matchNumber = String(row['prematch.match_number']);
+        const teamNumber = String(row['prematch.team_number']);
+        const alliance = String(row['prematch.alliance']); // 'Blue' or 'Red'
+
+        // Get this team's matchPoints from parsed match_data
+        const teamMatchPoints =
+            eventData?.[teamNumber]?.match_data?.matchPoints?.[
+                eventData[teamNumber].match_data.matchNumber.indexOf(matchNumber)
+            ] ?? 0;
+
+        if (!matches[matchNumber]) {
+            matches[matchNumber] = {
+                matchNumber,
+                Blue: { teams: [], score: 0 },
+                Red: { teams: [], score: 0 }
+            };
+        }
+
+        if (alliance === 'Blue') {
+            matches[matchNumber].Blue.teams.push(teamNumber);
+            matches[matchNumber].Blue.score += teamMatchPoints;
+        } else if (alliance === 'Red') {
+            matches[matchNumber].Red.teams.push(teamNumber);
+            matches[matchNumber].Red.score += teamMatchPoints;
+        }
+    });
+
+    // Add match-level info to eventData for easy access in pages
+    eventData['matches'] = Object.values(matches);
+
+    return eventData;
+}
+
 function parseMatchData(rawData, eventData) {
     // Aggregate the data.
     for (let i = 0; i < rawData.length; i++) {
