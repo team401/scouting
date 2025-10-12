@@ -50,11 +50,11 @@ onMounted(async () => {
 
     // 2) Load head scout comments from HeadScoutData
     const { data: commentsData, error: commentsError } = await supabase
-  .from("HeadScoutData")
-  .select(`"auto.autocomments","teleop.telecomments","postmatch.postcomments"`)
-  .eq('"prematch.match_number"', matchNumber.value)
-  .eq("event", eventId.value)
-  .maybeSingle();
+      .from("HeadScoutData")
+      .select(`"auto.autocomments","teleop.telecomments","postmatch.postcomments"`)
+      .eq('"prematch.match_number"', matchNumber.value)
+      .eq("event", eventId.value)
+      .maybeSingle();
 
     if (commentsError) {
       console.warn("Head scout fetch error:", commentsError);
@@ -147,12 +147,42 @@ onMounted(async () => {
       </div>
     </div>
 
+    <!-- Team Tiles BELOW Head Scout Comments -->
+    <div class="flex flex-wrap gap-4 mt-4" v-if="match">
+      <!-- Blue Alliance -->
+      <div
+        v-for="team in match.Blue?.teams || []"
+        :key="'blue-' + team"
+        class="team-tile blue-tile"
+      >
+        <h3 class="team-name">{{ team }}</h3>
+        <p class="text-sm text-gray-300">
+
+            
+        </p>
+      </div>
+
+      <!-- Red Alliance -->
+      <div
+        v-for="team in match.Red?.teams || []"
+        :key="'red-' + team"
+        class="team-tile red-tile"
+      >
+        <h3 class="team-name">{{ team }}</h3>
+        <p class="text-sm text-gray-300">Red alliance robot info...</p>
+      </div>
+    </div>
+
     <div v-if="loading" class="mt-4 text-gray-600">Loading...</div>
     <div v-if="error" class="mt-4 text-red-600">Error: {{ error }}</div>
   </div>
 </template>
 
 <style scoped>
+.main-content {
+  padding-top: 1rem; /* push content below nav if needed */
+}
+
 .table-auto th,
 .table-auto td {
   border: 1px solid #ddd;
@@ -182,6 +212,29 @@ onMounted(async () => {
 
 .team-link:hover {
   text-decoration: underline;
+}
+
+.team-tile {
+  flex: 1 1 150px;
+  background-color: #1f1f1f;
+  color: #fff;
+  padding: 10px;
+  border-radius: 8px;
+  border: 2px solid;
+  min-width: 140px;
+}
+
+.blue-tile {
+  border-color: #3b82f6;
+}
+
+.red-tile {
+  border-color: #ef4444;
+}
+
+.team-name {
+  font-weight: bold;
+  margin-bottom: 5px;
 }
 
 .data-tile {
