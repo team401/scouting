@@ -2,7 +2,7 @@
   <div class="p-4">
     <h1 class="text-xl font-bold mb-4">Match Analysis</h1>
 
-    <table class="table-auto border-collapse border border-gray-400 w-full">
+    <table class="table-auto border-collapse border border-gray-400 w-full text-center shadow-sm rounded-lg">
       <thead>
         <tr class="bg-gray-200">
           <th class="border border-gray-400 px-2 py-1">Match</th>
@@ -15,7 +15,15 @@
 
       <tbody>
         <tr v-for="match in matches" :key="match.matchNumber">
-          <td class="border border-gray-400 px-2 py-1 font-semibold">{{ match.matchNumber }}</td>
+          <!-- Match number links to detailed view -->
+          <td class="border border-gray-400 px-2 py-1 font-semibold">
+            <RouterLink
+              :to="{ path: `/matchDetailed/${match.matchNumber}`, query: { event: defaultEventId } }"
+              class="match-link inline-block bg-indigo-600 text-white px-3 py-1 rounded-md hover:bg-indigo-700 transition-colors"
+            >
+              {{ match.matchNumber }}
+            </RouterLink>
+          </td>
 
           <!-- Blue alliance -->
           <td
@@ -58,10 +66,22 @@
           ></td>
 
           <!-- Scores -->
-          <td class="border border-gray-400 px-2 py-1 font-semibold text-blue-700">
+          <td
+            class="border border-gray-400 px-2 py-1 font-semibold"
+            :class="{
+              'bg-blue-100 text-blue-800': match.Blue.score > match.Red.score,
+              'bg-gray-100': match.Blue.score === match.Red.score
+            }"
+          >
             {{ match.Blue?.score ?? 0 }}
           </td>
-          <td class="border border-gray-400 px-2 py-1 font-semibold text-red-700">
+          <td
+            class="border border-gray-400 px-2 py-1 font-semibold"
+            :class="{
+              'bg-red-100 text-red-800': match.Red.score > match.Blue.score,
+              'bg-gray-100': match.Blue.score === match.Red.score
+            }"
+          >
             {{ match.Red?.score ?? 0 }}
           </td>
         </tr>
@@ -100,7 +120,7 @@ export default defineComponent({
       }
     });
 
-    return { matches, loading, error };
+    return { matches, loading, error, defaultEventId };
   }
 });
 </script>
@@ -111,13 +131,22 @@ table td {
   text-align: center;
 }
 
-.team-link {
+.team-link,
+.match-link {
   text-decoration: none;
-  transition: color 0.2s ease, text-decoration 0.2s ease;
+  transition: color 0.2s ease, text-decoration 0.2s ease, background-color 0.2s ease;
 }
 
 .team-link:hover {
   text-decoration: underline;
   font-weight: 600;
+}
+
+.bg-blue-100 {
+  background-color: #dbeafe;
+}
+
+.bg-red-100 {
+  background-color: #fee2e2;
 }
 </style>

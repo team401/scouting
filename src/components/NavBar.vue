@@ -28,6 +28,7 @@ import { useEventStore } from '@/stores/event-store';
                 <RouterLink to="/event" class="nav-link nav-link-mobile">Event Analysis</RouterLink>
                 <RouterLink to="/team" class="nav-link nav-link-mobile">Team Analysis</RouterLink>
                 <RouterLink to="/match" class="nav-link nav-link-mobile">Match Analysis</RouterLink>
+                <RouterLink to="/headscout" class="nav-link nav-link-mobile">Headscout Review</RouterLink>
                 <RouterLink to="/matchPreview" class="nav-link nav-link-mobile">Match Preview</RouterLink>
       </template>
     </HamburgerMenu>
@@ -38,6 +39,7 @@ import { useEventStore } from '@/stores/event-store';
     <RouterLink to="/scout" class="nav-link">Match Scouting</RouterLink>
     <RouterLink to="/pit-scout" class="nav-link">Pit Scouting</RouterLink>
     <RouterLink to="/matchPreview" class="nav-link">Match Preview</RouterLink>
+    <RouterLink to="/headscout" class="nav-link">Headscout Review</RouterLink>
 
     <!-- Dropdown (Analysis group) -->
     <div class="dropdown" ref="analysisDropdown">
@@ -54,6 +56,7 @@ import { useEventStore } from '@/stores/event-store';
         <RouterLink to="/team" class="dropdown-link" @click="closeAnalysisMenus">Team Analysis</RouterLink>
         <RouterLink to="/event" class="dropdown-link" @click="closeAnalysisMenus">Event Analysis</RouterLink>
         <RouterLink to="/match" class="dropdown-link" @click="closeAnalysisMenus">Match Analysis</RouterLink>
+        
       </div>
     </div>
 
