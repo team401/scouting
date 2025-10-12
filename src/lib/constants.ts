@@ -1,6 +1,7 @@
 
 // Database tables
 export const matchScoutTable = "MatchData";
+export const headScoutTable = "HeadScoutData"
 export const pitScoutTable = "PitData";
 export const eventInfoTable = "Event";
 export const teamInfoTable = "Team";

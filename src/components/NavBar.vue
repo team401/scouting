@@ -29,6 +29,7 @@ import { useEventStore } from '@/stores/event-store';
                 <RouterLink to="/event" class="nav-link nav-link-mobile">Event Analysis</RouterLink>
                 <RouterLink to="/team" class="nav-link nav-link-mobile">Team Analysis</RouterLink>
                 <RouterLink to="/match" class="nav-link nav-link-mobile">Match Preview</RouterLink>
+                <RouterLink to="/headscout" class="nav-link nav-link-mobile">Headscout Review</RouterLink>
             </template>
         </HamburgerMenu>
 
@@ -39,6 +40,7 @@ import { useEventStore } from '@/stores/event-store';
         <RouterLink to="/event" class="nav-link">Event Analysis</RouterLink>
         <RouterLink to="/team" class="nav-link">Team Analysis</RouterLink>
         <RouterLink to="/match" class="nav-link">Match Preview</RouterLink>
+        <RouterLink to="/headscout" class="nav-link">Headscout Review</RouterLink>
 
         <div class="nav-dark-mode nav-right" @click="toggleUserDarkMode">
             <md-icon slot="icon" v-if="isDarkMode">dark_mode</md-icon>

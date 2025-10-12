@@ -7,7 +7,7 @@ import { teamLikertRadar, getTeamOverview, teamReefData } from "@/lib/2025/data-
 import { uploadFile, updatePhoto } from "@/lib/data-submission";
 import { useEventStore } from "@/stores/event-store";
 import { useViewModeStore } from '@/stores/view-mode-store';
-import { matchScoutTable, pitScoutTable, teamInfoTable, robotPhotoTable, robotPhotoBucket } from "@/lib/constants";
+import { matchScoutTable, pitScoutTable, teamInfoTable, robotPhotoTable, robotPhotoBucket, headScoutTable } from "@/lib/constants";
 import { projectId } from "@/lib/supabase-client";
 
 import '@material/web/select/outlined-select';
