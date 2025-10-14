@@ -9,6 +9,7 @@ import StackedCounter from '@/components/StackedCounters.vue';
 import TextInput from '@/components/TextInput.vue';
 import TextAreaInput from '@/components/TextAreaInput.vue';
 import GridCounter from '@/components/GridCounters.vue';
+import Autocomplete from '@/components/Autocomplete.vue';
 </script>
 
 <template>
@@ -35,6 +36,11 @@ import GridCounter from '@/components/GridCounters.vue';
         {{ label }}
         <Dropdown :choices="options.choices" :model-value="modelValue" @update:modelValue="updateModel" :required="required"
             :error="error"></Dropdown>
+    </div>
+    <div v-else-if="type == 'autocomplete'" class="dropdown">
+        {{ label }}
+        <Autocomplete :choices="options.choices" :model-value="modelValue" @update:modelValue="updateModel" :required="required"
+            :error="error"></Autocomplete>
     </div>
     <div v-else-if="type == 'radio'">
         <RadioButtons :choices="options.choices" :model-value="modelValue" :label="label" @update:modelValue="updateModel"
