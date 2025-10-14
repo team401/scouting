@@ -5,7 +5,7 @@ import TeamAnalysisView from "@/views/TeamAnalysisView.vue";
 import EventAnalysisView from "@/views/EventAnalysisView.vue";
 import MatchPreviewView from "@/views/MatchPreviewView.vue";
 import MatchAnalysisView from "@/views/MatchAnalysisView.vue";
-import HeadscoutReviewView from "@/views/HeadscoutReviewView.vue";
+import HeadscoutReviewView from "@/views/HeadScoutReviewView.vue";
 
 const router = createRouter({
   history: createWebHistory(),
