@@ -8,19 +8,23 @@ import Counter from '@/components/Counter.vue';
     <div>
         <table>
             <thead>
-                <th><u>{{ label }}</u></th>
-                <th class="th-counters" v-for="section, sIdx in sections">
-                    {{ section.text }}
-                </th>
+                <tr>
+                    <th><u>{{ label }}</u></th>
+                    <th class="th-counters" v-for="section, sIdx in sections">
+                        {{ section.text }}
+                    </th>
+                </tr>
             </thead>
-            <tr v-for="row, vIdx in modelValue">
-                <td class="td-label">
-                    <span class="label-container">{{ subLabels[vIdx] }}</span>
-                </td>
-                <td class="td-counters" v-for="section, sIdx in sections">
-                    <Counter :model-value="row[sIdx]" @update:modelValue="updateModel($event, vIdx, sIdx)"></Counter>
-                </td>
-            </tr>
+            <tbody>
+                <tr v-for="row, vIdx in modelValue">
+                    <td class="td-label">
+                        <span class="label-container">{{ subLabels[vIdx] }}</span>
+                    </td>
+                    <td class="td-counters" v-for="section, sIdx in sections">
+                        <Counter :model-value="row[sIdx]" @update:modelValue="updateModel($event, vIdx, sIdx)"></Counter>
+                    </td>
+                </tr>
+            </tbody>
         </table>
     </div>
 </template>

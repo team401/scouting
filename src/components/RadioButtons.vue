@@ -19,16 +19,20 @@ import '@material/web/radio/radio';
     <div v-else>
         <table>
             <thead>
-                <th v-for="choice in choices">
-                    {{ choice.text }}
-                </th>
+                <tr>
+                    <th v-for="choice in choices">
+                        {{ choice.text }}
+                    </th>
+                </tr>
             </thead>
-            <tr>
-                <td v-for="choice in choices">
-                    <md-radio :name="label" :value="choice.key" v-bind:checked="isChecked(choice.key)" @input="setChoice"
-                        :required="required" :class="getRadioClass"></md-radio>
-                </td>
-            </tr>
+            <tbody>
+                <tr>
+                    <td v-for="choice in choices">
+                        <md-radio :name="label" :value="choice.key" v-bind:checked="isChecked(choice.key)" @input="setChoice"
+                            :required="required" :class="getRadioClass"></md-radio>
+                    </td>
+                </tr>
+            </tbody>
         </table>
     </div>
 </template>
