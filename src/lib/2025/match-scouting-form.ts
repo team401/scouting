@@ -56,7 +56,8 @@ export async function getMatchScoutSchema() {
                             { key: "Sean", text: "Sean V." },
                             { key: "Lijin", text: "Lijin W." },
                             { key: "Ian_Y", text: "Ian Y." },
-                            { key: "Letian", text: "Letian Z." }
+                            { key: "Letian", text: "Letian Z." },
+                            { key: "Guest", text: "Guest" }
                         ]
                     },
                     defaultValue: 0,
