@@ -9,7 +9,7 @@ import StackedCounter from '@/components/StackedCounters.vue';
 import TextInput from '@/components/TextInput.vue';
 import TextAreaInput from '@/components/TextAreaInput.vue';
 import GridCounter from '@/components/GridCounters.vue';
-import Autocomplete from '@/components/Autocomplete.vue';
+import Autocomplete from '@/components/AutoComplete.vue';
 </script>
 
 <template>
