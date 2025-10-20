@@ -7,3 +7,5 @@ __pycache__
 # Ignore credentials
 private_credentials.json
 .env
+#ignore build files
+dist/
