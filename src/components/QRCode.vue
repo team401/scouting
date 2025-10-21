@@ -31,6 +31,10 @@ export default {
         qrData: {
             required: true
         },
+        qrDisplayAsLink: {
+            type: Boolean,
+            default: false
+        },
         options: {
             default: {
                 errorCorrectionLevel: "L"
@@ -44,7 +48,16 @@ export default {
     },
     computed: {
         getQrValue() {
-            return JSON.stringify(this.qrData);
+            console.log(`getVrValue called, ${this.qrDisplayAsLink}`);
+            if (this.qrDisplayAsLink) {
+                const params = new URLSearchParams();
+                params.append('data', JSON.stringify(this.qrData));
+                const url = `${window.location.origin}/api/uploadqrdata?${params.toString()}`;
+                console.log(`QRCode URL: ${url}`); 
+                return url;
+            } else {
+                return JSON.stringify(this.qrData);
+            }
         },
     },
     methods: {

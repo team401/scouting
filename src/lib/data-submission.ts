@@ -127,6 +127,7 @@ export function parseScoutData(data, eventId) {
 }
 
 export async function submitScoutData(data, table) {
+    return { message: "upload disabled for testing" }
     // Submit the data to the database.
     const { error } = await supabase.from(table).insert(data);
 
