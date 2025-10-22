@@ -32,8 +32,9 @@ import "@material/web/button/filled-button";
 
         <div class="data-tile" v-if="submitFailed">
             <h1>DATA UPLOAD FAILED</h1>
+            <p>{{ submitFailedMessage }}</p>
             <h1>SCAN THIS QR CODE</h1>
-            <QRCode :qr-data="submitData"></QRCode>
+            <QRCode :qr-data="submitData" qr-display-as-link></QRCode>
 
 
             <h3>Save this text to a file if a scanner is unavailable</h3>
@@ -61,6 +62,7 @@ export default {
             // Track data submission in order to fall back to QR code / copy text if it fails.
             submitData: {},
             submitFailed: false,
+            submitFailedMessage: null,
             submitSuccess: false,
             formInvalid: false,
             isSubmitting: false,
@@ -113,6 +115,7 @@ export default {
             if (error) {
                 console.log(error);
                 this.submitFailed = true;
+                this.submitFailedMessage = error.message;
                 this.isSubmitting = false;
                 return;
             }
