@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { matchScoutTable } from "../src/lib/constants";
-import { supabase } from '../src/lib/supabase-client';
+import { matchScoutTable } from "./constants";
+import { supabase } from './supabase-client';
 
 // invocation is /api/uploadqrdata?data=....
 export default async function handler(req: VercelRequest, res: VercelResponse) {
