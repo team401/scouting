@@ -46,6 +46,45 @@ export async function getTeamInputElement() {
     return teamInputElement;
 }
 
+export async function getTeamAutocompleteElement() {
+    let eventStore = useEventStore();
+    await eventStore.updateEvent();
+    const eventId = eventStore.eventId;
+
+    const { data, error } = await supabase.from(teamInfoTable).select("*").eq("event_id", eventId).order("team_number", { ascending: true });
+
+    let teamInputElement = {
+        key: "team_number",
+        label: "Team",
+        type: "autocomplete",
+        options: {},
+        defaultValue: null,
+        value: null,
+        preserveAfterSubmit: false,
+        incrementAfterSubmit: false,
+        required: true,
+        error: false
+    };
+
+    if (error) {
+        console.log(error);
+        return teamInputElement;
+    }
+
+    teamInputElement.defaultValue = 0;
+    teamInputElement.value = 0;
+    teamInputElement.options.choices = [{ key: "none", text: "Select team..." }];
+    for (var i = 0; i < data.length; i++) {
+        var teamItem = {
+            key: data[i].team_number,
+            text: data[i].team_number + ": " + data[i].name
+        };
+        teamInputElement.options.choices.push(teamItem);
+    }
+
+    return teamInputElement;
+}
+
 export function validateForm(form) {
     var isValid = true;
 
@@ -58,6 +97,7 @@ export function validateForm(form) {
                 const isRadio = component.type == "radio";
                 const isNumber = component.type == "number";
                 const isDropdown = component.type == "dropdown";
+                const isAutocomplete = component.type == "autocomplete";
 
                 if (isText && component.value == "") {
                     // isValid is latching.
@@ -72,6 +112,10 @@ export function validateForm(form) {
                     isValid = false;
                     component.error = true;
                 } else if (isDropdown && component.value == 0) {
+                    // isValid is latching.
+                    isValid = false;
+                    component.error = true;
+                } else if (isAutocomplete && component.value == 0) {
                     // isValid is latching.
                     isValid = false;
                     component.error = true;
@@ -96,7 +140,7 @@ export function parseScoutData(data, eventId) {
             const type = component.type;
             const val = component.value;
 
-            if (type == 'dropdown') {
+            if (type == 'dropdown' || type == 'autocomplete') {
                 db_data[key] = component.options.choices[val].key;
             } else if (type == 'optionswitch') {
                 db_data[key] = val ? component.options.selected : component.options.unselected;
