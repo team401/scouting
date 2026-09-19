@@ -1,0 +1,75 @@
+import { env } from 'cloudflare:workers';
+import { z } from 'zod';
+import { auth } from '@/lib/auth';
+
+const scoutPayloadSchema = z.object({
+  eventKey: z.string().min(1),
+  matchKey: z.string().min(1),
+  teamNumber: z.number().int().positive(),
+  station: z.string().min(1),
+  seasonYear: z.number().int(),
+  schemaVersion: z.number().int().positive(),
+  autoFuel: z.number().int().nonnegative(),
+  activeFuel: z.number().int().nonnegative(),
+  inactiveFuel: z.number().int().nonnegative(),
+  cycles: z.number().int().nonnegative(),
+  autoTower: z.string(),
+  tower: z.string(),
+  path: z.string(),
+});
+
+const mutationSchema = z.object({
+  id: z.string().min(1).max(200),
+  organizationId: z.string().min(1),
+  entity: z.literal('scoutEntry'),
+  operation: z.literal('upsert'),
+  payload: scoutPayloadSchema,
+  createdAt: z.number().int(),
+  attempts: z.number().int().nonnegative(),
+});
+
+const requestSchema = z.object({ mutations: z.array(mutationSchema).min(1).max(50) });
+
+export async function POST(request: Request) {
+  const session = await auth.api.getSession({ headers: request.headers });
+  if (!session) return Response.json({ error: 'Sign in before synchronizing.' }, { status: 401 });
+
+  const parsed = requestSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return Response.json({ error: 'Invalid synchronization request.' }, { status: 400 });
+
+  const accepted: string[] = [];
+  const rejected: { id: string; error: string; retryable: boolean }[] = [];
+
+  for (const mutation of parsed.data.mutations) {
+    const membership = await env.DB.prepare('SELECT role FROM memberships WHERE organization_id = ? AND user_id = ?')
+      .bind(mutation.organizationId, session.user.id).first<{ role: string }>();
+    if (!membership) {
+      rejected.push({ id: mutation.id, error: 'You are not a member of this scouting team.', retryable: false });
+      continue;
+    }
+
+    const event = await env.DB.prepare('SELECT id FROM events WHERE organization_id = ? AND tba_event_key = ?')
+      .bind(mutation.organizationId, mutation.payload.eventKey).first<{ id: string }>();
+    const match = await env.DB.prepare('SELECT matches.id FROM matches JOIN events ON events.id = matches.event_id WHERE matches.organization_id = ? AND matches.tba_match_key = ? AND events.tba_event_key = ?')
+      .bind(mutation.organizationId, mutation.payload.matchKey, mutation.payload.eventKey).first<{ id: string }>();
+    if (!event || !match) {
+      rejected.push({ id: mutation.id, error: 'The current event pack is not available on the server yet.', retryable: true });
+      continue;
+    }
+
+    const now = Date.now();
+    await env.DB.prepare(`INSERT INTO scout_entries
+      (id, organization_id, event_id, match_id, team_number, scout_user_id, station, season_year, schema_version, payload, client_updated_at, sync_version, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+      ON CONFLICT (organization_id, match_id, team_number, scout_user_id) DO UPDATE SET
+        station = excluded.station, payload = excluded.payload, client_updated_at = excluded.client_updated_at,
+        schema_version = excluded.schema_version, sync_version = scout_entries.sync_version + 1, updated_at = excluded.updated_at
+      WHERE excluded.client_updated_at >= scout_entries.client_updated_at`)
+      .bind(mutation.id, mutation.organizationId, event.id, match.id, mutation.payload.teamNumber, session.user.id,
+        mutation.payload.station, mutation.payload.seasonYear, mutation.payload.schemaVersion, JSON.stringify(mutation.payload),
+        mutation.createdAt, now, now).run();
+    accepted.push(mutation.id);
+  }
+
+  return Response.json({ accepted, rejected });
+}

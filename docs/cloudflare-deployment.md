@@ -50,6 +50,8 @@ secrets to each environment:
 - `CLOUDFLARE_API_TOKEN`
 - `BETTER_AUTH_SECRET` (generate a different value for each environment with
   `npx auth@latest secret`)
+- `TBA_AUTH_KEY` (a read API key from your The Blue Alliance account; this may
+  be shared between environments)
 
 Add these environment variables with values for that environment:
 

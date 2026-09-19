@@ -19,6 +19,8 @@ Requirements: Node.js 22.13 or newer.
 ```sh
 npm install
 cp .env.example .env.local
+npm run build
+npm run db:setup:local
 npm run dev
 ```
 
