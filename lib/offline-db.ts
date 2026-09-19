@@ -6,6 +6,8 @@ export type PendingMutation = {
   payload: unknown;
   createdAt: number;
   attempts: number;
+  lastError?: string;
+  retryable?: boolean;
 };
 
 export type OfflineDraft<T = unknown> = {
@@ -15,9 +17,10 @@ export type OfflineDraft<T = unknown> = {
 };
 
 const DB_NAME = 'team401-scouting-offline';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const OUTBOX_STORE = 'outbox';
 const DRAFT_STORE = 'drafts';
+const CACHE_STORE = 'cache';
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -25,6 +28,7 @@ function openDb(): Promise<IDBDatabase> {
     request.onupgradeneeded = () => {
       if (!request.result.objectStoreNames.contains(OUTBOX_STORE)) request.result.createObjectStore(OUTBOX_STORE, { keyPath: 'id' });
       if (!request.result.objectStoreNames.contains(DRAFT_STORE)) request.result.createObjectStore(DRAFT_STORE, { keyPath: 'id' });
+      if (!request.result.objectStoreNames.contains(CACHE_STORE)) request.result.createObjectStore(CACHE_STORE, { keyPath: 'id' });
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -64,18 +68,26 @@ export async function deletePendingMutations(ids: string[]) {
 
 export async function synchronizePendingMutations() {
   const mutations = await getPendingMutations();
-  if (mutations.length === 0) return { pending: 0, accepted: 0, errors: [] as string[] };
+  if (mutations.length === 0) return { pending: 0, accepted: 0, acceptedIds: [] as string[], rejected: [] as { id: string; error: string; retryable: boolean }[], errors: [] as string[] };
+  const retryableMutations = mutations.filter((mutation) => mutation.retryable !== false);
+  if (retryableMutations.length === 0) return { pending: mutations.length, accepted: 0, acceptedIds: [] as string[], rejected: [] as { id: string; error: string; retryable: boolean }[], errors: mutations.flatMap((mutation) => mutation.lastError ? [mutation.lastError] : []) };
   const response = await fetch('/api/sync', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ mutations }),
+    body: JSON.stringify({ mutations: retryableMutations }),
   });
-  const result = await response.json() as { error?: string; accepted?: string[]; rejected?: { error: string }[] };
+  const result = await response.json() as { error?: string; accepted?: string[]; rejected?: { id: string; error: string; retryable: boolean }[] };
   if (!response.ok) throw new Error(result.error ?? 'Synchronization failed.');
   await deletePendingMutations(result.accepted ?? []);
+  for (const rejection of result.rejected ?? []) {
+    const mutation = mutations.find((item) => item.id === rejection.id);
+    if (mutation) await queueMutation({ ...mutation, attempts: mutation.attempts + 1, lastError: rejection.error, retryable: rejection.retryable });
+  }
   return {
     pending: (await getPendingMutations()).length,
     accepted: result.accepted?.length ?? 0,
+    acceptedIds: result.accepted ?? [],
+    rejected: result.rejected ?? [],
     errors: result.rejected?.map((item) => item.error) ?? [],
   };
 }
@@ -95,6 +107,25 @@ export async function getDraft<T>(id: string): Promise<OfflineDraft<T> | undefin
   return new Promise((resolve, reject) => {
     const request = db.transaction(DRAFT_STORE).objectStore(DRAFT_STORE).get(id);
     request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function saveCachedValue<T>(id: string, value: T) {
+  const db = await openDb();
+  return new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction(CACHE_STORE, 'readwrite');
+    transaction.objectStore(CACHE_STORE).put({ id, value, updatedAt: Date.now() });
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+  });
+}
+
+export async function getCachedValue<T>(id: string): Promise<T | undefined> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction(CACHE_STORE).objectStore(CACHE_STORE).get(id);
+    request.onsuccess = () => resolve(request.result?.value);
     request.onerror = () => reject(request.error);
   });
 }

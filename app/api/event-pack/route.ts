@@ -1,6 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
+import { teamNumberFromTbaKey } from '@/lib/scouting-policy';
 
 const eventRequestSchema = z.object({ eventKey: z.string().regex(/^\d{4}[a-z0-9]+$/i).max(30) });
 type TbaEvent = { key: string; name: string; year: number };
@@ -20,15 +21,19 @@ async function getMembership(request: Request) {
 export async function GET(request: Request) {
   const identity = await getMembership(request);
   if (!identity) return Response.json({ error: 'Sign in to load the event pack.' }, { status: 401 });
+  const members = await env.DB.prepare('SELECT users.id, users.name, users.email, memberships.role FROM memberships JOIN users ON users.id = memberships.user_id WHERE memberships.organization_id = ? ORDER BY users.name')
+    .bind(identity.membership.organization_id).all();
   const event = await env.DB.prepare('SELECT id, season_year, tba_event_key, name, updated_at FROM events WHERE organization_id = ? AND is_current = 1 LIMIT 1')
     .bind(identity.membership.organization_id).first();
-  if (!event) return Response.json({ event: null, matches: [] });
+  if (!event) return Response.json({ event: null, matches: [], assignments: [], members: members.results, role: identity.membership.role, userId: identity.session.user.id });
   const matches = await env.DB.prepare('SELECT id, tba_match_key, comp_level, match_number, scheduled_at, predicted_at, alliances, result FROM matches WHERE organization_id = ? AND event_id = ? ORDER BY CASE comp_level WHEN \'qm\' THEN 1 WHEN \'ef\' THEN 2 WHEN \'qf\' THEN 3 WHEN \'sf\' THEN 4 WHEN \'f\' THEN 5 ELSE 6 END, match_number')
+    .bind(identity.membership.organization_id, event.id).all();
+  const assignments = await env.DB.prepare('SELECT match_id AS matchId, team_number AS teamNumber, scout_user_id AS scoutUserId, station FROM scout_assignments WHERE organization_id = ? AND event_id = ?')
     .bind(identity.membership.organization_id, event.id).all();
   const normalizedMatches = matches.results.map((match) => {
     const row = match as Record<string, unknown>;
     const alliances = JSON.parse(String(row.alliances)) as { red?: { team_keys?: string[] }; blue?: { team_keys?: string[] } };
-    const teamNumbers = (color: 'red' | 'blue') => (alliances[color]?.team_keys ?? []).map((key) => Number(key.replace(/^frc/, '')));
+    const teamNumbers = (color: 'red' | 'blue') => (alliances[color]?.team_keys ?? []).map(teamNumberFromTbaKey).filter((team): team is number => team !== null);
     return {
       id: row.id, key: row.tba_match_key, compLevel: row.comp_level, matchNumber: row.match_number,
       scheduledAt: row.scheduled_at, predictedAt: row.predicted_at,
@@ -36,7 +41,7 @@ export async function GET(request: Request) {
       result: row.result ? JSON.parse(String(row.result)) : null,
     };
   });
-  return Response.json({ event: { id: event.id, year: event.season_year, key: event.tba_event_key, name: event.name, updatedAt: event.updated_at }, matches: normalizedMatches });
+  return Response.json({ event: { id: event.id, year: event.season_year, key: event.tba_event_key, name: event.name, updatedAt: event.updated_at }, matches: normalizedMatches, assignments: assignments.results, members: members.results, role: identity.membership.role, userId: identity.session.user.id });
 }
 
 export async function POST(request: Request) {

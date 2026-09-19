@@ -1,6 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
+import { canOverwriteLockedEntry } from '@/lib/scouting-policy';
 
 const scoutPayloadSchema = z.object({
   eventKey: z.string().min(1),
@@ -57,6 +58,14 @@ export async function POST(request: Request) {
       continue;
     }
 
+    const existing = await env.DB.prepare('SELECT payload FROM scout_entries WHERE organization_id = ? AND match_id = ? AND team_number = ? AND scout_user_id = ?')
+      .bind(mutation.organizationId, match.id, mutation.payload.teamNumber, session.user.id).first<{ payload: string }>();
+    const reopened = existing ? Boolean((JSON.parse(existing.payload) as { reopened?: boolean }).reopened) : false;
+    if (existing && !canOverwriteLockedEntry(membership.role, reopened)) {
+      rejected.push({ id: mutation.id, error: 'This synchronized entry is locked. Ask strategy or an admin to reopen it.', retryable: false });
+      continue;
+    }
+
     const now = Date.now();
     await env.DB.prepare(`INSERT INTO scout_entries
       (id, organization_id, event_id, match_id, team_number, scout_user_id, station, season_year, schema_version, payload, client_updated_at, sync_version, created_at, updated_at)
@@ -66,7 +75,7 @@ export async function POST(request: Request) {
         schema_version = excluded.schema_version, sync_version = scout_entries.sync_version + 1, updated_at = excluded.updated_at
       WHERE excluded.client_updated_at >= scout_entries.client_updated_at`)
       .bind(mutation.id, mutation.organizationId, event.id, match.id, mutation.payload.teamNumber, session.user.id,
-        mutation.payload.station, mutation.payload.seasonYear, mutation.payload.schemaVersion, JSON.stringify(mutation.payload),
+        mutation.payload.station, mutation.payload.seasonYear, mutation.payload.schemaVersion, JSON.stringify({ ...mutation.payload, reopened: false, submittedAt: now }),
         mutation.createdAt, now, now).run();
     accepted.push(mutation.id);
   }

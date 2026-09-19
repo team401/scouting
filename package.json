@@ -9,6 +9,7 @@
     "dev": "vinext dev",
     "build": "vinext build",
     "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "deploy": "wrangler deploy --config dist/server/wrangler.json",
     "db:migrate:local": "wrangler d1 migrations apply DB --local --config dist/server/wrangler.json",
