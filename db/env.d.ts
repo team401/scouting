@@ -1,7 +1,7 @@
 declare namespace Cloudflare {
   interface Env {
-    FILES: R2Bucket;
     DB: D1Database;
+    FILES: R2Bucket;
     BETTER_AUTH_SECRET: string;
     BETTER_AUTH_URL: string;
   }
