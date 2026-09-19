@@ -1,4 +1,4 @@
-# Scoutline architecture
+# Team 401 Scouting architecture
 
 ## Decision summary
 
@@ -6,7 +6,7 @@ Use a Cloudflare-first stack: Next.js/TypeScript through Vinext on Workers, D1 f
 
 The application and its data services stay in one Cloudflare account. D1 provides the relational model needed for event analysis, rankings, and stable exports, while IndexedDB provides explicit offline storage and synchronization on scouting devices.
 
-Authentication uses first-party email/password accounts through Better Auth on the same Worker and D1 database; scouts do not need an external identity provider. Passwords are hashed by the authentication library and sessions use secure HTTP-only cookies. The first account creates the Team 401 Copperhead Robotics organization as owner; later signups join as scouts until an owner or admin changes their role. Authorization is always checked server-side against `memberships`. Never accept an organization ID from the client without validating membership. Roles are ordered by permission, not by display name: owner, admin, strategy, scout, and video. Add email verification and password-reset delivery before production rollout.
+Authentication uses first-party email/password accounts through Better Auth on the same Worker and D1 database; scouts do not need an external identity provider. Passwords are hashed by the authentication library and sessions use secure HTTP-only cookies. The first account creates the Team 401 organization as owner; later signups join as scouts until an owner or admin changes their role. Authorization is always checked server-side against `memberships`. Never accept an organization ID from the client without validating membership. Roles are ordered by permission, not by display name: owner, admin, strategy, scout, and video. Add email verification and password-reset delivery before production rollout.
 
 ## Offline model
 

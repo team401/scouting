@@ -15,7 +15,7 @@ export const auth = betterAuth({
       create: {
         after: async (user) => {
           const now = Date.now();
-          await env.DB.prepare(`INSERT OR IGNORE INTO organizations (id, name, frc_team_number, owner_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`).bind('team-401', 'Copperhead Robotics', 401, user.id, now, now).run();
+          await env.DB.prepare(`INSERT OR IGNORE INTO organizations (id, name, frc_team_number, owner_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`).bind('team-401', 'Team 401', 401, user.id, now, now).run();
           const organization = await env.DB.prepare(`SELECT owner_user_id FROM organizations WHERE id = ?`).bind('team-401').first<{ owner_user_id: string }>();
           const role = organization?.owner_user_id === user.id ? 'owner' : 'scout';
           await env.DB.prepare(`INSERT OR IGNORE INTO memberships (organization_id, user_id, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`).bind('team-401', user.id, role, now, now).run();
@@ -29,6 +29,6 @@ export const auth = betterAuth({
   verification: { modelName: 'verifications', fields: { expiresAt: 'expires_at', createdAt: 'created_at', updatedAt: 'updated_at' } },
   advanced: {
     database: { generateId: 'uuid', validateSchema: false },
-    cookiePrefix: 'scoutline',
+    cookiePrefix: 'team401-scouting',
   },
 });

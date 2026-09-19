@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Scoutline — FRC Scouting',
+  title: 'Team 401 Scouting',
   description: 'Offline-first match scouting and strategy for FRC teams.',
   manifest: '/manifest.webmanifest',
 };

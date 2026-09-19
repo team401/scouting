@@ -8,7 +8,7 @@ export type PendingMutation = {
   attempts: number;
 };
 
-const DB_NAME = 'scoutline-offline';
+const DB_NAME = 'team401-scouting-offline';
 const STORE_NAME = 'outbox';
 
 function openDb(): Promise<IDBDatabase> {
