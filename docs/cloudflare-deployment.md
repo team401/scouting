@@ -12,11 +12,14 @@ Create these resources in the same Cloudflare account that manages
 
 - A D1 database named `team401-scouting`.
 - An R2 bucket named `team401-scouting-files`.
-- An API token that can edit Workers, D1, R2, and Workers custom domains for the
-  account and zone.
+- An API token with Account / Workers / Admin, Account / D1 / Edit, and Zone /
+  Workers Routes / Edit for the `team401.org` zone. Workers Admin is needed to
+  create the Worker during its first deployment; it can be reduced to Edit
+  afterward.
 
 The Worker configuration claims `scout.team401.org` as a Cloudflare custom
-domain during deployment. No `chatgpt.site` project is involved.
+domain during deployment. Remove any existing CNAME for that exact hostname
+before the first deployment.
 
 ## GitHub production environment
 
@@ -24,7 +27,7 @@ Create a GitHub environment named `production`. Add these secrets:
 
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_API_TOKEN`
-- `BETTER_AUTH_SECRET` (generate a random value containing at least 32 bytes)
+- `BETTER_AUTH_SECRET` (generate with `npx auth@latest secret`)
 
 Add these environment variables:
 

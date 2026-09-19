@@ -5,9 +5,6 @@ import { defineConfig } from 'vite';
 const LOCAL_D1_DATABASE_ID =
   '00000000-0000-4000-8000-000000000000';
 
-// macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
-const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === 'seatbelt';
-
 const localBindingConfig = {
   name: 'team401-scouting',
   main: 'vinext/server/fetch-handler',
@@ -45,9 +42,6 @@ export default defineConfig(async () => {
 
   return {
     css: { postcss: { plugins: [tailwindcss()] } },
-    server: isCodexSeatbeltSandbox
-      ? { watch: { useFsEvents: false, usePolling: true } }
-      : undefined,
     plugins: [
       vinext(),
       cloudflare({
