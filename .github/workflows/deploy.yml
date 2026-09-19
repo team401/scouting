@@ -39,14 +39,16 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Prepare Worker secrets
+        shell: bash
+        env:
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+        run: |
+          node -e "if (!process.env.BETTER_AUTH_SECRET || process.env.BETTER_AUTH_SECRET.length < 32) throw new Error('BETTER_AUTH_SECRET must contain at least 32 characters'); require('node:fs').writeFileSync(process.env.RUNNER_TEMP + '/worker-secrets.json', JSON.stringify({ BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET }))"
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --config dist/server/wrangler.json
-          secrets: |
-            BETTER_AUTH_SECRET
-        env:
-          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          command: deploy --config dist/server/wrangler.json --secrets-file ${{ runner.temp }}/worker-secrets.json
 

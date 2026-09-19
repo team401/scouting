@@ -36,4 +36,7 @@ Add these environment variables:
 
 Add required reviewers to the environment if production deployments should
 wait for approval. The deploy job applies all files in `drizzle/` before it
-publishes the Worker.
+publishes the Worker. It writes the authentication secret to an ephemeral file
+on the GitHub-hosted runner and passes that file to Wrangler so the initial
+Worker deployment and secret binding happen together. The runner is discarded
+after the job; the secret is never written to the repository.
