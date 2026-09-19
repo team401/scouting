@@ -4,28 +4,36 @@ import { defineConfig } from 'vite';
 
 const LOCAL_D1_DATABASE_ID =
   '00000000-0000-4000-8000-000000000000';
+const workerName =
+  process.env.CLOUDFLARE_WORKER_NAME ?? 'team401-scouting-local';
+const appUrl = process.env.BETTER_AUTH_URL ?? 'http://localhost:3000';
+const customDomain = process.env.CLOUDFLARE_CUSTOM_DOMAIN;
 
 const localBindingConfig = {
-  name: 'team401-scouting',
+  name: workerName,
   main: 'vinext/server/fetch-handler',
   compatibility_date: '2026-05-15',
   compatibility_flags: ['nodejs_compat'],
-  routes: [{ pattern: 'scout.team401.org', custom_domain: true }],
-  vars: { BETTER_AUTH_URL: 'https://scout.team401.org' },
+  routes: customDomain
+    ? [{ pattern: customDomain, custom_domain: true }]
+    : [],
+  vars: { BETTER_AUTH_URL: appUrl },
   d1_databases: [
     {
       binding: 'DB',
-      database_name: 'team401-scouting',
+      database_name:
+        process.env.CLOUDFLARE_D1_DATABASE_NAME ?? 'team401-scouting-local',
       database_id:
         process.env.CLOUDFLARE_D1_DATABASE_ID ?? LOCAL_D1_DATABASE_ID,
-      migrations_dir: '../../drizzle',
+      migrations_dir: 'drizzle',
     },
   ],
   r2_buckets: [
     {
       binding: 'FILES',
       bucket_name:
-        process.env.CLOUDFLARE_R2_BUCKET_NAME ?? 'team401-scouting-files',
+        process.env.CLOUDFLARE_R2_BUCKET_NAME ??
+        'team401-scouting-files-local',
     },
   ],
 };

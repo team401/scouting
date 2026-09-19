@@ -1,42 +1,65 @@
 # Cloudflare deployment
 
-The application is a Cloudflare Worker served at `https://scout.team401.org`.
-GitHub Actions builds every branch and pull request. Production deploys run on
-pushes to `main`, or manually from the **Deploy to Cloudflare** workflow while a
-feature branch is under review.
+The application uses two isolated Cloudflare environments:
 
-## One-time Cloudflare setup
+| Environment | Branch | Deployment | Worker | URL |
+| --- | --- | --- | --- | --- |
+| Staging | `staging` | Automatic after every push | `team401-scouting-staging` | `https://staging.scout.team401.org` |
+| Production | `main` | Manual workflow dispatch only | `team401-scouting` | `https://scout.team401.org` |
+
+Each environment has its own D1 database, R2 bucket, and Better Auth secret so
+test accounts and scouting data cannot affect production.
+
+## Release flow
+
+1. Open feature pull requests against `staging`.
+2. Merge after review; the staging deployment runs automatically.
+3. Test the change at `staging.scout.team401.org`.
+4. Open a pull request from `staging` into `main`.
+5. Merge the approved release.
+6. Manually run **Deploy Production** from the `main` branch.
+
+The production workflow refuses to deploy any ref other than `main`. Configure
+the GitHub `production` environment to allow deployments from `main` only and
+add required reviewers if a second approval is desired.
+
+## Cloudflare resources
 
 Create these resources in the same Cloudflare account that manages
 `team401.org`:
 
-- A D1 database named `team401-scouting`.
-- An R2 bucket named `team401-scouting-files`.
-- An API token with Account / Workers / Admin, Account / D1 / Edit, and Zone /
-  Workers Routes / Edit for the `team401.org` zone. Workers Admin is needed to
-  create the Worker during its first deployment; it can be reduced to Edit
-  afterward.
+- Production D1: `team401-scouting`
+- Production R2: `team401-scouting-files`
+- Staging D1: `team401-scouting-staging`
+- Staging R2: `team401-scouting-files-staging`
 
-The Worker configuration claims `scout.team401.org` as a Cloudflare custom
-domain during deployment. Remove any existing CNAME for that exact hostname
-before the first deployment.
+The deployment token needs Account / Workers / Admin, Account / D1 / Edit,
+Account / Workers R2 Storage / Edit, and Zone / Workers Routes / Edit for the
+`team401.org` zone. Workers Admin is needed to create both Workers during their
+first deployments; it can be reduced to Edit afterward.
 
-## GitHub production environment
+The workflows create the Worker custom domains. Remove any existing CNAME for
+either exact hostname before its first deployment.
 
-Create a GitHub environment named `production`. Add these secrets:
+## GitHub environments
+
+Create GitHub environments named `staging` and `production`. Add the following
+secrets to each environment:
 
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_API_TOKEN`
-- `BETTER_AUTH_SECRET` (generate with `npx auth@latest secret`)
+- `BETTER_AUTH_SECRET` (generate a different value for each environment with
+  `npx auth@latest secret`)
 
-Add these environment variables:
+Add these environment variables with values for that environment:
 
-- `CLOUDFLARE_D1_DATABASE_ID` (the UUID shown by `wrangler d1 list`)
-- `CLOUDFLARE_R2_BUCKET_NAME` (`team401-scouting-files` unless renamed)
+- `CLOUDFLARE_D1_DATABASE_ID`
+- `CLOUDFLARE_R2_BUCKET_NAME`
 
-Add required reviewers to the environment if production deployments should
-wait for approval. The deploy job applies all files in `drizzle/` before it
-publishes the Worker. It writes the authentication secret to an ephemeral file
-on the GitHub-hosted runner and passes that file to Wrangler so the initial
-Worker deployment and secret binding happen together. The runner is discarded
-after the job; the secret is never written to the repository.
+Use `team401-scouting-files-staging` for the staging R2 variable and
+`team401-scouting-files` for production. Restrict the `staging` environment to
+the `staging` branch and `production` to `main`.
+
+Each deploy applies the D1 migrations before publishing. Authentication secrets
+are written to an ephemeral file on the GitHub-hosted runner and sent to
+Wrangler with the Worker deployment; they are never committed to the repository.

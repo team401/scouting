@@ -1,6 +1,6 @@
 {
-  "name": "Scoutline FRC Scouting",
-  "short_name": "Scoutline",
+  "name": "Team 401 Scouting",
+  "short_name": "401 Scouting",
   "description": "Offline-first match scouting and strategy for FRC teams.",
   "start_url": "/",
   "display": "standalone",

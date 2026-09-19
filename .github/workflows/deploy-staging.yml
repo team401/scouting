@@ -1,20 +1,23 @@
-name: Deploy Production
+name: Deploy Staging
 
 on:
+  push:
+    branches:
+      - staging
   workflow_dispatch:
 
 concurrency:
-  group: cloudflare-production
-  cancel-in-progress: false
+  group: cloudflare-staging
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
   deploy:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
-    environment: production
+    environment: staging
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -31,12 +34,12 @@ jobs:
       - name: Build Worker
         run: npm run build
         env:
-          CLOUDFLARE_WORKER_NAME: team401-scouting
-          CLOUDFLARE_CUSTOM_DOMAIN: scout.team401.org
-          CLOUDFLARE_D1_DATABASE_NAME: team401-scouting
+          CLOUDFLARE_WORKER_NAME: team401-scouting-staging
+          CLOUDFLARE_CUSTOM_DOMAIN: staging.scout.team401.org
+          CLOUDFLARE_D1_DATABASE_NAME: team401-scouting-staging
           CLOUDFLARE_D1_DATABASE_ID: ${{ vars.CLOUDFLARE_D1_DATABASE_ID }}
           CLOUDFLARE_R2_BUCKET_NAME: ${{ vars.CLOUDFLARE_R2_BUCKET_NAME }}
-          BETTER_AUTH_URL: https://scout.team401.org
+          BETTER_AUTH_URL: https://staging.scout.team401.org
       - name: Apply D1 migrations
         run: npm run db:migrate:remote
         env:
@@ -54,4 +57,3 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --config dist/server/wrangler.json --secrets-file ${{ runner.temp }}/worker-secrets.json
-
