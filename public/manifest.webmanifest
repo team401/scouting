@@ -1,0 +1,10 @@
+{
+  "name": "Scoutline FRC Scouting",
+  "short_name": "Scoutline",
+  "description": "Offline-first match scouting and strategy for FRC teams.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3f7fa",
+  "theme_color": "#1479c9",
+  "icons": []
+}

@@ -1,0 +1,46 @@
+# Scoutline architecture
+
+## Decision summary
+
+Use a Cloudflare-first stack: Next.js/TypeScript through Vinext on Workers, D1 for relational application data, R2 for robot photos and match video, and Worker route handlers for the API, scheduled TBA refresh, webhook ingestion, exports, and signed upload URLs. Keep the TBA key and webhook secret server-side.
+
+Do not use Vercel for this project: it adds a second compute platform without solving offline sync. Supabase is a good alternate backend if PostgreSQL and built-in auth are more important than a single Cloudflare stack. Firebase has the easiest built-in offline database behavior, but its document model is a weaker fit for event analysis, rankings, and well-defined relational exports. With the current requirements, D1 + explicit IndexedDB sync is the most controllable choice.
+
+Authentication uses first-party email/password accounts through Better Auth on the same Worker and D1 database; scouts do not need an OIDC, Google, Microsoft, or ChatGPT identity. Passwords are hashed by the authentication library and sessions use secure HTTP-only cookies. The first account creates the Team 401 Copperhead Robotics organization as owner; later signups join as scouts until an owner or admin changes their role. Authorization is always checked server-side against `memberships`. Never accept an organization ID from the client without validating membership. Roles are ordered by permission, not by display name: owner, admin, strategy, scout, and video. Add email verification and password-reset delivery before production rollout.
+
+## Offline model
+
+The PWA service worker caches the app shell and recently used read data. IndexedDB stores current-event schedule/team snapshots, drafts, and an append-only mutation outbox. Every mutation has a client-generated UUID, organization ID, client timestamp, schema version, and idempotency key.
+
+When online, the client sends queued mutations in order. The server performs idempotent upserts and returns an authoritative sync version. Match scouting is immutable after submission for scouts unless reopened by strategy/admin; this removes most conflict ambiguity. Draft conflicts use last-write-wins only within the same user-owned draft. Official pick lists, alliance state, and match plans use optimistic concurrency and reject stale versions for an explicit reload/merge.
+
+The current event, its teams, match schedule, assignments, and the season form definition are downloaded together as an “event pack.” A scout must be able to open the app, complete several matches, close/reopen it, and later synchronize without connectivity.
+
+## Year-to-year game support
+
+Stable concepts stay relational: organization, event, match, team, station, scout, assignment, pit record, pick list, plan, and media. Game-specific answers live in a versioned JSON payload validated by a season definition.
+
+Reusable field components include counters, boolean toggles, single/multi-select, timers, rating scales, field-position taps, cycle logs, defense/failure flags, endgame choices, and notes. Both 2025 and 2026 are definitions composed from these primitives; calculations and export columns are versioned alongside each definition. Never silently reinterpret an old payload after a season definition changes.
+
+Exports are ZIP bundles containing `manifest.json`, `teams.csv`, `matches.csv`, `scouting.csv`, `pit.csv`, `plans.json`, and `pick-lists.json`. The manifest includes organization, event key, season, schema version, export timestamp, and per-file column definitions.
+
+## TBA integration
+
+An admin chooses a centrally stored `currentEventId`; clients never choose their own TBA event key. Initial sync fetches event, teams, and matches through the server, storing the response ETag. Subsequent refreshes send `If-None-Match` and honor TBA cache headers.
+
+TBA webhooks terminate at `/api/integrations/tba/webhook`. The handler validates `X-TBA-HMAC`, acknowledges quickly, and queues a refresh of the affected event/match. Webhooks accelerate updates but do not replace reconciliation: a scheduled Worker refreshes the active event periodically and on admin request. After D1 updates, connected clients receive a small invalidation event and refetch; offline devices catch up during their next sync.
+
+## Media
+
+The video role records outside the browser camera UI or through a simple capture input, then uploads directly to R2 using a short-lived signed URL. D1 stores ownership, match/team linkage, MIME type, byte count, checksum, and processing state. Uploads are resumable and queued until Wi-Fi is available. Apply an organization quota, default compression guidance, and retention policy before enabling full-match video broadly.
+
+## Product phases
+
+1. Foundation: accounts, organizations/roles, current event, TBA event pack, offline shell/outbox, 2025 match form, assignments, and CSV/JSON export.
+2. Decisions: team summaries, data-quality coverage, comparison/radar views, custom weights, personal and official pick lists, and alliance-selection board.
+3. Operations: pit scouting/photos, tablet match planning, notifications, TBA webhooks, audit log, and admin sync controls.
+4. Media and hardening: video upload/playback, quotas/retention, load testing, backup/export restore, accessibility checks, and a real-event offline drill.
+
+## Analysis views
+
+Start with transparent aggregates rather than a single opaque score: sample count, median and percentile scoring by phase, consistency/variance, endgame rate, defense/failure rate, partner-adjusted trend, and data completeness. Alliance selection adds filters, side-by-side comparison, notes, “do not pick,” complementary-role tags, and a live board that marks drafted teams without deleting their original rank.
