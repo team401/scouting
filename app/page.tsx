@@ -36,6 +36,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
+  initialRobotMarkers,
+  TacticalBoard,
+  type TacticalBoardData,
+} from '@/components/tactical-board';
+import {
   getCachedValue,
   getDraft,
   getPendingMutations,
@@ -192,6 +197,7 @@ type MatchPlan = {
   endgame: string;
   notes: string;
   teamRoles: Record<string, string>;
+  board: TacticalBoardData;
 };
 const emptyMatchPlan: MatchPlan = {
   objective: '',
@@ -201,7 +207,28 @@ const emptyMatchPlan: MatchPlan = {
   endgame: '',
   notes: '',
   teamRoles: {},
+  board: { robots: [], strokes: [] },
 };
+
+function planForMatch(
+  plan: Partial<MatchPlan> | null | undefined,
+  match: EventMatch,
+): MatchPlan {
+  return {
+    ...emptyMatchPlan,
+    ...plan,
+    teamRoles: plan?.teamRoles ?? {},
+    board: plan?.board?.robots?.length
+      ? plan.board
+      : {
+          robots: initialRobotMarkers(
+            match.alliances.red,
+            match.alliances.blue,
+          ),
+          strokes: [],
+        },
+  };
+}
 
 function Counter({
   label,
@@ -327,6 +354,7 @@ export default function Home() {
   const [planLoading, setPlanLoading] = useState(false);
   const [planMessage, setPlanMessage] = useState('');
   const [planAuthor, setPlanAuthor] = useState('');
+  const [planStats, setPlanStats] = useState<TeamAnalysis[]>([]);
   const currentMatch = eventPack?.matches.find(
     (match) => match.key === selectedMatchKey,
   );
@@ -560,8 +588,8 @@ export default function Home() {
         authorName: string | null;
       }>(cacheId),
     ]).then(([draft, cached]) => {
-      if (draft) setMatchPlan(draft.payload);
-      else if (cached) setMatchPlan(cached.plan ?? emptyMatchPlan);
+      if (draft) setMatchPlan(planForMatch(draft.payload, currentMatch));
+      else if (cached) setMatchPlan(planForMatch(cached.plan, currentMatch));
       if (cached) {
         setPlanCanEdit(cached.canEdit);
         setPlanAuthor(cached.authorName ?? '');
@@ -585,7 +613,7 @@ export default function Home() {
         if (!response.ok)
           throw new Error(result.error ?? 'Unable to load this match plan.');
         const draft = await getDraft<MatchPlan>(draftId).catch(() => undefined);
-        if (!draft) setMatchPlan(result.plan ?? emptyMatchPlan);
+        if (!draft) setMatchPlan(planForMatch(result.plan, currentMatch));
         setPlanCanEdit(result.canEdit);
         setPlanAuthor(result.authorName ?? '');
         await saveCachedValue(cacheId, {
@@ -595,7 +623,7 @@ export default function Home() {
         });
       })
       .catch((error) => {
-        setMatchPlan(emptyMatchPlan);
+        setMatchPlan(planForMatch(null, currentMatch));
         setPlanCanEdit(false);
         setPlanMessage(
           error instanceof Error
@@ -604,6 +632,34 @@ export default function Home() {
         );
       })
       .finally(() => setPlanLoading(false));
+  }, [activeView, currentMatch, online, session]);
+
+  useEffect(() => {
+    if (activeView !== 'Plan' || !currentMatch || !session) return;
+    const matchTeams = new Set([
+      ...currentMatch.alliances.red,
+      ...currentMatch.alliances.blue,
+    ]);
+    const statsCacheId = `match-stats:${currentMatch.id}`;
+    void getCachedValue<TeamAnalysis[]>(statsCacheId).then((cached) => {
+      if (cached) setPlanStats(cached);
+    });
+    if (!online) return;
+    fetch('/api/strategy')
+      .then(async (response) => {
+        const result = (await response.json()) as {
+          teams?: TeamAnalysis[];
+          error?: string;
+        };
+        if (!response.ok)
+          throw new Error(result.error ?? 'Unable to load match statistics.');
+        const stats = (result.teams ?? []).filter((team) =>
+          matchTeams.has(team.teamNumber),
+        );
+        setPlanStats(stats);
+        await saveCachedValue(statsCacheId, stats);
+      })
+      .catch(() => setPlanStats([]));
   }, [activeView, currentMatch, online, session]);
 
   useEffect(() => {
@@ -1168,6 +1224,32 @@ export default function Home() {
         )
       );
     }) ?? [];
+  const planTeams = currentMatch
+    ? [...currentMatch.alliances.red, ...currentMatch.alliances.blue].map(
+        (team) => ({
+          team,
+          alliance: currentMatch.alliances.red.includes(team)
+            ? ('red' as const)
+            : ('blue' as const),
+          stats: planStats.find((item) => item.teamNumber === team),
+        }),
+      )
+    : [];
+  const ourPlanAlliance = currentMatch?.alliances.red.includes(401)
+    ? 'red'
+    : currentMatch?.alliances.blue.includes(401)
+      ? 'blue'
+      : null;
+  const bestPartner = planTeams
+    .filter((item) => item.alliance === ourPlanAlliance && item.team !== 401)
+    .sort(
+      (a, b) => (b.stats?.medianPoints ?? 0) - (a.stats?.medianPoints ?? 0),
+    )[0]?.team;
+  const defenseTarget = planTeams
+    .filter((item) => item.alliance !== ourPlanAlliance)
+    .sort(
+      (a, b) => (b.stats?.medianPoints ?? 0) - (a.stats?.medianPoints ?? 0),
+    )[0]?.team;
   const totalSlots = (eventPack?.matches.length ?? 0) * 6;
   const assignmentCounts =
     eventPack?.members.map((member) => ({
@@ -2128,157 +2210,103 @@ export default function Home() {
             <div className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Alliance objective</CardTitle>
+                  <CardTitle>Field strategy</CardTitle>
                   <Badge variant="outline">
-                    {planCanEdit ? 'Editable' : 'Read only'}
+                    {planCanEdit ? 'Drag robots and draw' : 'Read only'}
                   </Badge>
                 </CardHeader>
                 <CardContent>
-                  <textarea
-                    aria-label="Alliance objective"
-                    className="min-h-20 w-full rounded-md border bg-transparent p-3"
-                    disabled={!planCanEdit}
-                    value={matchPlan.objective}
-                    onChange={(event) =>
-                      setMatchPlan({
-                        ...matchPlan,
-                        objective: event.target.value,
-                      })
-                    }
-                    placeholder="What must this alliance accomplish to win?"
+                  <TacticalBoard
+                    value={matchPlan.board}
+                    readOnly={!planCanEdit}
+                    onChange={(board) => setMatchPlan({ ...matchPlan, board })}
                   />
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader>
-                  <CardTitle>Team responsibilities</CardTitle>
+                  <CardTitle>Match intelligence</CardTitle>
+                  <div className="flex gap-2">
+                    {bestPartner && <Badge>Best partner · {bestPartner}</Badge>}
+                    {defenseTarget && (
+                      <Badge variant="outline">
+                        Defense target · {defenseTarget}
+                      </Badge>
+                    )}
+                  </div>
                 </CardHeader>
-                <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {currentMatch &&
-                    [
-                      ...currentMatch.alliances.red.map((team, index) => ({
-                        team,
-                        station: `R${index + 1}`,
-                      })),
-                      ...currentMatch.alliances.blue.map((team, index) => ({
-                        team,
-                        station: `B${index + 1}`,
-                      })),
-                    ].map(({ team, station }) => (
-                      <label className="grid gap-1 text-sm" key={team}>
-                        <span>
-                          <strong>{station}</strong> · Team {team}
+                <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {planTeams.map(({ team, alliance, stats }) => (
+                    <div
+                      className={
+                        alliance === 'red'
+                          ? 'rounded-lg border border-red-300 p-3'
+                          : 'rounded-lg border border-blue-300 p-3'
+                      }
+                      key={team}
+                    >
+                      <div className="flex items-center justify-between">
+                        <strong>Team {team}</strong>
+                        <span className="text-xs font-semibold uppercase">
+                          {alliance}
                         </span>
-                        <textarea
-                          className="min-h-20 rounded-md border bg-transparent p-2"
-                          disabled={!planCanEdit}
-                          value={matchPlan.teamRoles[String(team)] ?? ''}
-                          onChange={(event) =>
-                            setMatchPlan({
-                              ...matchPlan,
-                              teamRoles: {
-                                ...matchPlan.teamRoles,
-                                [team]: event.target.value,
-                              },
-                            })
-                          }
-                          placeholder="Starting position and role"
-                        />
-                      </label>
-                    ))}
+                      </div>
+                      <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                        <span>
+                          <strong>
+                            {stats?.medianPoints.toFixed(1) ?? '—'}
+                          </strong>
+                          <small className="block text-muted-foreground">
+                            median pts
+                          </small>
+                        </span>
+                        <span>
+                          <strong>
+                            {stats?.medianFuelPerCycle.toFixed(1) ?? '—'}
+                          </strong>
+                          <small className="block text-muted-foreground">
+                            fuel/cycle
+                          </small>
+                        </span>
+                        <span>
+                          <strong>
+                            {Math.round((stats?.towerSuccessRate ?? 0) * 100)}%
+                          </strong>
+                          <small className="block text-muted-foreground">
+                            tower
+                          </small>
+                        </span>
+                        <span>
+                          <strong>
+                            {Math.round((stats?.disabledRate ?? 0) * 100)}%
+                          </strong>
+                          <small className="block text-muted-foreground">
+                            disabled
+                          </small>
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {stats?.samples ?? 0} scouting samples ·{' '}
+                        {Math.round((stats?.coverage ?? 0) * 100)}% coverage
+                      </p>
+                    </div>
+                  ))}
                 </CardContent>
               </Card>
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Autonomous</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <textarea
-                      aria-label="Autonomous plan"
-                      className="min-h-28 w-full rounded-md border bg-transparent p-3"
-                      disabled={!planCanEdit}
-                      value={matchPlan.autonomous}
-                      onChange={(event) =>
-                        setMatchPlan({
-                          ...matchPlan,
-                          autonomous: event.target.value,
-                        })
-                      }
-                    />
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Offense</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <textarea
-                      aria-label="Offense plan"
-                      className="min-h-28 w-full rounded-md border bg-transparent p-3"
-                      disabled={!planCanEdit}
-                      value={matchPlan.offense}
-                      onChange={(event) =>
-                        setMatchPlan({
-                          ...matchPlan,
-                          offense: event.target.value,
-                        })
-                      }
-                    />
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Defense</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <textarea
-                      aria-label="Defense plan"
-                      className="min-h-28 w-full rounded-md border bg-transparent p-3"
-                      disabled={!planCanEdit}
-                      value={matchPlan.defense}
-                      onChange={(event) =>
-                        setMatchPlan({
-                          ...matchPlan,
-                          defense: event.target.value,
-                        })
-                      }
-                    />
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Endgame</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <textarea
-                      aria-label="Endgame plan"
-                      className="min-h-28 w-full rounded-md border bg-transparent p-3"
-                      disabled={!planCanEdit}
-                      value={matchPlan.endgame}
-                      onChange={(event) =>
-                        setMatchPlan({
-                          ...matchPlan,
-                          endgame: event.target.value,
-                        })
-                      }
-                    />
-                  </CardContent>
-                </Card>
-              </div>
               <Card>
                 <CardHeader>
-                  <CardTitle>Drive team notes</CardTitle>
+                  <CardTitle>Plan notes</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <textarea
-                    aria-label="Drive team notes"
-                    className="min-h-28 w-full rounded-md border bg-transparent p-3"
+                    aria-label="Match plan notes"
+                    className="min-h-20 w-full rounded-md border bg-transparent p-3"
                     disabled={!planCanEdit}
                     value={matchPlan.notes}
                     onChange={(event) =>
                       setMatchPlan({ ...matchPlan, notes: event.target.value })
                     }
+                    placeholder="Only details that are not clear from the field drawing"
                   />
                   {planCanEdit && (
                     <Button
@@ -2286,7 +2314,7 @@ export default function Home() {
                       onClick={() => void saveMatchPlan()}
                     >
                       <Check />
-                      {planLoading ? 'Saving…' : 'Save match plan'}
+                      {planLoading ? 'Saving…' : 'Save official plan'}
                     </Button>
                   )}
                   {planMessage && (
@@ -2296,6 +2324,190 @@ export default function Home() {
                   )}
                 </CardContent>
               </Card>
+              {false && (
+                <>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Alliance objective</CardTitle>
+                      <Badge variant="outline">
+                        {planCanEdit ? 'Editable' : 'Read only'}
+                      </Badge>
+                    </CardHeader>
+                    <CardContent>
+                      <textarea
+                        aria-label="Alliance objective"
+                        className="min-h-20 w-full rounded-md border bg-transparent p-3"
+                        disabled={!planCanEdit}
+                        value={matchPlan.objective}
+                        onChange={(event) =>
+                          setMatchPlan({
+                            ...matchPlan,
+                            objective: event.target.value,
+                          })
+                        }
+                        placeholder="What must this alliance accomplish to win?"
+                      />
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Team responsibilities</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {currentMatch &&
+                        [
+                          ...(currentMatch?.alliances.red ?? []).map(
+                            (team, index) => ({
+                              team,
+                              station: `R${index + 1}`,
+                            }),
+                          ),
+                          ...(currentMatch?.alliances.blue ?? []).map(
+                            (team, index) => ({
+                              team,
+                              station: `B${index + 1}`,
+                            }),
+                          ),
+                        ].map(({ team, station }) => (
+                          <label className="grid gap-1 text-sm" key={team}>
+                            <span>
+                              <strong>{station}</strong> · Team {team}
+                            </span>
+                            <textarea
+                              className="min-h-20 rounded-md border bg-transparent p-2"
+                              disabled={!planCanEdit}
+                              value={matchPlan.teamRoles[String(team)] ?? ''}
+                              onChange={(event) =>
+                                setMatchPlan({
+                                  ...matchPlan,
+                                  teamRoles: {
+                                    ...matchPlan.teamRoles,
+                                    [team]: event.target.value,
+                                  },
+                                })
+                              }
+                              placeholder="Starting position and role"
+                            />
+                          </label>
+                        ))}
+                    </CardContent>
+                  </Card>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Autonomous</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <textarea
+                          aria-label="Autonomous plan"
+                          className="min-h-28 w-full rounded-md border bg-transparent p-3"
+                          disabled={!planCanEdit}
+                          value={matchPlan.autonomous}
+                          onChange={(event) =>
+                            setMatchPlan({
+                              ...matchPlan,
+                              autonomous: event.target.value,
+                            })
+                          }
+                        />
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Offense</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <textarea
+                          aria-label="Offense plan"
+                          className="min-h-28 w-full rounded-md border bg-transparent p-3"
+                          disabled={!planCanEdit}
+                          value={matchPlan.offense}
+                          onChange={(event) =>
+                            setMatchPlan({
+                              ...matchPlan,
+                              offense: event.target.value,
+                            })
+                          }
+                        />
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Defense</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <textarea
+                          aria-label="Defense plan"
+                          className="min-h-28 w-full rounded-md border bg-transparent p-3"
+                          disabled={!planCanEdit}
+                          value={matchPlan.defense}
+                          onChange={(event) =>
+                            setMatchPlan({
+                              ...matchPlan,
+                              defense: event.target.value,
+                            })
+                          }
+                        />
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Endgame</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <textarea
+                          aria-label="Endgame plan"
+                          className="min-h-28 w-full rounded-md border bg-transparent p-3"
+                          disabled={!planCanEdit}
+                          value={matchPlan.endgame}
+                          onChange={(event) =>
+                            setMatchPlan({
+                              ...matchPlan,
+                              endgame: event.target.value,
+                            })
+                          }
+                        />
+                      </CardContent>
+                    </Card>
+                  </div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Drive team notes</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <textarea
+                        aria-label="Drive team notes"
+                        className="min-h-28 w-full rounded-md border bg-transparent p-3"
+                        disabled={!planCanEdit}
+                        value={matchPlan.notes}
+                        onChange={(event) =>
+                          setMatchPlan({
+                            ...matchPlan,
+                            notes: event.target.value,
+                          })
+                        }
+                      />
+                      {planCanEdit && (
+                        <Button
+                          disabled={planLoading || !currentMatch || !online}
+                          onClick={() => void saveMatchPlan()}
+                        >
+                          <Check />
+                          {planLoading ? 'Saving…' : 'Save match plan'}
+                        </Button>
+                      )}
+                      {planMessage && (
+                        <p
+                          className="text-sm text-muted-foreground"
+                          role="status"
+                        >
+                          {planMessage}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </>
+              )}
             </div>
           </div>
         )}

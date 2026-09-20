@@ -11,6 +11,28 @@ const planSchema = z.object({
   endgame: z.string().max(1000),
   notes: z.string().max(2000),
   teamRoles: z.record(z.string(), z.string().max(500)),
+  board: z.object({
+    robots: z
+      .array(
+        z.object({
+          team: z.number().int().positive(),
+          station: z.string().max(4),
+          alliance: z.enum(['red', 'blue']),
+          x: z.number(),
+          y: z.number(),
+        }),
+      )
+      .max(6),
+    strokes: z
+      .array(
+        z.object({
+          id: z.string().max(100),
+          color: z.string().max(20),
+          points: z.array(z.object({ x: z.number(), y: z.number() })).max(5000),
+        }),
+      )
+      .max(100),
+  }),
 });
 
 async function identity(request: Request) {
@@ -104,6 +126,7 @@ export async function POST(request: Request) {
     endgame: parsed.data.endgame,
     notes: parsed.data.notes,
     teamRoles: parsed.data.teamRoles,
+    board: parsed.data.board,
   };
   await env.DB.prepare(`INSERT INTO match_plans (id, organization_id, event_id, match_id, author_user_id, plan, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET author_user_id = excluded.author_user_id, plan = excluded.plan, updated_at = excluded.updated_at`)
