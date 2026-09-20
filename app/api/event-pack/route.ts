@@ -13,8 +13,20 @@ type TbaMatch = {
 async function getMembership(request: Request) {
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) return null;
-  const membership = await env.DB.prepare('SELECT organization_id, role FROM memberships WHERE user_id = ? LIMIT 1')
+  let membership = await env.DB.prepare('SELECT organization_id, role FROM memberships WHERE user_id = ? LIMIT 1')
     .bind(session.user.id).first<{ organization_id: string; role: string }>();
+  if (membership) {
+    const count = await env.DB.prepare('SELECT COUNT(*) AS count FROM memberships WHERE organization_id = ?')
+      .bind(membership.organization_id).first<{ count: number }>();
+    if (count?.count === 1 && membership.role !== 'owner') {
+      const now = Date.now();
+      await env.DB.batch([
+        env.DB.prepare('UPDATE organizations SET owner_user_id = ?, updated_at = ? WHERE id = ?').bind(session.user.id, now, membership.organization_id),
+        env.DB.prepare("UPDATE memberships SET role = 'owner', updated_at = ? WHERE organization_id = ? AND user_id = ?").bind(now, membership.organization_id, session.user.id),
+      ]);
+      membership = { ...membership, role: 'owner' };
+    }
+  }
   return membership ? { session, membership } : null;
 }
 
