@@ -167,6 +167,8 @@ type MatchDraft = ScoutingPayload;
 
 type TeamAnalysis = {
   teamNumber: number;
+  epa: number | null;
+  opr: number | null;
   samples: number;
   scheduledMatches: number;
   coverage: number;
@@ -2278,6 +2280,18 @@ export default function Home() {
                         </span>
                       </div>
                       <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                        <span>
+                          <strong>{stats?.epa?.toFixed(1) ?? '—'}</strong>
+                          <small className="block text-muted-foreground">
+                            EPA
+                          </small>
+                        </span>
+                        <span>
+                          <strong>{stats?.opr?.toFixed(1) ?? '—'}</strong>
+                          <small className="block text-muted-foreground">
+                            OPR
+                          </small>
+                        </span>
                         <span>
                           <strong>
                             {stats?.medianPoints.toFixed(1) ?? '—'}
