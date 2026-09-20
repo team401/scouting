@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BarChart3, CalendarDays, Check, ChevronRight, ClipboardList, Cloud, CloudOff, Gauge, LayoutDashboard, LogOut, Minus, Moon, Plus, Radio, Settings, Shield, Sun, TowerControl, UserCog, Users, WandSparkles, Zap } from 'lucide-react';
+import { BarChart3, CalendarDays, Camera, Check, ChevronRight, ClipboardList, Cloud, CloudOff, Gauge, LayoutDashboard, LogOut, Minus, Moon, Plus, Radio, Settings, Shield, Sun, TowerControl, Upload, UserCog, Users, WandSparkles, Wrench, Zap } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,11 +11,12 @@ import { getCachedValue, getDraft, getPendingMutations, queueMutation, saveCache
 import { observedPoints, type ScoutingPayload } from '@/lib/scouting-metrics';
 import { canManageAssignments, canReopenEntries, scoutEntryMutationId } from '@/lib/scouting-policy';
 
-type View = 'Home' | 'Scout' | 'Schedule' | 'Teams' | 'Strategy' | 'Admin' | 'Settings';
+type View = 'Home' | 'Scout' | 'Pit' | 'Schedule' | 'Teams' | 'Strategy' | 'Admin' | 'Settings';
 
 const nav: { label: Exclude<View, 'Settings' | 'Admin'>; icon: typeof ClipboardList }[] = [
   { label: 'Home', icon: LayoutDashboard },
   { label: 'Scout', icon: ClipboardList },
+  { label: 'Pit', icon: Wrench },
   { label: 'Schedule', icon: CalendarDays },
   { label: 'Teams', icon: Users },
   { label: 'Strategy', icon: BarChart3 },
@@ -26,9 +27,15 @@ type EventPack = {
   matches: EventMatch[];
   assignments: { matchId: string; teamNumber: number; scoutUserId: string; station: string }[];
   members: { id: string; name: string; email: string; role: string }[];
+  pitEntries: PitEntry[];
+  organizationId: string;
   role: string;
   userId: string;
 };
+
+type PitDraft = { drivetrain: string; swerveModule: string; motorTypes: string; weightLbs: number; widthInches: number; lengthInches: number; heightInches: number; fuelCapacity: number; climbCapability: string; autonomousCapabilities: string; notes: string };
+type PitEntry = { teamNumber: number; drivetrain: string | null; swerveModule: string | null; motorTypes: string[]; weightLbs: number | null; dimensions: { width?: number; length?: number; height?: number } | null; payload: Partial<PitDraft>; photoObjectKey: string | null; updatedAt: number };
+const emptyPitDraft: PitDraft = { drivetrain: 'Swerve', swerveModule: '', motorTypes: '', weightLbs: 0, widthInches: 0, lengthInches: 0, heightInches: 0, fuelCapacity: 0, climbCapability: 'None', autonomousCapabilities: '', notes: '' };
 
 type EventMatch = {
   id: string; key: string; compLevel: string; matchNumber: number; scheduledAt: number | null; predictedAt: number | null;
@@ -64,6 +71,8 @@ export default function Home() {
   const [strategyTeams, setStrategyTeams] = useState<TeamAnalysis[]>([]); const [adminMessage, setAdminMessage] = useState('');
   const [selectedScoutIds, setSelectedScoutIds] = useState<string[]>([]); const [assignmentStart, setAssignmentStart] = useState(1); const [assignmentEnd, setAssignmentEnd] = useState(999);
   const [scheduleFilter, setScheduleFilter] = useState<'all' | 'mine' | 'unassigned'>('all'); const [scheduleSearch, setScheduleSearch] = useState('');
+  const [pitTeam, setPitTeam] = useState<number | null>(null); const [pitDraft, setPitDraft] = useState<PitDraft>(emptyPitDraft); const [pitReady, setPitReady] = useState(false); const [pitMessage, setPitMessage] = useState('');
+  const [pitPhoto, setPitPhoto] = useState<File | null>(null); const [photoUploading, setPhotoUploading] = useState(false); const [photoVersion, setPhotoVersion] = useState(0);
   const currentMatch = eventPack?.matches.find((match) => match.key === selectedMatchKey);
   const draftId = eventPack && currentMatch && selectedTeam ? `${eventPack.event.key}-${currentMatch.key}-${selectedTeam}` : null;
   const mutationId = eventPack && currentMatch && selectedTeam ? scoutEntryMutationId(eventPack.event.key, currentMatch.key, selectedTeam, session?.user.id ?? 'local') : null;
@@ -71,6 +80,8 @@ export default function Home() {
   const eventTeams = eventPack ? [...new Set(eventPack.matches.flatMap((match) => [...match.alliances.red, ...match.alliances.blue]))].sort((a, b) => a - b) : [];
   const currentPayload: ScoutingPayload = { autoFuel, activeFuel, inactiveFuel, cycles, autoTower, tower, path, defenseRating, disabled, noShow, penalties, shootingRange, cycleSeconds, notes };
   const estimatedPoints = observedPoints(currentPayload);
+  const pitDraftId = eventPack && pitTeam ? `pit-${eventPack.event.key}-${pitTeam}` : null;
+  const existingPitPhoto = pitTeam ? eventPack?.pitEntries.find((entry) => entry.teamNumber === pitTeam)?.photoObjectKey : null;
 
   useEffect(() => { getPendingMutations().then((pending) => setQueuedCount(pending.length)).catch(() => setSaveError('Offline storage is unavailable on this device.')); }, []);
 
@@ -131,19 +142,61 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, [activeFuel, autoFuel, autoTower, cycleSeconds, cycles, defenseRating, disabled, draftId, draftReady, inactiveFuel, noShow, notes, path, penalties, shootingRange, tower]);
 
+  useEffect(() => {
+    if (!pitDraftId) { setPitReady(false); return; }
+    setPitReady(false); setPitMessage(''); setPitPhoto(null);
+    getDraft<PitDraft>(pitDraftId).then((draft) => {
+      const serverEntry = eventPack?.pitEntries.find((entry) => entry.teamNumber === pitTeam);
+      const serverDraft = serverEntry ? { ...emptyPitDraft, ...serverEntry.payload, drivetrain: serverEntry.drivetrain ?? 'Swerve', swerveModule: serverEntry.swerveModule ?? '', motorTypes: serverEntry.motorTypes.join(', '), weightLbs: serverEntry.weightLbs ?? 0, widthInches: serverEntry.dimensions?.width ?? 0, lengthInches: serverEntry.dimensions?.length ?? 0, heightInches: serverEntry.dimensions?.height ?? 0 } : emptyPitDraft;
+      setPitDraft(draft?.payload ?? serverDraft); setPitReady(true);
+    }).catch(() => { setPitDraft(emptyPitDraft); setPitReady(true); setPitMessage('Offline storage is unavailable on this device.'); });
+  }, [eventPack, pitDraftId, pitTeam]);
+
+  useEffect(() => {
+    if (!pitReady || !pitDraftId) return;
+    const timer = window.setTimeout(() => void saveDraft({ id: pitDraftId, payload: pitDraft, updatedAt: Date.now() }), 250);
+    return () => window.clearTimeout(timer);
+  }, [pitDraft, pitDraftId, pitReady]);
+
   async function submitMatch() {
     if (!draftId || !eventPack || !currentMatch || !selectedTeam) { setSaveError('Choose a match and team from the schedule first.'); return; }
     setSaveError('');
     try {
       await queueMutation({
         id: scoutEntryMutationId(eventPack.event.key, currentMatch.key, selectedTeam, session?.user.id ?? 'local'),
-        organizationId: 'team-401', entity: 'scoutEntry', operation: 'upsert', createdAt: Date.now(), attempts: 0,
+        organizationId: eventPack.organizationId, entity: 'scoutEntry', operation: 'upsert', createdAt: Date.now(), attempts: 0,
         payload: { eventKey: eventPack.event.key, matchKey: currentMatch.key, teamNumber: selectedTeam, station: selectedStation, seasonYear: eventPack.event.year, schemaVersion: 1, ...currentPayload },
       });
       setQueuedCount((await getPendingMutations()).length); setSaved(true); setSubmissionStatus('queued');
     } catch {
       setSaveError('Could not queue this match for synchronization.');
     }
+  }
+
+  async function submitPit() {
+    if (!eventPack || !pitTeam) { setPitMessage('Choose a team first.'); return; }
+    const id = `pit:${eventPack.event.key}:${pitTeam}`;
+    try {
+      await queueMutation({ id, organizationId: eventPack.organizationId, entity: 'pitEntry', operation: 'upsert', createdAt: Date.now(), attempts: 0,
+        payload: { eventKey: eventPack.event.key, teamNumber: pitTeam, seasonYear: eventPack.event.year, schemaVersion: 1, ...pitDraft, motorTypes: pitDraft.motorTypes.split(',').map((motor) => motor.trim()).filter(Boolean) } });
+      setQueuedCount((await getPendingMutations()).length); setPitMessage(online ? 'Pit report queued and ready to synchronize.' : 'Pit report saved offline. It will synchronize when connected.');
+      if (online) await syncNow();
+    } catch { setPitMessage('Could not save this pit report.'); }
+  }
+
+  async function uploadPitPhoto() {
+    if (!pitTeam || !pitPhoto) { setPitMessage('Choose a robot photo first.'); return; }
+    if (!online) { setPitMessage('Photo uploads require a connection. The rest of the pit report is still saved offline.'); return; }
+    setPhotoUploading(true); setPitMessage('Saving the pit report before uploading…');
+    try {
+      await submitPit();
+      const form = new FormData(); form.set('teamNumber', String(pitTeam)); form.set('photo', pitPhoto);
+      const response = await fetch('/api/pit-photo', { method: 'POST', body: form });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error ?? 'Photo upload failed.');
+      setPitPhoto(null); setPhotoVersion(Date.now()); setPitMessage('Robot photo uploaded.'); await loadEventPack();
+    } catch (error) { setPitMessage(error instanceof Error ? error.message : 'Photo upload failed.'); }
+    finally { setPhotoUploading(false); }
   }
 
   async function loadEventPack() {
@@ -153,7 +206,7 @@ export default function Home() {
       const result = await response.json() as EventPack & { error?: string; event: EventPack['event'] | null };
       if (!response.ok) throw new Error(result.error ?? 'Unable to load the event pack.');
       if (!result.event) { setEventPack(null); return; }
-      const pack = result as EventPack;
+      const pack = { ...result, pitEntries: result.pitEntries ?? [], organizationId: result.organizationId ?? 'team-401' } as EventPack;
       setEventPack(pack); setEventKey(pack.event.key); await saveCachedValue('current-event-pack', pack);
       if (!selectedMatchKey && pack.matches.length > 0) {
         const mine = pack.assignments.find((assignment) => assignment.scoutUserId === pack.userId);
@@ -162,7 +215,7 @@ export default function Home() {
       }
     } catch (error) {
       const cached = await getCachedValue<EventPack>('current-event-pack').catch(() => undefined);
-      if (cached) { setEventPack(cached); setEventKey(cached.event.key); setPackError('Showing the event pack cached on this device.'); }
+      if (cached) { const pack = { ...cached, pitEntries: cached.pitEntries ?? [], organizationId: cached.organizationId ?? 'team-401' }; setEventPack(pack); setEventKey(pack.event.key); setPackError('Showing the event pack cached on this device.'); }
       else setPackError(error instanceof Error ? error.message : 'Unable to load the event pack.');
     } finally {
       setPackLoading(false);
@@ -275,6 +328,8 @@ export default function Home() {
         <Card><CardHeader><CardTitle>Reliability and notes</CardTitle></CardHeader><CardContent className="space-y-3"><div className="grid grid-cols-2 gap-2"><button className={disabled ? 'choice selected' : 'choice'} onClick={() => setDisabled(!disabled)}>{disabled && <Check />}Disabled or broken</button><button className={noShow ? 'choice selected' : 'choice'} onClick={() => setNoShow(!noShow)}>{noShow && <Check />}No-show</button></div><textarea className="min-h-24 w-full rounded-lg border bg-transparent p-3 text-base" value={notes} maxLength={1000} onChange={(event) => setNotes(event.target.value)} placeholder="Strategy-relevant observations, failure details, defense quality…" /></CardContent></Card>
         {saveError && <p role="alert" className="auth-error">{saveError}</p>}<Button className="h-12 w-full text-base" disabled={!draftReady || submissionStatus === 'synchronized'} onClick={submitMatch}>{submissionStatus === 'synchronized' ? <><Check /> Synchronized · locked</> : submissionStatus === 'rejected' ? <>Rejected · review sync error</> : submissionStatus === 'queued' ? <><Check /> Queued for sync · {estimatedPoints} pts observed</> : draftReady ? <>Save match offline <ChevronRight /></> : <>Opening offline storage…</>}</Button>
       </div><aside className="right-rail"><Card className="score-card"><CardHeader><CardTitle>Observed output</CardTitle><Badge className="live-badge"><Radio />Live</Badge></CardHeader><CardContent><p className="score-number">{estimatedPoints}</p><p className="text-sm text-muted-foreground">estimated contributed points</p><div className="mini-stats"><span><strong>{activeFuel}</strong> active FUEL</span><span><strong>{Math.round(activeFuel / Math.max(cycles,1))}</strong> FUEL / cycle</span></div></CardContent></Card><Card><CardHeader><CardTitle>Offline queue</CardTitle><Badge variant="outline"><CloudOff />{queuedCount} pending</Badge></CardHeader><CardContent className="space-y-3"><p className="text-sm text-muted-foreground">Draft changes save automatically. Submitted matches remain on this device until synchronization is available.</p><Button className="w-full" variant="outline" disabled={syncing || queuedCount === 0} onClick={syncNow}><Cloud />{syncing ? 'Synchronizing…' : 'Sync now'}</Button>{syncMessage && <p className="text-xs text-muted-foreground" role="status">{syncMessage}</p>}</CardContent></Card><Card><CardHeader><CardTitle>Up next</CardTitle></CardHeader><CardContent className="space-y-1">{eventPack?.matches.slice(Math.max(0, eventPack.matches.findIndex((match) => match.key === selectedMatchKey) + 1), Math.max(0, eventPack.matches.findIndex((match) => match.key === selectedMatchKey) + 1) + 3).map((match) => <button className="schedule-row w-full text-left" onClick={() => setActiveView('Schedule')} key={match.key}><strong>{matchLabel(match)}</strong><span>{match.alliances.red.join(', ')}</span><small>vs {match.alliances.blue.join(', ')}</small></button>)}</CardContent></Card><Card><CardContent className="space-y-2"><p className="eyebrow">Event pack</p><strong>{eventPack?.event.name ?? 'No current event'}</strong><p className="text-xs text-muted-foreground">{eventPack ? `${eventPack.matches.length} matches and ${eventTeams.length} teams cached.` : 'Set a current event in Settings.'}</p></CardContent></Card></aside></div>}
+      {activeView === 'Pit' && <div className="grid gap-4 p-4 sm:p-6 lg:grid-cols-[18rem_1fr]"><Card><CardHeader><CardTitle>Pit queue</CardTitle><Badge variant="outline">{eventPack?.pitEntries.length ?? 0}/{eventTeams.length} complete</Badge></CardHeader><CardContent className="max-h-[65vh] space-y-1 overflow-auto">{eventTeams.map((team) => { const complete = eventPack?.pitEntries.some((entry) => entry.teamNumber === team); return <button type="button" className={pitTeam === team ? 'schedule-row selected w-full text-left' : 'schedule-row w-full text-left'} onClick={() => setPitTeam(team)} key={team}><strong>Team {team}</strong><span>{complete ? 'Report saved' : 'Not scouted'}</span>{complete ? <Check /> : <ChevronRight />}</button>; })}{eventTeams.length === 0 && <p className="text-sm text-muted-foreground">Load an event pack before pit scouting.</p>}</CardContent></Card><Card><CardHeader><CardTitle>{pitTeam ? `Team ${pitTeam} robot` : 'Choose a team'}</CardTitle>{pitTeam && <Badge variant="outline">Auto-saved offline</Badge>}</CardHeader><CardContent className="space-y-4">{pitTeam && <><div className="grid gap-3 sm:grid-cols-2"><label className="grid gap-1 text-sm">Drivetrain<select className="h-10 rounded-md border bg-transparent px-3" value={pitDraft.drivetrain} onChange={(event) => setPitDraft({ ...pitDraft, drivetrain: event.target.value })}><option>Swerve</option><option>Tank</option><option>Mecanum</option><option>Other</option></select></label><label className="grid gap-1 text-sm">Swerve module<Input disabled={pitDraft.drivetrain !== 'Swerve'} value={pitDraft.swerveModule} onChange={(event) => setPitDraft({ ...pitDraft, swerveModule: event.target.value })} placeholder="MK4i, MAXSwerve…" /></label><label className="grid gap-1 text-sm">Motor types<Input value={pitDraft.motorTypes} onChange={(event) => setPitDraft({ ...pitDraft, motorTypes: event.target.value })} placeholder="Kraken X60, NEO…" /></label><label className="grid gap-1 text-sm">Weight (lb)<Input type="number" min="0" inputMode="decimal" value={pitDraft.weightLbs || ''} onChange={(event) => setPitDraft({ ...pitDraft, weightLbs: Number(event.target.value) })} /></label><label className="grid gap-1 text-sm">Width (in)<Input type="number" min="0" inputMode="decimal" value={pitDraft.widthInches || ''} onChange={(event) => setPitDraft({ ...pitDraft, widthInches: Number(event.target.value) })} /></label><label className="grid gap-1 text-sm">Length (in)<Input type="number" min="0" inputMode="decimal" value={pitDraft.lengthInches || ''} onChange={(event) => setPitDraft({ ...pitDraft, lengthInches: Number(event.target.value) })} /></label><label className="grid gap-1 text-sm">Height (in)<Input type="number" min="0" inputMode="decimal" value={pitDraft.heightInches || ''} onChange={(event) => setPitDraft({ ...pitDraft, heightInches: Number(event.target.value) })} /></label><label className="grid gap-1 text-sm">FUEL capacity<Input type="number" min="0" inputMode="numeric" value={pitDraft.fuelCapacity || ''} onChange={(event) => setPitDraft({ ...pitDraft, fuelCapacity: Number(event.target.value) })} /></label><label className="grid gap-1 text-sm">Tower capability<select className="h-10 rounded-md border bg-transparent px-3" value={pitDraft.climbCapability} onChange={(event) => setPitDraft({ ...pitDraft, climbCapability: event.target.value })}><option>None</option><option>Level 1</option><option>Level 2</option><option>Level 3</option><option>Multiple levels</option></select></label></div><label className="grid gap-1 text-sm">Autonomous capabilities<textarea className="min-h-20 rounded-md border bg-transparent p-3" value={pitDraft.autonomousCapabilities} onChange={(event) => setPitDraft({ ...pitDraft, autonomousCapabilities: event.target.value })} placeholder="Starting locations, paths, scoring routines…" /></label><label className="grid gap-1 text-sm">Notes<textarea className="min-h-24 rounded-md border bg-transparent p-3" value={pitDraft.notes} onChange={(event) => setPitDraft({ ...pitDraft, notes: event.target.value })} placeholder="Mechanisms, reliability concerns, programming notes…" /></label><Button className="w-full sm:w-auto" disabled={!pitReady} onClick={() => void submitPit()}><Cloud />Save pit report</Button>{pitMessage && <p className="text-sm text-muted-foreground" role="status">{pitMessage}</p>}</>}</CardContent></Card></div>}
+      {activeView === 'Pit' && pitTeam && <div className="px-4 pb-4 sm:px-6 sm:pb-6"><Card><CardHeader><CardTitle><Camera />Team {pitTeam} robot photo</CardTitle></CardHeader><CardContent className="grid gap-4 sm:grid-cols-[12rem_1fr]">{existingPitPhoto && <img className="aspect-square w-full rounded-md object-cover" src={`/api/pit-photo?team=${pitTeam}&v=${photoVersion}`} alt={`Team ${pitTeam} robot`} />}<div className="space-y-3"><p className="text-sm text-muted-foreground">JPEG, PNG, or WebP up to 10 MB. The pit report is synchronized before the image is stored privately in R2.</p><Input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => setPitPhoto(event.target.files?.[0] ?? null)} /><Button type="button" variant="outline" disabled={!pitPhoto || photoUploading || !online} onClick={() => void uploadPitPhoto()}><Upload />{photoUploading ? 'Uploading…' : existingPitPhoto ? 'Replace photo' : 'Upload photo'}</Button></div></CardContent></Card></div>}
       {activeView === 'Schedule' && <div className="p-4 sm:p-6"><Card><CardHeader><CardTitle>{eventPack?.event.name ?? 'Match schedule'}</CardTitle><Badge variant="outline">{visibleMatches.length} of {eventPack?.matches.length ?? 0}</Badge></CardHeader><CardContent className="space-y-3"><div className="flex flex-col gap-2 sm:flex-row"><Input value={scheduleSearch} onChange={(event) => setScheduleSearch(event.target.value)} placeholder="Search match or team number" /><div className="flex gap-1">{(['all','mine','unassigned'] as const).map((filter) => <Button size="sm" variant={scheduleFilter === filter ? 'default' : 'outline'} onClick={() => setScheduleFilter(filter)} key={filter}>{filter === 'all' ? 'All' : filter === 'mine' ? 'Mine' : 'Needs scout'}</Button>)}</div></div>{packLoading && <p className="text-sm text-muted-foreground">Loading event pack…</p>}{packError && <p className="auth-error">{packError}</p>}{assignmentMessage && <p className="text-sm text-muted-foreground" role="status">{assignmentMessage}</p>}{visibleMatches.map((match) => <div className="rounded-lg border p-3" key={match.key}><div className="mb-2 flex items-center justify-between"><strong>{matchLabel(match)}</strong><small className="text-muted-foreground">{match.predictedAt ? new Date(match.predictedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'Time TBD'}</small></div><div className="grid grid-cols-1 gap-2 sm:grid-cols-2"><div className="grid grid-cols-3 gap-2">{match.alliances.red.map((team, index) => renderStation(match, 'red', team, index))}</div><div className="grid grid-cols-3 gap-2">{match.alliances.blue.map((team, index) => renderStation(match, 'blue', team, index))}</div></div></div>)}{!packLoading && !eventPack && <p className="text-sm text-muted-foreground">No event pack is loaded. An owner or admin can load one in Admin.</p>}{eventPack && visibleMatches.length === 0 && <p className="text-sm text-muted-foreground">No matches match this filter.</p>}</CardContent></Card></div>}
       {activeView === 'Teams' && <div className="p-4 sm:p-6"><Card><CardHeader><CardTitle>Teams at {eventPack?.event.name ?? 'this event'}</CardTitle><Badge variant="outline">{eventTeams.length} teams</Badge></CardHeader><CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{eventTeams.map((team) => <button onClick={() => { setSelectedTeam(team); setActiveView('Strategy'); }} className="schedule-row w-full text-left" key={team}><strong>Team {team}</strong><span>{eventPack?.matches.filter((match) => [...match.alliances.red, ...match.alliances.blue].includes(team)).length} matches</span><ChevronRight /></button>)}</CardContent></Card></div>}
       {activeView === 'Strategy' && <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6"><Card className="sm:col-span-2"><CardHeader><CardTitle>Event ranking workspace</CardTitle><div className="flex gap-2"><Badge variant="outline">{strategyTeams.length} teams</Badge>{eventPack && canReopenEntries(eventPack.role) && <Button nativeButton={false} size="sm" variant="outline" render={<a href="/api/export/scouting" download />}><Cloud />Export CSV</Button>}</div></CardHeader><CardContent className="max-h-96 overflow-auto"><div className="strategy-table"><strong>Team</strong><strong>Samples</strong><strong>Median pts</strong><strong>Fuel/cycle</strong><strong>Coverage</strong>{[...strategyTeams].sort((a, b) => b.medianPoints - a.medianPoints).map((team) => <button key={team.teamNumber} onClick={() => setSelectedTeam(team.teamNumber)} className={selectedTeam === team.teamNumber ? 'selected' : ''}><span>{team.teamNumber}</span><span>{team.samples}</span><span>{team.medianPoints.toFixed(1)}</span><span>{team.medianFuelPerCycle.toFixed(1)}</span><span>{Math.round(team.coverage * 100)}%</span></button>)}</div></CardContent></Card><Card><CardHeader><CardTitle>{selectedTeam ? `Team ${selectedTeam} snapshot` : 'Select a team above'}</CardTitle><Badge variant="outline">{analysis?.samples ?? 0} samples</Badge></CardHeader><CardContent><p className="score-number">{analysis?.medianPoints ?? 0}</p><p className="text-sm text-muted-foreground">median observed points</p><div className="mini-stats"><span><strong>{analysis?.medianActiveFuel ?? 0}</strong> median active FUEL</span><span><strong>{analysis?.medianFuelPerCycle.toFixed(1) ?? '0.0'}</strong> FUEL / cycle</span><span><strong>{analysis?.pointStdDev.toFixed(1) ?? '0.0'}</strong> point deviation</span><span><strong>{analysis?.averageDefense.toFixed(1) ?? '0.0'}</strong> defense rating</span></div></CardContent></Card><Card><CardHeader><CardTitle>Reliability and coverage</CardTitle></CardHeader><CardContent className="mini-stats"><span><strong>{Math.round((analysis?.towerSuccessRate ?? 0) * 100)}%</strong> tower success</span><span><strong>{Math.round((analysis?.disabledRate ?? 0) * 100)}%</strong> disabled rate</span><span><strong>{Math.round((analysis?.coverage ?? 0) * 100)}%</strong> data coverage</span><span><strong>{analysis?.scheduledMatches ?? 0}</strong> scheduled matches</span></CardContent></Card><Card className="sm:col-span-2"><CardHeader><CardTitle>Submitted entries</CardTitle></CardHeader><CardContent className="space-y-1">{analysis?.entries.map((entry) => <div className="schedule-row" key={entry.id}><strong>{entry.matchKey.split('_').at(-1)?.toUpperCase()}</strong><span>{entry.scoutName}{entry.reopened ? ' · reopened' : ''}</span>{eventPack && canReopenEntries(eventPack.role) && !entry.reopened ? <Button size="sm" variant="outline" onClick={() => void reopenEntry(entry.id)}>Reopen</Button> : <small>{entry.reopened ? 'Editable' : 'Locked'}</small>}</div>)}{analysis?.entries.length === 0 && <p className="text-sm text-muted-foreground">No synchronized entries for this team yet.</p>}</CardContent></Card></div>}

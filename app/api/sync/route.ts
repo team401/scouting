@@ -19,15 +19,24 @@ const scoutPayloadSchema = z.object({
   path: z.string(),
 });
 
-const mutationSchema = z.object({
+const pitPayloadSchema = z.object({
+  eventKey: z.string().min(1), teamNumber: z.number().int().positive(), seasonYear: z.number().int(), schemaVersion: z.number().int().positive(),
+  drivetrain: z.string().min(1).max(60), swerveModule: z.string().max(80), motorTypes: z.array(z.string().max(80)).max(12),
+  weightLbs: z.number().nonnegative().max(500), widthInches: z.number().nonnegative().max(200), lengthInches: z.number().nonnegative().max(200), heightInches: z.number().nonnegative().max(300),
+  fuelCapacity: z.number().int().nonnegative().max(500), climbCapability: z.string().max(120), autonomousCapabilities: z.string().max(500), notes: z.string().max(2000),
+});
+
+const mutationBase = {
   id: z.string().min(1).max(200),
   organizationId: z.string().min(1),
-  entity: z.literal('scoutEntry'),
   operation: z.literal('upsert'),
-  payload: scoutPayloadSchema,
   createdAt: z.number().int(),
   attempts: z.number().int().nonnegative(),
-});
+};
+const mutationSchema = z.discriminatedUnion('entity', [
+  z.object({ ...mutationBase, entity: z.literal('scoutEntry'), payload: scoutPayloadSchema }),
+  z.object({ ...mutationBase, entity: z.literal('pitEntry'), payload: pitPayloadSchema }),
+]);
 
 const requestSchema = z.object({ mutations: z.array(mutationSchema).min(1).max(50) });
 
@@ -51,9 +60,29 @@ export async function POST(request: Request) {
 
     const event = await env.DB.prepare('SELECT id FROM events WHERE organization_id = ? AND tba_event_key = ?')
       .bind(mutation.organizationId, mutation.payload.eventKey).first<{ id: string }>();
+    if (!event) {
+      rejected.push({ id: mutation.id, error: 'The current event pack is not available on the server yet.', retryable: true });
+      continue;
+    }
+    if (mutation.entity === 'pitEntry') {
+      const now = Date.now();
+      const payload = mutation.payload;
+      await env.DB.prepare(`INSERT INTO pit_entries
+        (id, organization_id, event_id, team_number, scout_user_id, season_year, drivetrain, swerve_module, motor_types, weight_lbs, dimensions, payload, photo_object_key, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
+        ON CONFLICT (organization_id, event_id, team_number) DO UPDATE SET
+          scout_user_id = excluded.scout_user_id, drivetrain = excluded.drivetrain, swerve_module = excluded.swerve_module,
+          motor_types = excluded.motor_types, weight_lbs = excluded.weight_lbs, dimensions = excluded.dimensions,
+          payload = excluded.payload, updated_at = excluded.updated_at`)
+        .bind(mutation.id, mutation.organizationId, event.id, payload.teamNumber, session.user.id, payload.seasonYear,
+          payload.drivetrain, payload.swerveModule || null, JSON.stringify(payload.motorTypes), payload.weightLbs || null,
+          JSON.stringify({ width: payload.widthInches, length: payload.lengthInches, height: payload.heightInches }), JSON.stringify(payload), now, now).run();
+      accepted.push(mutation.id);
+      continue;
+    }
     const match = await env.DB.prepare('SELECT matches.id FROM matches JOIN events ON events.id = matches.event_id WHERE matches.organization_id = ? AND matches.tba_match_key = ? AND events.tba_event_key = ?')
       .bind(mutation.organizationId, mutation.payload.matchKey, mutation.payload.eventKey).first<{ id: string }>();
-    if (!event || !match) {
+    if (!match) {
       rejected.push({ id: mutation.id, error: 'The current event pack is not available on the server yet.', retryable: true });
       continue;
     }
