@@ -98,6 +98,7 @@ type EventPack = {
   members: { id: string; name: string; email: string; role: string }[];
   pitEntries: PitEntry[];
   organizationId: string;
+  organizationTeamNumber: number;
   role: string;
   userId: string;
 };
@@ -355,6 +356,13 @@ export default function Home() {
   const [planMessage, setPlanMessage] = useState('');
   const [planAuthor, setPlanAuthor] = useState('');
   const [planStats, setPlanStats] = useState<TeamAnalysis[]>([]);
+  const organizationTeamNumber = eventPack?.organizationTeamNumber ?? 401;
+  const planningMatches =
+    eventPack?.matches.filter((match) =>
+      [...match.alliances.red, ...match.alliances.blue].includes(
+        organizationTeamNumber,
+      ),
+    ) ?? [];
   const currentMatch = eventPack?.matches.find(
     (match) => match.key === selectedMatchKey,
   );
@@ -573,6 +581,12 @@ export default function Home() {
       })
       .finally(() => setEventsLoading(false));
   }, [activeView, eventYear, isAdmin, online]);
+
+  useEffect(() => {
+    if (activeView !== 'Plan' || planningMatches.length === 0) return;
+    if (!planningMatches.some((match) => match.key === selectedMatchKey))
+      setSelectedMatchKey(planningMatches[0].key);
+  }, [activeView, planningMatches, selectedMatchKey]);
 
   useEffect(() => {
     if (activeView !== 'Plan' || !currentMatch || !session) return;
@@ -1235,13 +1249,19 @@ export default function Home() {
         }),
       )
     : [];
-  const ourPlanAlliance = currentMatch?.alliances.red.includes(401)
+  const ourPlanAlliance = currentMatch?.alliances.red.includes(
+    organizationTeamNumber,
+  )
     ? 'red'
-    : currentMatch?.alliances.blue.includes(401)
+    : currentMatch?.alliances.blue.includes(organizationTeamNumber)
       ? 'blue'
       : null;
   const bestPartner = planTeams
-    .filter((item) => item.alliance === ourPlanAlliance && item.team !== 401)
+    .filter(
+      (item) =>
+        item.alliance === ourPlanAlliance &&
+        item.team !== organizationTeamNumber,
+    )
     .sort(
       (a, b) => (b.stats?.medianPoints ?? 0) - (a.stats?.medianPoints ?? 0),
     )[0]?.team;
@@ -2171,13 +2191,19 @@ export default function Home() {
                   value={selectedMatchKey}
                   onChange={(event) => setSelectedMatchKey(event.target.value)}
                 >
-                  {eventPack?.matches.map((match) => (
+                  {planningMatches.map((match) => (
                     <option value={match.key} key={match.key}>
                       {matchLabel(match)} · {match.alliances.red.join(', ')} vs{' '}
                       {match.alliances.blue.join(', ')}
                     </option>
                   ))}
                 </select>
+                {eventPack && planningMatches.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Team {organizationTeamNumber} is not scheduled for any
+                    matches in this event pack.
+                  </p>
+                )}
                 {currentMatch && (
                   <div className="grid grid-cols-2 gap-2">
                     <div className="rounded-lg border border-red-300 p-3">
