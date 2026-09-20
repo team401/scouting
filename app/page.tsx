@@ -18,7 +18,6 @@ import {
   Minus,
   Moon,
   Plus,
-  Radio,
   Settings,
   Shield,
   Sun,
@@ -1535,7 +1534,7 @@ export default function Home() {
           </div>
         )}
         {activeView === 'Scout' && (
-          <div className="content-grid">
+          <div className="mx-auto w-full max-w-3xl p-4 pb-28 sm:p-6">
             <div className="min-w-0 space-y-4">
               <Card className="match-card">
                 <CardContent className="flex items-center justify-between gap-4">
@@ -1789,107 +1788,6 @@ export default function Home() {
                 )}
               </Button>
             </div>
-            <aside className="right-rail">
-              <Card className="score-card">
-                <CardHeader>
-                  <CardTitle>Observed output</CardTitle>
-                  <Badge className="live-badge">
-                    <Radio />
-                    Live
-                  </Badge>
-                </CardHeader>
-                <CardContent>
-                  <p className="score-number">{estimatedPoints}</p>
-                  <p className="text-sm text-muted-foreground">
-                    estimated contributed points
-                  </p>
-                  <div className="mini-stats">
-                    <span>
-                      <strong>{activeFuel}</strong> active FUEL
-                    </span>
-                    <span>
-                      <strong>
-                        {Math.round(activeFuel / Math.max(cycles, 1))}
-                      </strong>{' '}
-                      FUEL / cycle
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Offline queue</CardTitle>
-                  <Badge variant="outline">
-                    <CloudOff />
-                    {queuedCount} pending
-                  </Badge>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    Draft changes save automatically. Submitted matches remain
-                    on this device until synchronization is available.
-                  </p>
-                  <Button
-                    className="w-full"
-                    variant="outline"
-                    disabled={syncing || queuedCount === 0}
-                    onClick={syncNow}
-                  >
-                    <Cloud />
-                    {syncing ? 'Synchronizing…' : 'Sync now'}
-                  </Button>
-                  {syncMessage && (
-                    <p className="text-xs text-muted-foreground" role="status">
-                      {syncMessage}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Up next</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-1">
-                  {eventPack?.matches
-                    .slice(
-                      Math.max(
-                        0,
-                        eventPack.matches.findIndex(
-                          (match) => match.key === selectedMatchKey,
-                        ) + 1,
-                      ),
-                      Math.max(
-                        0,
-                        eventPack.matches.findIndex(
-                          (match) => match.key === selectedMatchKey,
-                        ) + 1,
-                      ) + 3,
-                    )
-                    .map((match) => (
-                      <button
-                        className="schedule-row w-full text-left"
-                        onClick={() => navigate('Schedule')}
-                        key={match.key}
-                      >
-                        <strong>{matchLabel(match)}</strong>
-                        <span>{match.alliances.red.join(', ')}</span>
-                        <small>vs {match.alliances.blue.join(', ')}</small>
-                      </button>
-                    ))}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="space-y-2">
-                  <p className="eyebrow">Event pack</p>
-                  <strong>{eventPack?.event.name ?? 'No current event'}</strong>
-                  <p className="text-xs text-muted-foreground">
-                    {eventPack
-                      ? `${eventPack.matches.length} matches and ${eventTeams.length} teams cached.`
-                      : 'Set a current event in Settings.'}
-                  </p>
-                </CardContent>
-              </Card>
-            </aside>
           </div>
         )}
         {activeView === 'Pit' && (
