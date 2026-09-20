@@ -25,10 +25,12 @@ export async function GET(request: Request) {
     .bind(identity.membership.organization_id).all();
   const event = await env.DB.prepare('SELECT id, season_year, tba_event_key, name, updated_at FROM events WHERE organization_id = ? AND is_current = 1 LIMIT 1')
     .bind(identity.membership.organization_id).first();
-  if (!event) return Response.json({ event: null, matches: [], assignments: [], members: members.results, role: identity.membership.role, userId: identity.session.user.id });
+  if (!event) return Response.json({ event: null, matches: [], assignments: [], members: members.results, pitEntries: [], organizationId: identity.membership.organization_id, role: identity.membership.role, userId: identity.session.user.id });
   const matches = await env.DB.prepare('SELECT id, tba_match_key, comp_level, match_number, scheduled_at, predicted_at, alliances, result FROM matches WHERE organization_id = ? AND event_id = ? ORDER BY CASE comp_level WHEN \'qm\' THEN 1 WHEN \'ef\' THEN 2 WHEN \'qf\' THEN 3 WHEN \'sf\' THEN 4 WHEN \'f\' THEN 5 ELSE 6 END, match_number')
     .bind(identity.membership.organization_id, event.id).all();
   const assignments = await env.DB.prepare('SELECT match_id AS matchId, team_number AS teamNumber, scout_user_id AS scoutUserId, station FROM scout_assignments WHERE organization_id = ? AND event_id = ?')
+    .bind(identity.membership.organization_id, event.id).all();
+  const pitEntries = await env.DB.prepare('SELECT team_number AS teamNumber, drivetrain, swerve_module AS swerveModule, motor_types AS motorTypes, weight_lbs AS weightLbs, dimensions, payload, photo_object_key AS photoObjectKey, updated_at AS updatedAt FROM pit_entries WHERE organization_id = ? AND event_id = ? ORDER BY team_number')
     .bind(identity.membership.organization_id, event.id).all();
   const normalizedMatches = matches.results.map((match) => {
     const row = match as Record<string, unknown>;
@@ -41,7 +43,7 @@ export async function GET(request: Request) {
       result: row.result ? JSON.parse(String(row.result)) : null,
     };
   });
-  return Response.json({ event: { id: event.id, year: event.season_year, key: event.tba_event_key, name: event.name, updatedAt: event.updated_at }, matches: normalizedMatches, assignments: assignments.results, members: members.results, role: identity.membership.role, userId: identity.session.user.id });
+  return Response.json({ event: { id: event.id, year: event.season_year, key: event.tba_event_key, name: event.name, updatedAt: event.updated_at }, matches: normalizedMatches, assignments: assignments.results, members: members.results, pitEntries: pitEntries.results.map((entry) => ({ ...entry, motorTypes: entry.motorTypes ? JSON.parse(String(entry.motorTypes)) : [], dimensions: entry.dimensions ? JSON.parse(String(entry.dimensions)) : null, payload: JSON.parse(String(entry.payload)) })), organizationId: identity.membership.organization_id, role: identity.membership.role, userId: identity.session.user.id });
 }
 
 export async function POST(request: Request) {
