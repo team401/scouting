@@ -50,8 +50,9 @@ jobs:
         env:
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
           TBA_AUTH_KEY: ${{ secrets.TBA_AUTH_KEY }}
+          BOOTSTRAP_OWNER_EMAIL: ${{ secrets.BOOTSTRAP_OWNER_EMAIL }}
         run: |
-          node -e "if (!process.env.BETTER_AUTH_SECRET || process.env.BETTER_AUTH_SECRET.length < 32) throw new Error('BETTER_AUTH_SECRET must contain at least 32 characters'); const secrets = { BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET }; if (process.env.TBA_AUTH_KEY) secrets.TBA_AUTH_KEY = process.env.TBA_AUTH_KEY; require('node:fs').writeFileSync(process.env.RUNNER_TEMP + '/worker-secrets.json', JSON.stringify(secrets))"
+          node -e "if (!process.env.BETTER_AUTH_SECRET || process.env.BETTER_AUTH_SECRET.length < 32) throw new Error('BETTER_AUTH_SECRET must contain at least 32 characters'); const secrets = { BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET }; if (process.env.TBA_AUTH_KEY) secrets.TBA_AUTH_KEY = process.env.TBA_AUTH_KEY; if (process.env.BOOTSTRAP_OWNER_EMAIL) secrets.BOOTSTRAP_OWNER_EMAIL = process.env.BOOTSTRAP_OWNER_EMAIL; require('node:fs').writeFileSync(process.env.RUNNER_TEMP + '/worker-secrets.json', JSON.stringify(secrets))"
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v4
         with:
