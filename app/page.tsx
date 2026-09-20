@@ -205,7 +205,10 @@ export default function Home() {
       const response = await fetch('/api/event-pack');
       const result = await response.json() as EventPack & { error?: string; event: EventPack['event'] | null };
       if (!response.ok) throw new Error(result.error ?? 'Unable to load the event pack.');
-      if (!result.event) { setEventPack(null); return; }
+      if (!result.event) {
+        const emptyPack = { ...result, event: { id: '', year: 2026, key: '', name: 'No event loaded', updatedAt: 0 }, pitEntries: result.pitEntries ?? [], organizationId: result.organizationId ?? 'team-401' } as EventPack;
+        setEventPack(emptyPack); setEventKey(''); return;
+      }
       const pack = { ...result, pitEntries: result.pitEntries ?? [], organizationId: result.organizationId ?? 'team-401' } as EventPack;
       setEventPack(pack); setEventKey(pack.event.key); await saveCachedValue('current-event-pack', pack);
       if (!selectedMatchKey && pack.matches.length > 0) {

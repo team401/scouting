@@ -17,8 +17,7 @@ async function getMembership(request: Request) {
     .bind(session.user.id).first<{ organization_id: string; role: string }>();
   if (!membership) {
     const userCount = await env.DB.prepare('SELECT COUNT(*) AS count FROM users').first<{ count: number }>();
-    const isBootstrapOwner = env.BOOTSTRAP_OWNER_EMAIL?.trim().toLowerCase() === session.user.email.toLowerCase();
-    if (userCount?.count === 1 || isBootstrapOwner) {
+    if (userCount?.count === 1) {
       const now = Date.now();
       await env.DB.prepare(`INSERT OR IGNORE INTO organizations (id, name, frc_team_number, owner_user_id, created_at, updated_at)
         VALUES ('team-401', 'Team 401', 401, ?, ?, ?)`).bind(session.user.id, now, now).run();
