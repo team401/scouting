@@ -5,5 +5,6 @@ declare namespace Cloudflare {
     BETTER_AUTH_SECRET: string;
     BETTER_AUTH_URL: string;
     TBA_AUTH_KEY?: string;
+    BOOTSTRAP_OWNER_EMAIL?: string;
   }
 }
