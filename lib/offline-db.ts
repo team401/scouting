@@ -6,15 +6,30 @@ export type PendingMutation = {
   payload: unknown;
   createdAt: number;
   attempts: number;
+  lastError?: string;
+  retryable?: boolean;
+};
+
+export type OfflineDraft<T = unknown> = {
+  id: string;
+  payload: T;
+  updatedAt: number;
 };
 
 const DB_NAME = 'team401-scouting-offline';
-const STORE_NAME = 'outbox';
+const DB_VERSION = 3;
+const OUTBOX_STORE = 'outbox';
+const DRAFT_STORE = 'drafts';
+const CACHE_STORE = 'cache';
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1);
-    request.onupgradeneeded = () => request.result.createObjectStore(STORE_NAME, { keyPath: 'id' });
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(OUTBOX_STORE)) request.result.createObjectStore(OUTBOX_STORE, { keyPath: 'id' });
+      if (!request.result.objectStoreNames.contains(DRAFT_STORE)) request.result.createObjectStore(DRAFT_STORE, { keyPath: 'id' });
+      if (!request.result.objectStoreNames.contains(CACHE_STORE)) request.result.createObjectStore(CACHE_STORE, { keyPath: 'id' });
+    };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
@@ -23,8 +38,8 @@ function openDb(): Promise<IDBDatabase> {
 export async function queueMutation(mutation: PendingMutation) {
   const db = await openDb();
   return new Promise<void>((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, 'readwrite');
-    transaction.objectStore(STORE_NAME).put(mutation);
+    const transaction = db.transaction(OUTBOX_STORE, 'readwrite');
+    transaction.objectStore(OUTBOX_STORE).put(mutation);
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error);
   });
@@ -33,8 +48,84 @@ export async function queueMutation(mutation: PendingMutation) {
 export async function getPendingMutations(): Promise<PendingMutation[]> {
   const db = await openDb();
   return new Promise((resolve, reject) => {
-    const request = db.transaction(STORE_NAME).objectStore(STORE_NAME).getAll();
+    const request = db.transaction(OUTBOX_STORE).objectStore(OUTBOX_STORE).getAll();
     request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function deletePendingMutations(ids: string[]) {
+  if (ids.length === 0) return;
+  const db = await openDb();
+  return new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction(OUTBOX_STORE, 'readwrite');
+    const store = transaction.objectStore(OUTBOX_STORE);
+    ids.forEach((id) => store.delete(id));
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+  });
+}
+
+export async function synchronizePendingMutations() {
+  const mutations = await getPendingMutations();
+  if (mutations.length === 0) return { pending: 0, accepted: 0, acceptedIds: [] as string[], rejected: [] as { id: string; error: string; retryable: boolean }[], errors: [] as string[] };
+  const retryableMutations = mutations.filter((mutation) => mutation.retryable !== false);
+  if (retryableMutations.length === 0) return { pending: mutations.length, accepted: 0, acceptedIds: [] as string[], rejected: [] as { id: string; error: string; retryable: boolean }[], errors: mutations.flatMap((mutation) => mutation.lastError ? [mutation.lastError] : []) };
+  const response = await fetch('/api/sync', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ mutations: retryableMutations }),
+  });
+  const result = await response.json() as { error?: string; accepted?: string[]; rejected?: { id: string; error: string; retryable: boolean }[] };
+  if (!response.ok) throw new Error(result.error ?? 'Synchronization failed.');
+  await deletePendingMutations(result.accepted ?? []);
+  for (const rejection of result.rejected ?? []) {
+    const mutation = mutations.find((item) => item.id === rejection.id);
+    if (mutation) await queueMutation({ ...mutation, attempts: mutation.attempts + 1, lastError: rejection.error, retryable: rejection.retryable });
+  }
+  return {
+    pending: (await getPendingMutations()).length,
+    accepted: result.accepted?.length ?? 0,
+    acceptedIds: result.accepted ?? [],
+    rejected: result.rejected ?? [],
+    errors: result.rejected?.map((item) => item.error) ?? [],
+  };
+}
+
+export async function saveDraft<T>(draft: OfflineDraft<T>) {
+  const db = await openDb();
+  return new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction(DRAFT_STORE, 'readwrite');
+    transaction.objectStore(DRAFT_STORE).put(draft);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+  });
+}
+
+export async function getDraft<T>(id: string): Promise<OfflineDraft<T> | undefined> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction(DRAFT_STORE).objectStore(DRAFT_STORE).get(id);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function saveCachedValue<T>(id: string, value: T) {
+  const db = await openDb();
+  return new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction(CACHE_STORE, 'readwrite');
+    transaction.objectStore(CACHE_STORE).put({ id, value, updatedAt: Date.now() });
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+  });
+}
+
+export async function getCachedValue<T>(id: string): Promise<T | undefined> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction(CACHE_STORE).objectStore(CACHE_STORE).get(id);
+    request.onsuccess = () => resolve(request.result?.value);
     request.onerror = () => reject(request.error);
   });
 }

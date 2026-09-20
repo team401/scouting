@@ -62,6 +62,12 @@ export const scoutEntries = sqliteTable('scout_entries', {
   id: text('id').primaryKey(), organizationId: text('organization_id').notNull().references(() => organizations.id), eventId: text('event_id').notNull().references(() => events.id), matchId: text('match_id').notNull().references(() => matches.id), teamNumber: integer('team_number').notNull(), scoutUserId: text('scout_user_id').notNull().references(() => users.id), station: text('station').notNull(), seasonYear: integer('season_year').notNull().references(() => seasons.year), schemaVersion: integer('schema_version').notNull(), payload: text('payload', { mode: 'json' }).notNull(), clientUpdatedAt: integer('client_updated_at', { mode: 'timestamp_ms' }).notNull(), syncVersion: integer('sync_version').notNull().default(1), ...timestamps,
 }, (table) => [uniqueIndex('idx_entries_assignment').on(table.organizationId, table.matchId, table.teamNumber, table.scoutUserId), index('idx_entries_analysis').on(table.organizationId, table.eventId, table.teamNumber)]);
 
+export const scoutAssignments = sqliteTable('scout_assignments', {
+  id: text('id').primaryKey(), organizationId: text('organization_id').notNull().references(() => organizations.id),
+  eventId: text('event_id').notNull().references(() => events.id), matchId: text('match_id').notNull().references(() => matches.id),
+  teamNumber: integer('team_number').notNull(), scoutUserId: text('scout_user_id').notNull().references(() => users.id), station: text('station').notNull(), ...timestamps,
+}, (table) => [uniqueIndex('idx_assignment_station').on(table.organizationId, table.matchId, table.station), index('idx_assignment_scout').on(table.scoutUserId, table.eventId)]);
+
 export const pitEntries = sqliteTable('pit_entries', {
   id: text('id').primaryKey(), organizationId: text('organization_id').notNull().references(() => organizations.id), eventId: text('event_id').notNull().references(() => events.id), teamNumber: integer('team_number').notNull(), scoutUserId: text('scout_user_id').notNull().references(() => users.id), seasonYear: integer('season_year').notNull().references(() => seasons.year), drivetrain: text('drivetrain'), swerveModule: text('swerve_module'), motorTypes: text('motor_types', { mode: 'json' }), weightLbs: integer('weight_lbs'), dimensions: text('dimensions', { mode: 'json' }), payload: text('payload', { mode: 'json' }).notNull(), photoObjectKey: text('photo_object_key'), ...timestamps,
 }, (table) => [uniqueIndex('idx_pit_team_event').on(table.organizationId, table.eventId, table.teamNumber)]);
