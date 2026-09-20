@@ -15,6 +15,20 @@ async function getMembership(request: Request) {
   if (!session) return null;
   let membership = await env.DB.prepare('SELECT organization_id, role FROM memberships WHERE user_id = ? LIMIT 1')
     .bind(session.user.id).first<{ organization_id: string; role: string }>();
+  if (!membership) {
+    const userCount = await env.DB.prepare('SELECT COUNT(*) AS count FROM users').first<{ count: number }>();
+    if (userCount?.count === 1) {
+      const now = Date.now();
+      await env.DB.prepare(`INSERT OR IGNORE INTO organizations (id, name, frc_team_number, owner_user_id, created_at, updated_at)
+        VALUES ('team-401', 'Team 401', 401, ?, ?, ?)`).bind(session.user.id, now, now).run();
+      await env.DB.batch([
+        env.DB.prepare('UPDATE organizations SET owner_user_id = ?, updated_at = ? WHERE id = ?').bind(session.user.id, now, 'team-401'),
+        env.DB.prepare(`INSERT INTO memberships (organization_id, user_id, role, created_at, updated_at) VALUES (?, ?, 'owner', ?, ?)
+          ON CONFLICT (organization_id, user_id) DO UPDATE SET role = 'owner', updated_at = excluded.updated_at`).bind('team-401', session.user.id, now, now),
+      ]);
+      membership = { organization_id: 'team-401', role: 'owner' };
+    }
+  }
   if (membership) {
     const count = await env.DB.prepare('SELECT COUNT(*) AS count FROM memberships WHERE organization_id = ?')
       .bind(membership.organization_id).first<{ count: number }>();
