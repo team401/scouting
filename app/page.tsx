@@ -547,9 +547,33 @@ export default function Home() {
   }, [activeView, eventYear, isAdmin, online]);
 
   useEffect(() => {
-    if (activeView !== 'Plan' || !currentMatch || !online || !session) return;
+    if (activeView !== 'Plan' || !currentMatch || !session) return;
     setPlanLoading(true);
     setPlanMessage('');
+    const cacheId = `match-plan:${currentMatch.id}`;
+    const draftId = `match-plan-draft:${currentMatch.id}`;
+    Promise.all([
+      getDraft<MatchPlan>(draftId),
+      getCachedValue<{
+        plan: MatchPlan | null;
+        canEdit: boolean;
+        authorName: string | null;
+      }>(cacheId),
+    ]).then(([draft, cached]) => {
+      if (draft) setMatchPlan(draft.payload);
+      else if (cached) setMatchPlan(cached.plan ?? emptyMatchPlan);
+      if (cached) {
+        setPlanCanEdit(cached.canEdit);
+        setPlanAuthor(cached.authorName ?? '');
+      }
+      if (!online) {
+        setPlanMessage(
+          'Showing the match plan saved on this device. Changes will remain a local draft until reconnected.',
+        );
+        setPlanLoading(false);
+      }
+    });
+    if (!online) return;
     fetch(`/api/match-plans?matchId=${encodeURIComponent(currentMatch.id)}`)
       .then(async (response) => {
         const result = (await response.json()) as {
@@ -560,9 +584,15 @@ export default function Home() {
         };
         if (!response.ok)
           throw new Error(result.error ?? 'Unable to load this match plan.');
-        setMatchPlan(result.plan ?? emptyMatchPlan);
+        const draft = await getDraft<MatchPlan>(draftId).catch(() => undefined);
+        if (!draft) setMatchPlan(result.plan ?? emptyMatchPlan);
         setPlanCanEdit(result.canEdit);
         setPlanAuthor(result.authorName ?? '');
+        await saveCachedValue(cacheId, {
+          plan: result.plan,
+          canEdit: result.canEdit,
+          authorName: result.authorName,
+        });
       })
       .catch((error) => {
         setMatchPlan(emptyMatchPlan);
@@ -575,6 +605,20 @@ export default function Home() {
       })
       .finally(() => setPlanLoading(false));
   }, [activeView, currentMatch, online, session]);
+
+  useEffect(() => {
+    if (activeView !== 'Plan' || !currentMatch || !planCanEdit) return;
+    const timer = window.setTimeout(
+      () =>
+        void saveDraft({
+          id: `match-plan-draft:${currentMatch.id}`,
+          payload: matchPlan,
+          updatedAt: Date.now(),
+        }),
+      300,
+    );
+    return () => window.clearTimeout(timer);
+  }, [activeView, currentMatch, matchPlan, planCanEdit]);
 
   useEffect(() => {
     if (!draftReady || !draftId) return;
@@ -990,6 +1034,16 @@ export default function Home() {
       if (!response.ok)
         throw new Error(result.error ?? 'Unable to save this match plan.');
       setPlanAuthor(result.authorName ?? session?.user.name ?? '');
+      await saveCachedValue(`match-plan:${currentMatch.id}`, {
+        plan: matchPlan,
+        canEdit: true,
+        authorName: result.authorName ?? session?.user.name ?? null,
+      });
+      await saveDraft({
+        id: `match-plan-draft:${currentMatch.id}`,
+        payload: matchPlan,
+        updatedAt: Date.now(),
+      });
       setPlanMessage('Match plan saved for the drive team.');
     } catch (error) {
       setPlanMessage(
@@ -2297,14 +2351,30 @@ export default function Home() {
                   <div className="rounded-lg border p-3" key={match.key}>
                     <div className="mb-2 flex items-center justify-between">
                       <strong>{matchLabel(match)}</strong>
-                      <small className="text-muted-foreground">
-                        {match.predictedAt
-                          ? new Date(match.predictedAt).toLocaleTimeString([], {
-                              hour: 'numeric',
-                              minute: '2-digit',
-                            })
-                          : 'Time TBD'}
-                      </small>
+                      <div className="flex items-center gap-2">
+                        <small className="text-muted-foreground">
+                          {match.predictedAt
+                            ? new Date(match.predictedAt).toLocaleTimeString(
+                                [],
+                                {
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                },
+                              )
+                            : 'Time TBD'}
+                        </small>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedMatchKey(match.key);
+                            navigate('Plan');
+                          }}
+                        >
+                          <Map />
+                          Plan
+                        </Button>
+                      </div>
                     </div>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       <div className="grid grid-cols-3 gap-2">
