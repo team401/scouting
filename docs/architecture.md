@@ -26,9 +26,9 @@ Exports are ZIP bundles containing `manifest.json`, `teams.csv`, `matches.csv`, 
 
 ## TBA integration
 
-An admin chooses a centrally stored `currentEventId`; clients never choose their own TBA event key. Initial sync fetches event, teams, and matches through the server, storing the response ETag. Subsequent refreshes send `If-None-Match` and honor TBA cache headers.
+An admin chooses a centrally stored `currentEventId`; clients never choose their own TBA event key. Initial sync fetches event and matches through the server. The current implementation treats the D1 event pack as the shared source of truth: the first online request after its 60-second freshness window reconciles schedules, predicted times, final scores, and results with TBA. Visible clients poll that shared cache every 45 seconds, and users can request an immediate refresh. Devices continue using their last IndexedDB event pack while offline.
 
-TBA webhooks terminate at `/api/integrations/tba/webhook`. The handler validates `X-TBA-HMAC`, acknowledges quickly, and queues a refresh of the affected event/match. Webhooks accelerate updates but do not replace reconciliation: a scheduled Worker refreshes the active event periodically and on admin request. After D1 updates, connected clients receive a small invalidation event and refetch; offline devices catch up during their next sync.
+TBA webhooks and a scheduled Worker are future optimizations. When added, the webhook handler must validate `X-TBA-HMAC`, acknowledge quickly, and queue a refresh of the affected event or match. Push updates should accelerate the existing reconciliation path rather than replace it; offline devices still catch up during their next sync.
 
 ## Media
 
