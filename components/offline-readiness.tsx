@@ -16,8 +16,10 @@ import {
   getAllDrafts,
   getCachedValue,
   getPendingMutations,
+  getRelayDevice,
   type PendingMutation,
 } from '@/lib/offline-db';
+import { ensureRelayDeviceRegistered } from '@/lib/qr-relay';
 
 type CachedPack = {
   event?: { key?: string; name?: string; updatedAt?: number };
@@ -67,14 +69,16 @@ export function OfflineReadiness({
   const [draftCount, setDraftCount] = useState(0);
   const [packReady, setPackReady] = useState(false);
   const [shellReady, setShellReady] = useState(false);
+  const [relayReady, setRelayReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
 
   const inspect = useCallback(async () => {
-    const [mutations, drafts, pack] = await Promise.all([
+    const [mutations, drafts, pack, relayDevice] = await Promise.all([
       getPendingMutations(),
       getAllDrafts(),
       getCachedValue<CachedPack>('current-event-pack'),
+      getRelayDevice(),
     ]);
     setPending(mutations);
     setDraftCount(drafts.length);
@@ -86,6 +90,7 @@ export function OfflineReadiness({
     setShellReady(
       'caches' in window && (await caches.has('team401-scouting-shell-v3')),
     );
+    setRelayReady(relayDevice.registered);
   }, [eventKey]);
 
   useEffect(() => {
@@ -102,6 +107,7 @@ export function OfflineReadiness({
     setMessage('Refreshing the event and caching the app…');
     try {
       await onRefresh();
+      await ensureRelayDeviceRegistered(true);
       await cacheShell();
       await inspect();
       setMessage('This device is ready for offline scouting.');
@@ -155,7 +161,7 @@ export function OfflineReadiness({
     setMessage('Local drafts cleared. Pending submissions were preserved.');
   }
 
-  const ready = packReady && shellReady;
+  const ready = packReady && shellReady && relayReady;
   const failures = pending.filter((item) => item.lastError);
   return (
     <Card>
@@ -188,6 +194,15 @@ export function OfflineReadiness({
               <TriangleAlert className="text-amber-500" />
             )}
             <strong>{shellReady ? 'Cached' : 'Missing'}</strong> app shell
+          </span>
+          <span>
+            {relayReady ? (
+              <CheckCircle2 className="text-green-600" />
+            ) : (
+              <TriangleAlert className="text-amber-500" />
+            )}
+            <strong>{relayReady ? 'Registered' : 'Missing'}</strong> QR relay
+            key
           </span>
           <span>
             <strong>{pending.length}</strong> pending submissions
