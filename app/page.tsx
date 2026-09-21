@@ -46,6 +46,7 @@ import {
 import { PickListWorkspace } from '@/components/pick-list-workspace';
 import { TeamTrendChart, type TeamTrend } from '@/components/team-trend-chart';
 import { ScoutingOperations } from '@/components/scouting-operations';
+import { OfflineReadiness } from '@/components/offline-readiness';
 import {
   getCachedValue,
   getDraft,
@@ -1699,19 +1700,14 @@ export default function Home() {
                 )}
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Device status</CardTitle>
-              </CardHeader>
-              <CardContent className="mini-stats">
-                <span>
-                  <strong>{queuedCount}</strong> pending sync
-                </span>
-                <span>
-                  <strong>{online ? 'Online' : 'Offline'}</strong> connection
-                </span>
-              </CardContent>
-            </Card>
+            <OfflineReadiness
+              eventKey={eventPack?.event.key ?? ''}
+              eventName={eventPack?.event.name ?? ''}
+              matchCount={eventPack?.matches.length ?? 0}
+              teamCount={eventTeams.length}
+              online={online}
+              onRefresh={() => loadEventPack(false, true)}
+            />
             <Card>
               <CardHeader>
                 <CardTitle>Event coverage</CardTitle>

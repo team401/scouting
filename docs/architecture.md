@@ -22,6 +22,12 @@ The PWA service worker caches the app shell and recently used read data. Indexed
 
 When online, the client sends queued mutations in order. The server performs idempotent upserts and returns an authoritative sync version. Match scouting is immutable after submission for scouts unless reopened by strategy/admin; this removes most conflict ambiguity. Draft conflicts use last-write-wins only within the same user-owned draft. Official pick lists, alliance state, and match plans use optimistic concurrency and reject stale versions for an explicit reload/merge.
 
+The Home screen includes an offline-readiness check that independently verifies
+the cached application shell and current event pack. Devices can refresh both
+before leaving connectivity, inspect rejected outbox items, export queued
+mutations and drafts as an emergency JSON backup, and clear drafts without
+deleting submitted records that are still waiting to synchronize.
+
 The current event, its teams, match schedule, assignments, and the season form definition are downloaded together as an “event pack.” A scout must be able to open the app, complete several matches, close/reopen it, and later synchronize without connectivity.
 
 ## Year-to-year game support
