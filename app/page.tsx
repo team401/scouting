@@ -43,6 +43,7 @@ import {
 } from '@/components/tactical-board';
 import { PickListWorkspace } from '@/components/pick-list-workspace';
 import { TeamTrendChart, type TeamTrend } from '@/components/team-trend-chart';
+import { ScoutingOperations } from '@/components/scouting-operations';
 import {
   getCachedValue,
   getDraft,
@@ -985,6 +986,25 @@ export default function Home() {
     navigate('Scout');
   }
 
+  function continueToNextAssignment() {
+    const currentIndex = myAssignments.findIndex(
+      ({ assignment, match }) =>
+        match?.key === selectedMatchKey &&
+        assignment.teamNumber === selectedTeam &&
+        assignment.station === selectedStation,
+    );
+    const next = myAssignments[currentIndex + 1];
+    if (next?.match) {
+      selectAssignment(
+        next.match,
+        next.assignment.teamNumber,
+        next.assignment.station,
+      );
+      return;
+    }
+    navigate('Home');
+  }
+
   async function assignScout(
     match: EventMatch,
     team: number,
@@ -1873,6 +1893,21 @@ export default function Home() {
                   <>Opening offline storage…</>
                 )}
               </Button>
+              {(submissionStatus === 'queued' ||
+                submissionStatus === 'synchronized') && (
+                <Button
+                  className="h-12 w-full text-base"
+                  variant="outline"
+                  onClick={continueToNextAssignment}
+                >
+                  {myAssignments.some(
+                    ({ match }) => match && match.key !== selectedMatchKey,
+                  )
+                    ? 'Continue to next assignment'
+                    : 'Return home'}
+                  <ChevronRight />
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -2555,6 +2590,7 @@ export default function Home() {
           isAdmin &&
           adminSection === 'assignments' && (
             <div className="p-4 sm:p-6">
+              <ScoutingOperations mode="coverage" />
               <Card>
                 <CardHeader>
                   <CardTitle>
@@ -2724,6 +2760,7 @@ export default function Home() {
         )}
         {activeView === 'Plan' && canUseStrategy && (
           <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
+            <ScoutingOperations mode="review" />
             {eventPack && (
               <PickListWorkspace
                 teams={strategyTeams}

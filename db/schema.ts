@@ -236,6 +236,27 @@ export const scoutEntries = sqliteTable(
   ],
 );
 
+export const entryAudit = sqliteTable(
+  'entry_audit',
+  {
+    id: text('id').primaryKey(),
+    organizationId: text('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    entryId: text('entry_id')
+      .notNull()
+      .references(() => scoutEntries.id, { onDelete: 'cascade' }),
+    actorUserId: text('actor_user_id')
+      .notNull()
+      .references(() => users.id),
+    action: text('action').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [
+    index('idx_entry_audit_org_time').on(table.organizationId, table.createdAt),
+  ],
+);
+
 export const scoutAssignments = sqliteTable(
   'scout_assignments',
   {
