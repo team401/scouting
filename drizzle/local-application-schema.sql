@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS seasons (year INTEGER PRIMARY KEY NOT NULL, game_key TEXT NOT NULL, schema_version INTEGER NOT NULL, field_definition TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS organization_settings (organization_id TEXT PRIMARY KEY NOT NULL REFERENCES organizations(id) ON DELETE CASCADE, invite_code_hash TEXT, invite_code_salt TEXT, updated_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS organization_settings (organization_id TEXT PRIMARY KEY NOT NULL REFERENCES organizations(id) ON DELETE CASCADE, invite_code_hash TEXT, invite_code_salt TEXT, invite_code_encrypted TEXT, invite_code_iv TEXT, updated_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS rate_limits (key TEXT PRIMARY KEY NOT NULL, count INTEGER NOT NULL, last_request INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS webhook_verifications (provider TEXT PRIMARY KEY NOT NULL, verification_code TEXT NOT NULL, received_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS relay_devices (id TEXT PRIMARY KEY NOT NULL, organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, public_key_jwk TEXT NOT NULL, created_at INTEGER NOT NULL, last_used_at INTEGER, revoked_at INTEGER);
