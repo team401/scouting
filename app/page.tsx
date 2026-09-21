@@ -44,6 +44,7 @@ import {
   type TacticalBoardData,
 } from '@/components/tactical-board';
 import { PickListWorkspace } from '@/components/pick-list-workspace';
+import { MatchVideoLibrary } from '@/components/match-video-library';
 import { TeamTrendChart, type TeamTrend } from '@/components/team-trend-chart';
 import { ScoutingOperations } from '@/components/scouting-operations';
 import { OfflineReadiness } from '@/components/offline-readiness';
@@ -2491,6 +2492,12 @@ export default function Home() {
                   )}
                 </CardContent>
               </Card>
+              <MatchVideoLibrary
+                matchId={currentMatch?.id ?? null}
+                matchLabel={
+                  currentMatch ? matchLabel(currentMatch) : 'this match'
+                }
+              />
               {false && (
                 <>
                   <Card>
