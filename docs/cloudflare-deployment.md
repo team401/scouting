@@ -2,10 +2,10 @@
 
 The application uses two isolated Cloudflare environments:
 
-| Environment | Branch | Deployment | Worker | URL |
-| --- | --- | --- | --- | --- |
-| Staging | `staging` | Automatic after every push | `team401-scouting-staging` | `https://staging.scout.team401.org` |
-| Production | `main` | Manual workflow dispatch only | `team401-scouting` | `https://scout.team401.org` |
+| Environment | Branch    | Deployment                    | Worker                     | URL                                 |
+| ----------- | --------- | ----------------------------- | -------------------------- | ----------------------------------- |
+| Staging     | `staging` | Automatic after every push    | `team401-scouting-staging` | `https://staging.scout.team401.org` |
+| Production  | `main`    | Manual workflow dispatch only | `team401-scouting`         | `https://scout.team401.org`         |
 
 Each environment has its own D1 database, R2 bucket, and Better Auth secret so
 test accounts and scouting data cannot affect production.
@@ -52,8 +52,7 @@ secrets to each environment:
   `npx auth@latest secret`)
 - `TBA_AUTH_KEY` (a read API key from your The Blue Alliance account; this may
   be shared between environments)
-
-Add these environment variables with values for that environment:
+  Add these environment variables with values for that environment:
 
 - `CLOUDFLARE_D1_DATABASE_ID`
 - `CLOUDFLARE_R2_BUCKET_NAME`
@@ -61,6 +60,11 @@ Add these environment variables with values for that environment:
 Use `team401-scouting-files-staging` for the staging R2 variable and
 `team401-scouting-files` for production. Restrict the `staging` environment to
 the `staging` branch and `production` to `main`.
+
+The first account in a new database becomes the Team 401 owner. That owner
+must set the team invite code under **Admin → Team and event** before anyone
+else can create an account. The code is hashed in D1, can be rotated without a
+deployment, and should be different between staging and production.
 
 Each deploy applies the D1 migrations before publishing. Authentication secrets
 are written to an ephemeral file on the GitHub-hosted runner and sent to

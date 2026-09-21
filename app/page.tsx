@@ -12,6 +12,7 @@ import {
   Cloud,
   CloudOff,
   Gauge,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   Map,
@@ -41,6 +42,7 @@ import {
   type TacticalBoardData,
 } from '@/components/tactical-board';
 import { PickListWorkspace } from '@/components/pick-list-workspace';
+import { TeamTrendChart, type TeamTrend } from '@/components/team-trend-chart';
 import {
   getCachedValue,
   getDraft,
@@ -57,16 +59,7 @@ import {
   scoutEntryMutationId,
 } from '@/lib/scouting-policy';
 
-type View =
-  | 'Home'
-  | 'Scout'
-  | 'Pit'
-  | 'Plan'
-  | 'Schedule'
-  | 'Teams'
-  | 'Strategy'
-  | 'Admin'
-  | 'Settings';
+type View = 'Home' | 'Scout' | 'Pit' | 'Plan' | 'Teams' | 'Admin' | 'Settings';
 
 const nav: {
   label: Exclude<View, 'Settings' | 'Admin'>;
@@ -76,9 +69,7 @@ const nav: {
   { label: 'Scout', icon: ClipboardList },
   { label: 'Pit', icon: Wrench },
   { label: 'Plan', icon: Map },
-  { label: 'Schedule', icon: CalendarDays },
   { label: 'Teams', icon: Users },
-  { label: 'Strategy', icon: BarChart3 },
 ];
 
 type EventPack = {
@@ -185,6 +176,7 @@ type TeamAnalysis = {
   disabledRate: number;
   averageDefense: number;
   pointStdDev: number;
+  trends?: TeamTrend[];
   entries: {
     id: string;
     matchKey: string;
@@ -344,6 +336,12 @@ export default function Home() {
   const [assignmentMessage, setAssignmentMessage] = useState('');
   const [strategyTeams, setStrategyTeams] = useState<TeamAnalysis[]>([]);
   const [adminMessage, setAdminMessage] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
+  const [inviteCodeConfigured, setInviteCodeConfigured] = useState(false);
+  const [inviteCodeBusy, setInviteCodeBusy] = useState(false);
+  const [adminSection, setAdminSection] = useState<'settings' | 'assignments'>(
+    'settings',
+  );
   const [selectedScoutIds, setSelectedScoutIds] = useState<string[]>([]);
   const [assignmentStart, setAssignmentStart] = useState(1);
   const [assignmentEnd, setAssignmentEnd] = useState(999);
@@ -425,9 +423,7 @@ export default function Home() {
     : null;
   const isAdmin = Boolean(eventPack && canManageAssignments(eventPack.role));
   const canUseStrategy = Boolean(eventPack && canReopenEntries(eventPack.role));
-  const visibleNav = nav.filter(
-    (item) => item.label !== 'Strategy' || canUseStrategy,
-  );
+  const visibleNav = nav;
 
   function navigate(view: View) {
     if (view === activeView) return;
@@ -534,7 +530,8 @@ export default function Home() {
   }, [online, queuedCount, session]);
 
   useEffect(() => {
-    if (activeView !== 'Strategy' || !selectedTeam || !online) return;
+    if (activeView !== 'Plan' || !canUseStrategy || !selectedTeam || !online)
+      return;
     fetch(`/api/analysis?team=${selectedTeam}`)
       .then(async (response) => {
         const result = (await response.json()) as TeamAnalysis & {
@@ -548,7 +545,7 @@ export default function Home() {
   }, [activeView, online, selectedTeam]);
 
   useEffect(() => {
-    if (activeView !== 'Strategy' || !online || !session) return;
+    if (activeView !== 'Plan' || !canUseStrategy || !online || !session) return;
     fetch('/api/strategy')
       .then(async (response) => {
         const result = (await response.json()) as {
@@ -564,10 +561,6 @@ export default function Home() {
 
   useEffect(() => {
     if (activeView === 'Admin' && !isAdmin) {
-      setActiveView('Home');
-      setViewHistory(['Home']);
-    }
-    if (activeView === 'Strategy' && !canUseStrategy) {
       setActiveView('Home');
       setViewHistory(['Home']);
     }
@@ -597,6 +590,16 @@ export default function Home() {
       })
       .finally(() => setEventsLoading(false));
   }, [activeView, eventYear, isAdmin, online]);
+
+  useEffect(() => {
+    if (activeView !== 'Admin' || !isAdmin || !online) return;
+    fetch('/api/invite-code')
+      .then(async (response) => {
+        const result = (await response.json()) as { configured?: boolean };
+        if (response.ok) setInviteCodeConfigured(Boolean(result.configured));
+      })
+      .catch(() => undefined);
+  }, [activeView, isAdmin, online]);
 
   useEffect(() => {
     if (activeView !== 'Plan' || planningMatches.length === 0) return;
@@ -1044,6 +1047,25 @@ export default function Home() {
     await loadEventPack();
   }
 
+  async function updateInviteCode() {
+    setAdminMessage('');
+    setInviteCodeBusy(true);
+    const response = await fetch('/api/invite-code', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ code: inviteCode }),
+    });
+    const result = (await response.json()) as { error?: string };
+    setInviteCodeBusy(false);
+    if (!response.ok) {
+      setAdminMessage(result.error ?? 'Could not update the invite code.');
+      return;
+    }
+    setInviteCode('');
+    setInviteCodeConfigured(true);
+    setAdminMessage('Invite code updated. Existing accounts remain signed in.');
+  }
+
   async function generateAssignments() {
     setAdminMessage('');
     const response = await fetch('/api/assignments/generate', {
@@ -1436,10 +1458,17 @@ export default function Home() {
                   </p>
                 ) : null}
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Button onClick={() => navigate('Schedule')}>
-                    <CalendarDays />
-                    Open schedule
-                  </Button>
+                  {isAdmin && (
+                    <Button
+                      onClick={() => {
+                        setAdminSection('assignments');
+                        navigate('Admin');
+                      }}
+                    >
+                      <CalendarDays />
+                      Scout assignments
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     disabled={!online || packLoading}
@@ -1449,10 +1478,7 @@ export default function Home() {
                     Refresh live data
                   </Button>
                   {canUseStrategy && (
-                    <Button
-                      variant="outline"
-                      onClick={() => navigate('Strategy')}
-                    >
+                    <Button variant="outline" onClick={() => navigate('Plan')}>
                       <BarChart3 />
                       Strategy workspace
                     </Button>
@@ -2509,129 +2535,151 @@ export default function Home() {
             </div>
           </div>
         )}
-        {activeView === 'Schedule' && (
-          <div className="p-4 sm:p-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {eventPack?.event.name ?? 'Match schedule'}
-                </CardTitle>
-                <Badge variant="outline">
-                  {visibleMatches.length} of {eventPack?.matches.length ?? 0}
-                </Badge>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {eventPack?.event.updatedAt ? (
-                  <p className="text-xs text-muted-foreground">
-                    Schedule and results updated{' '}
-                    {new Date(eventPack.event.updatedAt).toLocaleTimeString()}.
-                    Online devices check every 45 seconds.
-                  </p>
-                ) : null}
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Input
-                    value={scheduleSearch}
-                    onChange={(event) => setScheduleSearch(event.target.value)}
-                    placeholder="Search match or team number"
-                  />
-                  <div className="flex gap-1">
-                    {(['all', 'mine', 'unassigned'] as const).map((filter) => (
-                      <Button
-                        size="sm"
-                        variant={
-                          scheduleFilter === filter ? 'default' : 'outline'
-                        }
-                        onClick={() => setScheduleFilter(filter)}
-                        key={filter}
-                      >
-                        {filter === 'all'
-                          ? 'All'
-                          : filter === 'mine'
-                            ? 'Mine'
-                            : 'Needs scout'}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-                {packLoading && (
-                  <p className="text-sm text-muted-foreground">
-                    Loading event pack…
-                  </p>
-                )}
-                {packError && <p className="auth-error">{packError}</p>}
-                {assignmentMessage && (
-                  <p className="text-sm text-muted-foreground" role="status">
-                    {assignmentMessage}
-                  </p>
-                )}
-                {visibleMatches.map((match) => (
-                  <div className="rounded-lg border p-3" key={match.key}>
-                    <div className="mb-2 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <strong>{matchLabel(match)}</strong>
-                        {match.result?.actualTime ? (
-                          <Badge variant="secondary">
-                            Final · {match.result.redScore ?? '—'}–
-                            {match.result.blueScore ?? '—'}
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline">Upcoming</Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <small className="text-muted-foreground">
-                          {match.predictedAt
-                            ? new Date(match.predictedAt).toLocaleTimeString(
-                                [],
-                                {
-                                  hour: 'numeric',
-                                  minute: '2-digit',
-                                },
-                              )
-                            : 'Time TBD'}
-                        </small>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedMatchKey(match.key);
-                            navigate('Plan');
-                          }}
-                        >
-                          <Map />
-                          Plan
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      <div className="grid grid-cols-3 gap-2">
-                        {match.alliances.red.map((team, index) =>
-                          renderStation(match, 'red', team, index),
-                        )}
-                      </div>
-                      <div className="grid grid-cols-3 gap-2">
-                        {match.alliances.blue.map((team, index) =>
-                          renderStation(match, 'blue', team, index),
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {!packLoading && !eventPack && (
-                  <p className="text-sm text-muted-foreground">
-                    No event pack is loaded. An owner or admin can load one in
-                    Admin.
-                  </p>
-                )}
-                {eventPack && visibleMatches.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    No matches match this filter.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+        {activeView === 'Admin' && isAdmin && (
+          <div className="flex gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
+            <Button
+              variant={adminSection === 'settings' ? 'default' : 'outline'}
+              onClick={() => setAdminSection('settings')}
+            >
+              Team and event
+            </Button>
+            <Button
+              variant={adminSection === 'assignments' ? 'default' : 'outline'}
+              onClick={() => setAdminSection('assignments')}
+            >
+              <CalendarDays /> Scout assignments
+            </Button>
           </div>
         )}
+        {activeView === 'Admin' &&
+          isAdmin &&
+          adminSection === 'assignments' && (
+            <div className="p-4 sm:p-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    {eventPack?.event.name ?? 'Match schedule'}
+                  </CardTitle>
+                  <Badge variant="outline">
+                    {visibleMatches.length} of {eventPack?.matches.length ?? 0}
+                  </Badge>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {eventPack?.event.updatedAt ? (
+                    <p className="text-xs text-muted-foreground">
+                      Schedule and results updated{' '}
+                      {new Date(eventPack.event.updatedAt).toLocaleTimeString()}
+                      . Online devices check every 45 seconds.
+                    </p>
+                  ) : null}
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input
+                      value={scheduleSearch}
+                      onChange={(event) =>
+                        setScheduleSearch(event.target.value)
+                      }
+                      placeholder="Search match or team number"
+                    />
+                    <div className="flex gap-1">
+                      {(['all', 'mine', 'unassigned'] as const).map(
+                        (filter) => (
+                          <Button
+                            size="sm"
+                            variant={
+                              scheduleFilter === filter ? 'default' : 'outline'
+                            }
+                            onClick={() => setScheduleFilter(filter)}
+                            key={filter}
+                          >
+                            {filter === 'all'
+                              ? 'All'
+                              : filter === 'mine'
+                                ? 'Mine'
+                                : 'Needs scout'}
+                          </Button>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                  {packLoading && (
+                    <p className="text-sm text-muted-foreground">
+                      Loading event pack…
+                    </p>
+                  )}
+                  {packError && <p className="auth-error">{packError}</p>}
+                  {assignmentMessage && (
+                    <p className="text-sm text-muted-foreground" role="status">
+                      {assignmentMessage}
+                    </p>
+                  )}
+                  {visibleMatches.map((match) => (
+                    <div className="rounded-lg border p-3" key={match.key}>
+                      <div className="mb-2 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <strong>{matchLabel(match)}</strong>
+                          {match.result?.actualTime ? (
+                            <Badge variant="secondary">
+                              Final · {match.result.redScore ?? '—'}–
+                              {match.result.blueScore ?? '—'}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline">Upcoming</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <small className="text-muted-foreground">
+                            {match.predictedAt
+                              ? new Date(match.predictedAt).toLocaleTimeString(
+                                  [],
+                                  {
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                  },
+                                )
+                              : 'Time TBD'}
+                          </small>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedMatchKey(match.key);
+                              navigate('Plan');
+                            }}
+                          >
+                            <Map />
+                            Plan
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <div className="grid grid-cols-3 gap-2">
+                          {match.alliances.red.map((team, index) =>
+                            renderStation(match, 'red', team, index),
+                          )}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          {match.alliances.blue.map((team, index) =>
+                            renderStation(match, 'blue', team, index),
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {!packLoading && !eventPack && (
+                    <p className="text-sm text-muted-foreground">
+                      No event pack is loaded. An owner or admin can load one in
+                      Admin.
+                    </p>
+                  )}
+                  {eventPack && visibleMatches.length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      No matches match this filter.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
         {activeView === 'Teams' && (
           <div className="p-4 sm:p-6">
             <Card>
@@ -2646,7 +2694,7 @@ export default function Home() {
                   <button
                     onClick={() => {
                       setSelectedTeam(team);
-                      if (canUseStrategy) navigate('Strategy');
+                      if (canUseStrategy) navigate('Plan');
                       else {
                         setPitTeam(team);
                         navigate('Pit');
@@ -2674,7 +2722,7 @@ export default function Home() {
             </Card>
           </div>
         )}
-        {activeView === 'Strategy' && canUseStrategy && (
+        {activeView === 'Plan' && canUseStrategy && (
           <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
             {eventPack && (
               <PickListWorkspace
@@ -2799,6 +2847,17 @@ export default function Home() {
             </Card>
             <Card className="sm:col-span-2">
               <CardHeader>
+                <CardTitle>
+                  {selectedTeam ? `Team ${selectedTeam} trends` : 'Team trends'}
+                </CardTitle>
+                <Badge variant="outline">Match by match</Badge>
+              </CardHeader>
+              <CardContent>
+                <TeamTrendChart trends={analysis?.trends ?? []} />
+              </CardContent>
+            </Card>
+            <Card className="sm:col-span-2">
+              <CardHeader>
                 <CardTitle>Submitted entries</CardTitle>
               </CardHeader>
               <CardContent className="space-y-1">
@@ -2835,8 +2894,45 @@ export default function Home() {
             </Card>
           </div>
         )}
-        {activeView === 'Admin' && isAdmin && (
+        {activeView === 'Admin' && isAdmin && adminSection === 'settings' && (
           <div className="grid gap-4 p-4 sm:p-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  <KeyRound /> Team invite code
+                </CardTitle>
+                <Badge
+                  variant={inviteCodeConfigured ? 'outline' : 'destructive'}
+                >
+                  {inviteCodeConfigured ? 'Configured' : 'Signup closed'}
+                </Badge>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  New accounts must enter this code. Changing it takes effect
+                  immediately and does not sign out existing members. The code
+                  is stored as a one-way hash and cannot be displayed later.
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={8}
+                    maxLength={128}
+                    value={inviteCode}
+                    onChange={(event) => setInviteCode(event.target.value)}
+                    placeholder="Enter a new invite code"
+                    aria-label="New team invite code"
+                  />
+                  <Button
+                    onClick={() => void updateInviteCode()}
+                    disabled={inviteCodeBusy || inviteCode.trim().length < 8}
+                  >
+                    {inviteCodeBusy ? 'Saving…' : 'Set invite code'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader>
                 <CardTitle>Current event</CardTitle>
@@ -2986,7 +3082,7 @@ export default function Home() {
                   variant="outline"
                   onClick={() => {
                     setScheduleFilter('unassigned');
-                    navigate('Schedule');
+                    setAdminSection('assignments');
                   }}
                 >
                   Review unassigned matches
