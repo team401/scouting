@@ -2883,6 +2883,17 @@ export default function Home() {
                 organizationTeamNumber={organizationTeamNumber}
               />
             )}
+            <TeamComparison
+              teams={strategyTeams}
+              matchTeams={
+                currentMatch
+                  ? [
+                      ...currentMatch.alliances.red,
+                      ...currentMatch.alliances.blue,
+                    ]
+                  : []
+              }
+            />
             <Card className="sm:col-span-2">
               <CardHeader>
                 <CardTitle>Event ranking workspace</CardTitle>
