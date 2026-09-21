@@ -19,8 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: staging
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -49,8 +49,9 @@ jobs:
         shell: bash
         env:
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          TBA_AUTH_KEY: ${{ secrets.TBA_AUTH_KEY }}
         run: |
-          node -e "if (!process.env.BETTER_AUTH_SECRET || process.env.BETTER_AUTH_SECRET.length < 32) throw new Error('BETTER_AUTH_SECRET must contain at least 32 characters'); require('node:fs').writeFileSync(process.env.RUNNER_TEMP + '/worker-secrets.json', JSON.stringify({ BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET }))"
+          node -e "if (!process.env.BETTER_AUTH_SECRET || process.env.BETTER_AUTH_SECRET.length < 32) throw new Error('BETTER_AUTH_SECRET must contain at least 32 characters'); const secrets = { BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET }; if (process.env.TBA_AUTH_KEY) secrets.TBA_AUTH_KEY = process.env.TBA_AUTH_KEY; require('node:fs').writeFileSync(process.env.RUNNER_TEMP + '/worker-secrets.json', JSON.stringify(secrets))"
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v4
         with:

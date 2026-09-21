@@ -4,5 +4,6 @@ declare namespace Cloudflare {
     FILES: R2Bucket;
     BETTER_AUTH_SECRET: string;
     BETTER_AUTH_URL: string;
+    TBA_AUTH_KEY?: string;
   }
 }
