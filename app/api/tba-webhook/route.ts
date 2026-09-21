@@ -1,0 +1,82 @@
+import { env } from 'cloudflare:workers';
+import { syncTbaEvent } from '@/lib/tba-event-sync';
+import {
+  findWebhookEventKey,
+  parseTbaWebhook,
+  verifyTbaWebhook,
+} from '@/lib/tba-webhook';
+
+export async function POST(request: Request) {
+  if (!env.TBA_WEBHOOK_SECRET)
+    return Response.json(
+      { error: 'TBA webhook delivery is not configured.' },
+      { status: 503 },
+    );
+  const rawBody = await request.text();
+  const valid = await verifyTbaWebhook(
+    rawBody,
+    request.headers.get('x-tba-hmac'),
+    env.TBA_WEBHOOK_SECRET,
+  );
+  if (!valid)
+    return Response.json(
+      { error: 'Invalid webhook signature.' },
+      { status: 401 },
+    );
+  const payload = parseTbaWebhook(rawBody);
+  if (!payload)
+    return Response.json(
+      { error: 'Invalid webhook payload.' },
+      { status: 400 },
+    );
+
+  if (payload.message_type === 'verification') {
+    const verificationKey =
+      payload.message_data &&
+      typeof payload.message_data === 'object' &&
+      'verification_key' in payload.message_data &&
+      typeof payload.message_data.verification_key === 'string'
+        ? payload.message_data.verification_key
+        : null;
+    return Response.json({
+      ok: true,
+      messageType: 'verification',
+      verificationKey,
+    });
+  }
+  if (payload.message_type === 'ping')
+    return Response.json({ ok: true, messageType: 'ping' });
+
+  const eventKey = findWebhookEventKey(payload.message_data);
+  if (!eventKey)
+    return Response.json({
+      ok: true,
+      messageType: payload.message_type,
+      refreshed: 0,
+    });
+  const organizations = await env.DB.prepare(
+    'SELECT organization_id AS organizationId FROM events WHERE tba_event_key = ? AND is_current = 1',
+  )
+    .bind(eventKey)
+    .all<{ organizationId: string }>();
+  const results = await Promise.allSettled(
+    organizations.results.map((row) =>
+      syncTbaEvent(row.organizationId, eventKey),
+    ),
+  );
+  const refreshed = results.filter(
+    (result) => result.status === 'fulfilled',
+  ).length;
+  const failed = results.length - refreshed;
+  if (failed > 0)
+    return Response.json(
+      { error: 'TBA data refresh failed.', eventKey, refreshed, failed },
+      { status: 502 },
+    );
+  return Response.json({
+    ok: true,
+    messageType: payload.message_type,
+    eventKey,
+    refreshed,
+  });
+}

@@ -52,6 +52,8 @@ secrets to each environment:
   `npx auth@latest secret`)
 - `TBA_AUTH_KEY` (a read API key from your The Blue Alliance account; this may
   be shared between environments)
+- `TBA_WEBHOOK_SECRET` (a long random value used only to authenticate webhook
+  deliveries; use a different value in staging and production)
 - `RESEND_API_KEY` (a Resend send-only key restricted to the verified sending
   domain)
 - `EMAIL_FROM` (for example `Team 401 Scouting <scouting@team401.org>`)
@@ -68,6 +70,17 @@ The first account in a new database becomes the Team 401 owner. That owner
 must set the team invite code under **Admin → Team and event** before anyone
 else can create an account. The code is hashed in D1, can be rotated without a
 deployment, and should be different between staging and production.
+
+## The Blue Alliance webhook
+
+After deploying, create a webhook from your TBA account dashboard. Use
+`https://staging.scout.team401.org/api/tba-webhook` for staging or
+`https://scout.team401.org/api/tba-webhook` for production, and enter the same
+random value stored in that environment's `TBA_WEBHOOK_SECRET`. Enable match
+score and schedule notifications. TBA sends a verification delivery first;
+the endpoint returns its verification key in the JSON response so it is visible
+in the delivery details. The webhook accelerates updates, while the existing
+client polling remains the fallback if a delivery is delayed or missed.
 
 ## Account email
 
