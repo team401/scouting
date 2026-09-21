@@ -5,7 +5,9 @@ import {
   ArrowDown,
   ArrowUp,
   Check,
+  Download,
   GripVertical,
+  Printer,
   RotateCcw,
   Save,
   UserRoundCheck,
@@ -214,8 +216,58 @@ export function PickListWorkspace({
     });
   }
 
+  function exportOfficialList() {
+    const headings = [
+      'rank',
+      'team_number',
+      'tier',
+      'avoid',
+      'epa',
+      'opr',
+      'selected_by_alliance',
+      'notes',
+    ];
+    const quote = (value: string | number | boolean | null | undefined) =>
+      `"${String(value ?? '').replaceAll('"', '""')}"`;
+    const rows = official.entries.map((entry, index) => {
+      const team = metrics.get(entry.teamNumber);
+      const selection = official.selections.find(
+        (item) => item.teamNumber === entry.teamNumber,
+      );
+      return [
+        index + 1,
+        entry.teamNumber,
+        entry.tier,
+        entry.avoid,
+        team?.epa,
+        team?.opr,
+        selection?.allianceNumber,
+        entry.note,
+      ]
+        .map(quote)
+        .join(',');
+    });
+    const url = URL.createObjectURL(
+      new Blob([[headings.join(','), ...rows].join('\n')], {
+        type: 'text/csv;charset=utf-8',
+      }),
+    );
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `${eventKey}-official-pick-list.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function selectionRole(alliance: number, teamNumber: number) {
+    const index = official.selections
+      .filter((item) => item.allianceNumber === alliance)
+      .findIndex((item) => item.teamNumber === teamNumber);
+    return ['Captain', 'First pick', 'Second pick'][index] ?? `Pick ${index}`;
+  }
+
   return (
-    <Card className="sm:col-span-2">
+    <Card className="pick-list-print sm:col-span-2">
       <CardHeader>
         <div>
           <CardTitle>Pick lists and alliance selection</CardTitle>
@@ -227,7 +279,7 @@ export function PickListWorkspace({
         <Badge variant="outline">{response?.ballotCount ?? 0} ballots</Badge>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex flex-wrap gap-2">
+        <div className="pick-list-controls flex flex-wrap gap-2">
           <Button
             size="sm"
             variant={mode === 'personal' ? 'default' : 'outline'}
@@ -249,6 +301,20 @@ export function PickListWorkspace({
           >
             <Check /> Alliance selection
           </Button>
+          {mode !== 'personal' && official.entries.length > 0 && (
+            <>
+              <Button size="sm" variant="outline" onClick={exportOfficialList}>
+                <Download /> Export CSV
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.print()}
+              >
+                <Printer /> Print
+              </Button>
+            </>
+          )}
         </div>
 
         {mode !== 'selection' && (
@@ -409,7 +475,7 @@ export function PickListWorkspace({
         {mode === 'selection' && (
           <div className="grid gap-4 lg:grid-cols-[1fr_18rem]">
             <div>
-              <div className="mb-3 flex items-center gap-2">
+              <div className="pick-list-controls mb-3 flex items-center gap-2">
                 <span className="text-sm font-semibold">
                   Selecting for alliance
                 </span>
@@ -429,22 +495,23 @@ export function PickListWorkspace({
               </div>
               <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 {official.entries
+                  .map((entry, rank) => ({ entry, rank }))
                   .filter(
-                    (entry) =>
+                    ({ entry }) =>
                       !entry.avoid &&
                       entry.tier !== 'do-not-pick' &&
                       !official.selections.some(
                         (item) => item.teamNumber === entry.teamNumber,
                       ),
                   )
-                  .map((entry, index) => (
+                  .map(({ entry, rank }) => (
                     <button
                       className="rounded-lg border p-3 text-left hover:bg-accent"
                       key={entry.teamNumber}
                       onClick={() => markTaken(entry.teamNumber)}
                     >
                       <strong>
-                        #{index + 1} · Team {entry.teamNumber}
+                        #{rank + 1} · Team {entry.teamNumber}
                       </strong>
                       <span className="block text-xs text-muted-foreground">
                         {entry.note || 'Mark as selected'}
@@ -453,7 +520,7 @@ export function PickListWorkspace({
                   ))}
               </div>
             </div>
-            <div className="space-y-2 rounded-lg border p-3">
+            <div className="space-y-3 rounded-lg border p-3">
               <div className="flex items-center justify-between">
                 <strong>Selections</strong>
                 <Button
@@ -464,31 +531,53 @@ export function PickListWorkspace({
                   <Save /> Save
                 </Button>
               </div>
-              {official.selections.map((selection, index) => (
-                <div
-                  className="flex items-center justify-between rounded-md bg-muted p-2"
-                  key={`${selection.teamNumber}-${index}`}
-                >
-                  <span>
-                    <strong>Alliance {selection.allianceNumber}</strong> ·{' '}
-                    {selection.teamNumber}
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() =>
-                      setOfficial({
-                        ...official,
-                        selections: official.selections.filter(
-                          (_, item) => item !== index,
-                        ),
-                      })
-                    }
-                  >
-                    Undo
-                  </Button>
-                </div>
-              ))}
+              {Array.from({ length: 8 }, (_, alliance) => alliance + 1).map(
+                (alliance) => {
+                  const selections = official.selections.filter(
+                    (item) => item.allianceNumber === alliance,
+                  );
+                  return (
+                    <div className="rounded-md bg-muted p-2" key={alliance}>
+                      <strong>Alliance {alliance}</strong>
+                      {selections.length === 0 ? (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          Open
+                        </span>
+                      ) : (
+                        selections.map((selection) => (
+                          <div
+                            className="mt-1 flex items-center justify-between"
+                            key={selection.teamNumber}
+                          >
+                            <span>
+                              <small className="mr-1 text-muted-foreground">
+                                {selectionRole(alliance, selection.teamNumber)}
+                              </small>
+                              {selection.teamNumber}
+                            </span>
+                            <Button
+                              className="pick-list-controls"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                setOfficial({
+                                  ...official,
+                                  selections: official.selections.filter(
+                                    (item) =>
+                                      item.teamNumber !== selection.teamNumber,
+                                  ),
+                                })
+                              }
+                            >
+                              Undo
+                            </Button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  );
+                },
+              )}
               {official.selections.length === 0 && (
                 <p className="text-sm text-muted-foreground">
                   No teams selected yet.
