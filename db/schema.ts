@@ -132,6 +132,12 @@ export const rateLimits = sqliteTable('rate_limits', {
   lastRequest: integer('last_request', { mode: 'timestamp_ms' }).notNull(),
 });
 
+export const webhookVerifications = sqliteTable('webhook_verifications', {
+  provider: text('provider').primaryKey(),
+  verificationCode: text('verification_code').notNull(),
+  receivedAt: integer('received_at', { mode: 'timestamp_ms' }).notNull(),
+});
+
 export const relayDevices = sqliteTable(
   'relay_devices',
   {
