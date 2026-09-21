@@ -3,6 +3,7 @@ import { betterAuth } from 'better-auth';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { verifyInviteCode } from '@/lib/invite-code';
 import { sendAccountEmail } from '@/lib/email';
+import { createD1RateLimitStorage } from '@/lib/d1-rate-limit';
 
 export const auth = betterAuth({
   database: env.DB,
@@ -44,9 +45,7 @@ export const auth = betterAuth({
   },
   rateLimit: {
     enabled: true,
-    storage: 'database',
-    modelName: 'rate_limits',
-    fields: { lastRequest: 'last_request' },
+    customStorage: createD1RateLimitStorage(env.DB),
     window: 60,
     max: 30,
     customRules: {
@@ -184,5 +183,10 @@ export const auth = betterAuth({
   advanced: {
     database: { generateId: 'uuid', validateSchema: false },
     cookiePrefix: 'team401-scouting',
+    ipAddress: {
+      // Cloudflare overwrites this header with the connecting client address
+      // before the request reaches the Worker.
+      ipAddressHeaders: ['cf-connecting-ip'],
+    },
   },
 });
