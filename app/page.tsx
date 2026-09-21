@@ -39,6 +39,7 @@ import {
   TacticalBoard,
   type TacticalBoardData,
 } from '@/components/tactical-board';
+import { PickListWorkspace } from '@/components/pick-list-workspace';
 import {
   getCachedValue,
   getDraft,
@@ -2599,6 +2600,13 @@ export default function Home() {
         )}
         {activeView === 'Strategy' && canUseStrategy && (
           <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
+            {eventPack && (
+              <PickListWorkspace
+                teams={strategyTeams}
+                eventKey={eventPack.event.key}
+                organizationTeamNumber={organizationTeamNumber}
+              />
+            )}
             <Card className="sm:col-span-2">
               <CardHeader>
                 <CardTitle>Event ranking workspace</CardTitle>
