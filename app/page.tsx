@@ -44,6 +44,7 @@ import {
   type TacticalBoardData,
 } from '@/components/tactical-board';
 import { PickListWorkspace } from '@/components/pick-list-workspace';
+import { TeamComparison } from '@/components/team-comparison';
 import { TeamTrendChart, type TeamTrend } from '@/components/team-trend-chart';
 import { ScoutingOperations } from '@/components/scouting-operations';
 import { OfflineReadiness } from '@/components/offline-readiness';
@@ -2876,6 +2877,17 @@ export default function Home() {
                 organizationTeamNumber={organizationTeamNumber}
               />
             )}
+            <TeamComparison
+              teams={strategyTeams}
+              matchTeams={
+                currentMatch
+                  ? [
+                      ...currentMatch.alliances.red,
+                      ...currentMatch.alliances.blue,
+                    ]
+                  : []
+              }
+            />
             <Card className="sm:col-span-2">
               <CardHeader>
                 <CardTitle>Event ranking workspace</CardTitle>
