@@ -17,6 +17,7 @@ import {
   LogOut,
   Map,
   Minus,
+  MonitorSmartphone,
   Moon,
   Plus,
   RefreshCw,
@@ -24,6 +25,7 @@ import {
   Shield,
   Sun,
   TowerControl,
+  Trash2,
   Upload,
   UserCog,
   Users,
@@ -88,7 +90,13 @@ type EventPack = {
     scoutUserId: string;
     station: string;
   }[];
-  members: { id: string; name: string; email: string; role: string }[];
+  members: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    disabled?: number | boolean;
+  }[];
   pitEntries: PitEntry[];
   organizationId: string;
   organizationTeamNumber: number;
@@ -337,6 +345,18 @@ export default function Home() {
   const [assignmentMessage, setAssignmentMessage] = useState('');
   const [strategyTeams, setStrategyTeams] = useState<TeamAnalysis[]>([]);
   const [adminMessage, setAdminMessage] = useState('');
+  const [accountSessions, setAccountSessions] = useState<
+    Array<{
+      id: string;
+      ipAddress: string | null;
+      userAgent: string | null;
+      createdAt: number;
+      updatedAt: number;
+      expiresAt: number;
+    }>
+  >([]);
+  const [currentSessionId, setCurrentSessionId] = useState('');
+  const [sessionMessage, setSessionMessage] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [inviteCodeConfigured, setInviteCodeConfigured] = useState(false);
   const [inviteCodeBusy, setInviteCodeBusy] = useState(false);
@@ -601,6 +621,27 @@ export default function Home() {
       })
       .catch(() => undefined);
   }, [activeView, isAdmin, online]);
+
+  useEffect(() => {
+    if (activeView !== 'Settings' || !session || !online) return;
+    fetch('/api/sessions')
+      .then(async (response) => {
+        const result = (await response.json()) as {
+          sessions?: typeof accountSessions;
+          currentSessionId?: string;
+          error?: string;
+        };
+        if (!response.ok)
+          throw new Error(result.error ?? 'Unable to load sessions.');
+        setAccountSessions(result.sessions ?? []);
+        setCurrentSessionId(result.currentSessionId ?? '');
+      })
+      .catch((error) =>
+        setSessionMessage(
+          error instanceof Error ? error.message : 'Unable to load sessions.',
+        ),
+      );
+  }, [activeView, online, session]);
 
   useEffect(() => {
     if (activeView !== 'Plan' || planningMatches.length === 0) return;
@@ -1065,6 +1106,71 @@ export default function Home() {
     }
     setAdminMessage('Role updated.');
     await loadEventPack();
+  }
+
+  async function setMemberDisabled(userId: string, disabled: boolean) {
+    setAdminMessage('');
+    const response = await fetch('/api/members', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ userId, disabled }),
+    });
+    const result = (await response.json()) as { error?: string };
+    if (!response.ok) {
+      setAdminMessage(result.error ?? 'Could not update the account.');
+      return;
+    }
+    setAdminMessage(
+      disabled ? 'Account disabled and sessions revoked.' : 'Account enabled.',
+    );
+    await loadEventPack();
+  }
+
+  async function removeMember(userId: string, name: string) {
+    if (
+      !window.confirm(
+        `Remove ${name} from Team 401? Their historical scouting data will be retained.`,
+      )
+    )
+      return;
+    setAdminMessage('');
+    const response = await fetch('/api/members', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    });
+    const result = (await response.json()) as { error?: string };
+    if (!response.ok) {
+      setAdminMessage(result.error ?? 'Could not remove the member.');
+      return;
+    }
+    setAdminMessage(`${name} was removed from Team 401.`);
+    await loadEventPack();
+  }
+
+  async function revokeSession(sessionId: string) {
+    setSessionMessage('');
+    const response = await fetch('/api/sessions', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionId }),
+    });
+    const result = (await response.json()) as {
+      error?: string;
+      current?: boolean;
+    };
+    if (!response.ok) {
+      setSessionMessage(result.error ?? 'Could not revoke the session.');
+      return;
+    }
+    if (result.current) {
+      window.location.href = '/sign-in';
+      return;
+    }
+    setAccountSessions((items) =>
+      items.filter((item) => item.id !== sessionId),
+    );
+    setSessionMessage('Session revoked.');
   }
 
   async function updateInviteCode() {
@@ -3139,6 +3245,9 @@ export default function Home() {
                     <div>
                       <strong>{member.name}</strong>
                       <small>{member.email}</small>
+                      {Boolean(member.disabled) && (
+                        <Badge variant="destructive">Disabled</Badge>
+                      )}
                     </div>
                     {member.role === 'owner' ? (
                       <Badge>Owner</Badge>
@@ -3154,6 +3263,32 @@ export default function Home() {
                         <option value="scout">Scout</option>
                         <option value="video">Video</option>
                       </select>
+                    )}
+                    {member.role !== 'owner' && (
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            void setMemberDisabled(
+                              member.id,
+                              !Boolean(member.disabled),
+                            )
+                          }
+                        >
+                          {member.disabled ? 'Enable' : 'Disable'}
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          aria-label={`Remove ${member.name}`}
+                          onClick={() =>
+                            void removeMember(member.id, member.name)
+                          }
+                        >
+                          <Trash2 />
+                        </Button>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -3192,6 +3327,45 @@ export default function Home() {
                     </>
                   )}
                 </Button>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  <MonitorSmartphone /> Signed-in devices
+                </CardTitle>
+                <Badge variant="outline">{accountSessions.length}</Badge>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {accountSessions.map((item) => (
+                  <div className="schedule-row" key={item.id}>
+                    <strong>
+                      {item.id === currentSessionId ? 'This device' : 'Session'}
+                    </strong>
+                    <span>
+                      {item.userAgent?.split(' ').slice(0, 4).join(' ') ??
+                        'Unknown device'}
+                      {item.ipAddress ? ` · ${item.ipAddress}` : ''}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void revokeSession(item.id)}
+                    >
+                      {item.id === currentSessionId ? 'Sign out' : 'Revoke'}
+                    </Button>
+                  </div>
+                ))}
+                {!accountSessions.length && (
+                  <p className="text-sm text-muted-foreground">
+                    No active sessions were found.
+                  </p>
+                )}
+                {sessionMessage && (
+                  <p className="text-sm text-muted-foreground">
+                    {sessionMessage}
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>

@@ -8,6 +8,14 @@ The application and its data services stay in one Cloudflare account. D1 provide
 
 Authentication uses first-party email/password accounts through Better Auth on the same Worker and D1 database; scouts do not need an external identity provider. Passwords are hashed by the authentication library and sessions use secure HTTP-only cookies. The first account creates the Team 401 organization as owner. The owner or an admin configures a team invite code, stored as a salted one-way hash in D1, which all later signups must provide. Later signups join as scouts until an owner or admin changes their role. Authorization is always checked server-side against `memberships`. Never accept an organization ID from the client without validating membership. Roles are ordered by permission, not by display name: owner, admin, strategy, scout, and video. Add email verification and password-reset delivery before production rollout.
 
+Authentication endpoints use D1-backed rate limiting so limits are consistent
+across Worker isolates. Owners and admins may disable or remove memberships;
+both actions revoke active sessions while retaining historical scouting records.
+Users can inspect and revoke their own device sessions. Email verification and
+password reset remain blocked on selecting and configuring a transactional
+email provider; they must not be presented as working features until delivery
+is configured and tested for `team401.org`.
+
 ## Offline model
 
 The PWA service worker caches the app shell and recently used read data. IndexedDB stores current-event schedule/team snapshots, drafts, and an append-only mutation outbox. Every mutation has a client-generated UUID, organization ID, client timestamp, schema version, and idempotency key.

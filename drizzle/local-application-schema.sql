@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS seasons (year INTEGER PRIMARY KEY NOT NULL, game_key TEXT NOT NULL, schema_version INTEGER NOT NULL, field_definition TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS organization_settings (organization_id TEXT PRIMARY KEY NOT NULL REFERENCES organizations(id) ON DELETE CASCADE, invite_code_hash TEXT, invite_code_salt TEXT, updated_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS rate_limits (key TEXT PRIMARY KEY NOT NULL, count INTEGER NOT NULL, last_request INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY NOT NULL, organization_id TEXT NOT NULL REFERENCES organizations(id), season_year INTEGER NOT NULL REFERENCES seasons(year), tba_event_key TEXT NOT NULL, name TEXT NOT NULL, is_current INTEGER DEFAULT 0 NOT NULL, tba_etag TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_events_org_tba ON events (organization_id, tba_event_key);
 CREATE INDEX IF NOT EXISTS idx_events_current ON events (organization_id, is_current);

@@ -117,6 +117,7 @@ export const memberships = sqliteTable(
     role: text('role', {
       enum: ['owner', 'admin', 'strategy', 'scout', 'video'],
     }).notNull(),
+    disabled: integer('disabled', { mode: 'boolean' }).notNull().default(false),
     ...timestamps,
   },
   (table) => [
@@ -124,6 +125,12 @@ export const memberships = sqliteTable(
     index('idx_memberships_user').on(table.userId),
   ],
 );
+
+export const rateLimits = sqliteTable('rate_limits', {
+  key: text('key').primaryKey(),
+  count: integer('count').notNull(),
+  lastRequest: integer('last_request', { mode: 'timestamp_ms' }).notNull(),
+});
 
 export const seasons = sqliteTable('seasons', {
   year: integer('year').primaryKey(),
