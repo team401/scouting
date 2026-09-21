@@ -37,3 +37,7 @@ npm run build
 See [the architecture notes](docs/architecture.md) for the data and offline
 design and [the deployment guide](docs/cloudflare-deployment.md) for production
 configuration.
+
+## License
+
+This project is available under the [MIT License](LICENSE).

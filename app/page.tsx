@@ -18,6 +18,7 @@ import {
   Minus,
   Moon,
   Plus,
+  RefreshCw,
   Settings,
   Shield,
   Sun,
@@ -39,6 +40,7 @@ import {
   TacticalBoard,
   type TacticalBoardData,
 } from '@/components/tactical-board';
+import { PickListWorkspace } from '@/components/pick-list-workspace';
 import {
   getCachedValue,
   getDraft,
@@ -148,7 +150,12 @@ type EventMatch = {
   scheduledAt: number | null;
   predictedAt: number | null;
   alliances: { red: number[]; blue: number[] };
-  result: { winningAlliance?: string } | null;
+  result: {
+    winningAlliance?: string | null;
+    actualTime?: number | null;
+    redScore?: number | null;
+    blueScore?: number | null;
+  } | null;
 };
 
 function matchLabel(match: EventMatch) {
@@ -511,6 +518,14 @@ export default function Home() {
   useEffect(() => {
     if (session) void loadEventPack();
   }, [session]);
+
+  useEffect(() => {
+    if (!session || !online) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void loadEventPack(true);
+    }, 45_000);
+    return () => window.clearInterval(timer);
+  }, [online, session]);
 
   useEffect(() => {
     if (!online || !session || queuedCount === 0 || syncing) return;
@@ -880,11 +895,15 @@ export default function Home() {
     }
   }
 
-  async function loadEventPack() {
-    setPackLoading(true);
-    setPackError('');
+  async function loadEventPack(silent = false, forceRefresh = false) {
+    if (!silent) {
+      setPackLoading(true);
+      setPackError('');
+    }
     try {
-      const response = await fetch('/api/event-pack');
+      const response = await fetch(
+        forceRefresh ? '/api/event-pack?refresh=1' : '/api/event-pack',
+      );
       const result = (await response.json()) as EventPack & {
         error?: string;
         event: EventPack['event'] | null;
@@ -941,15 +960,16 @@ export default function Home() {
         };
         setEventPack(pack);
         setEventKey(pack.event.key);
-        setPackError('Showing the event pack cached on this device.');
-      } else
+        if (!silent)
+          setPackError('Showing the event pack cached on this device.');
+      } else if (!silent)
         setPackError(
           error instanceof Error
             ? error.message
             : 'Unable to load the event pack.',
         );
     } finally {
-      setPackLoading(false);
+      if (!silent) setPackLoading(false);
     }
   }
 
@@ -1215,7 +1235,14 @@ export default function Home() {
       }))
       .filter(
         (item) =>
-          item.assignment.scoutUserId === eventPack.userId && item.match,
+          item.assignment.scoutUserId === eventPack.userId &&
+          item.match &&
+          !item.match.result?.actualTime,
+      )
+      .sort(
+        (a, b) =>
+          (a.match?.predictedAt ?? a.match?.scheduledAt ?? Infinity) -
+          (b.match?.predictedAt ?? b.match?.scheduledAt ?? Infinity),
       ) ?? [];
   const nextAssignment = myAssignments[0];
   const visibleMatches =
@@ -1395,10 +1422,31 @@ export default function Home() {
                   {eventPack?.event.name ??
                     'An admin needs to load the current event.'}
                 </p>
+                {eventPack?.event.updatedAt ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Live data updated{' '}
+                    {new Date(eventPack.event.updatedAt).toLocaleTimeString(
+                      [],
+                      {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      },
+                    )}
+                  </p>
+                ) : null}
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Button onClick={() => navigate('Schedule')}>
                     <CalendarDays />
                     Open schedule
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={!online || packLoading}
+                    onClick={() => void loadEventPack(false, true)}
+                  >
+                    <RefreshCw className={packLoading ? 'animate-spin' : ''} />
+                    Refresh live data
                   </Button>
                   {canUseStrategy && (
                     <Button
@@ -1432,6 +1480,18 @@ export default function Home() {
                       <p className="text-muted-foreground">
                         Team {nextAssignment.assignment.teamNumber} ·{' '}
                         {nextAssignment.assignment.station.toUpperCase()}
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {nextAssignment.match.predictedAt
+                          ? new Date(
+                              nextAssignment.match.predictedAt,
+                            ).toLocaleTimeString([], {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                            })
+                          : 'Time TBD'}{' '}
+                        · {nextAssignment.match.alliances.red.join(', ')} vs{' '}
+                        {nextAssignment.match.alliances.blue.join(', ')}
                       </p>
                     </div>
                     <Button
@@ -2461,6 +2521,13 @@ export default function Home() {
                 </Badge>
               </CardHeader>
               <CardContent className="space-y-3">
+                {eventPack?.event.updatedAt ? (
+                  <p className="text-xs text-muted-foreground">
+                    Schedule and results updated{' '}
+                    {new Date(eventPack.event.updatedAt).toLocaleTimeString()}.
+                    Online devices check every 45 seconds.
+                  </p>
+                ) : null}
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <Input
                     value={scheduleSearch}
@@ -2500,7 +2567,17 @@ export default function Home() {
                 {visibleMatches.map((match) => (
                   <div className="rounded-lg border p-3" key={match.key}>
                     <div className="mb-2 flex items-center justify-between">
-                      <strong>{matchLabel(match)}</strong>
+                      <div className="flex items-center gap-2">
+                        <strong>{matchLabel(match)}</strong>
+                        {match.result?.actualTime ? (
+                          <Badge variant="secondary">
+                            Final · {match.result.redScore ?? '—'}–
+                            {match.result.blueScore ?? '—'}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">Upcoming</Badge>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2">
                         <small className="text-muted-foreground">
                           {match.predictedAt
@@ -2599,6 +2676,13 @@ export default function Home() {
         )}
         {activeView === 'Strategy' && canUseStrategy && (
           <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
+            {eventPack && (
+              <PickListWorkspace
+                teams={strategyTeams}
+                eventKey={eventPack.event.key}
+                organizationTeamNumber={organizationTeamNumber}
+              />
+            )}
             <Card className="sm:col-span-2">
               <CardHeader>
                 <CardTitle>Event ranking workspace</CardTitle>
