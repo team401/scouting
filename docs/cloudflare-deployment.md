@@ -52,6 +52,9 @@ secrets to each environment:
   `npx auth@latest secret`)
 - `TBA_AUTH_KEY` (a read API key from your The Blue Alliance account; this may
   be shared between environments)
+- `RESEND_API_KEY` (a Resend send-only key restricted to the verified sending
+  domain)
+- `EMAIL_FROM` (for example `Team 401 Scouting <scouting@team401.org>`)
   Add these environment variables with values for that environment:
 
 - `CLOUDFLARE_D1_DATABASE_ID`
@@ -65,6 +68,16 @@ The first account in a new database becomes the Team 401 owner. That owner
 must set the team invite code under **Admin → Team and event** before anyone
 else can create an account. The code is hashed in D1, can be rotated without a
 deployment, and should be different between staging and production.
+
+## Account email
+
+Password reset and account verification use Resend's HTTPS email API from the
+Worker. Add and verify `team401.org` (or a dedicated sending subdomain) in
+Resend, publish the SPF and DKIM records it provides in Cloudflare DNS, then
+create a send-only API key restricted to that domain. Add `RESEND_API_KEY` and
+`EMAIL_FROM` to both GitHub environments before merging this feature; deploys
+intentionally fail if either is absent. Existing accounts are marked verified
+by migration `0006`; new accounts must verify their email before signing in.
 
 Each deploy applies the D1 migrations before publishing. Authentication secrets
 are written to an ephemeral file on the GitHub-hosted runner and sent to

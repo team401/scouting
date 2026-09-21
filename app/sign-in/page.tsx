@@ -23,6 +23,7 @@ export default function SignInPage() {
   const [password, setPassword] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
 
   async function submit(
@@ -31,6 +32,7 @@ export default function SignInPage() {
     event.preventDefault();
     setBusy(true);
     setError('');
+    setNotice('');
     if (mode === 'signup') {
       const response = await fetch('/api/auth/sign-up/email', {
         method: 'POST',
@@ -38,14 +40,18 @@ export default function SignInPage() {
           'Content-Type': 'application/json',
           'X-Team-Invite-Code': inviteCode,
         },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, callbackURL: '/' }),
       });
       const body = (await response.json().catch(() => null)) as {
         message?: string;
       } | null;
       setBusy(false);
       if (!response.ok) setError(body?.message || 'Unable to create account.');
-      else window.location.href = '/';
+      else {
+        setMode('signin');
+        setPassword('');
+        setNotice('Check your email to verify the account before signing in.');
+      }
       return;
     }
     const result = await authClient.signIn.email({ email, password });
@@ -138,11 +144,24 @@ export default function SignInPage() {
                 {error}
               </p>
             )}
+            {notice && (
+              <p className="text-sm text-muted-foreground">{notice}</p>
+            )}
             <Button type="submit" className="h-11 w-full" disabled={busy}>
               {busy && <LoaderCircle className="animate-spin" />}
               {mode === 'signup' ? 'Create account' : 'Sign in'}
             </Button>
           </form>
+          {mode === 'signin' && (
+            <div className="mt-3 text-center">
+              <Link
+                className="text-sm text-primary hover:underline"
+                href="/forgot-password"
+              >
+                Forgot your password?
+              </Link>
+            </div>
+          )}
           <div className="auth-switch">
             <span>
               {mode === 'signup'

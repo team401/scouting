@@ -2,6 +2,7 @@ import { env } from 'cloudflare:workers';
 import { betterAuth } from 'better-auth';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { verifyInviteCode } from '@/lib/invite-code';
+import { sendAccountEmail } from '@/lib/email';
 
 export const auth = betterAuth({
   database: env.DB,
@@ -11,6 +12,35 @@ export const auth = betterAuth({
     enabled: true,
     minPasswordLength: 10,
     maxPasswordLength: 128,
+    requireEmailVerification: true,
+    revokeSessionsOnPasswordReset: true,
+    resetPasswordTokenExpiresIn: 60 * 60,
+    sendResetPassword: async ({ user, url }) =>
+      sendAccountEmail({
+        to: user.email,
+        subject: 'Reset your Team 401 scouting password',
+        heading: 'Reset your password',
+        message:
+          'Use this secure link within one hour to choose a new password.',
+        action: 'Reset password',
+        url,
+      }),
+  },
+  emailVerification: {
+    sendOnSignUp: true,
+    sendOnSignIn: true,
+    autoSignInAfterVerification: true,
+    expiresIn: 60 * 60 * 24,
+    sendVerificationEmail: async ({ user, url }) =>
+      sendAccountEmail({
+        to: user.email,
+        subject: 'Verify your Team 401 scouting account',
+        heading: 'Verify your email',
+        message:
+          'Confirm this email address to activate your scouting account.',
+        action: 'Verify email',
+        url,
+      }),
   },
   rateLimit: {
     enabled: true,
