@@ -19,12 +19,36 @@ export default function ForgotPasswordPage() {
   ) {
     event.preventDefault();
     setBusy(true);
-    await fetch('/api/auth/request-password-reset', {
+    const response = await fetch('/api/auth/request-password-reset', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ email, redirectTo: '/reset-password' }),
-    }).catch(() => undefined);
+      body: JSON.stringify({
+        email: email.trim().toLowerCase(),
+        redirectTo: '/reset-password',
+      }),
+    }).catch(() => null);
     setBusy(false);
+    if (!response) {
+      setMessage(
+        'Could not reach the server. Check your connection and try again.',
+      );
+      return;
+    }
+    if (response.status === 429) {
+      const retryAfter = Number(response.headers.get('x-retry-after'));
+      setMessage(
+        Number.isFinite(retryAfter) && retryAfter > 0
+          ? `Too many reset attempts. Try again in ${retryAfter} seconds.`
+          : 'Too many reset attempts. Wait a few minutes and try again.',
+      );
+      return;
+    }
+    if (!response.ok) {
+      setMessage(
+        'The reset request failed. Ask an administrator to check the authentication logs.',
+      );
+      return;
+    }
     setMessage('If that address has an account, a reset link has been sent.');
   }
 
