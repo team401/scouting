@@ -11,6 +11,7 @@ import {
   ClipboardList,
   Cloud,
   CloudOff,
+  Copy,
   Gauge,
   KeyRound,
   LayoutDashboard,
@@ -364,6 +365,11 @@ export default function Home() {
   const [inviteCode, setInviteCode] = useState('');
   const [inviteCodeConfigured, setInviteCodeConfigured] = useState(false);
   const [inviteCodeBusy, setInviteCodeBusy] = useState(false);
+  const [tbaVerification, setTbaVerification] = useState<{
+    verificationCode: string;
+    receivedAt: number;
+  } | null>(null);
+  const [tbaVerificationMessage, setTbaVerificationMessage] = useState('');
   const [adminSection, setAdminSection] = useState<'settings' | 'assignments'>(
     'settings',
   );
@@ -622,6 +628,14 @@ export default function Home() {
       .then(async (response) => {
         const result = (await response.json()) as { configured?: boolean };
         if (response.ok) setInviteCodeConfigured(Boolean(result.configured));
+      })
+      .catch(() => undefined);
+    fetch('/api/tba-webhook-verification')
+      .then(async (response) => {
+        const result = (await response.json()) as {
+          verification?: typeof tbaVerification;
+        };
+        if (response.ok) setTbaVerification(result.verification ?? null);
       })
       .catch(() => undefined);
   }, [activeView, isAdmin, online]);
@@ -3095,6 +3109,112 @@ export default function Home() {
                     {inviteCodeBusy ? 'Saving…' : 'Set invite code'}
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  <Shield /> TBA webhook verification
+                </CardTitle>
+                <Badge variant={tbaVerification ? 'outline' : 'secondary'}>
+                  {tbaVerification ? 'Code received' : 'Waiting for code'}
+                </Badge>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  After the webhook secret is deployed, click Resend code on The
+                  Blue Alliance. Then refresh here and enter the received code
+                  back on TBA. This is separate from the webhook secret.
+                </p>
+                {tbaVerification && (
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">
+                      Received{' '}
+                      {new Date(tbaVerification.receivedAt).toLocaleString()}
+                    </p>
+                    <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <code className="min-w-0 flex-1 overflow-x-auto rounded bg-muted p-2 text-sm">
+                        {tbaVerification.verificationCode}
+                      </code>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          void navigator.clipboard
+                            .writeText(tbaVerification.verificationCode)
+                            .then(() =>
+                              setTbaVerificationMessage('Code copied.'),
+                            )
+                            .catch(() =>
+                              setTbaVerificationMessage(
+                                'Could not copy automatically. Select the code manually.',
+                              ),
+                            );
+                        }}
+                      >
+                        <Copy /> Copy code
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setTbaVerificationMessage('Checking for a new code…');
+                      void fetch('/api/tba-webhook-verification')
+                        .then(async (response) => {
+                          const result = (await response.json()) as {
+                            verification?: typeof tbaVerification;
+                            error?: string;
+                          };
+                          if (!response.ok)
+                            throw new Error(
+                              result.error ?? 'Could not retrieve the code.',
+                            );
+                          setTbaVerification(result.verification ?? null);
+                          setTbaVerificationMessage(
+                            result.verification
+                              ? 'Latest code loaded.'
+                              : 'No verification code has been received yet.',
+                          );
+                        })
+                        .catch((error: unknown) =>
+                          setTbaVerificationMessage(
+                            error instanceof Error
+                              ? error.message
+                              : 'Could not retrieve the code.',
+                          ),
+                        );
+                    }}
+                  >
+                    <RefreshCw /> Refresh code
+                  </Button>
+                  {tbaVerification && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        void fetch('/api/tba-webhook-verification', {
+                          method: 'DELETE',
+                        }).then((response) => {
+                          if (response.ok) {
+                            setTbaVerification(null);
+                            setTbaVerificationMessage('Stored code cleared.');
+                          }
+                        });
+                      }}
+                    >
+                      Clear stored code
+                    </Button>
+                  )}
+                </div>
+                {tbaVerificationMessage && (
+                  <output className="block text-sm text-muted-foreground">
+                    {tbaVerificationMessage}
+                  </output>
+                )}
               </CardContent>
             </Card>
             <Card>

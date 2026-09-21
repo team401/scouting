@@ -38,6 +38,14 @@ export async function POST(request: Request) {
       typeof payload.message_data.verification_key === 'string'
         ? payload.message_data.verification_key
         : null;
+    if (verificationKey)
+      await env.DB.prepare(
+        `INSERT INTO webhook_verifications (provider, verification_code, received_at)
+         VALUES ('tba', ?, ?) ON CONFLICT(provider) DO UPDATE SET
+         verification_code = excluded.verification_code, received_at = excluded.received_at`,
+      )
+        .bind(verificationKey, Date.now())
+        .run();
     return Response.json({
       ok: true,
       messageType: 'verification',

@@ -78,9 +78,10 @@ After deploying, create a webhook from your TBA account dashboard. Use
 `https://scout.team401.org/api/tba-webhook` for production, and enter the same
 random value stored in that environment's `TBA_WEBHOOK_SECRET`. Enable match
 score and schedule notifications. TBA sends a verification delivery first;
-the endpoint returns its verification key in the JSON response so it is visible
-in the delivery details. The webhook accelerates updates, while the existing
-client polling remains the fallback if a delivery is delayed or missed.
+after clicking **Resend code** in TBA, retrieve the latest code from **Admin →
+Team and event → TBA webhook verification** in the scouting app, then enter it
+back in TBA. The webhook accelerates updates, while the existing client polling
+remains the fallback if a delivery is delayed or missed.
 
 ## Account email
 
