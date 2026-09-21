@@ -1,23 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { betterAuth } from 'better-auth';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
-
-async function digest(value: string) {
-  return new Uint8Array(
-    await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)),
-  );
-}
-
-async function inviteCodeMatches(candidate: string, expected: string) {
-  const [left, right] = await Promise.all([
-    digest(candidate),
-    digest(expected),
-  ]);
-  let difference = left.length ^ right.length;
-  for (let index = 0; index < Math.max(left.length, right.length); index += 1)
-    difference |= (left[index] ?? 0) ^ (right[index] ?? 0);
-  return difference === 0;
-}
+import { verifyInviteCode } from '@/lib/invite-code';
 
 export const auth = betterAuth({
   database: env.DB,
@@ -31,14 +15,33 @@ export const auth = betterAuth({
   hooks: {
     before: createAuthMiddleware(async (context) => {
       if (context.path !== '/sign-up/email') return;
-      const expected = env.TEAM_INVITE_CODE;
       const candidate = context.headers?.get('x-team-invite-code') ?? '';
-      if (!expected)
+      const organization = await env.DB.prepare(
+        'SELECT id FROM organizations LIMIT 1',
+      ).first<{ id: string }>();
+      // The very first account bootstraps the organization and becomes owner.
+      if (!organization) return;
+      const setting = await env.DB.prepare(
+        'SELECT invite_code_hash, invite_code_salt FROM organization_settings WHERE organization_id = ?',
+      )
+        .bind(organization.id)
+        .first<{
+          invite_code_hash: string | null;
+          invite_code_salt: string | null;
+        }>();
+      if (!setting?.invite_code_hash || !setting.invite_code_salt)
         throw APIError.from('SERVICE_UNAVAILABLE', {
           code: 'INVITE_CODE_NOT_CONFIGURED',
-          message: 'Account creation is not configured.',
+          message:
+            'Account creation is closed until an admin configures an invite code.',
         });
-      if (!(await inviteCodeMatches(candidate, expected)))
+      if (
+        !(await verifyInviteCode(
+          candidate,
+          setting.invite_code_hash,
+          setting.invite_code_salt,
+        ))
+      )
         throw APIError.from('FORBIDDEN', {
           code: 'INVALID_INVITE_CODE',
           message: 'That Team 401 invite code is not valid.',

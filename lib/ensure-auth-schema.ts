@@ -12,6 +12,7 @@ const statements = [
   `CREATE TABLE IF NOT EXISTS organizations (id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL, frc_team_number INTEGER, owner_user_id TEXT NOT NULL REFERENCES users(id), created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS memberships (organization_id TEXT NOT NULL REFERENCES organizations(id), user_id TEXT NOT NULL REFERENCES users(id), role TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (organization_id, user_id))`,
   `CREATE INDEX IF NOT EXISTS idx_memberships_user ON memberships (user_id)`,
+  `CREATE TABLE IF NOT EXISTS organization_settings (organization_id TEXT PRIMARY KEY NOT NULL REFERENCES organizations(id) ON DELETE CASCADE, invite_code_hash TEXT, invite_code_salt TEXT, updated_at INTEGER NOT NULL)`,
 ];
 
 let initialized: Promise<unknown> | undefined;

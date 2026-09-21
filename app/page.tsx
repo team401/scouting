@@ -12,6 +12,7 @@ import {
   Cloud,
   CloudOff,
   Gauge,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   Map,
@@ -335,6 +336,9 @@ export default function Home() {
   const [assignmentMessage, setAssignmentMessage] = useState('');
   const [strategyTeams, setStrategyTeams] = useState<TeamAnalysis[]>([]);
   const [adminMessage, setAdminMessage] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
+  const [inviteCodeConfigured, setInviteCodeConfigured] = useState(false);
+  const [inviteCodeBusy, setInviteCodeBusy] = useState(false);
   const [adminSection, setAdminSection] = useState<'settings' | 'assignments'>(
     'settings',
   );
@@ -586,6 +590,16 @@ export default function Home() {
       })
       .finally(() => setEventsLoading(false));
   }, [activeView, eventYear, isAdmin, online]);
+
+  useEffect(() => {
+    if (activeView !== 'Admin' || !isAdmin || !online) return;
+    fetch('/api/invite-code')
+      .then(async (response) => {
+        const result = (await response.json()) as { configured?: boolean };
+        if (response.ok) setInviteCodeConfigured(Boolean(result.configured));
+      })
+      .catch(() => undefined);
+  }, [activeView, isAdmin, online]);
 
   useEffect(() => {
     if (activeView !== 'Plan' || planningMatches.length === 0) return;
@@ -1031,6 +1045,25 @@ export default function Home() {
     }
     setAdminMessage('Role updated.');
     await loadEventPack();
+  }
+
+  async function updateInviteCode() {
+    setAdminMessage('');
+    setInviteCodeBusy(true);
+    const response = await fetch('/api/invite-code', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ code: inviteCode }),
+    });
+    const result = (await response.json()) as { error?: string };
+    setInviteCodeBusy(false);
+    if (!response.ok) {
+      setAdminMessage(result.error ?? 'Could not update the invite code.');
+      return;
+    }
+    setInviteCode('');
+    setInviteCodeConfigured(true);
+    setAdminMessage('Invite code updated. Existing accounts remain signed in.');
   }
 
   async function generateAssignments() {
@@ -2863,6 +2896,43 @@ export default function Home() {
         )}
         {activeView === 'Admin' && isAdmin && adminSection === 'settings' && (
           <div className="grid gap-4 p-4 sm:p-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  <KeyRound /> Team invite code
+                </CardTitle>
+                <Badge
+                  variant={inviteCodeConfigured ? 'outline' : 'destructive'}
+                >
+                  {inviteCodeConfigured ? 'Configured' : 'Signup closed'}
+                </Badge>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  New accounts must enter this code. Changing it takes effect
+                  immediately and does not sign out existing members. The code
+                  is stored as a one-way hash and cannot be displayed later.
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={8}
+                    maxLength={128}
+                    value={inviteCode}
+                    onChange={(event) => setInviteCode(event.target.value)}
+                    placeholder="Enter a new invite code"
+                    aria-label="New team invite code"
+                  />
+                  <Button
+                    onClick={() => void updateInviteCode()}
+                    disabled={inviteCodeBusy || inviteCode.trim().length < 8}
+                  >
+                    {inviteCodeBusy ? 'Saving…' : 'Set invite code'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader>
                 <CardTitle>Current event</CardTitle>

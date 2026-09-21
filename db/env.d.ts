@@ -5,6 +5,5 @@ declare namespace Cloudflare {
     BETTER_AUTH_SECRET: string;
     BETTER_AUTH_URL: string;
     TBA_AUTH_KEY?: string;
-    TEAM_INVITE_CODE?: string;
   }
 }
