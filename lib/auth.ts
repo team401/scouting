@@ -12,6 +12,19 @@ export const auth = betterAuth({
     minPasswordLength: 10,
     maxPasswordLength: 128,
   },
+  rateLimit: {
+    enabled: true,
+    storage: 'database',
+    modelName: 'rate_limits',
+    fields: { lastRequest: 'last_request' },
+    window: 60,
+    max: 30,
+    customRules: {
+      '/sign-in/email': { window: 60, max: 8 },
+      '/sign-up/email': { window: 300, max: 5 },
+      '/request-password-reset': { window: 300, max: 3 },
+    },
+  },
   hooks: {
     before: createAuthMiddleware(async (context) => {
       if (context.path !== '/sign-up/email') return;
@@ -70,6 +83,26 @@ export const auth = betterAuth({
           )
             .bind('team-401', user.id, role, now, now)
             .run();
+        },
+      },
+    },
+    session: {
+      create: {
+        before: async (session) => {
+          const membership = await env.DB.prepare(
+            'SELECT disabled FROM memberships WHERE user_id = ? LIMIT 1',
+          )
+            .bind(session.userId)
+            .first<{ disabled: number }>();
+          const organization = await env.DB.prepare(
+            'SELECT 1 AS found FROM organizations LIMIT 1',
+          ).first();
+          if (organization && (!membership || membership.disabled))
+            throw APIError.from('FORBIDDEN', {
+              code: 'ACCOUNT_DISABLED',
+              message: 'This account is not active for Team 401.',
+            });
+          return { data: session };
         },
       },
     },

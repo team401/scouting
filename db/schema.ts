@@ -117,6 +117,7 @@ export const memberships = sqliteTable(
     role: text('role', {
       enum: ['owner', 'admin', 'strategy', 'scout', 'video'],
     }).notNull(),
+    disabled: integer('disabled', { mode: 'boolean' }).notNull().default(false),
     ...timestamps,
   },
   (table) => [
@@ -124,6 +125,12 @@ export const memberships = sqliteTable(
     index('idx_memberships_user').on(table.userId),
   ],
 );
+
+export const rateLimits = sqliteTable('rate_limits', {
+  key: text('key').primaryKey(),
+  count: integer('count').notNull(),
+  lastRequest: integer('last_request', { mode: 'timestamp_ms' }).notNull(),
+});
 
 export const seasons = sqliteTable('seasons', {
   year: integer('year').primaryKey(),
@@ -233,6 +240,27 @@ export const scoutEntries = sqliteTable(
       table.eventId,
       table.teamNumber,
     ),
+  ],
+);
+
+export const entryAudit = sqliteTable(
+  'entry_audit',
+  {
+    id: text('id').primaryKey(),
+    organizationId: text('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    entryId: text('entry_id')
+      .notNull()
+      .references(() => scoutEntries.id, { onDelete: 'cascade' }),
+    actorUserId: text('actor_user_id')
+      .notNull()
+      .references(() => users.id),
+    action: text('action').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [
+    index('idx_entry_audit_org_time').on(table.organizationId, table.createdAt),
   ],
 );
 

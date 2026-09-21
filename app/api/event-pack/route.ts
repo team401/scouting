@@ -107,7 +107,7 @@ export async function GET(request: Request) {
     .first<{ teamNumber: number | null }>();
   const organizationTeamNumber = organization?.teamNumber ?? 401;
   const members = await env.DB.prepare(
-    'SELECT users.id, users.name, users.email, memberships.role FROM memberships JOIN users ON users.id = memberships.user_id WHERE memberships.organization_id = ? ORDER BY users.name',
+    'SELECT users.id, users.name, users.email, memberships.role, memberships.disabled FROM memberships JOIN users ON users.id = memberships.user_id WHERE memberships.organization_id = ? ORDER BY users.name',
   )
     .bind(identity.membership.organization_id)
     .all();
