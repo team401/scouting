@@ -2,10 +2,10 @@
 
 The application uses two isolated Cloudflare environments:
 
-| Environment | Branch | Deployment | Worker | URL |
-| --- | --- | --- | --- | --- |
-| Staging | `staging` | Automatic after every push | `team401-scouting-staging` | `https://staging.scout.team401.org` |
-| Production | `main` | Manual workflow dispatch only | `team401-scouting` | `https://scout.team401.org` |
+| Environment | Branch    | Deployment                    | Worker                     | URL                                 |
+| ----------- | --------- | ----------------------------- | -------------------------- | ----------------------------------- |
+| Staging     | `staging` | Automatic after every push    | `team401-scouting-staging` | `https://staging.scout.team401.org` |
+| Production  | `main`    | Manual workflow dispatch only | `team401-scouting`         | `https://scout.team401.org`         |
 
 Each environment has its own D1 database, R2 bucket, and Better Auth secret so
 test accounts and scouting data cannot affect production.
@@ -52,6 +52,9 @@ secrets to each environment:
   `npx auth@latest secret`)
 - `TBA_AUTH_KEY` (a read API key from your The Blue Alliance account; this may
   be shared between environments)
+- `TEAM_INVITE_CODE` (at least 8 characters; distribute only to Team 401
+  members who should be allowed to create accounts, and use a different value
+  in staging)
 
 Add these environment variables with values for that environment:
 

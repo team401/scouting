@@ -47,12 +47,12 @@ jobs:
         env:
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
           TBA_AUTH_KEY: ${{ secrets.TBA_AUTH_KEY }}
+          TEAM_INVITE_CODE: ${{ secrets.TEAM_INVITE_CODE }}
         run: |
-          node -e "if (!process.env.BETTER_AUTH_SECRET || process.env.BETTER_AUTH_SECRET.length < 32) throw new Error('BETTER_AUTH_SECRET must contain at least 32 characters'); const secrets = { BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET }; if (process.env.TBA_AUTH_KEY) secrets.TBA_AUTH_KEY = process.env.TBA_AUTH_KEY; require('node:fs').writeFileSync(process.env.RUNNER_TEMP + '/worker-secrets.json', JSON.stringify(secrets))"
+          node -e "if (!process.env.BETTER_AUTH_SECRET || process.env.BETTER_AUTH_SECRET.length < 32) throw new Error('BETTER_AUTH_SECRET must contain at least 32 characters'); if (!process.env.TEAM_INVITE_CODE || process.env.TEAM_INVITE_CODE.length < 8) throw new Error('TEAM_INVITE_CODE must contain at least 8 characters'); const secrets = { BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET, TEAM_INVITE_CODE: process.env.TEAM_INVITE_CODE }; if (process.env.TBA_AUTH_KEY) secrets.TBA_AUTH_KEY = process.env.TBA_AUTH_KEY; require('node:fs').writeFileSync(process.env.RUNNER_TEMP + '/worker-secrets.json', JSON.stringify(secrets))"
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --config dist/server/wrangler.json --secrets-file ${{ runner.temp }}/worker-secrets.json
-
