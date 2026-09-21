@@ -17,10 +17,11 @@ export type OfflineDraft<T = unknown> = {
 };
 
 const DB_NAME = 'team401-scouting-offline';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const OUTBOX_STORE = 'outbox';
 const DRAFT_STORE = 'drafts';
 const CACHE_STORE = 'cache';
+const DEVICE_STORE = 'devices';
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -32,9 +33,65 @@ function openDb(): Promise<IDBDatabase> {
         request.result.createObjectStore(DRAFT_STORE, { keyPath: 'id' });
       if (!request.result.objectStoreNames.contains(CACHE_STORE))
         request.result.createObjectStore(CACHE_STORE, { keyPath: 'id' });
+      if (!request.result.objectStoreNames.contains(DEVICE_STORE))
+        request.result.createObjectStore(DEVICE_STORE, { keyPath: 'id' });
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
+  });
+}
+
+export type RelayDevice = {
+  id: 'qr-relay';
+  deviceId: string;
+  privateKey: CryptoKey;
+  publicKey: JsonWebKey;
+  registered: boolean;
+};
+
+export async function getRelayDevice(): Promise<RelayDevice> {
+  const db = await openDb();
+  const existing = await new Promise<RelayDevice | undefined>(
+    (resolve, reject) => {
+      const request = db
+        .transaction(DEVICE_STORE)
+        .objectStore(DEVICE_STORE)
+        .get('qr-relay');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    },
+  );
+  if (existing) return existing;
+  const keys = await crypto.subtle.generateKey(
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    true,
+    ['sign', 'verify'],
+  );
+  const privateKey = await crypto.subtle.importKey(
+    'jwk',
+    await crypto.subtle.exportKey('jwk', keys.privateKey),
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false,
+    ['sign'],
+  );
+  const device: RelayDevice = {
+    id: 'qr-relay',
+    deviceId: crypto.randomUUID(),
+    privateKey,
+    publicKey: await crypto.subtle.exportKey('jwk', keys.publicKey),
+    registered: false,
+  };
+  await saveRelayDevice(device);
+  return device;
+}
+
+export async function saveRelayDevice(device: RelayDevice) {
+  const db = await openDb();
+  return new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction(DEVICE_STORE, 'readwrite');
+    transaction.objectStore(DEVICE_STORE).put(device);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
   });
 }
 

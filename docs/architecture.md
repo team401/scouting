@@ -28,6 +28,16 @@ before leaving connectivity, inspect rejected outbox items, export queued
 mutations and drafts as an emergency JSON backup, and clear drafts without
 deleting submitted records that are still waiting to synchronize.
 
+Queued match submissions can also move between devices through the QR relay.
+Each browser generates a non-exportable P-256 signing key and registers only
+its public key while online. An offline sender compresses and signs up to 24
+queued submissions, displays them as animated QR frames, and retains its local
+copy. The connected receiver reassembles the frames and sends the signed
+envelope to the relay endpoint. The server verifies the registered device,
+organization membership, signature, event, and mutation IDs before storing the
+entries under the original scout—not the relay operator. Existing mutation IDs
+make rescanning safe and idempotent; photos and videos are never included.
+
 The current event, its teams, match schedule, assignments, and the season form definition are downloaded together as an “event pack.” A scout must be able to open the app, complete several matches, close/reopen it, and later synchronize without connectivity.
 
 ## Year-to-year game support

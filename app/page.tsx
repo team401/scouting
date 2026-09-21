@@ -47,6 +47,7 @@ import { PickListWorkspace } from '@/components/pick-list-workspace';
 import { TeamTrendChart, type TeamTrend } from '@/components/team-trend-chart';
 import { ScoutingOperations } from '@/components/scouting-operations';
 import { OfflineReadiness } from '@/components/offline-readiness';
+import { QrRelay } from '@/components/qr-relay';
 import {
   getCachedValue,
   getDraft,
@@ -1707,6 +1708,11 @@ export default function Home() {
               teamCount={eventTeams.length}
               online={online}
               onRefresh={() => loadEventPack(false, true)}
+            />
+            <QrRelay
+              organizationId={eventPack?.organizationId ?? ''}
+              eventKey={eventPack?.event.key ?? ''}
+              online={online}
             />
             <Card>
               <CardHeader>

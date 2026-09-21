@@ -132,6 +132,26 @@ export const rateLimits = sqliteTable('rate_limits', {
   lastRequest: integer('last_request', { mode: 'timestamp_ms' }).notNull(),
 });
 
+export const relayDevices = sqliteTable(
+  'relay_devices',
+  {
+    id: text('id').primaryKey(),
+    organizationId: text('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    publicKeyJwk: text('public_key_jwk', { mode: 'json' }).notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    lastUsedAt: integer('last_used_at', { mode: 'timestamp_ms' }),
+    revokedAt: integer('revoked_at', { mode: 'timestamp_ms' }),
+  },
+  (table) => [
+    index('idx_relay_devices_user').on(table.organizationId, table.userId),
+  ],
+);
+
 export const seasons = sqliteTable('seasons', {
   year: integer('year').primaryKey(),
   gameKey: text('game_key').notNull(),
