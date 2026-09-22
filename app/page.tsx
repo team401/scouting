@@ -369,10 +369,19 @@ export default function Home() {
   const [inviteCodeVisible, setInviteCodeVisible] = useState(false);
   const [inviteCodeConfigured, setInviteCodeConfigured] = useState(false);
   const [inviteCodeBusy, setInviteCodeBusy] = useState(false);
+  const [inviteCodeMessage, setInviteCodeMessage] = useState('');
   const [tbaVerification, setTbaVerification] = useState<{
     verificationCode: string;
     receivedAt: number;
   } | null>(null);
+  const [tbaWebhookStatus, setTbaWebhookStatus] = useState<{
+    configured: boolean;
+    delivery: {
+      lastReceivedAt: number;
+      status: string;
+      messageType: string | null;
+    } | null;
+  }>({ configured: false, delivery: null });
   const [tbaVerificationMessage, setTbaVerificationMessage] = useState('');
   const [adminSection, setAdminSection] = useState<'settings' | 'assignments'>(
     'settings',
@@ -634,28 +643,41 @@ export default function Home() {
           configured?: boolean;
           code?: string | null;
         };
-        if (response.ok) {
-          setInviteCodeConfigured(Boolean(result.configured));
-          setStoredInviteCode(result.code ?? null);
-        }
+        if (!response.ok)
+          throw new Error('Could not load the current invite code.');
+        setInviteCodeConfigured(Boolean(result.configured));
+        setStoredInviteCode(result.code ?? null);
       })
-      .catch(() => undefined);
+      .catch((error: unknown) =>
+        setInviteCodeMessage(
+          error instanceof Error
+            ? error.message
+            : 'Could not load the current invite code.',
+        ),
+      );
     fetch('/api/tba-webhook-verification')
       .then(async (response) => {
         const result = (await response.json()) as {
           verification?: typeof tbaVerification;
+          configured?: boolean;
+          delivery?: (typeof tbaWebhookStatus)['delivery'];
+          error?: string;
         };
-        if (response.ok) setTbaVerification(result.verification ?? null);
+        if (!response.ok)
+          throw new Error(result.error ?? 'Could not load webhook status.');
+        setTbaVerification(result.verification ?? null);
+        setTbaWebhookStatus({
+          configured: Boolean(result.configured),
+          delivery: result.delivery ?? null,
+        });
       })
-      .catch(() => undefined);
-    fetch('/api/tba-webhook-verification')
-      .then(async (response) => {
-        const result = (await response.json()) as {
-          verification?: typeof tbaVerification;
-        };
-        if (response.ok) setTbaVerification(result.verification ?? null);
-      })
-      .catch(() => undefined);
+      .catch((error: unknown) =>
+        setTbaVerificationMessage(
+          error instanceof Error
+            ? error.message
+            : 'Could not load webhook status.',
+        ),
+      );
   }, [activeView, isAdmin, online]);
 
   useEffect(() => {
@@ -1210,27 +1232,36 @@ export default function Home() {
   }
 
   async function updateInviteCode() {
-    setAdminMessage('');
+    setInviteCodeMessage('');
     setInviteCodeBusy(true);
-    const response = await fetch('/api/invite-code', {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ code: inviteCode }),
-    });
-    const result = (await response.json()) as {
-      error?: string;
-      code?: string;
-    };
-    setInviteCodeBusy(false);
-    if (!response.ok) {
-      setAdminMessage(result.error ?? 'Could not update the invite code.');
-      return;
+    try {
+      const response = await fetch('/api/invite-code', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ code: inviteCode }),
+      });
+      const result = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        code?: string;
+      };
+      if (!response.ok)
+        throw new Error(result.error ?? `Save failed (${response.status}).`);
+      setInviteCode('');
+      setStoredInviteCode(result.code ?? null);
+      setInviteCodeVisible(false);
+      setInviteCodeConfigured(true);
+      setInviteCodeMessage(
+        'Invite code saved. Existing accounts remain signed in.',
+      );
+    } catch (error) {
+      setInviteCodeMessage(
+        error instanceof Error
+          ? error.message
+          : 'Could not update the invite code.',
+      );
+    } finally {
+      setInviteCodeBusy(false);
     }
-    setInviteCode('');
-    setStoredInviteCode(result.code ?? null);
-    setInviteCodeVisible(false);
-    setInviteCodeConfigured(true);
-    setAdminMessage('Invite code updated. Existing accounts remain signed in.');
   }
 
   async function generateAssignments() {
@@ -3140,9 +3171,11 @@ export default function Home() {
                       onClick={() => {
                         void navigator.clipboard
                           .writeText(storedInviteCode)
-                          .then(() => setAdminMessage('Invite code copied.'))
+                          .then(() =>
+                            setInviteCodeMessage('Invite code copied.'),
+                          )
                           .catch(() =>
-                            setAdminMessage(
+                            setInviteCodeMessage(
                               'Could not copy automatically. Reveal and select the code manually.',
                             ),
                           );
@@ -3175,6 +3208,11 @@ export default function Home() {
                     {inviteCodeBusy ? 'Saving…' : 'Set invite code'}
                   </Button>
                 </div>
+                {inviteCodeMessage && (
+                  <output className="block text-sm text-muted-foreground">
+                    {inviteCodeMessage}
+                  </output>
+                )}
               </CardContent>
             </Card>
             <Card>
@@ -3188,10 +3226,44 @@ export default function Home() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  After the webhook secret is deployed, click Resend code on The
-                  Blue Alliance. Then refresh here and enter the received code
-                  back on TBA. This is separate from the webhook secret.
+                  TBA generates the webhook secret. Copy its displayed secret
+                  into the staging GitHub environment, redeploy, and then click
+                  Resend code on TBA.
                 </p>
+                <div className="grid gap-2 text-sm sm:grid-cols-2">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">
+                      Worker secret
+                    </p>
+                    <p className="font-medium">
+                      {tbaWebhookStatus.configured
+                        ? 'Configured'
+                        : 'Missing TBA_WEBHOOK_SECRET'}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">
+                      Last delivery
+                    </p>
+                    <p className="font-medium">
+                      {!tbaWebhookStatus.delivery
+                        ? 'Nothing received'
+                        : tbaWebhookStatus.delivery.status === 'accepted'
+                          ? `Accepted${tbaWebhookStatus.delivery.messageType ? `: ${tbaWebhookStatus.delivery.messageType}` : ''}`
+                          : tbaWebhookStatus.delivery.status ===
+                              'rejected_signature'
+                            ? 'Rejected: secret does not match'
+                            : 'Rejected: invalid payload'}
+                    </p>
+                    {tbaWebhookStatus.delivery && (
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(
+                          tbaWebhookStatus.delivery.lastReceivedAt,
+                        ).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
                 {tbaVerification && (
                   <div className="rounded-lg border p-3">
                     <p className="text-xs text-muted-foreground">
@@ -3233,6 +3305,8 @@ export default function Home() {
                         .then(async (response) => {
                           const result = (await response.json()) as {
                             verification?: typeof tbaVerification;
+                            configured?: boolean;
+                            delivery?: (typeof tbaWebhookStatus)['delivery'];
                             error?: string;
                           };
                           if (!response.ok)
@@ -3240,6 +3314,10 @@ export default function Home() {
                               result.error ?? 'Could not retrieve the code.',
                             );
                           setTbaVerification(result.verification ?? null);
+                          setTbaWebhookStatus({
+                            configured: Boolean(result.configured),
+                            delivery: result.delivery ?? null,
+                          });
                           setTbaVerificationMessage(
                             result.verification
                               ? 'Latest code loaded.'

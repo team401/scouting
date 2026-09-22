@@ -26,7 +26,19 @@ export async function GET(request: Request) {
     `SELECT verification_code AS verificationCode, received_at AS receivedAt
      FROM webhook_verifications WHERE provider = 'tba'`,
   ).first<{ verificationCode: string; receivedAt: number }>();
-  return Response.json({ verification: verification ?? null });
+  const delivery = await env.DB.prepare(
+    `SELECT last_received_at AS lastReceivedAt, status, message_type AS messageType
+     FROM webhook_delivery_status WHERE provider = 'tba'`,
+  ).first<{
+    lastReceivedAt: number;
+    status: string;
+    messageType: string | null;
+  }>();
+  return Response.json({
+    configured: Boolean(env.TBA_WEBHOOK_SECRET),
+    verification: verification ?? null,
+    delivery: delivery ?? null,
+  });
 }
 
 export async function DELETE(request: Request) {

@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS seasons (year INTEGER PRIMARY KEY NOT NULL, game_key 
 CREATE TABLE IF NOT EXISTS organization_settings (organization_id TEXT PRIMARY KEY NOT NULL REFERENCES organizations(id) ON DELETE CASCADE, invite_code_hash TEXT, invite_code_salt TEXT, invite_code_encrypted TEXT, invite_code_iv TEXT, updated_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS rate_limits (key TEXT PRIMARY KEY NOT NULL, count INTEGER NOT NULL, last_request INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS webhook_verifications (provider TEXT PRIMARY KEY NOT NULL, verification_code TEXT NOT NULL, received_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS webhook_delivery_status (provider TEXT PRIMARY KEY NOT NULL, last_received_at INTEGER NOT NULL, status TEXT NOT NULL, message_type TEXT);
 CREATE TABLE IF NOT EXISTS relay_devices (id TEXT PRIMARY KEY NOT NULL, organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, public_key_jwk TEXT NOT NULL, created_at INTEGER NOT NULL, last_used_at INTEGER, revoked_at INTEGER);
 CREATE INDEX IF NOT EXISTS idx_relay_devices_user ON relay_devices (organization_id, user_id);
 CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY NOT NULL, organization_id TEXT NOT NULL REFERENCES organizations(id), season_year INTEGER NOT NULL REFERENCES seasons(year), tba_event_key TEXT NOT NULL, name TEXT NOT NULL, is_current INTEGER DEFAULT 0 NOT NULL, tba_etag TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);

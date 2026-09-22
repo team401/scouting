@@ -140,6 +140,13 @@ export const webhookVerifications = sqliteTable('webhook_verifications', {
   receivedAt: integer('received_at', { mode: 'timestamp_ms' }).notNull(),
 });
 
+export const webhookDeliveryStatus = sqliteTable('webhook_delivery_status', {
+  provider: text('provider').primaryKey(),
+  lastReceivedAt: integer('last_received_at', { mode: 'timestamp_ms' }).notNull(),
+  status: text('status').notNull(),
+  messageType: text('message_type'),
+});
+
 export const relayDevices = sqliteTable(
   'relay_devices',
   {

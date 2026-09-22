@@ -13,22 +13,37 @@ export async function POST(request: Request) {
       { status: 503 },
     );
   const rawBody = await request.text();
+  const recordDelivery = (status: string, messageType: string | null = null) =>
+    env.DB.prepare(
+      `INSERT INTO webhook_delivery_status (provider, last_received_at, status, message_type)
+       VALUES ('tba', ?, ?, ?) ON CONFLICT(provider) DO UPDATE SET
+       last_received_at = excluded.last_received_at, status = excluded.status,
+       message_type = excluded.message_type`,
+    )
+      .bind(Date.now(), status, messageType)
+      .run();
   const valid = await verifyTbaWebhook(
     rawBody,
     request.headers.get('x-tba-hmac'),
     env.TBA_WEBHOOK_SECRET,
   );
-  if (!valid)
+  if (!valid) {
+    await recordDelivery('rejected_signature');
     return Response.json(
       { error: 'Invalid webhook signature.' },
       { status: 401 },
     );
+  }
   const payload = parseTbaWebhook(rawBody);
-  if (!payload)
+  if (!payload) {
+    await recordDelivery('rejected_payload');
     return Response.json(
       { error: 'Invalid webhook payload.' },
       { status: 400 },
     );
+  }
+
+  await recordDelivery('accepted', payload.message_type);
 
   if (payload.message_type === 'verification') {
     const verificationKey =

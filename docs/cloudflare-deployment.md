@@ -52,8 +52,8 @@ secrets to each environment:
   `npx auth@latest secret`)
 - `TBA_AUTH_KEY` (a read API key from your The Blue Alliance account; this may
   be shared between environments)
-- `TBA_WEBHOOK_SECRET` (a long random value used only to authenticate webhook
-  deliveries; use a different value in staging and production)
+- `TBA_WEBHOOK_SECRET` (copy the secret generated and displayed by TBA for
+  this exact webhook; staging and production webhooks have different secrets)
 - `RESEND_API_KEY` (a Resend send-only key restricted to the verified sending
   domain)
 - `EMAIL_FROM` (for example `Team 401 Scouting <scouting@team401.org>`)
@@ -75,13 +75,16 @@ deployment, and should be different between staging and production.
 
 After deploying, create a webhook from your TBA account dashboard. Use
 `https://staging.scout.team401.org/api/tba-webhook` for staging or
-`https://scout.team401.org/api/tba-webhook` for production, and enter the same
-random value stored in that environment's `TBA_WEBHOOK_SECRET`. Enable match
-score and schedule notifications. TBA sends a verification delivery first;
-after clicking **Resend code** in TBA, retrieve the latest code from **Admin →
-Team and event → TBA webhook verification** in the scouting app, then enter it
-back in TBA. The webhook accelerates updates, while the existing client polling
-remains the fallback if a delivery is delayed or missed.
+`https://scout.team401.org/api/tba-webhook` for production. TBA generates and
+displays a secret after the webhook is created. Copy that exact value to the
+matching GitHub environment as `TBA_WEBHOOK_SECRET`, then redeploy the Worker;
+do not generate a separate value. Enable match score and schedule
+notifications. After clicking **Resend code** in TBA, refresh **Admin → Team
+and event → TBA webhook verification** in the scouting app and enter the
+received code back in TBA. The status cards show whether TBA reached the
+Worker and whether its signature matched. The webhook accelerates updates,
+while the existing client polling remains the fallback if a delivery is
+delayed or missed.
 
 ## Account email
 
