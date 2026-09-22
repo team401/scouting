@@ -201,7 +201,8 @@ export function OfflineReadiness({
             ) : (
               <TriangleAlert className="text-amber-500" />
             )}
-            <strong>{relayReady ? 'Registered' : 'Missing'}</strong> QR relay
+            <strong>{relayReady ? 'Registered' : 'Missing'}</strong> match QR
+            handoff
             key
           </span>
           <span>
