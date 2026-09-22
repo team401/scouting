@@ -10,14 +10,20 @@ import {
   Printer,
   RotateCcw,
   Save,
+  Search,
+  Undo2,
+  UserX,
   UserRoundCheck,
   Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
   emptyPickList,
+  nextAllianceAfterSelection,
+  nextAllianceSlot,
   type ConsensusEntry,
   type PickListData,
   type PickListEntry,
@@ -53,6 +59,7 @@ function seededList(
         avoid: false,
       })),
     selections: [],
+    unavailable: [],
   };
 }
 
@@ -82,6 +89,7 @@ export function PickListWorkspace({
   const [saving, setSaving] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [allianceNumber, setAllianceNumber] = useState(1);
+  const [selectionSearch, setSelectionSearch] = useState('');
   const dragIndex = useRef<number | null>(null);
   const cacheKey = `pick-lists:${eventKey}`;
   const draftKey = `pick-lists-draft:${eventKey}`;
@@ -210,10 +218,49 @@ export function PickListWorkspace({
   function markTaken(teamNumber: number) {
     if (official.selections.some((item) => item.teamNumber === teamNumber))
       return;
+    const previousPickCount = official.selections.filter(
+      (item) => item.allianceNumber === allianceNumber,
+    ).length;
+    if (previousPickCount >= 3) {
+      setMessage(`Alliance ${allianceNumber} is already complete.`);
+      return;
+    }
     setOfficial({
       ...official,
       selections: [...official.selections, { teamNumber, allianceNumber }],
     });
+    setAllianceNumber(
+      nextAllianceAfterSelection(allianceNumber, previousPickCount),
+    );
+    setSelectionSearch('');
+  }
+
+  function markUnavailable(
+    teamNumber: number,
+    reason: 'declined' | 'ineligible',
+  ) {
+    setOfficial({
+      ...official,
+      selections: official.selections.filter(
+        (item) => item.teamNumber !== teamNumber,
+      ),
+      unavailable: [
+        ...(official.unavailable ?? []).filter(
+          (item) => item.teamNumber !== teamNumber,
+        ),
+        { teamNumber, reason },
+      ],
+    });
+  }
+
+  function undoLastSelection() {
+    const last = official.selections.at(-1);
+    if (!last) return;
+    setOfficial({
+      ...official,
+      selections: official.selections.slice(0, -1),
+    });
+    setAllianceNumber(last.allianceNumber);
   }
 
   function exportOfficialList() {
@@ -333,6 +380,7 @@ export function PickListWorkspace({
                         avoid: false,
                       })),
                       selections: official.selections,
+                      unavailable: official.unavailable ?? [],
                     })
                   }
                 >
@@ -475,7 +523,7 @@ export function PickListWorkspace({
         {mode === 'selection' && (
           <div className="grid gap-4 lg:grid-cols-[1fr_18rem]">
             <div>
-              <div className="pick-list-controls mb-3 flex items-center gap-2">
+              <div className="pick-list-controls mb-3 flex flex-wrap items-center gap-2">
                 <span className="text-sm font-semibold">
                   Selecting for alliance
                 </span>
@@ -492,6 +540,31 @@ export function PickListWorkspace({
                     </option>
                   ))}
                 </select>
+                <Badge variant="outline">
+                  {nextAllianceSlot(
+                    official.selections.filter(
+                      (item) => item.allianceNumber === allianceNumber,
+                    ).length,
+                  )}
+                </Badge>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!official.selections.length}
+                  onClick={undoLastSelection}
+                >
+                  <Undo2 /> Undo last
+                </Button>
+              </div>
+              <div className="relative mb-3">
+                <Search className="pointer-events-none absolute top-2.5 left-3 size-4 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  inputMode="numeric"
+                  placeholder="Find team number or note"
+                  value={selectionSearch}
+                  onChange={(event) => setSelectionSearch(event.target.value)}
+                />
               </div>
               <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 {official.entries
@@ -502,23 +575,83 @@ export function PickListWorkspace({
                       entry.tier !== 'do-not-pick' &&
                       !official.selections.some(
                         (item) => item.teamNumber === entry.teamNumber,
-                      ),
+                      ) &&
+                      !(official.unavailable ?? []).some(
+                        (item) => item.teamNumber === entry.teamNumber,
+                      ) &&
+                      (!selectionSearch.trim() ||
+                        String(entry.teamNumber).includes(
+                          selectionSearch.trim(),
+                        ) ||
+                        entry.note
+                          .toLowerCase()
+                          .includes(selectionSearch.trim().toLowerCase())),
                   )
                   .map(({ entry, rank }) => (
-                    <button
-                      className="rounded-lg border p-3 text-left hover:bg-accent"
+                    <div
+                      className="rounded-lg border p-3"
                       key={entry.teamNumber}
-                      onClick={() => markTaken(entry.teamNumber)}
                     >
-                      <strong>
-                        #{rank + 1} · Team {entry.teamNumber}
-                      </strong>
-                      <span className="block text-xs text-muted-foreground">
+                      <div className="flex items-start justify-between gap-2">
+                        <button
+                          className="flex-1 text-left"
+                          onClick={() => markTaken(entry.teamNumber)}
+                        >
+                          <strong>
+                            #{rank + 1} · Team {entry.teamNumber}
+                          </strong>
+                          <span className="block text-xs text-muted-foreground">
+                            EPA{' '}
+                            {metrics.get(entry.teamNumber)?.epa?.toFixed(1) ??
+                              '—'}{' '}
+                            · OPR{' '}
+                            {metrics.get(entry.teamNumber)?.opr?.toFixed(1) ??
+                              '—'}
+                          </span>
+                        </button>
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
+                          aria-label={`Mark team ${entry.teamNumber} declined`}
+                          onClick={() =>
+                            markUnavailable(entry.teamNumber, 'declined')
+                          }
+                        >
+                          <UserX />
+                        </Button>
+                      </div>
+                      <span className="mt-1 block text-xs text-muted-foreground">
                         {entry.note || 'Mark as selected'}
                       </span>
-                    </button>
+                    </div>
                   ))}
               </div>
+              {(official.unavailable ?? []).length > 0 && (
+                <details className="mt-4 rounded-lg border p-3">
+                  <summary className="cursor-pointer font-semibold">
+                    Unavailable teams ({official.unavailable?.length})
+                  </summary>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {official.unavailable?.map((item) => (
+                      <Button
+                        key={item.teamNumber}
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setOfficial({
+                            ...official,
+                            unavailable: official.unavailable?.filter(
+                              (team) => team.teamNumber !== item.teamNumber,
+                            ),
+                          })
+                        }
+                      >
+                        {item.teamNumber} · {item.reason} · restore
+                      </Button>
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
             <div className="space-y-3 rounded-lg border p-3">
               <div className="flex items-center justify-between">
@@ -537,8 +670,23 @@ export function PickListWorkspace({
                     (item) => item.allianceNumber === alliance,
                   );
                   return (
-                    <div className="rounded-md bg-muted p-2" key={alliance}>
-                      <strong>Alliance {alliance}</strong>
+                    <div
+                      className={
+                        alliance === allianceNumber
+                          ? 'rounded-md border border-primary bg-primary/5 p-2'
+                          : 'rounded-md bg-muted p-2'
+                      }
+                      key={alliance}
+                    >
+                      <button
+                        className="w-full text-left"
+                        onClick={() => setAllianceNumber(alliance)}
+                      >
+                        <strong>Alliance {alliance}</strong>
+                        <small className="ml-2 text-muted-foreground">
+                          {nextAllianceSlot(selections.length)}
+                        </small>
+                      </button>
                       {selections.length === 0 ? (
                         <span className="ml-2 text-xs text-muted-foreground">
                           Open

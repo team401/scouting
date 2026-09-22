@@ -340,7 +340,7 @@ export default function Home() {
   const [tower, setTower] = useState('None');
   const [path, setPath] = useState('Trench');
   const [dark, setDark] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [_saved, setSaved] = useState(false);
   const [defenseRating, setDefenseRating] = useState(0);
   const [disabled, setDisabled] = useState(false);
   const [noShow, setNoShow] = useState(false);
@@ -353,7 +353,7 @@ export default function Home() {
   const [saveError, setSaveError] = useState('');
   const [online, setOnline] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState('');
+  const [_syncMessage, setSyncMessage] = useState('');
   const [eventKey, setEventKey] = useState('');
   const [eventMessage, setEventMessage] = useState('');
   const [configuringEvent, setConfiguringEvent] = useState(false);
@@ -806,7 +806,7 @@ export default function Home() {
     setPlanMessage('');
     const cacheId = `match-plan:${currentMatch.id}`;
     const draftId = `match-plan-draft:${currentMatch.id}`;
-    Promise.all([
+    void Promise.all([
       getDraft<MatchPlan>(draftId),
       getCachedValue<{
         plan: MatchPlan | null;
@@ -2778,7 +2778,7 @@ export default function Home() {
                   currentMatch ? matchLabel(currentMatch) : 'this match'
                 }
               />
-              {false && (
+              {planCanEdit && currentMatch?.id === '__legacy-plan__' && (
                 <>
                   <Card>
                     <CardHeader>
@@ -3585,7 +3585,7 @@ export default function Home() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Choose one of Team 401's registered events from The Blue
+                  Choose one of Team 401&apos;s registered events from The Blue
                   Alliance. Its schedule will be cached on every device.
                 </p>
                 <div className="grid gap-2 sm:grid-cols-[8rem_1fr_auto]">
@@ -3709,10 +3709,7 @@ export default function Home() {
                           size="sm"
                           variant="outline"
                           onClick={() =>
-                            void setMemberDisabled(
-                              member.id,
-                              !Boolean(member.disabled),
-                            )
+                            void setMemberDisabled(member.id, !member.disabled)
                           }
                         >
                           {member.disabled ? 'Enable' : 'Disable'}

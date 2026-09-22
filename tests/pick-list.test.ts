@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildConsensus, type PickListData } from '../lib/pick-list.ts';
+import {
+  buildConsensus,
+  nextAllianceAfterSelection,
+  nextAllianceSlot,
+  type PickListData,
+} from '../lib/pick-list.ts';
 
 const list = (teams: number[]): PickListData => ({
   entries: teams.map((teamNumber) => ({
@@ -30,4 +35,13 @@ void test('excludes avoided and do-not-pick teams from consensus', () => {
     buildConsensus([ballot]).map((entry) => entry.teamNumber),
     [111],
   );
+});
+
+void test('advances captain and first picks forward, then second picks backward', () => {
+  assert.equal(nextAllianceAfterSelection(8, 0), 1);
+  assert.equal(nextAllianceAfterSelection(8, 1), 8);
+  assert.equal(nextAllianceAfterSelection(8, 2), 7);
+  assert.equal(nextAllianceAfterSelection(1, 2), 1);
+  assert.equal(nextAllianceSlot(0), 'Captain');
+  assert.equal(nextAllianceSlot(3), 'Complete');
 });
