@@ -57,7 +57,7 @@ export default function SignInPage() {
     const result = await authClient.signIn.email({ email, password });
     setBusy(false);
     if (result.error) setError(result.error.message || 'Unable to continue.');
-    else window.location.href = '/';
+    else window.location.replace('/');
   }
 
   return (

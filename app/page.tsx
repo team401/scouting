@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
   BarChart3,
@@ -323,7 +323,8 @@ function Counter({
 export default function Home() {
   const { data: session, isPending } = authClient.useSession();
   const [activeView, setActiveView] = useState<View>('Home');
-  const [viewHistory, setViewHistory] = useState<View[]>(['Home']);
+  const navigationDepthRef = useRef(0);
+  const selectedMatchKeyRef = useRef('');
   const [autoFuel, setAutoFuel] = useState(0);
   const [activeFuel, setActiveFuel] = useState(0);
   const [inactiveFuel, setInactiveFuel] = useState(0);
@@ -488,21 +489,79 @@ export default function Home() {
 
   function navigate(view: View) {
     if (view === activeView) return;
-    setViewHistory((history) => [...history, view]);
+    navigationDepthRef.current += 1;
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', view.toLowerCase());
+    window.history.pushState(
+      { scoutingApp: true, view, depth: navigationDepthRef.current },
+      '',
+      url,
+    );
     setActiveView(view);
   }
 
   function goBack() {
-    setViewHistory((history) => {
-      if (history.length <= 1) {
-        setActiveView('Home');
-        return ['Home'];
-      }
-      const next = history.slice(0, -1);
-      setActiveView(next[next.length - 1]);
-      return next;
-    });
+    if (navigationDepthRef.current > 0) {
+      window.history.back();
+      return;
+    }
+    if (activeView === 'Home') return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', 'home');
+    window.history.replaceState(
+      { scoutingApp: true, view: 'Home', depth: 0 },
+      '',
+      url,
+    );
+    setActiveView('Home');
   }
+
+  function replaceView(view: View) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', view.toLowerCase());
+    window.history.replaceState(
+      { scoutingApp: true, view, depth: navigationDepthRef.current },
+      '',
+      url,
+    );
+    setActiveView(view);
+  }
+
+  useEffect(() => {
+    const views: View[] = [
+      'Home',
+      'Scout',
+      'Pit',
+      'Plan',
+      'Teams',
+      'Admin',
+      'Settings',
+    ];
+    const requested = new URL(window.location.href).searchParams.get('view');
+    const initial =
+      views.find((view) => view.toLowerCase() === requested?.toLowerCase()) ??
+      'Home';
+    window.history.replaceState(
+      { scoutingApp: true, view: initial, depth: 0 },
+      '',
+      window.location.href,
+    );
+    setActiveView(initial);
+    const handleHistory = (event: PopStateEvent) => {
+      const state = event.state as
+        | { scoutingApp?: boolean; view?: View; depth?: number }
+        | null;
+      if (!state?.scoutingApp || !state.view) return;
+      navigationDepthRef.current = state.depth ?? 0;
+      setActiveView(state.view);
+    };
+    window.addEventListener('popstate', handleHistory);
+    return () => window.removeEventListener('popstate', handleHistory);
+  }, []);
+
+  useEffect(() => {
+    selectedMatchKeyRef.current = selectedMatchKey;
+  }, [selectedMatchKey]);
 
   useEffect(() => {
     getPendingMutations()
@@ -630,11 +689,13 @@ export default function Home() {
   }, [activeView, online, session]);
 
   useEffect(() => {
-    if (activeView === 'Admin' && !isAdmin) {
-      setActiveView('Home');
-      setViewHistory(['Home']);
-    }
-  }, [activeView, canUseStrategy, isAdmin]);
+    if (!eventPack) return;
+    if (
+      (activeView === 'Admin' && !isAdmin) ||
+      (activeView === 'Plan' && !canUseStrategy)
+    )
+      replaceView('Home');
+  }, [activeView, canUseStrategy, eventPack, isAdmin]);
 
   useEffect(() => {
     if (activeView !== 'Admin' || !isAdmin || !online) return;
@@ -1069,18 +1130,17 @@ export default function Home() {
       setEventPack(pack);
       setEventKey(pack.event.key);
       await saveCachedValue('current-event-pack', pack);
-      if (!selectedMatchKey && pack.matches.length > 0) {
+      if (!selectedMatchKeyRef.current && pack.matches.length > 0) {
         const mine = pack.assignments.find(
           (assignment) => assignment.scoutUserId === pack.userId,
         );
         const match =
           pack.matches.find((item) => item.id === mine?.matchId) ??
           pack.matches[0];
-        selectAssignment(
-          match,
-          mine?.teamNumber ?? match.alliances.red[0],
-          mine?.station ?? 'red1',
-        );
+        selectedMatchKeyRef.current = match.key;
+        setSelectedMatchKey(match.key);
+        setSelectedTeam(mine?.teamNumber ?? match.alliances.red[0]);
+        setSelectedStation(mine?.station ?? 'red1');
       }
     } catch (error) {
       const cached = await getCachedValue<EventPack>(
@@ -1109,6 +1169,7 @@ export default function Home() {
   }
 
   function selectAssignment(match: EventMatch, team: number, station: string) {
+    selectedMatchKeyRef.current = match.key;
     setSelectedMatchKey(match.key);
     setSelectedTeam(team);
     setSelectedStation(station);
@@ -1628,7 +1689,7 @@ export default function Home() {
       <section className="min-w-0 flex-1">
         <header className="topbar">
           <div className="flex items-center gap-2">
-            {viewHistory.length > 1 && (
+            {activeView !== 'Home' && (
               <Button
                 type="button"
                 size="icon"
