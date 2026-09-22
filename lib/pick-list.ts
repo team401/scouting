@@ -12,9 +12,15 @@ export type AllianceSelection = {
   allianceNumber: number;
 };
 
+export type UnavailableTeam = {
+  teamNumber: number;
+  reason: 'declined' | 'ineligible';
+};
+
 export type PickListData = {
   entries: PickListEntry[];
   selections: AllianceSelection[];
+  unavailable?: UnavailableTeam[];
 };
 
 export type ConsensusEntry = {
@@ -23,7 +29,27 @@ export type ConsensusEntry = {
   ballots: number;
 };
 
-export const emptyPickList: PickListData = { entries: [], selections: [] };
+export const emptyPickList: PickListData = {
+  entries: [],
+  selections: [],
+  unavailable: [],
+};
+
+export function nextAllianceAfterSelection(
+  allianceNumber: number,
+  previousPickCount: number,
+  allianceCount = 8,
+) {
+  if (previousPickCount === 0)
+    return allianceNumber < allianceCount ? allianceNumber + 1 : 1;
+  if (previousPickCount === 1)
+    return allianceNumber < allianceCount ? allianceNumber + 1 : allianceCount;
+  return allianceNumber > 1 ? allianceNumber - 1 : 1;
+}
+
+export function nextAllianceSlot(pickCount: number) {
+  return ['Captain', 'First pick', 'Second pick'][pickCount] ?? 'Complete';
+}
 
 export function buildConsensus(lists: PickListData[]): ConsensusEntry[] {
   const ranks = new Map<number, number[]>();
