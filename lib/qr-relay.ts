@@ -3,10 +3,12 @@ import {
   saveRelayDevice,
   type PendingMutation,
   type RelayDevice,
-} from '@/lib/offline-db';
+} from './offline-db.ts';
 
 export const QR_PREFIX = 'T401QR1';
-const CHUNK_SIZE = 850;
+// A single scouting submission normally fits comfortably in one QR at this
+// size. Multi-frame parsing remains supported for older transfers.
+const CHUNK_SIZE = 1800;
 
 function toBase64Url(bytes: Uint8Array) {
   let binary = '';

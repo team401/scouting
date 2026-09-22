@@ -53,6 +53,7 @@ import { TeamTrendChart, type TeamTrend } from '@/components/team-trend-chart';
 import { ScoutingOperations } from '@/components/scouting-operations';
 import { OfflineReadiness } from '@/components/offline-readiness';
 import { QrRelay } from '@/components/qr-relay';
+import { MatchSubmissionQr } from '@/components/match-submission-qr';
 import {
   getCachedValue,
   getDraft,
@@ -61,6 +62,7 @@ import {
   saveCachedValue,
   saveDraft,
   synchronizePendingMutations,
+  type PendingMutation,
 } from '@/lib/offline-db';
 import { observedPoints, type ScoutingPayload } from '@/lib/scouting-metrics';
 import {
@@ -432,6 +434,8 @@ export default function Home() {
   const [submissionStatus, setSubmissionStatus] = useState<
     'draft' | 'queued' | 'synchronized' | 'rejected'
   >('draft');
+  const [submittedMatchMutation, setSubmittedMatchMutation] =
+    useState<PendingMutation | null>(null);
   const eventTeams = eventPack
     ? [
         ...new Set(
@@ -893,7 +897,7 @@ export default function Home() {
     }
     setSaveError('');
     try {
-      await queueMutation({
+      const mutation: PendingMutation = {
         id: scoutEntryMutationId(
           eventPack.event.key,
           currentMatch.key,
@@ -914,7 +918,9 @@ export default function Home() {
           schemaVersion: 1,
           ...currentPayload,
         },
-      });
+      };
+      await queueMutation(mutation);
+      setSubmittedMatchMutation(mutation);
       setQueuedCount((await getPendingMutations()).length);
       setSaved(true);
       setSubmissionStatus('queued');
@@ -1082,6 +1088,7 @@ export default function Home() {
     setSelectedStation(station);
     setSaved(false);
     setSubmissionStatus('draft');
+    setSubmittedMatchMutation(null);
     navigate('Scout');
   }
 
@@ -1779,11 +1786,7 @@ export default function Home() {
               online={online}
               onRefresh={() => loadEventPack(false, true)}
             />
-            <QrRelay
-              organizationId={eventPack?.organizationId ?? ''}
-              eventKey={eventPack?.event.key ?? ''}
-              online={online}
-            />
+            <QrRelay online={online} />
             <Card>
               <CardHeader>
                 <CardTitle>Event coverage</CardTitle>
@@ -2073,18 +2076,28 @@ export default function Home() {
               </Button>
               {(submissionStatus === 'queued' ||
                 submissionStatus === 'synchronized') && (
-                <Button
-                  className="h-12 w-full text-base"
-                  variant="outline"
-                  onClick={continueToNextAssignment}
-                >
-                  {myAssignments.some(
-                    ({ match }) => match && match.key !== selectedMatchKey,
-                  )
-                    ? 'Continue to next assignment'
-                    : 'Return home'}
-                  <ChevronRight />
-                </Button>
+                <>
+                  {submittedMatchMutation && eventPack && (
+                    <MatchSubmissionQr
+                      mutation={submittedMatchMutation}
+                      organizationId={eventPack.organizationId}
+                      eventKey={eventPack.event.key}
+                      online={online}
+                    />
+                  )}
+                  <Button
+                    className="h-12 w-full text-base"
+                    variant="outline"
+                    onClick={continueToNextAssignment}
+                  >
+                    {myAssignments.some(
+                      ({ match }) => match && match.key !== selectedMatchKey,
+                    )
+                      ? 'Continue to next assignment'
+                      : 'Return home'}
+                    <ChevronRight />
+                  </Button>
+                </>
               )}
             </div>
           </div>
