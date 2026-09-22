@@ -1,4 +1,7 @@
-const iterations = 120_000;
+// Cloudflare Workers' Web Crypto implementation rejects PBKDF2 iteration
+// counts above 100,000. Keep this at the platform maximum so invite codes can
+// be created and verified in the deployed Worker.
+export const INVITE_CODE_PBKDF2_ITERATIONS = 100_000;
 
 function bytesToBase64(bytes: Uint8Array) {
   return btoa(String.fromCharCode(...bytes));
@@ -69,7 +72,12 @@ async function derive(code: string, salt: Uint8Array) {
   );
   return new Uint8Array(
     await crypto.subtle.deriveBits(
-      { name: 'PBKDF2', hash: 'SHA-256', salt: saltBuffer, iterations },
+      {
+        name: 'PBKDF2',
+        hash: 'SHA-256',
+        salt: saltBuffer,
+        iterations: INVITE_CODE_PBKDF2_ITERATIONS,
+      },
       key,
       256,
     ),
