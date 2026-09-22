@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
+  Film,
   RefreshCw,
   RotateCcw,
   Users,
@@ -35,6 +36,10 @@ type Operations = {
     cycles: number | null;
     flags: string[];
     reopened: boolean;
+    reviewSource: string | null;
+    matchId: string;
+    station: string;
+    videos: Array<{ type: string; key: string }>;
   }>;
   audit: Array<{
     id: string;
@@ -49,13 +54,29 @@ type Operations = {
     missing: number;
     issues: number;
   };
+  scoutQuality: Array<{
+    scoutUserId: string;
+    scoutName: string;
+    assigned: number;
+    submitted: number;
+    missed: number;
+    late: number;
+    flagged: number;
+    reopened: number;
+  }>;
 };
 
 function matchLabel(key: string) {
   return key.split('_').at(-1)?.toUpperCase() ?? key;
 }
 
-export function ScoutingOperations({ mode }: { mode: 'coverage' | 'review' }) {
+export function ScoutingOperations({
+  mode,
+  onVideoReview,
+}: {
+  mode: 'coverage' | 'review';
+  onVideoReview?: (issue: Operations['issues'][number]) => void;
+}) {
   const [data, setData] = useState<Operations | null>(null);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -195,6 +216,43 @@ export function ScoutingOperations({ mode }: { mode: 'coverage' | 'review' }) {
         {loading && (
           <p className="text-sm text-muted-foreground">Checking submissions…</p>
         )}
+        {data?.scoutQuality.length ? (
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Flags identify reports that need human review; they are not an
+              automatic judgment of scout performance. TBA comparisons use
+              alliance totals, not individual robot scoring.
+            </p>
+            <div className="overflow-x-auto rounded-lg border">
+            <table className="w-full min-w-[36rem] text-left text-sm">
+              <thead className="bg-muted/60 text-xs text-muted-foreground">
+                <tr>
+                  <th className="p-2">Scout</th>
+                  <th className="p-2">Completed shifts</th>
+                  <th className="p-2">Submitted</th>
+                  <th className="p-2">Missed</th>
+                  <th className="p-2">Late</th>
+                  <th className="p-2">Flagged</th>
+                  <th className="p-2">Reopened</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.scoutQuality.map((scout) => (
+                  <tr className="border-t" key={scout.scoutUserId}>
+                    <th className="p-2">{scout.scoutName}</th>
+                    <td className="p-2">{scout.assigned}</td>
+                    <td className="p-2">{scout.submitted}</td>
+                    <td className="p-2">{scout.missed}</td>
+                    <td className="p-2">{scout.late}</td>
+                    <td className="p-2">{scout.flagged}</td>
+                    <td className="p-2">{scout.reopened}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            </div>
+          </div>
+        ) : null}
         {data?.issues.map((issue) => (
           <div className="schedule-row" key={issue.id}>
             <strong>
@@ -208,17 +266,29 @@ export function ScoutingOperations({ mode }: { mode: 'coverage' | 'review' }) {
               {' · '}
               {issue.flags.join(' · ')}
             </span>
-            {!issue.id.startsWith('missing:') && !issue.reopened ? (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => void reopen(issue.id)}
-              >
-                <RotateCcw /> Reopen
-              </Button>
-            ) : (
-              <Badge variant="outline">Review</Badge>
-            )}
+            <div className="flex flex-wrap gap-2">
+              {!issue.id.startsWith('missing:') && !issue.reopened && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void reopen(issue.id)}
+                >
+                  <RotateCcw /> Reopen
+                </Button>
+              )}
+              {onVideoReview && issue.id.startsWith('missing:') && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onVideoReview(issue)}
+                >
+                  <Film /> Scout from video
+                </Button>
+              )}
+              {issue.reviewSource && (
+                <Badge variant="outline">Video reviewed</Badge>
+              )}
+            </div>
           </div>
         ))}
         {!loading && data?.issues.length === 0 && (

@@ -59,6 +59,14 @@ An admin chooses a centrally stored `currentEventId`; clients never choose their
 
 TBA webhooks validate `X-TBA-HMAC` against the exact raw request body, then refresh every organization currently using the referenced event through the same reconciliation path. Webhooks accelerate updates rather than replace polling; offline devices still catch up during their next sync. A scheduled Worker remains a future fallback for times when no clients are open and TBA does not send a delivery.
 
+Scouting quality review combines assignment coverage, correction history, team
+trend checks, and completed-match results. TBA comparisons are deliberately
+alliance-level: official data cannot prove which individual robot produced a
+score, so a mismatch is a review flag rather than a scout grade. Missing
+completed assignments can be recovered from a cached TBA YouTube video or a
+Team 401 R2 upload. Video-recovered entries retain `reviewSource` provenance,
+and reopened entries retain an audit trail when corrected.
+
 ## Media
 
 The video role records outside the browser camera UI or through a simple capture input, then uploads directly to R2 using a short-lived signed URL. D1 stores ownership, match/team linkage, MIME type, byte count, checksum, and processing state. Uploads are resumable and queued until Wi-Fi is available. Apply an organization quota, default compression guidance, and retention policy before enabling full-match video broadly.

@@ -26,6 +26,7 @@ type MatchRow = {
   predicted_at: number | null;
   alliances: string;
   result: string | null;
+  videos: string | null;
 };
 type PitEntryRow = {
   teamNumber: number;
@@ -123,6 +124,7 @@ export async function GET(request: Request) {
       assignments: [],
       members: members.results,
       pitEntries: [],
+      scoutEntries: [],
       organizationId: identity.membership.organization_id,
       organizationTeamNumber,
       role: identity.membership.role,
@@ -145,7 +147,7 @@ export async function GET(request: Request) {
         .first<EventRow>()) ?? event;
   }
   const matches = await env.DB.prepare(
-    "SELECT id, tba_match_key, comp_level, match_number, scheduled_at, predicted_at, alliances, result FROM matches WHERE organization_id = ? AND event_id = ? ORDER BY CASE comp_level WHEN 'qm' THEN 1 WHEN 'ef' THEN 2 WHEN 'qf' THEN 3 WHEN 'sf' THEN 4 WHEN 'f' THEN 5 ELSE 6 END, match_number",
+    "SELECT id, tba_match_key, comp_level, match_number, scheduled_at, predicted_at, alliances, result, videos FROM matches WHERE organization_id = ? AND event_id = ? ORDER BY CASE comp_level WHEN 'qm' THEN 1 WHEN 'ef' THEN 2 WHEN 'qf' THEN 3 WHEN 'sf' THEN 4 WHEN 'f' THEN 5 ELSE 6 END, match_number",
   )
     .bind(identity.membership.organization_id, event.id)
     .all<MatchRow>();
@@ -159,6 +161,22 @@ export async function GET(request: Request) {
   )
     .bind(identity.membership.organization_id, event.id)
     .all<PitEntryRow>();
+  const scoutEntries = await env.DB.prepare(
+    `SELECT match_id AS matchId, team_number AS teamNumber, station, payload, updated_at AS updatedAt
+     FROM scout_entries WHERE organization_id = ? AND event_id = ? AND scout_user_id = ?`,
+  )
+    .bind(
+      identity.membership.organization_id,
+      event.id,
+      identity.session.user.id,
+    )
+    .all<{
+      matchId: string;
+      teamNumber: number;
+      station: string;
+      payload: string;
+      updatedAt: number;
+    }>();
   const normalizedMatches = matches.results.map((match) => {
     const alliances = JSON.parse(match.alliances) as {
       red?: { team_keys?: string[] };
@@ -177,6 +195,7 @@ export async function GET(request: Request) {
       predictedAt: match.predicted_at,
       alliances: { red: teamNumbers('red'), blue: teamNumbers('blue') },
       result: match.result ? JSON.parse(match.result) : null,
+      videos: match.videos ? JSON.parse(match.videos) : [],
     };
   });
   return Response.json({
@@ -194,6 +213,10 @@ export async function GET(request: Request) {
       ...entry,
       motorTypes: entry.motorTypes ? JSON.parse(entry.motorTypes) : [],
       dimensions: entry.dimensions ? JSON.parse(entry.dimensions) : null,
+      payload: JSON.parse(entry.payload),
+    })),
+    scoutEntries: scoutEntries.results.map((entry) => ({
+      ...entry,
       payload: JSON.parse(entry.payload),
     })),
     organizationId: identity.membership.organization_id,

@@ -219,6 +219,7 @@ export const matches = sqliteTable(
     predictedAt: integer('predicted_at', { mode: 'timestamp_ms' }),
     alliances: text('alliances', { mode: 'json' }).notNull(),
     result: text('result', { mode: 'json' }),
+    videos: text('videos', { mode: 'json' }),
     ...timestamps,
   },
   (table) => [

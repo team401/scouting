@@ -107,6 +107,13 @@ type EventPack = {
     disabled?: number | boolean;
   }[];
   pitEntries: PitEntry[];
+  scoutEntries: Array<{
+    matchId: string;
+    teamNumber: number;
+    station: string;
+    payload: MatchDraft;
+    updatedAt: number;
+  }>;
   organizationId: string;
   organizationTeamNumber: number;
   role: string;
@@ -159,6 +166,7 @@ type EventMatch = {
   scheduledAt: number | null;
   predictedAt: number | null;
   alliances: { red: number[]; blue: number[] };
+  videos: Array<{ type: string; key: string }>;
   result: {
     winningAlliance?: string | null;
     actualTime?: number | null;
@@ -436,6 +444,11 @@ export default function Home() {
   >('draft');
   const [submittedMatchMutation, setSubmittedMatchMutation] =
     useState<PendingMutation | null>(null);
+  const [videoReview, setVideoReview] = useState<{
+    matchId: string;
+    teamNumber: number;
+    station: string;
+  } | null>(null);
   const eventTeams = eventPack
     ? [
         ...new Set(
@@ -509,21 +522,30 @@ export default function Home() {
     setSubmissionStatus('draft');
     getDraft<MatchDraft>(draftId)
       .then((draft) => {
-        if (draft) {
-          setAutoFuel(draft.payload.autoFuel);
-          setActiveFuel(draft.payload.activeFuel);
-          setInactiveFuel(draft.payload.inactiveFuel);
-          setCycles(draft.payload.cycles);
-          setAutoTower(draft.payload.autoTower);
-          setTower(draft.payload.tower);
-          setPath(draft.payload.path);
-          setDefenseRating(draft.payload.defenseRating ?? 0);
-          setDisabled(draft.payload.disabled ?? false);
-          setNoShow(draft.payload.noShow ?? false);
-          setPenalties(draft.payload.penalties ?? 0);
-          setShootingRange(draft.payload.shootingRange ?? 'Mixed');
-          setCycleSeconds(draft.payload.cycleSeconds ?? 0);
-          setNotes(draft.payload.notes ?? '');
+        const serverEntry = eventPack?.scoutEntries?.find(
+          (entry) =>
+            entry.matchId === currentMatch?.id &&
+            entry.teamNumber === selectedTeam,
+        );
+        const payload =
+          draft && (!serverEntry || draft.updatedAt >= serverEntry.updatedAt)
+            ? draft.payload
+            : serverEntry?.payload;
+        if (payload) {
+          setAutoFuel(payload.autoFuel);
+          setActiveFuel(payload.activeFuel);
+          setInactiveFuel(payload.inactiveFuel);
+          setCycles(payload.cycles);
+          setAutoTower(payload.autoTower);
+          setTower(payload.tower);
+          setPath(payload.path);
+          setDefenseRating(payload.defenseRating ?? 0);
+          setDisabled(payload.disabled ?? false);
+          setNoShow(payload.noShow ?? false);
+          setPenalties(payload.penalties ?? 0);
+          setShootingRange(payload.shootingRange ?? 'Mixed');
+          setCycleSeconds(payload.cycleSeconds ?? 0);
+          setNotes(payload.notes ?? '');
         } else {
           setAutoFuel(0);
           setActiveFuel(0);
@@ -546,7 +568,7 @@ export default function Home() {
         setSaveError('Offline storage is unavailable on this device.');
         setDraftReady(true);
       });
-  }, [draftId]);
+  }, [currentMatch?.id, draftId, eventPack?.scoutEntries, selectedTeam]);
 
   useEffect(() => {
     const updateConnection = () => setOnline(navigator.onLine);
@@ -916,6 +938,7 @@ export default function Home() {
           station: selectedStation,
           seasonYear: eventPack.event.year,
           schemaVersion: 1,
+          reviewSource: videoReview ? 'video_review' : 'live',
           ...currentPayload,
         },
       };
@@ -1030,6 +1053,7 @@ export default function Home() {
             updatedAt: 0,
           },
           pitEntries: result.pitEntries ?? [],
+          scoutEntries: result.scoutEntries ?? [],
           organizationId: result.organizationId ?? 'team-401',
         } as EventPack;
         setEventPack(emptyPack);
@@ -1039,6 +1063,7 @@ export default function Home() {
       const pack = {
         ...result,
         pitEntries: result.pitEntries ?? [],
+        scoutEntries: result.scoutEntries ?? [],
         organizationId: result.organizationId ?? 'team-401',
       } as EventPack;
       setEventPack(pack);
@@ -1065,6 +1090,7 @@ export default function Home() {
         const pack = {
           ...cached,
           pitEntries: cached.pitEntries ?? [],
+          scoutEntries: cached.scoutEntries ?? [],
           organizationId: cached.organizationId ?? 'team-401',
         };
         setEventPack(pack);
@@ -1089,7 +1115,19 @@ export default function Home() {
     setSaved(false);
     setSubmissionStatus('draft');
     setSubmittedMatchMutation(null);
+    setVideoReview(null);
     navigate('Scout');
+  }
+
+  function startVideoReview(issue: {
+    matchId: string;
+    teamNumber: number;
+    station: string;
+  }) {
+    const match = eventPack?.matches.find((item) => item.id === issue.matchId);
+    if (!match) return;
+    selectAssignment(match, issue.teamNumber, issue.station);
+    setVideoReview(issue);
   }
 
   function continueToNextAssignment() {
@@ -1472,6 +1510,11 @@ export default function Home() {
           (b.match?.predictedAt ?? b.match?.scheduledAt ?? Infinity),
       ) ?? [];
   const nextAssignment = myAssignments[0];
+  const reopenedEntries =
+    eventPack?.scoutEntries.filter(
+      (entry) =>
+        (entry.payload as MatchDraft & { reopened?: boolean }).reopened,
+    ) ?? [];
   const visibleMatches =
     eventPack?.matches.filter((match) => {
       const assignments = eventPack.assignments.filter(
@@ -1526,6 +1569,9 @@ export default function Home() {
       (a, b) => (b.stats?.medianPoints ?? 0) - (a.stats?.medianPoints ?? 0),
     )[0]?.team;
   const totalSlots = (eventPack?.matches.length ?? 0) * 6;
+  const currentMatchYoutubeVideo = currentMatch?.videos?.find(
+    (video) => video.type === 'youtube',
+  );
   const assignmentCounts =
     eventPack?.members.map((member) => ({
       member,
@@ -1778,6 +1824,40 @@ export default function Home() {
                 )}
               </CardContent>
             </Card>
+            {reopenedEntries.length > 0 && (
+              <Card className="border-amber-400">
+                <CardHeader>
+                  <CardTitle>
+                    <RefreshCw /> Corrections requested
+                  </CardTitle>
+                  <Badge variant="destructive">{reopenedEntries.length}</Badge>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {reopenedEntries.map((entry) => {
+                    const match = eventPack?.matches.find(
+                      (item) => item.id === entry.matchId,
+                    );
+                    return match ? (
+                      <Button
+                        className="w-full justify-between"
+                        variant="outline"
+                        key={`${entry.matchId}:${entry.teamNumber}`}
+                        onClick={() =>
+                          selectAssignment(
+                            match,
+                            entry.teamNumber,
+                            entry.station,
+                          )
+                        }
+                      >
+                        Correct {matchLabel(match)} · Team {entry.teamNumber}
+                        <ChevronRight />
+                      </Button>
+                    ) : null;
+                  })}
+                </CardContent>
+              </Card>
+            )}
             <OfflineReadiness
               eventKey={eventPack?.event.key ?? ''}
               eventName={eventPack?.event.name ?? ''}
@@ -1821,7 +1901,47 @@ export default function Home() {
           </div>
         )}
         {activeView === 'Scout' && (
-          <div className="mx-auto w-full max-w-3xl p-4 pb-28 sm:p-6">
+          <div
+            className={
+              videoReview
+                ? 'mx-auto grid w-full max-w-7xl items-start gap-4 p-4 pb-28 sm:p-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(26rem,.95fr)]'
+                : 'mx-auto w-full max-w-3xl p-4 pb-28 sm:p-6'
+            }
+          >
+            {videoReview && (
+              <Card className="sticky top-0 z-20 overflow-hidden lg:top-4">
+                <CardHeader>
+                  <CardTitle>Video review · {currentMatch && matchLabel(currentMatch)}</CardTitle>
+                  <Badge variant="outline">Team {selectedTeam}</Badge>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {currentMatch && currentMatchYoutubeVideo ? (
+                    <iframe
+                      className="aspect-video w-full rounded-lg bg-black"
+                      src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(
+                        currentMatchYoutubeVideo.key,
+                      )}`}
+                      title={`${matchLabel(currentMatch)} match video`}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <MatchVideoLibrary
+                      matchId={currentMatch?.id ?? null}
+                      matchLabel={
+                        currentMatch ? matchLabel(currentMatch) : 'this match'
+                      }
+                      playbackOnly
+                    />
+                  )}
+                  <p className="text-sm text-muted-foreground">
+                    Play, pause, and scrub the match while completing the normal
+                    scouting form. This submission will be marked as recovered
+                    from video.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
             <div className="min-w-0 space-y-4">
               <Card className="match-card">
                 <CardContent className="flex items-center justify-between gap-4">
@@ -2957,7 +3077,10 @@ export default function Home() {
         )}
         {activeView === 'Plan' && canUseStrategy && (
           <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
-            <ScoutingOperations mode="review" />
+            <ScoutingOperations
+              mode="review"
+              onVideoReview={startVideoReview}
+            />
             {eventPack && (
               <PickListWorkspace
                 teams={strategyTeams}

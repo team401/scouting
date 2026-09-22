@@ -156,7 +156,7 @@ export async function POST(request: Request) {
       continue;
     }
     const existing = await env.DB.prepare(
-      'SELECT payload FROM scout_entries WHERE organization_id = ? AND match_id = ? AND team_number = ? AND scout_user_id = ?',
+      'SELECT id, payload FROM scout_entries WHERE organization_id = ? AND match_id = ? AND team_number = ? AND scout_user_id = ?',
     )
       .bind(
         device.organizationId,
@@ -164,7 +164,7 @@ export async function POST(request: Request) {
         mutation.payload.teamNumber,
         device.userId,
       )
-      .first<{ payload: string }>();
+      .first<{ id: string; payload: string }>();
     const reopened = existing
       ? Boolean(
           (JSON.parse(existing.payload) as { reopened?: boolean }).reopened,
@@ -206,6 +206,19 @@ export async function POST(request: Request) {
         now,
       )
       .run();
+    if (existing && reopened)
+      await env.DB.prepare(
+        `INSERT INTO entry_audit (id, organization_id, entry_id, actor_user_id, action, created_at)
+         VALUES (?, ?, ?, ?, 'corrected', ?)`,
+      )
+        .bind(
+          crypto.randomUUID(),
+          device.organizationId,
+          existing.id,
+          device.userId,
+          now,
+        )
+        .run();
     accepted.push(mutation.id);
   }
   await env.DB.prepare('UPDATE relay_devices SET last_used_at = ? WHERE id = ?')

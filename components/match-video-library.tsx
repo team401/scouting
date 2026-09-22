@@ -29,9 +29,11 @@ const chunkBytes = 8 * 1024 * 1024;
 export function MatchVideoLibrary({
   matchId,
   matchLabel,
+  playbackOnly = false,
 }: {
   matchId: string | null;
   matchLabel: string;
+  playbackOnly?: boolean;
 }) {
   const [data, setData] = useState<VideoResponse | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -201,7 +203,8 @@ export function MatchVideoLibrary({
                     {matchLabel} · {(video.bytes / 1024 / 1024).toFixed(1)} MB ·
                     uploaded by {video.uploaderName}
                   </span>
-                  {(data.canDeleteAny ||
+                  {!playbackOnly &&
+                    (data.canDeleteAny ||
                     data.userId === video.uploaderUserId) && (
                     <Button
                       type="button"
@@ -221,7 +224,7 @@ export function MatchVideoLibrary({
                 No video has been uploaded for {matchLabel}.
               </p>
             )}
-            {data?.canUpload && (
+            {!playbackOnly && data?.canUpload && (
               <div className="space-y-2 rounded-lg border p-3">
                 <p className="text-sm font-medium">Upload a recording</p>
                 <Input
