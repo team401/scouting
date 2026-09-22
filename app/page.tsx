@@ -3180,10 +3180,49 @@ export default function Home() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  After the webhook secret is deployed, click Resend code on The
-                  Blue Alliance. Then refresh here and enter the received code
-                  back on TBA. This is separate from the webhook secret.
+                  Add this callback URL on The Blue Alliance. TBA generates and
+                  displays the webhook secret; copy that secret into this
+                  deployment&apos;s TBA_WEBHOOK_SECRET GitHub environment secret,
+                  then redeploy before clicking Resend code. Refresh here and
+                  enter the received verification code back on TBA.
                 </p>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Callback URL for this deployment
+                  </p>
+                  <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <code
+                      className="min-w-0 flex-1 overflow-x-auto rounded bg-muted p-2 text-sm"
+                      suppressHydrationWarning
+                    >
+                      {typeof window === 'undefined'
+                        ? '/api/tba-webhook'
+                        : `${window.location.origin}/api/tba-webhook`}
+                    </code>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        void navigator.clipboard
+                          .writeText(
+                            `${window.location.origin}/api/tba-webhook`,
+                          )
+                          .then(() =>
+                            setTbaVerificationMessage(
+                              'Webhook callback URL copied.',
+                            ),
+                          )
+                          .catch(() =>
+                            setTbaVerificationMessage(
+                              'Could not copy automatically. Select the URL manually.',
+                            ),
+                          );
+                      }}
+                    >
+                      <Copy /> Copy URL
+                    </Button>
+                  </div>
+                </div>
                 {tbaVerification && (
                   <div className="rounded-lg border p-3">
                     <p className="text-xs text-muted-foreground">
