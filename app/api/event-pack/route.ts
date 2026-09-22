@@ -16,6 +16,7 @@ type EventRow = {
   tba_event_key: string;
   name: string;
   updated_at: number;
+  timezone: string | null;
 };
 type MatchRow = {
   id: string;
@@ -113,7 +114,7 @@ export async function GET(request: Request) {
     .bind(identity.membership.organization_id)
     .all();
   let event = await env.DB.prepare(
-    'SELECT id, season_year, tba_event_key, name, updated_at FROM events WHERE organization_id = ? AND is_current = 1 LIMIT 1',
+    'SELECT id, season_year, tba_event_key, name, updated_at, timezone FROM events WHERE organization_id = ? AND is_current = 1 LIMIT 1',
   )
     .bind(identity.membership.organization_id)
     .first<EventRow>();
@@ -125,6 +126,7 @@ export async function GET(request: Request) {
       members: members.results,
       pitEntries: [],
       scoutEntries: [],
+      scoutShifts: [],
       organizationId: identity.membership.organization_id,
       organizationTeamNumber,
       role: identity.membership.role,
@@ -141,7 +143,7 @@ export async function GET(request: Request) {
     ).catch(() => undefined);
     event =
       (await env.DB.prepare(
-        'SELECT id, season_year, tba_event_key, name, updated_at FROM events WHERE organization_id = ? AND is_current = 1 LIMIT 1',
+        'SELECT id, season_year, tba_event_key, name, updated_at, timezone FROM events WHERE organization_id = ? AND is_current = 1 LIMIT 1',
       )
         .bind(identity.membership.organization_id)
         .first<EventRow>()) ?? event;
@@ -177,6 +179,17 @@ export async function GET(request: Request) {
       payload: string;
       updatedAt: number;
     }>();
+  const scoutShifts = await env.DB.prepare(
+    `SELECT id, station, starts_at AS startsAt, ends_at AS endsAt
+     FROM scout_shifts WHERE organization_id = ? AND event_id = ? AND scout_user_id = ?
+     ORDER BY starts_at`,
+  )
+    .bind(
+      identity.membership.organization_id,
+      event.id,
+      identity.session.user.id,
+    )
+    .all();
   const normalizedMatches = matches.results.map((match) => {
     const alliances = JSON.parse(match.alliances) as {
       red?: { team_keys?: string[] };
@@ -205,6 +218,7 @@ export async function GET(request: Request) {
       key: event.tba_event_key,
       name: event.name,
       updatedAt: event.updated_at,
+      timezone: event.timezone,
     },
     matches: normalizedMatches,
     assignments: assignments.results,
@@ -219,6 +233,7 @@ export async function GET(request: Request) {
       ...entry,
       payload: JSON.parse(entry.payload),
     })),
+    scoutShifts: scoutShifts.results,
     organizationId: identity.membership.organization_id,
     organizationTeamNumber,
     role: identity.membership.role,

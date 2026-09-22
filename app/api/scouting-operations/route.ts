@@ -1,4 +1,5 @@
 import { env } from 'cloudflare:workers';
+import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { observedPoints, type ScoutingPayload } from '@/lib/scouting-metrics';
 import { canReopenEntries } from '@/lib/scouting-policy';
@@ -37,6 +38,22 @@ type EntryRow = {
   payload: string;
   submittedAt: number;
 };
+
+type ReviewCaseRow = {
+  id: string;
+  status: 'open' | 'assigned' | 'corrected' | 'valid' | 'dismissed';
+  assignedReviewerId: string | null;
+  reviewerName: string | null;
+  reviewerNotes: string | null;
+  resolvedAt: number | null;
+};
+
+const reviewUpdateSchema = z.object({
+  id: z.string().min(1),
+  status: z.enum(['open', 'assigned', 'corrected', 'valid', 'dismissed']),
+  reviewerNotes: z.string().max(2000).optional(),
+  assignToMe: z.boolean().optional(),
+});
 
 export async function GET(request: Request) {
   const session = await auth.api.getSession({ headers: request.headers });
@@ -167,8 +184,7 @@ export async function GET(request: Request) {
           entry.matchId === match.id && entry.station.startsWith(color),
       );
       const official = color === 'red' ? result.redScore : result.blueScore;
-      if (official === null || official === undefined)
-        continue;
+      if (official === null || official === undefined) continue;
       const reported = allianceEntries.reduce(
         (sum, item) => sum + item.points,
         0,
@@ -241,6 +257,61 @@ export async function GET(request: Request) {
     })),
     ...issues,
   ];
+  const now = Date.now();
+  if (allIssues.length) {
+    const reviewStatements = allIssues.map((issue) =>
+      env.DB.prepare(
+        `INSERT INTO review_cases
+           (id, organization_id, event_id, entry_id, match_id, team_number, station, kind, status, flags, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+           status = CASE WHEN review_cases.flags <> excluded.flags THEN 'open' ELSE review_cases.status END,
+           resolved_by = CASE WHEN review_cases.flags <> excluded.flags THEN NULL ELSE review_cases.resolved_by END,
+           resolved_at = CASE WHEN review_cases.flags <> excluded.flags THEN NULL ELSE review_cases.resolved_at END,
+           flags = excluded.flags, updated_at = excluded.updated_at`,
+      ).bind(
+        issue.id,
+        membership.organization_id,
+        event.id,
+        issue.id.startsWith('missing:') ? null : issue.id,
+        issue.matchId,
+        issue.teamNumber,
+        issue.station,
+        issue.id.startsWith('missing:') ? 'missing' : 'data_quality',
+        JSON.stringify(issue.flags),
+        now,
+        now,
+      ),
+    );
+    for (let index = 0; index < reviewStatements.length; index += 50)
+      await env.DB.batch(reviewStatements.slice(index, index + 50));
+  }
+  const reviewRows = await env.DB.prepare(
+    `SELECT review_cases.id, review_cases.status,
+     review_cases.assigned_reviewer_id AS assignedReviewerId,
+     users.name AS reviewerName, review_cases.reviewer_notes AS reviewerNotes,
+     review_cases.resolved_at AS resolvedAt
+     FROM review_cases LEFT JOIN users ON users.id = review_cases.assigned_reviewer_id
+     WHERE review_cases.organization_id = ? AND review_cases.event_id = ?`,
+  )
+    .bind(membership.organization_id, event.id)
+    .all<ReviewCaseRow>();
+  const reviewById = new Map(reviewRows.results.map((item) => [item.id, item]));
+  const issuesWithReview = allIssues.map((issue) => ({
+    ...issue,
+    review: reviewById.get(issue.id) ?? {
+      id: issue.id,
+      status: 'open' as const,
+      assignedReviewerId: null,
+      reviewerName: null,
+      reviewerNotes: null,
+      resolvedAt: null,
+    },
+  }));
+  const unresolvedIssues = issuesWithReview.filter(
+    (issue) =>
+      issue.review.status === 'open' || issue.review.status === 'assigned',
+  );
   const completedCoverage = coverage.filter((slot) => slot.completed);
   const scoutQuality = assignments.results.map((assignment) => {
     const assigned = completedCoverage.filter(
@@ -266,7 +337,8 @@ export async function GET(request: Request) {
           slot.submittedAt &&
           slot.submittedAt > slot.actualTime + 10 * 60_000,
       ).length,
-      flagged: allIssues.filter((issue) => scoutEntryIds.has(issue.id)).length,
+      flagged: unresolvedIssues.filter((issue) => scoutEntryIds.has(issue.id))
+        .length,
       reopened: parsedEntries.filter(
         ({ entry, payload }) =>
           entry.scoutUserId === assignment.scoutUserId && payload.reopened,
@@ -274,20 +346,69 @@ export async function GET(request: Request) {
     };
   });
   const uniqueScoutQuality = [
-    ...new Map(
-      scoutQuality.map((item) => [item.scoutUserId, item]),
-    ).values(),
+    ...new Map(scoutQuality.map((item) => [item.scoutUserId, item])).values(),
   ].sort((a, b) => b.missed - a.missed || b.flagged - a.flagged);
   return Response.json({
     coverage,
-    issues: allIssues,
+    issues: issuesWithReview,
     scoutQuality: uniqueScoutQuality,
     audit: audit.results,
     summary: {
       assigned: coverage.length,
       submitted: coverage.filter((slot) => slot.status !== 'missing').length,
       missing: coverage.filter((slot) => slot.status === 'missing').length,
-      issues: allIssues.length,
+      issues: unresolvedIssues.length,
     },
   });
+}
+
+export async function PATCH(request: Request) {
+  const session = await auth.api.getSession({ headers: request.headers });
+  if (!session)
+    return Response.json(
+      { error: 'Sign in to review scouting.' },
+      { status: 401 },
+    );
+  const membership = await env.DB.prepare(
+    'SELECT organization_id, role FROM memberships WHERE user_id = ? AND disabled = 0 LIMIT 1',
+  )
+    .bind(session.user.id)
+    .first<{ organization_id: string; role: string }>();
+  if (!membership || !canReopenEntries(membership.role))
+    return Response.json(
+      { error: 'Strategy, admin, or owner access is required.' },
+      { status: 403 },
+    );
+  const parsed = reviewUpdateSchema.safeParse(
+    await request.json().catch(() => null),
+  );
+  if (!parsed.success)
+    return Response.json(
+      { error: 'Choose a valid review status.' },
+      { status: 400 },
+    );
+  const resolved = ['corrected', 'valid', 'dismissed'].includes(
+    parsed.data.status,
+  );
+  const result = await env.DB.prepare(
+    `UPDATE review_cases SET status = ?, reviewer_notes = ?,
+     assigned_reviewer_id = CASE WHEN ? THEN ? ELSE assigned_reviewer_id END,
+     resolved_by = ?, resolved_at = ?, updated_at = ?
+     WHERE id = ? AND organization_id = ?`,
+  )
+    .bind(
+      parsed.data.status,
+      parsed.data.reviewerNotes?.trim() || null,
+      parsed.data.assignToMe ? 1 : 0,
+      session.user.id,
+      resolved ? session.user.id : null,
+      resolved ? Date.now() : null,
+      Date.now(),
+      parsed.data.id,
+      membership.organization_id,
+    )
+    .run();
+  if (!result.meta.changes)
+    return Response.json({ error: 'Review case not found.' }, { status: 404 });
+  return Response.json({ updated: true });
 }

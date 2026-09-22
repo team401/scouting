@@ -40,6 +40,12 @@ type Operations = {
     matchId: string;
     station: string;
     videos: Array<{ type: string; key: string }>;
+    review: {
+      status: 'open' | 'assigned' | 'corrected' | 'valid' | 'dismissed';
+      reviewerName: string | null;
+      reviewerNotes: string | null;
+      resolvedAt: number | null;
+    };
   }>;
   audit: Array<{
     id: string;
@@ -80,6 +86,10 @@ export function ScoutingOperations({
   const [data, setData] = useState<Operations | null>(null);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [reviewFilter, setReviewFilter] = useState<'open' | 'resolved' | 'all'>(
+    'open',
+  );
+  const [notes, setNotes] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     try {
@@ -120,6 +130,30 @@ export function ScoutingOperations({
       return;
     }
     setMessage('Entry reopened. The scout can now submit a correction.');
+    await load();
+  }
+
+  async function updateReview(
+    issue: Operations['issues'][number],
+    status: Operations['issues'][number]['review']['status'],
+    assignToMe = false,
+  ) {
+    const response = await fetch('/api/scouting-operations', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        id: issue.id,
+        status,
+        assignToMe,
+        reviewerNotes: notes[issue.id] ?? issue.review.reviewerNotes ?? '',
+      }),
+    });
+    const result = (await response.json()) as { error?: string };
+    if (!response.ok) {
+      setMessage(result.error ?? 'Could not update this review.');
+      return;
+    }
+    setMessage('Review updated.');
     await load();
   }
 
@@ -224,73 +258,164 @@ export function ScoutingOperations({
               alliance totals, not individual robot scoring.
             </p>
             <div className="overflow-x-auto rounded-lg border">
-            <table className="w-full min-w-[36rem] text-left text-sm">
-              <thead className="bg-muted/60 text-xs text-muted-foreground">
-                <tr>
-                  <th className="p-2">Scout</th>
-                  <th className="p-2">Completed shifts</th>
-                  <th className="p-2">Submitted</th>
-                  <th className="p-2">Missed</th>
-                  <th className="p-2">Late</th>
-                  <th className="p-2">Flagged</th>
-                  <th className="p-2">Reopened</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.scoutQuality.map((scout) => (
-                  <tr className="border-t" key={scout.scoutUserId}>
-                    <th className="p-2">{scout.scoutName}</th>
-                    <td className="p-2">{scout.assigned}</td>
-                    <td className="p-2">{scout.submitted}</td>
-                    <td className="p-2">{scout.missed}</td>
-                    <td className="p-2">{scout.late}</td>
-                    <td className="p-2">{scout.flagged}</td>
-                    <td className="p-2">{scout.reopened}</td>
+              <table className="w-full min-w-[36rem] text-left text-sm">
+                <thead className="bg-muted/60 text-xs text-muted-foreground">
+                  <tr>
+                    <th className="p-2">Scout</th>
+                    <th className="p-2">Completed shifts</th>
+                    <th className="p-2">Submitted</th>
+                    <th className="p-2">Missed</th>
+                    <th className="p-2">Late</th>
+                    <th className="p-2">Flagged</th>
+                    <th className="p-2">Reopened</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {data.scoutQuality.map((scout) => (
+                    <tr className="border-t" key={scout.scoutUserId}>
+                      <th className="p-2">{scout.scoutName}</th>
+                      <td className="p-2">{scout.assigned}</td>
+                      <td className="p-2">{scout.submitted}</td>
+                      <td className="p-2">{scout.missed}</td>
+                      <td className="p-2">{scout.late}</td>
+                      <td className="p-2">{scout.flagged}</td>
+                      <td className="p-2">{scout.reopened}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         ) : null}
-        {data?.issues.map((issue) => (
-          <div className="schedule-row" key={issue.id}>
-            <strong>
-              {matchLabel(issue.matchKey)} · {issue.teamNumber}
-            </strong>
-            <span>
-              {issue.scoutName}
-              {issue.points === null
-                ? ''
-                : ` · ${issue.points} pts · ${issue.activeFuel} active FUEL · ${issue.cycles} cycles`}
-              {' · '}
-              {issue.flags.join(' · ')}
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {!issue.id.startsWith('missing:') && !issue.reopened && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void reopen(issue.id)}
+        <div className="flex flex-wrap gap-2">
+          {(['open', 'resolved', 'all'] as const).map((filter) => (
+            <Button
+              key={filter}
+              size="sm"
+              variant={reviewFilter === filter ? 'default' : 'outline'}
+              onClick={() => setReviewFilter(filter)}
+            >
+              {filter === 'open'
+                ? 'Needs review'
+                : filter === 'resolved'
+                  ? 'Resolved'
+                  : 'All'}
+            </Button>
+          ))}
+        </div>
+        {data?.issues
+          .filter((issue) => {
+            const open =
+              issue.review.status === 'open' ||
+              issue.review.status === 'assigned';
+            return (
+              reviewFilter === 'all' || (reviewFilter === 'open' ? open : !open)
+            );
+          })
+          .map((issue) => (
+            <div className="schedule-row" key={issue.id}>
+              <strong>
+                {matchLabel(issue.matchKey)} · {issue.teamNumber}
+              </strong>
+              <span>
+                {issue.scoutName}
+                {issue.points === null
+                  ? ''
+                  : ` · ${issue.points} pts · ${issue.activeFuel} active FUEL · ${issue.cycles} cycles`}
+                {' · '}
+                {issue.flags.join(' · ')}
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge
+                  variant={
+                    issue.review.status === 'open' ? 'destructive' : 'outline'
+                  }
                 >
-                  <RotateCcw /> Reopen
-                </Button>
-              )}
-              {onVideoReview && issue.id.startsWith('missing:') && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onVideoReview(issue)}
-                >
-                  <Film /> Scout from video
-                </Button>
-              )}
-              {issue.reviewSource && (
-                <Badge variant="outline">Video reviewed</Badge>
-              )}
+                  {issue.review.status}
+                </Badge>
+                {issue.review.reviewerName && (
+                  <small className="text-muted-foreground">
+                    Reviewer: {issue.review.reviewerName}
+                  </small>
+                )}
+              </div>
+              <textarea
+                className="min-h-20 w-full rounded-md border bg-background p-2 text-sm"
+                placeholder="Reviewer notes"
+                value={notes[issue.id] ?? issue.review.reviewerNotes ?? ''}
+                onChange={(event) =>
+                  setNotes((current) => ({
+                    ...current,
+                    [issue.id]: event.target.value,
+                  }))
+                }
+              />
+              <div className="flex flex-wrap gap-2">
+                {issue.review.status === 'open' ||
+                issue.review.status === 'assigned' ? (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void updateReview(issue, 'assigned', true)}
+                    >
+                      Assign to me
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void updateReview(issue, 'valid')}
+                    >
+                      Mark valid
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void updateReview(issue, 'corrected')}
+                    >
+                      Mark corrected
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => void updateReview(issue, 'dismissed')}
+                    >
+                      Dismiss
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void updateReview(issue, 'open')}
+                  >
+                    Reopen review
+                  </Button>
+                )}
+                {!issue.id.startsWith('missing:') && !issue.reopened && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void reopen(issue.id)}
+                  >
+                    <RotateCcw /> Reopen
+                  </Button>
+                )}
+                {onVideoReview && issue.id.startsWith('missing:') && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onVideoReview(issue)}
+                  >
+                    <Film /> Scout from video
+                  </Button>
+                )}
+                {issue.reviewSource && (
+                  <Badge variant="outline">Video reviewed</Badge>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
         {!loading && data?.issues.length === 0 && (
           <p className="text-sm text-muted-foreground">
             No missing or suspicious submissions found.

@@ -32,7 +32,6 @@ import {
   Upload,
   UserCog,
   Users,
-  WandSparkles,
   Wrench,
   Zap,
 } from 'lucide-react';
@@ -51,6 +50,7 @@ import { MatchVideoLibrary } from '@/components/match-video-library';
 import { TeamComparison } from '@/components/team-comparison';
 import { TeamTrendChart, type TeamTrend } from '@/components/team-trend-chart';
 import { ScoutingOperations } from '@/components/scouting-operations';
+import { ShiftScheduler } from '@/components/shift-scheduler';
 import { OfflineReadiness } from '@/components/offline-readiness';
 import { QrRelay } from '@/components/qr-relay';
 import { MatchSubmissionQr } from '@/components/match-submission-qr';
@@ -91,6 +91,7 @@ type EventPack = {
     key: string;
     name: string;
     updatedAt: number;
+    timezone: string | null;
   };
   matches: EventMatch[];
   assignments: {
@@ -113,6 +114,12 @@ type EventPack = {
     station: string;
     payload: MatchDraft;
     updatedAt: number;
+  }>;
+  scoutShifts: Array<{
+    id: string;
+    station: string;
+    startsAt: number;
+    endsAt: number;
   }>;
   organizationId: string;
   organizationTeamNumber: number;
@@ -397,9 +404,6 @@ export default function Home() {
   const [adminSection, setAdminSection] = useState<'settings' | 'assignments'>(
     'settings',
   );
-  const [selectedScoutIds, setSelectedScoutIds] = useState<string[]>([]);
-  const [assignmentStart, setAssignmentStart] = useState(1);
-  const [assignmentEnd, setAssignmentEnd] = useState(999);
   const [scheduleFilter, setScheduleFilter] = useState<
     'all' | 'mine' | 'unassigned'
   >('all');
@@ -548,9 +552,11 @@ export default function Home() {
     );
     setActiveView(initial);
     const handleHistory = (event: PopStateEvent) => {
-      const state = event.state as
-        | { scoutingApp?: boolean; view?: View; depth?: number }
-        | null;
+      const state = event.state as {
+        scoutingApp?: boolean;
+        view?: View;
+        depth?: number;
+      } | null;
       if (!state?.scoutingApp || !state.view) return;
       navigationDepthRef.current = state.depth ?? 0;
       setActiveView(state.view);
@@ -1112,9 +1118,11 @@ export default function Home() {
             key: '',
             name: 'No event loaded',
             updatedAt: 0,
+            timezone: null,
           },
           pitEntries: result.pitEntries ?? [],
           scoutEntries: result.scoutEntries ?? [],
+          scoutShifts: result.scoutShifts ?? [],
           organizationId: result.organizationId ?? 'team-401',
         } as EventPack;
         setEventPack(emptyPack);
@@ -1125,6 +1133,7 @@ export default function Home() {
         ...result,
         pitEntries: result.pitEntries ?? [],
         scoutEntries: result.scoutEntries ?? [],
+        scoutShifts: result.scoutShifts ?? [],
         organizationId: result.organizationId ?? 'team-401',
       } as EventPack;
       setEventPack(pack);
@@ -1151,6 +1160,7 @@ export default function Home() {
           ...cached,
           pitEntries: cached.pitEntries ?? [],
           scoutEntries: cached.scoutEntries ?? [],
+          scoutShifts: cached.scoutShifts ?? [],
           organizationId: cached.organizationId ?? 'team-401',
         };
         setEventPack(pack);
@@ -1368,32 +1378,6 @@ export default function Home() {
     } finally {
       setInviteCodeBusy(false);
     }
-  }
-
-  async function generateAssignments() {
-    setAdminMessage('');
-    const response = await fetch('/api/assignments/generate', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        scoutUserIds: selectedScoutIds,
-        startMatch: assignmentStart,
-        endMatch: assignmentEnd,
-      }),
-    });
-    const result = (await response.json()) as {
-      error?: string;
-      matchesAssigned?: number;
-      slotsAssigned?: number;
-    };
-    if (!response.ok) {
-      setAdminMessage(result.error ?? 'Could not generate assignments.');
-      return;
-    }
-    setAdminMessage(
-      `Assigned ${result.slotsAssigned ?? 0} stations across ${result.matchesAssigned ?? 0} matches.`,
-    );
-    await loadEventPack();
   }
 
   async function syncNow() {
@@ -1885,6 +1869,37 @@ export default function Home() {
                 )}
               </CardContent>
             </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>My scout shifts</CardTitle>
+                <Badge variant="outline">
+                  {eventPack?.event.timezone ?? 'Event time'}
+                </Badge>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {eventPack?.scoutShifts.map((shift) => (
+                  <div className="schedule-row" key={shift.id}>
+                    <strong>{shift.station.toUpperCase()}</strong>
+                    <span>
+                      {new Date(shift.startsAt).toLocaleTimeString([], {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                      {' – '}
+                      {new Date(shift.endsAt).toLocaleTimeString([], {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  </div>
+                ))}
+                {!eventPack?.scoutShifts.length && (
+                  <p className="text-sm text-muted-foreground">
+                    No time-block shift assigned.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
             {reopenedEntries.length > 0 && (
               <Card className="border-amber-400">
                 <CardHeader>
@@ -1972,7 +1987,9 @@ export default function Home() {
             {videoReview && (
               <Card className="sticky top-0 z-20 overflow-hidden lg:top-4">
                 <CardHeader>
-                  <CardTitle>Video review · {currentMatch && matchLabel(currentMatch)}</CardTitle>
+                  <CardTitle>
+                    Video review · {currentMatch && matchLabel(currentMatch)}
+                  </CardTitle>
                   <Badge variant="outline">Team {selectedTeam}</Badge>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -2968,6 +2985,10 @@ export default function Home() {
           isAdmin &&
           adminSection === 'assignments' && (
             <div className="p-4 sm:p-6">
+              <ShiftScheduler
+                members={eventPack?.members ?? []}
+                onChanged={() => loadEventPack(false, true)}
+              />
               <ScoutingOperations mode="coverage" />
               <Card>
                 <CardHeader>
@@ -3612,70 +3633,6 @@ export default function Home() {
                     {eventMessage}
                   </p>
                 )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  <WandSparkles />
-                  Bulk scout assignments
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Select scouts once, then distribute all six stations in a
-                  balanced rotation. Individual stations can still be adjusted
-                  on Schedule.
-                </p>
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {eventPack?.members.map((member) => (
-                    <label className="choice px-3" key={member.id}>
-                      <input
-                        type="checkbox"
-                        checked={selectedScoutIds.includes(member.id)}
-                        onChange={(event) =>
-                          setSelectedScoutIds((ids) =>
-                            event.target.checked
-                              ? [...ids, member.id]
-                              : ids.filter((id) => id !== member.id),
-                          )
-                        }
-                      />
-                      {member.name}
-                    </label>
-                  ))}
-                </div>
-                <div className="flex flex-wrap items-end gap-2">
-                  <label className="grid gap-1 text-sm">
-                    Start match
-                    <Input
-                      type="number"
-                      min="1"
-                      value={assignmentStart}
-                      onChange={(event) =>
-                        setAssignmentStart(Number(event.target.value))
-                      }
-                    />
-                  </label>
-                  <label className="grid gap-1 text-sm">
-                    End match
-                    <Input
-                      type="number"
-                      min="1"
-                      value={assignmentEnd}
-                      onChange={(event) =>
-                        setAssignmentEnd(Number(event.target.value))
-                      }
-                    />
-                  </label>
-                  <Button
-                    disabled={!selectedScoutIds.length}
-                    onClick={generateAssignments}
-                  >
-                    <WandSparkles />
-                    Generate rotation
-                  </Button>
-                </div>
               </CardContent>
             </Card>
             <Card>

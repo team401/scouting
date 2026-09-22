@@ -142,7 +142,9 @@ export const webhookVerifications = sqliteTable('webhook_verifications', {
 
 export const webhookDeliveryStatus = sqliteTable('webhook_delivery_status', {
   provider: text('provider').primaryKey(),
-  lastReceivedAt: integer('last_received_at', { mode: 'timestamp_ms' }).notNull(),
+  lastReceivedAt: integer('last_received_at', {
+    mode: 'timestamp_ms',
+  }).notNull(),
   status: text('status').notNull(),
   messageType: text('message_type'),
 });
@@ -191,6 +193,7 @@ export const events = sqliteTable(
       .notNull()
       .default(false),
     tbaEtag: text('tba_etag'),
+    timezone: text('timezone'),
     ...timestamps,
   },
   (table) => [
@@ -279,6 +282,45 @@ export const scoutEntries = sqliteTable(
   ],
 );
 
+export const scoutShifts = sqliteTable(
+  'scout_shifts',
+  {
+    id: text('id').primaryKey(),
+    organizationId: text('organization_id').notNull(),
+    eventId: text('event_id').notNull(),
+    station: text('station').notNull(),
+    scoutUserId: text('scout_user_id').notNull(),
+    startsAt: integer('starts_at', { mode: 'timestamp_ms' }).notNull(),
+    endsAt: integer('ends_at', { mode: 'timestamp_ms' }).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    index('idx_scout_shifts_event_time').on(
+      table.eventId,
+      table.startsAt,
+      table.endsAt,
+    ),
+  ],
+);
+
+export const reviewCases = sqliteTable('review_cases', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  eventId: text('event_id').notNull(),
+  entryId: text('entry_id'),
+  matchId: text('match_id').notNull(),
+  teamNumber: integer('team_number').notNull(),
+  station: text('station').notNull(),
+  kind: text('kind').notNull(),
+  status: text('status').notNull().default('open'),
+  flags: text('flags', { mode: 'json' }).notNull(),
+  assignedReviewerId: text('assigned_reviewer_id'),
+  reviewerNotes: text('reviewer_notes'),
+  resolvedBy: text('resolved_by'),
+  resolvedAt: integer('resolved_at', { mode: 'timestamp_ms' }),
+  ...timestamps,
+});
+
 export const entryAudit = sqliteTable(
   'entry_audit',
   {
@@ -318,6 +360,8 @@ export const scoutAssignments = sqliteTable(
       .notNull()
       .references(() => users.id),
     station: text('station').notNull(),
+    source: text('source').notNull().default('manual'),
+    shiftId: text('shift_id'),
     ...timestamps,
   },
   (table) => [
