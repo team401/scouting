@@ -330,6 +330,9 @@ function Counter({
 export default function Home() {
   const { data: session, isPending } = authClient.useSession();
   const [activeView, setActiveView] = useState<View>('Home');
+  const [teamsSection, setTeamsSection] = useState<
+    'directory' | 'analysis' | 'picks' | 'review'
+  >('directory');
   const navigationDepthRef = useRef(0);
   const selectedMatchKeyRef = useRef('');
   const [autoFuel, setAutoFuel] = useState(0);
@@ -665,7 +668,7 @@ export default function Home() {
   }, [online, queuedCount, session]);
 
   useEffect(() => {
-    if (activeView !== 'Plan' || !canUseStrategy || !selectedTeam || !online)
+    if (activeView !== 'Teams' || !canUseStrategy || !selectedTeam || !online)
       return;
     fetch(`/api/analysis?team=${selectedTeam}`)
       .then(async (response) => {
@@ -680,7 +683,13 @@ export default function Home() {
   }, [activeView, online, selectedTeam]);
 
   useEffect(() => {
-    if (activeView !== 'Plan' || !canUseStrategy || !online || !session) return;
+    if (
+      !['Plan', 'Teams'].includes(activeView) ||
+      !canUseStrategy ||
+      !online ||
+      !session
+    )
+      return;
     fetch('/api/strategy')
       .then(async (response) => {
         const result = (await response.json()) as {
@@ -702,6 +711,11 @@ export default function Home() {
     )
       replaceView('Home');
   }, [activeView, canUseStrategy, eventPack, isAdmin]);
+
+  useEffect(() => {
+    if (!canUseStrategy && teamsSection !== 'directory')
+      setTeamsSection('directory');
+  }, [canUseStrategy, teamsSection]);
 
   useEffect(() => {
     if (activeView !== 'Admin' || !isAdmin || !online) return;
@@ -1774,9 +1788,15 @@ export default function Home() {
                     Refresh live data
                   </Button>
                   {canUseStrategy && (
-                    <Button variant="outline" onClick={() => navigate('Plan')}>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setTeamsSection('analysis');
+                        navigate('Teams');
+                      }}
+                    >
                       <BarChart3 />
-                      Strategy workspace
+                      Analysis workspace
                     </Button>
                   )}
                   {isAdmin && (
@@ -3115,7 +3135,28 @@ export default function Home() {
               </Card>
             </div>
           )}
-        {activeView === 'Teams' && (
+        {activeView === 'Teams' && canUseStrategy && (
+          <div className="flex flex-wrap gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
+            {(
+              [
+                ['directory', 'Directory'],
+                ['analysis', 'Analysis'],
+                ['picks', 'Pick list'],
+                ['review', 'Data review'],
+              ] as const
+            ).map(([section, label]) => (
+              <Button
+                key={section}
+                size="sm"
+                variant={teamsSection === section ? 'default' : 'outline'}
+                onClick={() => setTeamsSection(section)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+        )}
+        {activeView === 'Teams' && teamsSection === 'directory' && (
           <div className="p-4 sm:p-6">
             <Card>
               <CardHeader>
@@ -3129,7 +3170,7 @@ export default function Home() {
                   <button
                     onClick={() => {
                       setSelectedTeam(team);
-                      if (canUseStrategy) navigate('Plan');
+                      if (canUseStrategy) setTeamsSection('analysis');
                       else {
                         setPitTeam(team);
                         navigate('Pit');
@@ -3157,193 +3198,213 @@ export default function Home() {
             </Card>
           </div>
         )}
-        {activeView === 'Plan' && canUseStrategy && (
-          <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
-            <ScoutingOperations
-              mode="review"
-              onVideoReview={startVideoReview}
-            />
-            {eventPack && (
-              <PickListWorkspace
-                teams={strategyTeams}
-                eventKey={eventPack.event.key}
-                organizationTeamNumber={organizationTeamNumber}
+        {activeView === 'Teams' &&
+          canUseStrategy &&
+          teamsSection === 'review' && (
+            <div className="grid gap-4 p-4 sm:p-6">
+              <ScoutingOperations
+                mode="review"
+                onVideoReview={startVideoReview}
               />
-            )}
-            <TeamComparison
-              teams={strategyTeams}
-              matchTeams={
-                currentMatch
-                  ? [
-                      ...currentMatch.alliances.red,
-                      ...currentMatch.alliances.blue,
-                    ]
-                  : []
-              }
-            />
-            <Card className="sm:col-span-2">
-              <CardHeader>
-                <CardTitle>Event ranking workspace</CardTitle>
-                <div className="flex gap-2">
-                  <Badge variant="outline">{strategyTeams.length} teams</Badge>
-                  {eventPack && canReopenEntries(eventPack.role) && (
-                    <Button
-                      nativeButton={false}
-                      size="sm"
-                      variant="outline"
-                      render={<a href="/api/export/scouting" download />}
-                    >
-                      <Cloud />
-                      Export CSV
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="max-h-96 overflow-auto">
-                <div className="strategy-table">
-                  <strong>Team</strong>
-                  <strong>Samples</strong>
-                  <strong>Median pts</strong>
-                  <strong>Fuel/cycle</strong>
-                  <strong>Coverage</strong>
-                  {[...strategyTeams]
-                    .sort((a, b) => b.medianPoints - a.medianPoints)
-                    .map((team) => (
-                      <button
-                        key={team.teamNumber}
-                        onClick={() => setSelectedTeam(team.teamNumber)}
-                        className={
-                          selectedTeam === team.teamNumber ? 'selected' : ''
-                        }
-                      >
-                        <span>{team.teamNumber}</span>
-                        <span>{team.samples}</span>
-                        <span>{team.medianPoints.toFixed(1)}</span>
-                        <span>{team.medianFuelPerCycle.toFixed(1)}</span>
-                        <span>{Math.round(team.coverage * 100)}%</span>
-                      </button>
-                    ))}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {selectedTeam
-                    ? `Team ${selectedTeam} snapshot`
-                    : 'Select a team above'}
-                </CardTitle>
-                <Badge variant="outline">
-                  {analysis?.samples ?? 0} samples
-                </Badge>
-              </CardHeader>
-              <CardContent>
-                <p className="score-number">{analysis?.medianPoints ?? 0}</p>
-                <p className="text-sm text-muted-foreground">
-                  median observed points
-                </p>
-                <div className="mini-stats">
-                  <span>
-                    <strong>{analysis?.medianActiveFuel ?? 0}</strong> median
-                    active FUEL
-                  </span>
-                  <span>
-                    <strong>
-                      {analysis?.medianFuelPerCycle.toFixed(1) ?? '0.0'}
-                    </strong>{' '}
-                    FUEL / cycle
-                  </span>
-                  <span>
-                    <strong>{analysis?.pointStdDev.toFixed(1) ?? '0.0'}</strong>{' '}
-                    point deviation
-                  </span>
-                  <span>
-                    <strong>
-                      {analysis?.averageDefense.toFixed(1) ?? '0.0'}
-                    </strong>{' '}
-                    defense rating
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Reliability and coverage</CardTitle>
-              </CardHeader>
-              <CardContent className="mini-stats">
-                <span>
-                  <strong>
-                    {Math.round((analysis?.towerSuccessRate ?? 0) * 100)}%
-                  </strong>{' '}
-                  tower success
-                </span>
-                <span>
-                  <strong>
-                    {Math.round((analysis?.disabledRate ?? 0) * 100)}%
-                  </strong>{' '}
-                  disabled rate
-                </span>
-                <span>
-                  <strong>
-                    {Math.round((analysis?.coverage ?? 0) * 100)}%
-                  </strong>{' '}
-                  data coverage
-                </span>
-                <span>
-                  <strong>{analysis?.scheduledMatches ?? 0}</strong> scheduled
-                  matches
-                </span>
-              </CardContent>
-            </Card>
-            <Card className="sm:col-span-2">
-              <CardHeader>
-                <CardTitle>
-                  {selectedTeam ? `Team ${selectedTeam} trends` : 'Team trends'}
-                </CardTitle>
-                <Badge variant="outline">Match by match</Badge>
-              </CardHeader>
-              <CardContent>
-                <TeamTrendChart trends={analysis?.trends ?? []} />
-              </CardContent>
-            </Card>
-            <Card className="sm:col-span-2">
-              <CardHeader>
-                <CardTitle>Submitted entries</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1">
-                {analysis?.entries.map((entry) => (
-                  <div className="schedule-row" key={entry.id}>
-                    <strong>
-                      {entry.matchKey.split('_').at(-1)?.toUpperCase()}
-                    </strong>
-                    <span>
-                      {entry.scoutName}
-                      {entry.reopened ? ' · reopened' : ''}
-                    </span>
-                    {eventPack &&
-                    canReopenEntries(eventPack.role) &&
-                    !entry.reopened ? (
+            </div>
+          )}
+        {activeView === 'Teams' &&
+          canUseStrategy &&
+          teamsSection === 'picks' && (
+            <div className="grid gap-4 p-4 sm:p-6">
+              {eventPack && (
+                <PickListWorkspace
+                  teams={strategyTeams}
+                  eventKey={eventPack.event.key}
+                  organizationTeamNumber={organizationTeamNumber}
+                />
+              )}
+            </div>
+          )}
+        {activeView === 'Teams' &&
+          canUseStrategy &&
+          teamsSection === 'analysis' && (
+            <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
+              <TeamComparison
+                teams={strategyTeams}
+                matchTeams={
+                  currentMatch
+                    ? [
+                        ...currentMatch.alliances.red,
+                        ...currentMatch.alliances.blue,
+                      ]
+                    : []
+                }
+              />
+              <Card className="sm:col-span-2">
+                <CardHeader>
+                  <CardTitle>Event ranking workspace</CardTitle>
+                  <div className="flex gap-2">
+                    <Badge variant="outline">
+                      {strategyTeams.length} teams
+                    </Badge>
+                    {eventPack && canReopenEntries(eventPack.role) && (
                       <Button
+                        nativeButton={false}
                         size="sm"
                         variant="outline"
-                        onClick={() => void reopenEntry(entry.id)}
+                        render={<a href="/api/export/scouting" download />}
                       >
-                        Reopen
+                        <Cloud />
+                        Export CSV
                       </Button>
-                    ) : (
-                      <small>{entry.reopened ? 'Editable' : 'Locked'}</small>
                     )}
                   </div>
-                ))}
-                {analysis?.entries.length === 0 && (
+                </CardHeader>
+                <CardContent className="max-h-96 overflow-auto">
+                  <div className="strategy-table">
+                    <strong>Team</strong>
+                    <strong>Samples</strong>
+                    <strong>Median pts</strong>
+                    <strong>Fuel/cycle</strong>
+                    <strong>Coverage</strong>
+                    {[...strategyTeams]
+                      .sort((a, b) => b.medianPoints - a.medianPoints)
+                      .map((team) => (
+                        <button
+                          key={team.teamNumber}
+                          onClick={() => setSelectedTeam(team.teamNumber)}
+                          className={
+                            selectedTeam === team.teamNumber ? 'selected' : ''
+                          }
+                        >
+                          <span>{team.teamNumber}</span>
+                          <span>{team.samples}</span>
+                          <span>{team.medianPoints.toFixed(1)}</span>
+                          <span>{team.medianFuelPerCycle.toFixed(1)}</span>
+                          <span>{Math.round(team.coverage * 100)}%</span>
+                        </button>
+                      ))}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    {selectedTeam
+                      ? `Team ${selectedTeam} snapshot`
+                      : 'Select a team above'}
+                  </CardTitle>
+                  <Badge variant="outline">
+                    {analysis?.samples ?? 0} samples
+                  </Badge>
+                </CardHeader>
+                <CardContent>
+                  <p className="score-number">{analysis?.medianPoints ?? 0}</p>
                   <p className="text-sm text-muted-foreground">
-                    No synchronized entries for this team yet.
+                    median observed points
                   </p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        )}
+                  <div className="mini-stats">
+                    <span>
+                      <strong>{analysis?.medianActiveFuel ?? 0}</strong> median
+                      active FUEL
+                    </span>
+                    <span>
+                      <strong>
+                        {analysis?.medianFuelPerCycle.toFixed(1) ?? '0.0'}
+                      </strong>{' '}
+                      FUEL / cycle
+                    </span>
+                    <span>
+                      <strong>
+                        {analysis?.pointStdDev.toFixed(1) ?? '0.0'}
+                      </strong>{' '}
+                      point deviation
+                    </span>
+                    <span>
+                      <strong>
+                        {analysis?.averageDefense.toFixed(1) ?? '0.0'}
+                      </strong>{' '}
+                      defense rating
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Reliability and coverage</CardTitle>
+                </CardHeader>
+                <CardContent className="mini-stats">
+                  <span>
+                    <strong>
+                      {Math.round((analysis?.towerSuccessRate ?? 0) * 100)}%
+                    </strong>{' '}
+                    tower success
+                  </span>
+                  <span>
+                    <strong>
+                      {Math.round((analysis?.disabledRate ?? 0) * 100)}%
+                    </strong>{' '}
+                    disabled rate
+                  </span>
+                  <span>
+                    <strong>
+                      {Math.round((analysis?.coverage ?? 0) * 100)}%
+                    </strong>{' '}
+                    data coverage
+                  </span>
+                  <span>
+                    <strong>{analysis?.scheduledMatches ?? 0}</strong> scheduled
+                    matches
+                  </span>
+                </CardContent>
+              </Card>
+              <Card className="sm:col-span-2">
+                <CardHeader>
+                  <CardTitle>
+                    {selectedTeam
+                      ? `Team ${selectedTeam} trends`
+                      : 'Team trends'}
+                  </CardTitle>
+                  <Badge variant="outline">Match by match</Badge>
+                </CardHeader>
+                <CardContent>
+                  <TeamTrendChart trends={analysis?.trends ?? []} />
+                </CardContent>
+              </Card>
+              <Card className="sm:col-span-2">
+                <CardHeader>
+                  <CardTitle>Submitted entries</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1">
+                  {analysis?.entries.map((entry) => (
+                    <div className="schedule-row" key={entry.id}>
+                      <strong>
+                        {entry.matchKey.split('_').at(-1)?.toUpperCase()}
+                      </strong>
+                      <span>
+                        {entry.scoutName}
+                        {entry.reopened ? ' · reopened' : ''}
+                      </span>
+                      {eventPack &&
+                      canReopenEntries(eventPack.role) &&
+                      !entry.reopened ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => void reopenEntry(entry.id)}
+                        >
+                          Reopen
+                        </Button>
+                      ) : (
+                        <small>{entry.reopened ? 'Editable' : 'Locked'}</small>
+                      )}
+                    </div>
+                  ))}
+                  {analysis?.entries.length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      No synchronized entries for this team yet.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
         {activeView === 'Admin' && isAdmin && adminSection === 'settings' && (
           <div className="grid gap-4 p-4 sm:p-6">
             <Card>
