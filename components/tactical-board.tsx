@@ -198,7 +198,9 @@ export function TacticalBoard({
       <svg
         ref={svgRef}
         viewBox="0 0 1654 800"
-        className="w-full touch-none rounded-xl border bg-slate-800 shadow-inner"
+        className="w-full touch-none select-none rounded-xl border bg-slate-800 shadow-inner"
+        style={{ WebkitUserSelect: 'none' }}
+        onDragStart={(event) => event.preventDefault()}
         onPointerDown={startDraw}
         onPointerMove={move}
         onPointerUp={() => {
