@@ -102,6 +102,8 @@ export const organizationSettings = sqliteTable('organization_settings', {
     .references(() => organizations.id, { onDelete: 'cascade' }),
   inviteCodeHash: text('invite_code_hash'),
   inviteCodeSalt: text('invite_code_salt'),
+  inviteCodeEncrypted: text('invite_code_encrypted'),
+  inviteCodeIv: text('invite_code_iv'),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
 });
 

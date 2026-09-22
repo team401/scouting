@@ -12,6 +12,8 @@ import {
   Cloud,
   CloudOff,
   Copy,
+  Eye,
+  EyeOff,
   Gauge,
   KeyRound,
   LayoutDashboard,
@@ -363,6 +365,8 @@ export default function Home() {
   const [currentSessionId, setCurrentSessionId] = useState('');
   const [sessionMessage, setSessionMessage] = useState('');
   const [inviteCode, setInviteCode] = useState('');
+  const [storedInviteCode, setStoredInviteCode] = useState<string | null>(null);
+  const [inviteCodeVisible, setInviteCodeVisible] = useState(false);
   const [inviteCodeConfigured, setInviteCodeConfigured] = useState(false);
   const [inviteCodeBusy, setInviteCodeBusy] = useState(false);
   const [tbaVerification, setTbaVerification] = useState<{
@@ -626,8 +630,22 @@ export default function Home() {
     if (activeView !== 'Admin' || !isAdmin || !online) return;
     fetch('/api/invite-code')
       .then(async (response) => {
-        const result = (await response.json()) as { configured?: boolean };
-        if (response.ok) setInviteCodeConfigured(Boolean(result.configured));
+        const result = (await response.json()) as {
+          configured?: boolean;
+          code?: string | null;
+        };
+        if (response.ok) {
+          setInviteCodeConfigured(Boolean(result.configured));
+          setStoredInviteCode(result.code ?? null);
+        }
+      })
+      .catch(() => undefined);
+    fetch('/api/tba-webhook-verification')
+      .then(async (response) => {
+        const result = (await response.json()) as {
+          verification?: typeof tbaVerification;
+        };
+        if (response.ok) setTbaVerification(result.verification ?? null);
       })
       .catch(() => undefined);
     fetch('/api/tba-webhook-verification')
@@ -1199,13 +1217,18 @@ export default function Home() {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ code: inviteCode }),
     });
-    const result = (await response.json()) as { error?: string };
+    const result = (await response.json()) as {
+      error?: string;
+      code?: string;
+    };
     setInviteCodeBusy(false);
     if (!response.ok) {
       setAdminMessage(result.error ?? 'Could not update the invite code.');
       return;
     }
     setInviteCode('');
+    setStoredInviteCode(result.code ?? null);
+    setInviteCodeVisible(false);
     setInviteCodeConfigured(true);
     setAdminMessage('Invite code updated. Existing accounts remain signed in.');
   }
@@ -3088,9 +3111,52 @@ export default function Home() {
               <CardContent className="space-y-3">
                 <p className="text-sm text-muted-foreground">
                   New accounts must enter this code. Changing it takes effect
-                  immediately and does not sign out existing members. The code
-                  is stored as a one-way hash and cannot be displayed later.
+                  immediately and does not sign out existing members. Only
+                  owners and admins can reveal or change it.
                 </p>
+                {storedInviteCode ? (
+                  <div className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center">
+                    <code className="min-w-0 flex-1 overflow-x-auto rounded bg-muted p-2 text-sm">
+                      {inviteCodeVisible
+                        ? storedInviteCode
+                        : '•'.repeat(Math.min(storedInviteCode.length, 24))}
+                    </code>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      aria-label={
+                        inviteCodeVisible
+                          ? 'Hide invite code'
+                          : 'Show invite code'
+                      }
+                      onClick={() => setInviteCodeVisible(!inviteCodeVisible)}
+                    >
+                      {inviteCodeVisible ? <EyeOff /> : <Eye />}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        void navigator.clipboard
+                          .writeText(storedInviteCode)
+                          .then(() => setAdminMessage('Invite code copied.'))
+                          .catch(() =>
+                            setAdminMessage(
+                              'Could not copy automatically. Reveal and select the code manually.',
+                            ),
+                          );
+                      }}
+                    >
+                      <Copy /> Copy
+                    </Button>
+                  </div>
+                ) : inviteCodeConfigured ? (
+                  <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                    The existing code was saved before codes could be revealed.
+                    Set a new code below once; it will then be available here.
+                  </p>
+                ) : null}
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <Input
                     type="password"

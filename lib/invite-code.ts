@@ -8,6 +8,56 @@ function base64ToBytes(value: string) {
   return Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
 }
 
+async function inviteEncryptionKey(secret: string) {
+  const material = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(`team401-invite-code:${secret}`),
+  );
+  return crypto.subtle.importKey('raw', material, 'AES-GCM', false, [
+    'encrypt',
+    'decrypt',
+  ]);
+}
+
+export async function encryptInviteCode(
+  code: string,
+  secret: string,
+  organizationId: string,
+) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt(
+    {
+      name: 'AES-GCM',
+      iv,
+      additionalData: new TextEncoder().encode(organizationId),
+    },
+    await inviteEncryptionKey(secret),
+    new TextEncoder().encode(code),
+  );
+  return {
+    encrypted: bytesToBase64(new Uint8Array(encrypted)),
+    iv: bytesToBase64(iv),
+  };
+}
+
+export async function decryptInviteCode(
+  encrypted: string,
+  iv: string,
+  secret: string,
+  organizationId: string,
+) {
+  const decrypted = await crypto.subtle.decrypt(
+    {
+      name: 'AES-GCM',
+      iv: base64ToBytes(iv),
+      additionalData: new TextEncoder().encode(organizationId),
+    },
+    await inviteEncryptionKey(secret),
+    base64ToBytes(encrypted),
+  );
+  return new TextDecoder().decode(decrypted);
+}
+
 async function derive(code: string, salt: Uint8Array) {
   const saltBuffer = Uint8Array.from(salt).buffer;
   const key = await crypto.subtle.importKey(
