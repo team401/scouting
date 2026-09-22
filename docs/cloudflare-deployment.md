@@ -75,16 +75,13 @@ deployment, and should be different between staging and production.
 
 After deploying, create a webhook from your TBA account dashboard. Use
 `https://staging.scout.team401.org/api/tba-webhook` for staging or
-`https://scout.team401.org/api/tba-webhook` for production. TBA generates a
-secret for the webhook and displays it in the webhook list. Copy that exact
-value into the matching GitHub environment's `TBA_WEBHOOK_SECRET`; do not
-generate a different secret locally. Redeploy the corresponding Worker after
-adding or changing the GitHub secret. Enable match score and schedule
-notifications. TBA sends a verification delivery first; after clicking
-**Resend code** in TBA, retrieve the latest code from **Admin → Team and event
-→ TBA webhook verification** in the scouting app, then enter it back in TBA.
-The webhook accelerates updates, while the existing client polling remains the
-fallback if a delivery is delayed or missed.
+`https://scout.team401.org/api/tba-webhook` for production, and enter the same
+random value stored in that environment's `TBA_WEBHOOK_SECRET`. Enable match
+score and schedule notifications. TBA sends a verification delivery first;
+after clicking **Resend code** in TBA, retrieve the latest code from **Admin →
+Team and event → TBA webhook verification** in the scouting app, then enter it
+back in TBA. The webhook accelerates updates, while the existing client polling
+remains the fallback if a delivery is delayed or missed.
 
 ## Account email
 
