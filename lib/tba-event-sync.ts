@@ -1,6 +1,12 @@
 import { env } from 'cloudflare:workers';
+import { reconcileShiftAssignments } from '@/lib/scout-shifts';
 
-type TbaEvent = { key: string; name: string; year: number };
+type TbaEvent = {
+  key: string;
+  name: string;
+  year: number;
+  timezone: string | null;
+};
 type TbaAlliance = { team_keys: string[]; score: number };
 type TbaMatch = {
   key: string;
@@ -50,15 +56,16 @@ export async function syncTbaEvent(organizationId: string, eventKey: string) {
     env.DB.prepare(
       'UPDATE events SET is_current = 0 WHERE organization_id = ? AND tba_event_key <> ?',
     ).bind(organizationId, event.key),
-    env.DB.prepare(`INSERT INTO events (id, organization_id, season_year, tba_event_key, name, is_current, tba_etag, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?) ON CONFLICT(organization_id, tba_event_key) DO UPDATE SET name = excluded.name,
-      is_current = 1, tba_etag = excluded.tba_etag, updated_at = excluded.updated_at`).bind(
+    env.DB.prepare(`INSERT INTO events (id, organization_id, season_year, tba_event_key, name, is_current, tba_etag, timezone, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?) ON CONFLICT(organization_id, tba_event_key) DO UPDATE SET name = excluded.name,
+      is_current = 1, tba_etag = excluded.tba_etag, timezone = excluded.timezone, updated_at = excluded.updated_at`).bind(
       eventId,
       organizationId,
       event.year,
       event.key,
       event.name,
       matchesResponse.headers.get('etag'),
+      event.timezone,
       now,
       now,
     ),
@@ -93,5 +100,6 @@ export async function syncTbaEvent(organizationId: string, eventKey: string) {
       ),
     ),
   ]);
+  await reconcileShiftAssignments(env.DB, organizationId, eventId);
   return { event, matchCount: matches.length, refreshedAt: now };
 }
