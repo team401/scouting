@@ -16,6 +16,7 @@ type EventRow = {
   tba_event_key: string;
   name: string;
   updated_at: number;
+  timezone: string | null;
 };
 type MatchRow = {
   id: string;
@@ -26,6 +27,7 @@ type MatchRow = {
   predicted_at: number | null;
   alliances: string;
   result: string | null;
+  videos: string | null;
 };
 type PitEntryRow = {
   teamNumber: number;
@@ -107,12 +109,12 @@ export async function GET(request: Request) {
     .first<{ teamNumber: number | null }>();
   const organizationTeamNumber = organization?.teamNumber ?? 401;
   const members = await env.DB.prepare(
-    'SELECT users.id, users.name, users.email, memberships.role FROM memberships JOIN users ON users.id = memberships.user_id WHERE memberships.organization_id = ? ORDER BY users.name',
+    'SELECT users.id, users.name, users.email, memberships.role, memberships.disabled FROM memberships JOIN users ON users.id = memberships.user_id WHERE memberships.organization_id = ? ORDER BY users.name',
   )
     .bind(identity.membership.organization_id)
     .all();
   let event = await env.DB.prepare(
-    'SELECT id, season_year, tba_event_key, name, updated_at FROM events WHERE organization_id = ? AND is_current = 1 LIMIT 1',
+    'SELECT id, season_year, tba_event_key, name, updated_at, timezone FROM events WHERE organization_id = ? AND is_current = 1 LIMIT 1',
   )
     .bind(identity.membership.organization_id)
     .first<EventRow>();
@@ -123,6 +125,8 @@ export async function GET(request: Request) {
       assignments: [],
       members: members.results,
       pitEntries: [],
+      scoutEntries: [],
+      scoutShifts: [],
       organizationId: identity.membership.organization_id,
       organizationTeamNumber,
       role: identity.membership.role,
@@ -139,13 +143,13 @@ export async function GET(request: Request) {
     ).catch(() => undefined);
     event =
       (await env.DB.prepare(
-        'SELECT id, season_year, tba_event_key, name, updated_at FROM events WHERE organization_id = ? AND is_current = 1 LIMIT 1',
+        'SELECT id, season_year, tba_event_key, name, updated_at, timezone FROM events WHERE organization_id = ? AND is_current = 1 LIMIT 1',
       )
         .bind(identity.membership.organization_id)
         .first<EventRow>()) ?? event;
   }
   const matches = await env.DB.prepare(
-    "SELECT id, tba_match_key, comp_level, match_number, scheduled_at, predicted_at, alliances, result FROM matches WHERE organization_id = ? AND event_id = ? ORDER BY CASE comp_level WHEN 'qm' THEN 1 WHEN 'ef' THEN 2 WHEN 'qf' THEN 3 WHEN 'sf' THEN 4 WHEN 'f' THEN 5 ELSE 6 END, match_number",
+    "SELECT id, tba_match_key, comp_level, match_number, scheduled_at, predicted_at, alliances, result, videos FROM matches WHERE organization_id = ? AND event_id = ? ORDER BY CASE comp_level WHEN 'qm' THEN 1 WHEN 'ef' THEN 2 WHEN 'qf' THEN 3 WHEN 'sf' THEN 4 WHEN 'f' THEN 5 ELSE 6 END, match_number",
   )
     .bind(identity.membership.organization_id, event.id)
     .all<MatchRow>();
@@ -159,6 +163,33 @@ export async function GET(request: Request) {
   )
     .bind(identity.membership.organization_id, event.id)
     .all<PitEntryRow>();
+  const scoutEntries = await env.DB.prepare(
+    `SELECT match_id AS matchId, team_number AS teamNumber, station, payload, updated_at AS updatedAt
+     FROM scout_entries WHERE organization_id = ? AND event_id = ? AND scout_user_id = ?`,
+  )
+    .bind(
+      identity.membership.organization_id,
+      event.id,
+      identity.session.user.id,
+    )
+    .all<{
+      matchId: string;
+      teamNumber: number;
+      station: string;
+      payload: string;
+      updatedAt: number;
+    }>();
+  const scoutShifts = await env.DB.prepare(
+    `SELECT id, station, starts_at AS startsAt, ends_at AS endsAt
+     FROM scout_shifts WHERE organization_id = ? AND event_id = ? AND scout_user_id = ?
+     ORDER BY starts_at`,
+  )
+    .bind(
+      identity.membership.organization_id,
+      event.id,
+      identity.session.user.id,
+    )
+    .all();
   const normalizedMatches = matches.results.map((match) => {
     const alliances = JSON.parse(match.alliances) as {
       red?: { team_keys?: string[] };
@@ -177,6 +208,7 @@ export async function GET(request: Request) {
       predictedAt: match.predicted_at,
       alliances: { red: teamNumbers('red'), blue: teamNumbers('blue') },
       result: match.result ? JSON.parse(match.result) : null,
+      videos: match.videos ? JSON.parse(match.videos) : [],
     };
   });
   return Response.json({
@@ -186,6 +218,7 @@ export async function GET(request: Request) {
       key: event.tba_event_key,
       name: event.name,
       updatedAt: event.updated_at,
+      timezone: event.timezone,
     },
     matches: normalizedMatches,
     assignments: assignments.results,
@@ -196,6 +229,11 @@ export async function GET(request: Request) {
       dimensions: entry.dimensions ? JSON.parse(entry.dimensions) : null,
       payload: JSON.parse(entry.payload),
     })),
+    scoutEntries: scoutEntries.results.map((entry) => ({
+      ...entry,
+      payload: JSON.parse(entry.payload),
+    })),
+    scoutShifts: scoutShifts.results,
     organizationId: identity.membership.organization_id,
     organizationTeamNumber,
     role: identity.membership.role,

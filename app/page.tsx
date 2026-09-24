@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
   BarChart3,
@@ -11,11 +11,16 @@ import {
   ClipboardList,
   Cloud,
   CloudOff,
+  Copy,
+  Eye,
+  EyeOff,
   Gauge,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   Map,
   Minus,
+  MonitorSmartphone,
   Moon,
   Plus,
   RefreshCw,
@@ -23,10 +28,10 @@ import {
   Shield,
   Sun,
   TowerControl,
+  Trash2,
   Upload,
   UserCog,
   Users,
-  WandSparkles,
   Wrench,
   Zap,
 } from 'lucide-react';
@@ -41,6 +46,14 @@ import {
   type TacticalBoardData,
 } from '@/components/tactical-board';
 import { PickListWorkspace } from '@/components/pick-list-workspace';
+import { MatchVideoLibrary } from '@/components/match-video-library';
+import { TeamComparison } from '@/components/team-comparison';
+import { TeamTrendChart, type TeamTrend } from '@/components/team-trend-chart';
+import { ScoutingOperations } from '@/components/scouting-operations';
+import { ShiftScheduler } from '@/components/shift-scheduler';
+import { OfflineReadiness } from '@/components/offline-readiness';
+import { QrRelay } from '@/components/qr-relay';
+import { MatchSubmissionQr } from '@/components/match-submission-qr';
 import {
   getCachedValue,
   getDraft,
@@ -49,6 +62,7 @@ import {
   saveCachedValue,
   saveDraft,
   synchronizePendingMutations,
+  type PendingMutation,
 } from '@/lib/offline-db';
 import { observedPoints, type ScoutingPayload } from '@/lib/scouting-metrics';
 import {
@@ -57,16 +71,7 @@ import {
   scoutEntryMutationId,
 } from '@/lib/scouting-policy';
 
-type View =
-  | 'Home'
-  | 'Scout'
-  | 'Pit'
-  | 'Plan'
-  | 'Schedule'
-  | 'Teams'
-  | 'Strategy'
-  | 'Admin'
-  | 'Settings';
+type View = 'Home' | 'Scout' | 'Pit' | 'Plan' | 'Teams' | 'Admin' | 'Settings';
 
 const nav: {
   label: Exclude<View, 'Settings' | 'Admin'>;
@@ -76,9 +81,7 @@ const nav: {
   { label: 'Scout', icon: ClipboardList },
   { label: 'Pit', icon: Wrench },
   { label: 'Plan', icon: Map },
-  { label: 'Schedule', icon: CalendarDays },
   { label: 'Teams', icon: Users },
-  { label: 'Strategy', icon: BarChart3 },
 ];
 
 type EventPack = {
@@ -88,6 +91,7 @@ type EventPack = {
     key: string;
     name: string;
     updatedAt: number;
+    timezone: string | null;
   };
   matches: EventMatch[];
   assignments: {
@@ -96,8 +100,27 @@ type EventPack = {
     scoutUserId: string;
     station: string;
   }[];
-  members: { id: string; name: string; email: string; role: string }[];
+  members: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    disabled?: number | boolean;
+  }[];
   pitEntries: PitEntry[];
+  scoutEntries: Array<{
+    matchId: string;
+    teamNumber: number;
+    station: string;
+    payload: MatchDraft;
+    updatedAt: number;
+  }>;
+  scoutShifts: Array<{
+    id: string;
+    station: string;
+    startsAt: number;
+    endsAt: number;
+  }>;
   organizationId: string;
   organizationTeamNumber: number;
   role: string;
@@ -150,6 +173,7 @@ type EventMatch = {
   scheduledAt: number | null;
   predictedAt: number | null;
   alliances: { red: number[]; blue: number[] };
+  videos: Array<{ type: string; key: string }>;
   result: {
     winningAlliance?: string | null;
     actualTime?: number | null;
@@ -185,6 +209,7 @@ type TeamAnalysis = {
   disabledRate: number;
   averageDefense: number;
   pointStdDev: number;
+  trends?: TeamTrend[];
   entries: {
     id: string;
     matchKey: string;
@@ -305,7 +330,11 @@ function Counter({
 export default function Home() {
   const { data: session, isPending } = authClient.useSession();
   const [activeView, setActiveView] = useState<View>('Home');
-  const [viewHistory, setViewHistory] = useState<View[]>(['Home']);
+  const [teamsSection, setTeamsSection] = useState<
+    'directory' | 'analysis' | 'picks' | 'review'
+  >('directory');
+  const navigationDepthRef = useRef(0);
+  const selectedMatchKeyRef = useRef('');
   const [autoFuel, setAutoFuel] = useState(0);
   const [activeFuel, setActiveFuel] = useState(0);
   const [inactiveFuel, setInactiveFuel] = useState(0);
@@ -314,7 +343,7 @@ export default function Home() {
   const [tower, setTower] = useState('None');
   const [path, setPath] = useState('Trench');
   const [dark, setDark] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [_saved, setSaved] = useState(false);
   const [defenseRating, setDefenseRating] = useState(0);
   const [disabled, setDisabled] = useState(false);
   const [noShow, setNoShow] = useState(false);
@@ -327,7 +356,7 @@ export default function Home() {
   const [saveError, setSaveError] = useState('');
   const [online, setOnline] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState('');
+  const [_syncMessage, setSyncMessage] = useState('');
   const [eventKey, setEventKey] = useState('');
   const [eventMessage, setEventMessage] = useState('');
   const [configuringEvent, setConfiguringEvent] = useState(false);
@@ -344,9 +373,40 @@ export default function Home() {
   const [assignmentMessage, setAssignmentMessage] = useState('');
   const [strategyTeams, setStrategyTeams] = useState<TeamAnalysis[]>([]);
   const [adminMessage, setAdminMessage] = useState('');
-  const [selectedScoutIds, setSelectedScoutIds] = useState<string[]>([]);
-  const [assignmentStart, setAssignmentStart] = useState(1);
-  const [assignmentEnd, setAssignmentEnd] = useState(999);
+  const [accountSessions, setAccountSessions] = useState<
+    Array<{
+      id: string;
+      ipAddress: string | null;
+      userAgent: string | null;
+      createdAt: number;
+      updatedAt: number;
+      expiresAt: number;
+    }>
+  >([]);
+  const [currentSessionId, setCurrentSessionId] = useState('');
+  const [sessionMessage, setSessionMessage] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
+  const [storedInviteCode, setStoredInviteCode] = useState<string | null>(null);
+  const [inviteCodeVisible, setInviteCodeVisible] = useState(false);
+  const [inviteCodeConfigured, setInviteCodeConfigured] = useState(false);
+  const [inviteCodeBusy, setInviteCodeBusy] = useState(false);
+  const [inviteCodeMessage, setInviteCodeMessage] = useState('');
+  const [tbaVerification, setTbaVerification] = useState<{
+    verificationCode: string;
+    receivedAt: number;
+  } | null>(null);
+  const [tbaWebhookStatus, setTbaWebhookStatus] = useState<{
+    configured: boolean;
+    delivery: {
+      lastReceivedAt: number;
+      status: string;
+      messageType: string | null;
+    } | null;
+  }>({ configured: false, delivery: null });
+  const [tbaVerificationMessage, setTbaVerificationMessage] = useState('');
+  const [adminSection, setAdminSection] = useState<'settings' | 'assignments'>(
+    'settings',
+  );
   const [scheduleFilter, setScheduleFilter] = useState<
     'all' | 'mine' | 'unassigned'
   >('all');
@@ -390,6 +450,13 @@ export default function Home() {
   const [submissionStatus, setSubmissionStatus] = useState<
     'draft' | 'queued' | 'synchronized' | 'rejected'
   >('draft');
+  const [submittedMatchMutation, setSubmittedMatchMutation] =
+    useState<PendingMutation | null>(null);
+  const [videoReview, setVideoReview] = useState<{
+    matchId: string;
+    teamNumber: number;
+    station: string;
+  } | null>(null);
   const eventTeams = eventPack
     ? [
         ...new Set(
@@ -425,27 +492,85 @@ export default function Home() {
     : null;
   const isAdmin = Boolean(eventPack && canManageAssignments(eventPack.role));
   const canUseStrategy = Boolean(eventPack && canReopenEntries(eventPack.role));
-  const visibleNav = nav.filter(
-    (item) => item.label !== 'Strategy' || canUseStrategy,
-  );
+  const visibleNav = nav;
 
   function navigate(view: View) {
     if (view === activeView) return;
-    setViewHistory((history) => [...history, view]);
+    navigationDepthRef.current += 1;
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', view.toLowerCase());
+    window.history.pushState(
+      { scoutingApp: true, view, depth: navigationDepthRef.current },
+      '',
+      url,
+    );
     setActiveView(view);
   }
 
   function goBack() {
-    setViewHistory((history) => {
-      if (history.length <= 1) {
-        setActiveView('Home');
-        return ['Home'];
-      }
-      const next = history.slice(0, -1);
-      setActiveView(next[next.length - 1]);
-      return next;
-    });
+    if (navigationDepthRef.current > 0) {
+      window.history.back();
+      return;
+    }
+    if (activeView === 'Home') return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', 'home');
+    window.history.replaceState(
+      { scoutingApp: true, view: 'Home', depth: 0 },
+      '',
+      url,
+    );
+    setActiveView('Home');
   }
+
+  function replaceView(view: View) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', view.toLowerCase());
+    window.history.replaceState(
+      { scoutingApp: true, view, depth: navigationDepthRef.current },
+      '',
+      url,
+    );
+    setActiveView(view);
+  }
+
+  useEffect(() => {
+    const views: View[] = [
+      'Home',
+      'Scout',
+      'Pit',
+      'Plan',
+      'Teams',
+      'Admin',
+      'Settings',
+    ];
+    const requested = new URL(window.location.href).searchParams.get('view');
+    const initial =
+      views.find((view) => view.toLowerCase() === requested?.toLowerCase()) ??
+      'Home';
+    window.history.replaceState(
+      { scoutingApp: true, view: initial, depth: 0 },
+      '',
+      window.location.href,
+    );
+    setActiveView(initial);
+    const handleHistory = (event: PopStateEvent) => {
+      const state = event.state as {
+        scoutingApp?: boolean;
+        view?: View;
+        depth?: number;
+      } | null;
+      if (!state?.scoutingApp || !state.view) return;
+      navigationDepthRef.current = state.depth ?? 0;
+      setActiveView(state.view);
+    };
+    window.addEventListener('popstate', handleHistory);
+    return () => window.removeEventListener('popstate', handleHistory);
+  }, []);
+
+  useEffect(() => {
+    selectedMatchKeyRef.current = selectedMatchKey;
+  }, [selectedMatchKey]);
 
   useEffect(() => {
     getPendingMutations()
@@ -465,21 +590,30 @@ export default function Home() {
     setSubmissionStatus('draft');
     getDraft<MatchDraft>(draftId)
       .then((draft) => {
-        if (draft) {
-          setAutoFuel(draft.payload.autoFuel);
-          setActiveFuel(draft.payload.activeFuel);
-          setInactiveFuel(draft.payload.inactiveFuel);
-          setCycles(draft.payload.cycles);
-          setAutoTower(draft.payload.autoTower);
-          setTower(draft.payload.tower);
-          setPath(draft.payload.path);
-          setDefenseRating(draft.payload.defenseRating ?? 0);
-          setDisabled(draft.payload.disabled ?? false);
-          setNoShow(draft.payload.noShow ?? false);
-          setPenalties(draft.payload.penalties ?? 0);
-          setShootingRange(draft.payload.shootingRange ?? 'Mixed');
-          setCycleSeconds(draft.payload.cycleSeconds ?? 0);
-          setNotes(draft.payload.notes ?? '');
+        const serverEntry = eventPack?.scoutEntries?.find(
+          (entry) =>
+            entry.matchId === currentMatch?.id &&
+            entry.teamNumber === selectedTeam,
+        );
+        const payload =
+          draft && (!serverEntry || draft.updatedAt >= serverEntry.updatedAt)
+            ? draft.payload
+            : serverEntry?.payload;
+        if (payload) {
+          setAutoFuel(payload.autoFuel);
+          setActiveFuel(payload.activeFuel);
+          setInactiveFuel(payload.inactiveFuel);
+          setCycles(payload.cycles);
+          setAutoTower(payload.autoTower);
+          setTower(payload.tower);
+          setPath(payload.path);
+          setDefenseRating(payload.defenseRating ?? 0);
+          setDisabled(payload.disabled ?? false);
+          setNoShow(payload.noShow ?? false);
+          setPenalties(payload.penalties ?? 0);
+          setShootingRange(payload.shootingRange ?? 'Mixed');
+          setCycleSeconds(payload.cycleSeconds ?? 0);
+          setNotes(payload.notes ?? '');
         } else {
           setAutoFuel(0);
           setActiveFuel(0);
@@ -502,7 +636,7 @@ export default function Home() {
         setSaveError('Offline storage is unavailable on this device.');
         setDraftReady(true);
       });
-  }, [draftId]);
+  }, [currentMatch?.id, draftId, eventPack?.scoutEntries, selectedTeam]);
 
   useEffect(() => {
     const updateConnection = () => setOnline(navigator.onLine);
@@ -534,7 +668,8 @@ export default function Home() {
   }, [online, queuedCount, session]);
 
   useEffect(() => {
-    if (activeView !== 'Strategy' || !selectedTeam || !online) return;
+    if (activeView !== 'Teams' || !canUseStrategy || !selectedTeam || !online)
+      return;
     fetch(`/api/analysis?team=${selectedTeam}`)
       .then(async (response) => {
         const result = (await response.json()) as TeamAnalysis & {
@@ -548,7 +683,13 @@ export default function Home() {
   }, [activeView, online, selectedTeam]);
 
   useEffect(() => {
-    if (activeView !== 'Strategy' || !online || !session) return;
+    if (
+      !['Plan', 'Teams'].includes(activeView) ||
+      !canUseStrategy ||
+      !online ||
+      !session
+    )
+      return;
     fetch('/api/strategy')
       .then(async (response) => {
         const result = (await response.json()) as {
@@ -563,15 +704,18 @@ export default function Home() {
   }, [activeView, online, session]);
 
   useEffect(() => {
-    if (activeView === 'Admin' && !isAdmin) {
-      setActiveView('Home');
-      setViewHistory(['Home']);
-    }
-    if (activeView === 'Strategy' && !canUseStrategy) {
-      setActiveView('Home');
-      setViewHistory(['Home']);
-    }
-  }, [activeView, canUseStrategy, isAdmin]);
+    if (!eventPack) return;
+    if (
+      (activeView === 'Admin' && !isAdmin) ||
+      (activeView === 'Plan' && !canUseStrategy)
+    )
+      replaceView('Home');
+  }, [activeView, canUseStrategy, eventPack, isAdmin]);
+
+  useEffect(() => {
+    if (!canUseStrategy && teamsSection !== 'directory')
+      setTeamsSection('directory');
+  }, [canUseStrategy, teamsSection]);
 
   useEffect(() => {
     if (activeView !== 'Admin' || !isAdmin || !online) return;
@@ -599,6 +743,72 @@ export default function Home() {
   }, [activeView, eventYear, isAdmin, online]);
 
   useEffect(() => {
+    if (activeView !== 'Admin' || !isAdmin || !online) return;
+    fetch('/api/invite-code')
+      .then(async (response) => {
+        const result = (await response.json()) as {
+          configured?: boolean;
+          code?: string | null;
+        };
+        if (!response.ok)
+          throw new Error('Could not load the current invite code.');
+        setInviteCodeConfigured(Boolean(result.configured));
+        setStoredInviteCode(result.code ?? null);
+      })
+      .catch((error: unknown) =>
+        setInviteCodeMessage(
+          error instanceof Error
+            ? error.message
+            : 'Could not load the current invite code.',
+        ),
+      );
+    fetch('/api/tba-webhook-verification')
+      .then(async (response) => {
+        const result = (await response.json()) as {
+          verification?: typeof tbaVerification;
+          configured?: boolean;
+          delivery?: (typeof tbaWebhookStatus)['delivery'];
+          error?: string;
+        };
+        if (!response.ok)
+          throw new Error(result.error ?? 'Could not load webhook status.');
+        setTbaVerification(result.verification ?? null);
+        setTbaWebhookStatus({
+          configured: Boolean(result.configured),
+          delivery: result.delivery ?? null,
+        });
+      })
+      .catch((error: unknown) =>
+        setTbaVerificationMessage(
+          error instanceof Error
+            ? error.message
+            : 'Could not load webhook status.',
+        ),
+      );
+  }, [activeView, isAdmin, online]);
+
+  useEffect(() => {
+    if (activeView !== 'Settings' || !session || !online) return;
+    fetch('/api/sessions')
+      .then(async (response) => {
+        const result = (await response.json()) as {
+          sessions?: typeof accountSessions;
+          currentSessionId?: string;
+          error?: string;
+        };
+        if (!response.ok)
+          throw new Error(result.error ?? 'Unable to load sessions.');
+        setAccountSessions(result.sessions ?? []);
+        setCurrentSessionId(result.currentSessionId ?? '');
+      })
+      .catch((error) =>
+        setSessionMessage(
+          error instanceof Error ? error.message : 'Unable to load sessions.',
+        ),
+      );
+  }, [activeView, online, session]);
+
+  useEffect(() => {
     if (activeView !== 'Plan' || planningMatches.length === 0) return;
     if (!planningMatches.some((match) => match.key === selectedMatchKey))
       setSelectedMatchKey(planningMatches[0].key);
@@ -610,7 +820,7 @@ export default function Home() {
     setPlanMessage('');
     const cacheId = `match-plan:${currentMatch.id}`;
     const draftId = `match-plan-draft:${currentMatch.id}`;
-    Promise.all([
+    void Promise.all([
       getDraft<MatchPlan>(draftId),
       getCachedValue<{
         plan: MatchPlan | null;
@@ -790,7 +1000,7 @@ export default function Home() {
     }
     setSaveError('');
     try {
-      await queueMutation({
+      const mutation: PendingMutation = {
         id: scoutEntryMutationId(
           eventPack.event.key,
           currentMatch.key,
@@ -809,9 +1019,12 @@ export default function Home() {
           station: selectedStation,
           seasonYear: eventPack.event.year,
           schemaVersion: 1,
+          reviewSource: videoReview ? 'video_review' : 'live',
           ...currentPayload,
         },
-      });
+      };
+      await queueMutation(mutation);
+      setSubmittedMatchMutation(mutation);
       setQueuedCount((await getPendingMutations()).length);
       setSaved(true);
       setSubmissionStatus('queued');
@@ -919,8 +1132,11 @@ export default function Home() {
             key: '',
             name: 'No event loaded',
             updatedAt: 0,
+            timezone: null,
           },
           pitEntries: result.pitEntries ?? [],
+          scoutEntries: result.scoutEntries ?? [],
+          scoutShifts: result.scoutShifts ?? [],
           organizationId: result.organizationId ?? 'team-401',
         } as EventPack;
         setEventPack(emptyPack);
@@ -930,23 +1146,24 @@ export default function Home() {
       const pack = {
         ...result,
         pitEntries: result.pitEntries ?? [],
+        scoutEntries: result.scoutEntries ?? [],
+        scoutShifts: result.scoutShifts ?? [],
         organizationId: result.organizationId ?? 'team-401',
       } as EventPack;
       setEventPack(pack);
       setEventKey(pack.event.key);
       await saveCachedValue('current-event-pack', pack);
-      if (!selectedMatchKey && pack.matches.length > 0) {
+      if (!selectedMatchKeyRef.current && pack.matches.length > 0) {
         const mine = pack.assignments.find(
           (assignment) => assignment.scoutUserId === pack.userId,
         );
         const match =
           pack.matches.find((item) => item.id === mine?.matchId) ??
           pack.matches[0];
-        selectAssignment(
-          match,
-          mine?.teamNumber ?? match.alliances.red[0],
-          mine?.station ?? 'red1',
-        );
+        selectedMatchKeyRef.current = match.key;
+        setSelectedMatchKey(match.key);
+        setSelectedTeam(mine?.teamNumber ?? match.alliances.red[0]);
+        setSelectedStation(mine?.station ?? 'red1');
       }
     } catch (error) {
       const cached = await getCachedValue<EventPack>(
@@ -956,6 +1173,8 @@ export default function Home() {
         const pack = {
           ...cached,
           pitEntries: cached.pitEntries ?? [],
+          scoutEntries: cached.scoutEntries ?? [],
+          scoutShifts: cached.scoutShifts ?? [],
           organizationId: cached.organizationId ?? 'team-401',
         };
         setEventPack(pack);
@@ -974,12 +1193,45 @@ export default function Home() {
   }
 
   function selectAssignment(match: EventMatch, team: number, station: string) {
+    selectedMatchKeyRef.current = match.key;
     setSelectedMatchKey(match.key);
     setSelectedTeam(team);
     setSelectedStation(station);
     setSaved(false);
     setSubmissionStatus('draft');
+    setSubmittedMatchMutation(null);
+    setVideoReview(null);
     navigate('Scout');
+  }
+
+  function startVideoReview(issue: {
+    matchId: string;
+    teamNumber: number;
+    station: string;
+  }) {
+    const match = eventPack?.matches.find((item) => item.id === issue.matchId);
+    if (!match) return;
+    selectAssignment(match, issue.teamNumber, issue.station);
+    setVideoReview(issue);
+  }
+
+  function continueToNextAssignment() {
+    const currentIndex = myAssignments.findIndex(
+      ({ assignment, match }) =>
+        match?.key === selectedMatchKey &&
+        assignment.teamNumber === selectedTeam &&
+        assignment.station === selectedStation,
+    );
+    const next = myAssignments[currentIndex + 1];
+    if (next?.match) {
+      selectAssignment(
+        next.match,
+        next.assignment.teamNumber,
+        next.assignment.station,
+      );
+      return;
+    }
+    navigate('Home');
   }
 
   async function assignScout(
@@ -1044,30 +1296,102 @@ export default function Home() {
     await loadEventPack();
   }
 
-  async function generateAssignments() {
+  async function setMemberDisabled(userId: string, disabled: boolean) {
     setAdminMessage('');
-    const response = await fetch('/api/assignments/generate', {
-      method: 'POST',
+    const response = await fetch('/api/members', {
+      method: 'PATCH',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        scoutUserIds: selectedScoutIds,
-        startMatch: assignmentStart,
-        endMatch: assignmentEnd,
-      }),
+      body: JSON.stringify({ userId, disabled }),
     });
-    const result = (await response.json()) as {
-      error?: string;
-      matchesAssigned?: number;
-      slotsAssigned?: number;
-    };
+    const result = (await response.json()) as { error?: string };
     if (!response.ok) {
-      setAdminMessage(result.error ?? 'Could not generate assignments.');
+      setAdminMessage(result.error ?? 'Could not update the account.');
       return;
     }
     setAdminMessage(
-      `Assigned ${result.slotsAssigned ?? 0} stations across ${result.matchesAssigned ?? 0} matches.`,
+      disabled ? 'Account disabled and sessions revoked.' : 'Account enabled.',
     );
     await loadEventPack();
+  }
+
+  async function removeMember(userId: string, name: string) {
+    if (
+      !window.confirm(
+        `Remove ${name} from Team 401? Their historical scouting data will be retained.`,
+      )
+    )
+      return;
+    setAdminMessage('');
+    const response = await fetch('/api/members', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    });
+    const result = (await response.json()) as { error?: string };
+    if (!response.ok) {
+      setAdminMessage(result.error ?? 'Could not remove the member.');
+      return;
+    }
+    setAdminMessage(`${name} was removed from Team 401.`);
+    await loadEventPack();
+  }
+
+  async function revokeSession(sessionId: string) {
+    setSessionMessage('');
+    const response = await fetch('/api/sessions', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionId }),
+    });
+    const result = (await response.json()) as {
+      error?: string;
+      current?: boolean;
+    };
+    if (!response.ok) {
+      setSessionMessage(result.error ?? 'Could not revoke the session.');
+      return;
+    }
+    if (result.current) {
+      window.location.href = '/sign-in';
+      return;
+    }
+    setAccountSessions((items) =>
+      items.filter((item) => item.id !== sessionId),
+    );
+    setSessionMessage('Session revoked.');
+  }
+
+  async function updateInviteCode() {
+    setInviteCodeMessage('');
+    setInviteCodeBusy(true);
+    try {
+      const response = await fetch('/api/invite-code', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ code: inviteCode }),
+      });
+      const result = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        code?: string;
+      };
+      if (!response.ok)
+        throw new Error(result.error ?? `Save failed (${response.status}).`);
+      setInviteCode('');
+      setStoredInviteCode(result.code ?? null);
+      setInviteCodeVisible(false);
+      setInviteCodeConfigured(true);
+      setInviteCodeMessage(
+        'Invite code saved. Existing accounts remain signed in.',
+      );
+    } catch (error) {
+      setInviteCodeMessage(
+        error instanceof Error
+          ? error.message
+          : 'Could not update the invite code.',
+      );
+    } finally {
+      setInviteCodeBusy(false);
+    }
   }
 
   async function syncNow() {
@@ -1245,6 +1569,11 @@ export default function Home() {
           (b.match?.predictedAt ?? b.match?.scheduledAt ?? Infinity),
       ) ?? [];
   const nextAssignment = myAssignments[0];
+  const reopenedEntries =
+    eventPack?.scoutEntries.filter(
+      (entry) =>
+        (entry.payload as MatchDraft & { reopened?: boolean }).reopened,
+    ) ?? [];
   const visibleMatches =
     eventPack?.matches.filter((match) => {
       const assignments = eventPack.assignments.filter(
@@ -1299,6 +1628,9 @@ export default function Home() {
       (a, b) => (b.stats?.medianPoints ?? 0) - (a.stats?.medianPoints ?? 0),
     )[0]?.team;
   const totalSlots = (eventPack?.matches.length ?? 0) * 6;
+  const currentMatchYoutubeVideo = currentMatch?.videos?.find(
+    (video) => video.type === 'youtube',
+  );
   const assignmentCounts =
     eventPack?.members.map((member) => ({
       member,
@@ -1355,7 +1687,7 @@ export default function Home() {
       <section className="min-w-0 flex-1">
         <header className="topbar">
           <div className="flex items-center gap-2">
-            {viewHistory.length > 1 && (
+            {activeView !== 'Home' && (
               <Button
                 type="button"
                 size="icon"
@@ -1436,9 +1768,24 @@ export default function Home() {
                   </p>
                 ) : null}
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Button onClick={() => navigate('Schedule')}>
-                    <CalendarDays />
-                    Open schedule
+                  {isAdmin && (
+                    <Button
+                      onClick={() => {
+                        setAdminSection('assignments');
+                        navigate('Admin');
+                      }}
+                    >
+                      <CalendarDays />
+                      Scout assignments
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    disabled={!online || packLoading}
+                    onClick={() => void loadEventPack(false, true)}
+                  >
+                    <RefreshCw className={packLoading ? 'animate-spin' : ''} />
+                    Refresh live data
                   </Button>
                   <Button
                     variant="outline"
@@ -1451,10 +1798,13 @@ export default function Home() {
                   {canUseStrategy && (
                     <Button
                       variant="outline"
-                      onClick={() => navigate('Strategy')}
+                      onClick={() => {
+                        setTeamsSection('analysis');
+                        navigate('Teams');
+                      }}
                     >
                       <BarChart3 />
-                      Strategy workspace
+                      Analysis workspace
                     </Button>
                   )}
                   {isAdmin && (
@@ -1549,17 +1899,78 @@ export default function Home() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>Device status</CardTitle>
+                <CardTitle>My scout shifts</CardTitle>
+                <Badge variant="outline">
+                  {eventPack?.event.timezone ?? 'Event time'}
+                </Badge>
               </CardHeader>
-              <CardContent className="mini-stats">
-                <span>
-                  <strong>{queuedCount}</strong> pending sync
-                </span>
-                <span>
-                  <strong>{online ? 'Online' : 'Offline'}</strong> connection
-                </span>
+              <CardContent className="space-y-2">
+                {eventPack?.scoutShifts.map((shift) => (
+                  <div className="schedule-row" key={shift.id}>
+                    <strong>{shift.station.toUpperCase()}</strong>
+                    <span>
+                      {new Date(shift.startsAt).toLocaleTimeString([], {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                      {' – '}
+                      {new Date(shift.endsAt).toLocaleTimeString([], {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  </div>
+                ))}
+                {!eventPack?.scoutShifts.length && (
+                  <p className="text-sm text-muted-foreground">
+                    No time-block shift assigned.
+                  </p>
+                )}
               </CardContent>
             </Card>
+            {reopenedEntries.length > 0 && (
+              <Card className="border-amber-400">
+                <CardHeader>
+                  <CardTitle>
+                    <RefreshCw /> Corrections requested
+                  </CardTitle>
+                  <Badge variant="destructive">{reopenedEntries.length}</Badge>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {reopenedEntries.map((entry) => {
+                    const match = eventPack?.matches.find(
+                      (item) => item.id === entry.matchId,
+                    );
+                    return match ? (
+                      <Button
+                        className="w-full justify-between"
+                        variant="outline"
+                        key={`${entry.matchId}:${entry.teamNumber}`}
+                        onClick={() =>
+                          selectAssignment(
+                            match,
+                            entry.teamNumber,
+                            entry.station,
+                          )
+                        }
+                      >
+                        Correct {matchLabel(match)} · Team {entry.teamNumber}
+                        <ChevronRight />
+                      </Button>
+                    ) : null;
+                  })}
+                </CardContent>
+              </Card>
+            )}
+            <OfflineReadiness
+              eventKey={eventPack?.event.key ?? ''}
+              eventName={eventPack?.event.name ?? ''}
+              matchCount={eventPack?.matches.length ?? 0}
+              teamCount={eventTeams.length}
+              online={online}
+              onRefresh={() => loadEventPack(false, true)}
+            />
+            <QrRelay online={online} />
             <Card>
               <CardHeader>
                 <CardTitle>Event coverage</CardTitle>
@@ -1594,7 +2005,49 @@ export default function Home() {
           </div>
         )}
         {activeView === 'Scout' && (
-          <div className="mx-auto w-full max-w-3xl p-4 pb-28 sm:p-6">
+          <div
+            className={
+              videoReview
+                ? 'mx-auto grid w-full max-w-7xl items-start gap-4 p-4 pb-28 sm:p-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(26rem,.95fr)]'
+                : 'mx-auto w-full max-w-3xl p-4 pb-28 sm:p-6'
+            }
+          >
+            {videoReview && (
+              <Card className="sticky top-0 z-20 overflow-hidden lg:top-4">
+                <CardHeader>
+                  <CardTitle>
+                    Video review · {currentMatch && matchLabel(currentMatch)}
+                  </CardTitle>
+                  <Badge variant="outline">Team {selectedTeam}</Badge>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {currentMatch && currentMatchYoutubeVideo ? (
+                    <iframe
+                      className="aspect-video w-full rounded-lg bg-black"
+                      src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(
+                        currentMatchYoutubeVideo.key,
+                      )}`}
+                      title={`${matchLabel(currentMatch)} match video`}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <MatchVideoLibrary
+                      matchId={currentMatch?.id ?? null}
+                      matchLabel={
+                        currentMatch ? matchLabel(currentMatch) : 'this match'
+                      }
+                      playbackOnly
+                    />
+                  )}
+                  <p className="text-sm text-muted-foreground">
+                    Play, pause, and scrub the match while completing the normal
+                    scouting form. This submission will be marked as recovered
+                    from video.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
             <div className="min-w-0 space-y-4">
               <Card className="match-card">
                 <CardContent className="flex items-center justify-between gap-4">
@@ -1847,6 +2300,31 @@ export default function Home() {
                   <>Opening offline storage…</>
                 )}
               </Button>
+              {(submissionStatus === 'queued' ||
+                submissionStatus === 'synchronized') && (
+                <>
+                  {submittedMatchMutation && eventPack && (
+                    <MatchSubmissionQr
+                      mutation={submittedMatchMutation}
+                      organizationId={eventPack.organizationId}
+                      eventKey={eventPack.event.key}
+                      online={online}
+                    />
+                  )}
+                  <Button
+                    className="h-12 w-full text-base"
+                    variant="outline"
+                    onClick={continueToNextAssignment}
+                  >
+                    {myAssignments.some(
+                      ({ match }) => match && match.key !== selectedMatchKey,
+                    )
+                      ? 'Continue to next assignment'
+                      : 'Return home'}
+                    <ChevronRight />
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -2322,7 +2800,13 @@ export default function Home() {
                   )}
                 </CardContent>
               </Card>
-              {false && (
+              <MatchVideoLibrary
+                matchId={currentMatch?.id ?? null}
+                matchLabel={
+                  currentMatch ? matchLabel(currentMatch) : 'this match'
+                }
+              />
+              {planCanEdit && currentMatch?.id === '__legacy-plan__' && (
                 <>
                   <Card>
                     <CardHeader>
@@ -2509,130 +2993,178 @@ export default function Home() {
             </div>
           </div>
         )}
-        {activeView === 'Schedule' && (
-          <div className="p-4 sm:p-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {eventPack?.event.name ?? 'Match schedule'}
-                </CardTitle>
-                <Badge variant="outline">
-                  {visibleMatches.length} of {eventPack?.matches.length ?? 0}
-                </Badge>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {eventPack?.event.updatedAt ? (
-                  <p className="text-xs text-muted-foreground">
-                    Schedule and results updated{' '}
-                    {new Date(eventPack.event.updatedAt).toLocaleTimeString()}.
-                    Online devices check every 45 seconds.
-                  </p>
-                ) : null}
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Input
-                    value={scheduleSearch}
-                    onChange={(event) => setScheduleSearch(event.target.value)}
-                    placeholder="Search match or team number"
-                  />
-                  <div className="flex gap-1">
-                    {(['all', 'mine', 'unassigned'] as const).map((filter) => (
-                      <Button
-                        size="sm"
-                        variant={
-                          scheduleFilter === filter ? 'default' : 'outline'
-                        }
-                        onClick={() => setScheduleFilter(filter)}
-                        key={filter}
-                      >
-                        {filter === 'all'
-                          ? 'All'
-                          : filter === 'mine'
-                            ? 'Mine'
-                            : 'Needs scout'}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-                {packLoading && (
-                  <p className="text-sm text-muted-foreground">
-                    Loading event pack…
-                  </p>
-                )}
-                {packError && <p className="auth-error">{packError}</p>}
-                {assignmentMessage && (
-                  <p className="text-sm text-muted-foreground" role="status">
-                    {assignmentMessage}
-                  </p>
-                )}
-                {visibleMatches.map((match) => (
-                  <div className="rounded-lg border p-3" key={match.key}>
-                    <div className="mb-2 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <strong>{matchLabel(match)}</strong>
-                        {match.result?.actualTime ? (
-                          <Badge variant="secondary">
-                            Final · {match.result.redScore ?? '—'}–
-                            {match.result.blueScore ?? '—'}
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline">Upcoming</Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <small className="text-muted-foreground">
-                          {match.predictedAt
-                            ? new Date(match.predictedAt).toLocaleTimeString(
-                                [],
-                                {
-                                  hour: 'numeric',
-                                  minute: '2-digit',
-                                },
-                              )
-                            : 'Time TBD'}
-                        </small>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedMatchKey(match.key);
-                            navigate('Plan');
-                          }}
-                        >
-                          <Map />
-                          Plan
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      <div className="grid grid-cols-3 gap-2">
-                        {match.alliances.red.map((team, index) =>
-                          renderStation(match, 'red', team, index),
-                        )}
-                      </div>
-                      <div className="grid grid-cols-3 gap-2">
-                        {match.alliances.blue.map((team, index) =>
-                          renderStation(match, 'blue', team, index),
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {!packLoading && !eventPack && (
-                  <p className="text-sm text-muted-foreground">
-                    No event pack is loaded. An owner or admin can load one in
-                    Admin.
-                  </p>
-                )}
-                {eventPack && visibleMatches.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    No matches match this filter.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+        {activeView === 'Admin' && isAdmin && (
+          <div className="flex gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
+            <Button
+              variant={adminSection === 'settings' ? 'default' : 'outline'}
+              onClick={() => setAdminSection('settings')}
+            >
+              Team and event
+            </Button>
+            <Button
+              variant={adminSection === 'assignments' ? 'default' : 'outline'}
+              onClick={() => setAdminSection('assignments')}
+            >
+              <CalendarDays /> Scout assignments
+            </Button>
           </div>
         )}
-        {activeView === 'Teams' && (
+        {activeView === 'Admin' &&
+          isAdmin &&
+          adminSection === 'assignments' && (
+            <div className="p-4 sm:p-6">
+              <ShiftScheduler
+                members={eventPack?.members ?? []}
+                onChanged={() => loadEventPack(false, true)}
+              />
+              <ScoutingOperations mode="coverage" />
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    {eventPack?.event.name ?? 'Match schedule'}
+                  </CardTitle>
+                  <Badge variant="outline">
+                    {visibleMatches.length} of {eventPack?.matches.length ?? 0}
+                  </Badge>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {eventPack?.event.updatedAt ? (
+                    <p className="text-xs text-muted-foreground">
+                      Schedule and results updated{' '}
+                      {new Date(eventPack.event.updatedAt).toLocaleTimeString()}
+                      . Online devices check every 45 seconds.
+                    </p>
+                  ) : null}
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input
+                      value={scheduleSearch}
+                      onChange={(event) =>
+                        setScheduleSearch(event.target.value)
+                      }
+                      placeholder="Search match or team number"
+                    />
+                    <div className="flex gap-1">
+                      {(['all', 'mine', 'unassigned'] as const).map(
+                        (filter) => (
+                          <Button
+                            size="sm"
+                            variant={
+                              scheduleFilter === filter ? 'default' : 'outline'
+                            }
+                            onClick={() => setScheduleFilter(filter)}
+                            key={filter}
+                          >
+                            {filter === 'all'
+                              ? 'All'
+                              : filter === 'mine'
+                                ? 'Mine'
+                                : 'Needs scout'}
+                          </Button>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                  {packLoading && (
+                    <p className="text-sm text-muted-foreground">
+                      Loading event pack…
+                    </p>
+                  )}
+                  {packError && <p className="auth-error">{packError}</p>}
+                  {assignmentMessage && (
+                    <p className="text-sm text-muted-foreground" role="status">
+                      {assignmentMessage}
+                    </p>
+                  )}
+                  {visibleMatches.map((match) => (
+                    <div className="rounded-lg border p-3" key={match.key}>
+                      <div className="mb-2 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <strong>{matchLabel(match)}</strong>
+                          {match.result?.actualTime ? (
+                            <Badge variant="secondary">
+                              Final · {match.result.redScore ?? '—'}–
+                              {match.result.blueScore ?? '—'}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline">Upcoming</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <small className="text-muted-foreground">
+                            {match.predictedAt
+                              ? new Date(match.predictedAt).toLocaleTimeString(
+                                  [],
+                                  {
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                  },
+                                )
+                              : 'Time TBD'}
+                          </small>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedMatchKey(match.key);
+                              navigate('Plan');
+                            }}
+                          >
+                            <Map />
+                            Plan
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <div className="grid grid-cols-3 gap-2">
+                          {match.alliances.red.map((team, index) =>
+                            renderStation(match, 'red', team, index),
+                          )}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          {match.alliances.blue.map((team, index) =>
+                            renderStation(match, 'blue', team, index),
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {!packLoading && !eventPack && (
+                    <p className="text-sm text-muted-foreground">
+                      No event pack is loaded. An owner or admin can load one in
+                      Admin.
+                    </p>
+                  )}
+                  {eventPack && visibleMatches.length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      No matches match this filter.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        {activeView === 'Teams' && canUseStrategy && (
+          <div className="flex flex-wrap gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
+            {(
+              [
+                ['directory', 'Directory'],
+                ['analysis', 'Analysis'],
+                ['picks', 'Pick list'],
+                ['review', 'Data review'],
+              ] as const
+            ).map(([section, label]) => (
+              <Button
+                key={section}
+                size="sm"
+                variant={teamsSection === section ? 'default' : 'outline'}
+                onClick={() => setTeamsSection(section)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+        )}
+        {activeView === 'Teams' && teamsSection === 'directory' && (
           <div className="p-4 sm:p-6">
             <Card>
               <CardHeader>
@@ -2646,7 +3178,7 @@ export default function Home() {
                   <button
                     onClick={() => {
                       setSelectedTeam(team);
-                      if (canUseStrategy) navigate('Strategy');
+                      if (canUseStrategy) setTeamsSection('analysis');
                       else {
                         setPitTeam(team);
                         navigate('Pit');
@@ -2674,176 +3206,455 @@ export default function Home() {
             </Card>
           </div>
         )}
-        {activeView === 'Strategy' && canUseStrategy && (
-          <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
-            {eventPack && (
-              <PickListWorkspace
-                teams={strategyTeams}
-                eventKey={eventPack.event.key}
-                organizationTeamNumber={organizationTeamNumber}
+        {activeView === 'Teams' &&
+          canUseStrategy &&
+          teamsSection === 'review' && (
+            <div className="grid gap-4 p-4 sm:p-6">
+              <ScoutingOperations
+                mode="review"
+                onVideoReview={startVideoReview}
               />
-            )}
-            <Card className="sm:col-span-2">
-              <CardHeader>
-                <CardTitle>Event ranking workspace</CardTitle>
-                <div className="flex gap-2">
-                  <Badge variant="outline">{strategyTeams.length} teams</Badge>
-                  {eventPack && canReopenEntries(eventPack.role) && (
-                    <Button
-                      nativeButton={false}
-                      size="sm"
-                      variant="outline"
-                      render={<a href="/api/export/scouting" download />}
-                    >
-                      <Cloud />
-                      Export CSV
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="max-h-96 overflow-auto">
-                <div className="strategy-table">
-                  <strong>Team</strong>
-                  <strong>Samples</strong>
-                  <strong>Median pts</strong>
-                  <strong>Fuel/cycle</strong>
-                  <strong>Coverage</strong>
-                  {[...strategyTeams]
-                    .sort((a, b) => b.medianPoints - a.medianPoints)
-                    .map((team) => (
-                      <button
-                        key={team.teamNumber}
-                        onClick={() => setSelectedTeam(team.teamNumber)}
-                        className={
-                          selectedTeam === team.teamNumber ? 'selected' : ''
-                        }
+            </div>
+          )}
+        {activeView === 'Teams' &&
+          canUseStrategy &&
+          teamsSection === 'picks' && (
+            <div className="grid gap-4 p-4 sm:p-6">
+              {eventPack && (
+                <PickListWorkspace
+                  teams={strategyTeams}
+                  eventKey={eventPack.event.key}
+                  organizationTeamNumber={organizationTeamNumber}
+                />
+              )}
+            </div>
+          )}
+        {activeView === 'Teams' &&
+          canUseStrategy &&
+          teamsSection === 'analysis' && (
+            <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
+              <TeamComparison
+                teams={strategyTeams}
+                matchTeams={
+                  currentMatch
+                    ? [
+                        ...currentMatch.alliances.red,
+                        ...currentMatch.alliances.blue,
+                      ]
+                    : []
+                }
+              />
+              <Card className="sm:col-span-2">
+                <CardHeader>
+                  <CardTitle>Event ranking workspace</CardTitle>
+                  <div className="flex gap-2">
+                    <Badge variant="outline">
+                      {strategyTeams.length} teams
+                    </Badge>
+                    {eventPack && canReopenEntries(eventPack.role) && (
+                      <Button
+                        nativeButton={false}
+                        size="sm"
+                        variant="outline"
+                        render={<a href="/api/export/scouting" download />}
                       >
-                        <span>{team.teamNumber}</span>
-                        <span>{team.samples}</span>
-                        <span>{team.medianPoints.toFixed(1)}</span>
-                        <span>{team.medianFuelPerCycle.toFixed(1)}</span>
-                        <span>{Math.round(team.coverage * 100)}%</span>
-                      </button>
-                    ))}
+                        <Cloud />
+                        Export CSV
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="max-h-96 overflow-auto">
+                  <div className="strategy-table">
+                    <strong>Team</strong>
+                    <strong>Samples</strong>
+                    <strong>Median pts</strong>
+                    <strong>Fuel/cycle</strong>
+                    <strong>Coverage</strong>
+                    {[...strategyTeams]
+                      .sort((a, b) => b.medianPoints - a.medianPoints)
+                      .map((team) => (
+                        <button
+                          key={team.teamNumber}
+                          onClick={() => setSelectedTeam(team.teamNumber)}
+                          className={
+                            selectedTeam === team.teamNumber ? 'selected' : ''
+                          }
+                        >
+                          <span>{team.teamNumber}</span>
+                          <span>{team.samples}</span>
+                          <span>{team.medianPoints.toFixed(1)}</span>
+                          <span>{team.medianFuelPerCycle.toFixed(1)}</span>
+                          <span>{Math.round(team.coverage * 100)}%</span>
+                        </button>
+                      ))}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    {selectedTeam
+                      ? `Team ${selectedTeam} snapshot`
+                      : 'Select a team above'}
+                  </CardTitle>
+                  <Badge variant="outline">
+                    {analysis?.samples ?? 0} samples
+                  </Badge>
+                </CardHeader>
+                <CardContent>
+                  <p className="score-number">{analysis?.medianPoints ?? 0}</p>
+                  <p className="text-sm text-muted-foreground">
+                    median observed points
+                  </p>
+                  <div className="mini-stats">
+                    <span>
+                      <strong>{analysis?.medianActiveFuel ?? 0}</strong> median
+                      active FUEL
+                    </span>
+                    <span>
+                      <strong>
+                        {analysis?.medianFuelPerCycle.toFixed(1) ?? '0.0'}
+                      </strong>{' '}
+                      FUEL / cycle
+                    </span>
+                    <span>
+                      <strong>
+                        {analysis?.pointStdDev.toFixed(1) ?? '0.0'}
+                      </strong>{' '}
+                      point deviation
+                    </span>
+                    <span>
+                      <strong>
+                        {analysis?.averageDefense.toFixed(1) ?? '0.0'}
+                      </strong>{' '}
+                      defense rating
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Reliability and coverage</CardTitle>
+                </CardHeader>
+                <CardContent className="mini-stats">
+                  <span>
+                    <strong>
+                      {Math.round((analysis?.towerSuccessRate ?? 0) * 100)}%
+                    </strong>{' '}
+                    tower success
+                  </span>
+                  <span>
+                    <strong>
+                      {Math.round((analysis?.disabledRate ?? 0) * 100)}%
+                    </strong>{' '}
+                    disabled rate
+                  </span>
+                  <span>
+                    <strong>
+                      {Math.round((analysis?.coverage ?? 0) * 100)}%
+                    </strong>{' '}
+                    data coverage
+                  </span>
+                  <span>
+                    <strong>{analysis?.scheduledMatches ?? 0}</strong> scheduled
+                    matches
+                  </span>
+                </CardContent>
+              </Card>
+              <Card className="sm:col-span-2">
+                <CardHeader>
+                  <CardTitle>
+                    {selectedTeam
+                      ? `Team ${selectedTeam} trends`
+                      : 'Team trends'}
+                  </CardTitle>
+                  <Badge variant="outline">Match by match</Badge>
+                </CardHeader>
+                <CardContent>
+                  <TeamTrendChart trends={analysis?.trends ?? []} />
+                </CardContent>
+              </Card>
+              <Card className="sm:col-span-2">
+                <CardHeader>
+                  <CardTitle>Submitted entries</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1">
+                  {analysis?.entries.map((entry) => (
+                    <div className="schedule-row" key={entry.id}>
+                      <strong>
+                        {entry.matchKey.split('_').at(-1)?.toUpperCase()}
+                      </strong>
+                      <span>
+                        {entry.scoutName}
+                        {entry.reopened ? ' · reopened' : ''}
+                      </span>
+                      {eventPack &&
+                      canReopenEntries(eventPack.role) &&
+                      !entry.reopened ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => void reopenEntry(entry.id)}
+                        >
+                          Reopen
+                        </Button>
+                      ) : (
+                        <small>{entry.reopened ? 'Editable' : 'Locked'}</small>
+                      )}
+                    </div>
+                  ))}
+                  {analysis?.entries.length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      No synchronized entries for this team yet.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        {activeView === 'Admin' && isAdmin && adminSection === 'settings' && (
+          <div className="grid gap-4 p-4 sm:p-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  <KeyRound /> Team invite code
+                </CardTitle>
+                <Badge
+                  variant={inviteCodeConfigured ? 'outline' : 'destructive'}
+                >
+                  {inviteCodeConfigured ? 'Configured' : 'Signup closed'}
+                </Badge>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  New accounts must enter this code. Changing it takes effect
+                  immediately and does not sign out existing members. Only
+                  owners and admins can reveal or change it.
+                </p>
+                {storedInviteCode ? (
+                  <div className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center">
+                    <code className="min-w-0 flex-1 overflow-x-auto rounded bg-muted p-2 text-sm">
+                      {inviteCodeVisible
+                        ? storedInviteCode
+                        : '•'.repeat(Math.min(storedInviteCode.length, 24))}
+                    </code>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      aria-label={
+                        inviteCodeVisible
+                          ? 'Hide invite code'
+                          : 'Show invite code'
+                      }
+                      onClick={() => setInviteCodeVisible(!inviteCodeVisible)}
+                    >
+                      {inviteCodeVisible ? <EyeOff /> : <Eye />}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        void navigator.clipboard
+                          .writeText(storedInviteCode)
+                          .then(() =>
+                            setInviteCodeMessage('Invite code copied.'),
+                          )
+                          .catch(() =>
+                            setInviteCodeMessage(
+                              'Could not copy automatically. Reveal and select the code manually.',
+                            ),
+                          );
+                      }}
+                    >
+                      <Copy /> Copy
+                    </Button>
+                  </div>
+                ) : inviteCodeConfigured ? (
+                  <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                    The existing code was saved before codes could be revealed.
+                    Set a new code below once; it will then be available here.
+                  </p>
+                ) : null}
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={8}
+                    maxLength={128}
+                    value={inviteCode}
+                    onChange={(event) => setInviteCode(event.target.value)}
+                    placeholder="Enter a new invite code"
+                    aria-label="New team invite code"
+                  />
+                  <Button
+                    onClick={() => void updateInviteCode()}
+                    disabled={inviteCodeBusy || inviteCode.trim().length < 8}
+                  >
+                    {inviteCodeBusy ? 'Saving…' : 'Set invite code'}
+                  </Button>
                 </div>
+                {inviteCodeMessage && (
+                  <output className="block text-sm text-muted-foreground">
+                    {inviteCodeMessage}
+                  </output>
+                )}
               </CardContent>
             </Card>
             <Card>
               <CardHeader>
                 <CardTitle>
-                  {selectedTeam
-                    ? `Team ${selectedTeam} snapshot`
-                    : 'Select a team above'}
+                  <Shield /> TBA webhook verification
                 </CardTitle>
-                <Badge variant="outline">
-                  {analysis?.samples ?? 0} samples
+                <Badge variant={tbaVerification ? 'outline' : 'secondary'}>
+                  {tbaVerification ? 'Code received' : 'Waiting for code'}
                 </Badge>
               </CardHeader>
-              <CardContent>
-                <p className="score-number">{analysis?.medianPoints ?? 0}</p>
+              <CardContent className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  median observed points
+                  TBA generates the webhook secret. Copy its displayed secret
+                  into the staging GitHub environment, redeploy, and then click
+                  Resend code on TBA.
                 </p>
-                <div className="mini-stats">
-                  <span>
-                    <strong>{analysis?.medianActiveFuel ?? 0}</strong> median
-                    active FUEL
-                  </span>
-                  <span>
-                    <strong>
-                      {analysis?.medianFuelPerCycle.toFixed(1) ?? '0.0'}
-                    </strong>{' '}
-                    FUEL / cycle
-                  </span>
-                  <span>
-                    <strong>{analysis?.pointStdDev.toFixed(1) ?? '0.0'}</strong>{' '}
-                    point deviation
-                  </span>
-                  <span>
-                    <strong>
-                      {analysis?.averageDefense.toFixed(1) ?? '0.0'}
-                    </strong>{' '}
-                    defense rating
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Reliability and coverage</CardTitle>
-              </CardHeader>
-              <CardContent className="mini-stats">
-                <span>
-                  <strong>
-                    {Math.round((analysis?.towerSuccessRate ?? 0) * 100)}%
-                  </strong>{' '}
-                  tower success
-                </span>
-                <span>
-                  <strong>
-                    {Math.round((analysis?.disabledRate ?? 0) * 100)}%
-                  </strong>{' '}
-                  disabled rate
-                </span>
-                <span>
-                  <strong>
-                    {Math.round((analysis?.coverage ?? 0) * 100)}%
-                  </strong>{' '}
-                  data coverage
-                </span>
-                <span>
-                  <strong>{analysis?.scheduledMatches ?? 0}</strong> scheduled
-                  matches
-                </span>
-              </CardContent>
-            </Card>
-            <Card className="sm:col-span-2">
-              <CardHeader>
-                <CardTitle>Submitted entries</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1">
-                {analysis?.entries.map((entry) => (
-                  <div className="schedule-row" key={entry.id}>
-                    <strong>
-                      {entry.matchKey.split('_').at(-1)?.toUpperCase()}
-                    </strong>
-                    <span>
-                      {entry.scoutName}
-                      {entry.reopened ? ' · reopened' : ''}
-                    </span>
-                    {eventPack &&
-                    canReopenEntries(eventPack.role) &&
-                    !entry.reopened ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => void reopenEntry(entry.id)}
-                      >
-                        Reopen
-                      </Button>
-                    ) : (
-                      <small>{entry.reopened ? 'Editable' : 'Locked'}</small>
+                <div className="grid gap-2 text-sm sm:grid-cols-2">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">
+                      Worker secret
+                    </p>
+                    <p className="font-medium">
+                      {tbaWebhookStatus.configured
+                        ? 'Configured'
+                        : 'Missing TBA_WEBHOOK_SECRET'}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">
+                      Last delivery
+                    </p>
+                    <p className="font-medium">
+                      {!tbaWebhookStatus.delivery
+                        ? 'Nothing received'
+                        : tbaWebhookStatus.delivery.status === 'accepted'
+                          ? `Accepted${tbaWebhookStatus.delivery.messageType ? `: ${tbaWebhookStatus.delivery.messageType}` : ''}`
+                          : tbaWebhookStatus.delivery.status ===
+                              'rejected_signature'
+                            ? 'Rejected: secret does not match'
+                            : 'Rejected: invalid payload'}
+                    </p>
+                    {tbaWebhookStatus.delivery && (
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(
+                          tbaWebhookStatus.delivery.lastReceivedAt,
+                        ).toLocaleString()}
+                      </p>
                     )}
                   </div>
-                ))}
-                {analysis?.entries.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    No synchronized entries for this team yet.
-                  </p>
+                </div>
+                {tbaVerification && (
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">
+                      Received{' '}
+                      {new Date(tbaVerification.receivedAt).toLocaleString()}
+                    </p>
+                    <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <code className="min-w-0 flex-1 overflow-x-auto rounded bg-muted p-2 text-sm">
+                        {tbaVerification.verificationCode}
+                      </code>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          void navigator.clipboard
+                            .writeText(tbaVerification.verificationCode)
+                            .then(() =>
+                              setTbaVerificationMessage('Code copied.'),
+                            )
+                            .catch(() =>
+                              setTbaVerificationMessage(
+                                'Could not copy automatically. Select the code manually.',
+                              ),
+                            );
+                        }}
+                      >
+                        <Copy /> Copy code
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setTbaVerificationMessage('Checking for a new code…');
+                      void fetch('/api/tba-webhook-verification')
+                        .then(async (response) => {
+                          const result = (await response.json()) as {
+                            verification?: typeof tbaVerification;
+                            configured?: boolean;
+                            delivery?: (typeof tbaWebhookStatus)['delivery'];
+                            error?: string;
+                          };
+                          if (!response.ok)
+                            throw new Error(
+                              result.error ?? 'Could not retrieve the code.',
+                            );
+                          setTbaVerification(result.verification ?? null);
+                          setTbaWebhookStatus({
+                            configured: Boolean(result.configured),
+                            delivery: result.delivery ?? null,
+                          });
+                          setTbaVerificationMessage(
+                            result.verification
+                              ? 'Latest code loaded.'
+                              : 'No verification code has been received yet.',
+                          );
+                        })
+                        .catch((error: unknown) =>
+                          setTbaVerificationMessage(
+                            error instanceof Error
+                              ? error.message
+                              : 'Could not retrieve the code.',
+                          ),
+                        );
+                    }}
+                  >
+                    <RefreshCw /> Refresh code
+                  </Button>
+                  {tbaVerification && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        void fetch('/api/tba-webhook-verification', {
+                          method: 'DELETE',
+                        }).then((response) => {
+                          if (response.ok) {
+                            setTbaVerification(null);
+                            setTbaVerificationMessage('Stored code cleared.');
+                          }
+                        });
+                      }}
+                    >
+                      Clear stored code
+                    </Button>
+                  )}
+                </div>
+                {tbaVerificationMessage && (
+                  <output className="block text-sm text-muted-foreground">
+                    {tbaVerificationMessage}
+                  </output>
                 )}
               </CardContent>
             </Card>
-          </div>
-        )}
-        {activeView === 'Admin' && isAdmin && (
-          <div className="grid gap-4 p-4 sm:p-6">
             <Card>
               <CardHeader>
                 <CardTitle>Current event</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Choose one of Team 401's registered events from The Blue
+                  Choose one of Team 401&apos;s registered events from The Blue
                   Alliance. Its schedule will be cached on every device.
                 </p>
                 <div className="grid gap-2 sm:grid-cols-[8rem_1fr_auto]">
@@ -2895,70 +3706,6 @@ export default function Home() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>
-                  <WandSparkles />
-                  Bulk scout assignments
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Select scouts once, then distribute all six stations in a
-                  balanced rotation. Individual stations can still be adjusted
-                  on Schedule.
-                </p>
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {eventPack?.members.map((member) => (
-                    <label className="choice px-3" key={member.id}>
-                      <input
-                        type="checkbox"
-                        checked={selectedScoutIds.includes(member.id)}
-                        onChange={(event) =>
-                          setSelectedScoutIds((ids) =>
-                            event.target.checked
-                              ? [...ids, member.id]
-                              : ids.filter((id) => id !== member.id),
-                          )
-                        }
-                      />
-                      {member.name}
-                    </label>
-                  ))}
-                </div>
-                <div className="flex flex-wrap items-end gap-2">
-                  <label className="grid gap-1 text-sm">
-                    Start match
-                    <Input
-                      type="number"
-                      min="1"
-                      value={assignmentStart}
-                      onChange={(event) =>
-                        setAssignmentStart(Number(event.target.value))
-                      }
-                    />
-                  </label>
-                  <label className="grid gap-1 text-sm">
-                    End match
-                    <Input
-                      type="number"
-                      min="1"
-                      value={assignmentEnd}
-                      onChange={(event) =>
-                        setAssignmentEnd(Number(event.target.value))
-                      }
-                    />
-                  </label>
-                  <Button
-                    disabled={!selectedScoutIds.length}
-                    onClick={generateAssignments}
-                  >
-                    <WandSparkles />
-                    Generate rotation
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
                 <CardTitle>Assignment coverage</CardTitle>
                 <Badge variant="outline">
                   {eventPack?.assignments.length ?? 0}/{totalSlots}
@@ -2986,7 +3733,7 @@ export default function Home() {
                   variant="outline"
                   onClick={() => {
                     setScheduleFilter('unassigned');
-                    navigate('Schedule');
+                    setAdminSection('assignments');
                   }}
                 >
                   Review unassigned matches
@@ -3006,6 +3753,9 @@ export default function Home() {
                     <div>
                       <strong>{member.name}</strong>
                       <small>{member.email}</small>
+                      {Boolean(member.disabled) && (
+                        <Badge variant="destructive">Disabled</Badge>
+                      )}
                     </div>
                     {member.role === 'owner' ? (
                       <Badge>Owner</Badge>
@@ -3021,6 +3771,29 @@ export default function Home() {
                         <option value="scout">Scout</option>
                         <option value="video">Video</option>
                       </select>
+                    )}
+                    {member.role !== 'owner' && (
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            void setMemberDisabled(member.id, !member.disabled)
+                          }
+                        >
+                          {member.disabled ? 'Enable' : 'Disable'}
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          aria-label={`Remove ${member.name}`}
+                          onClick={() =>
+                            void removeMember(member.id, member.name)
+                          }
+                        >
+                          <Trash2 />
+                        </Button>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -3059,6 +3832,45 @@ export default function Home() {
                     </>
                   )}
                 </Button>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  <MonitorSmartphone /> Signed-in devices
+                </CardTitle>
+                <Badge variant="outline">{accountSessions.length}</Badge>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {accountSessions.map((item) => (
+                  <div className="schedule-row" key={item.id}>
+                    <strong>
+                      {item.id === currentSessionId ? 'This device' : 'Session'}
+                    </strong>
+                    <span>
+                      {item.userAgent?.split(' ').slice(0, 4).join(' ') ??
+                        'Unknown device'}
+                      {item.ipAddress ? ` · ${item.ipAddress}` : ''}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void revokeSession(item.id)}
+                    >
+                      {item.id === currentSessionId ? 'Sign out' : 'Revoke'}
+                    </Button>
+                  </div>
+                ))}
+                {!accountSessions.length && (
+                  <p className="text-sm text-muted-foreground">
+                    No active sessions were found.
+                  </p>
+                )}
+                {sessionMessage && (
+                  <p className="text-sm text-muted-foreground">
+                    {sessionMessage}
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>

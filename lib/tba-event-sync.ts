@@ -1,6 +1,12 @@
 import { env } from 'cloudflare:workers';
+import { reconcileShiftAssignments } from '@/lib/scout-shifts';
 
-type TbaEvent = { key: string; name: string; year: number };
+type TbaEvent = {
+  key: string;
+  name: string;
+  year: number;
+  timezone: string | null;
+};
 type TbaAlliance = { team_keys: string[]; score: number };
 type TbaMatch = {
   key: string;
@@ -12,6 +18,8 @@ type TbaMatch = {
   alliances: { red: TbaAlliance; blue: TbaAlliance };
   winning_alliance: string;
   actual_time: number | null;
+  score_breakdown: unknown;
+  videos: Array<{ type: string; key: string }>;
 };
 
 export async function syncTbaEvent(organizationId: string, eventKey: string) {
@@ -48,24 +56,26 @@ export async function syncTbaEvent(organizationId: string, eventKey: string) {
     env.DB.prepare(
       'UPDATE events SET is_current = 0 WHERE organization_id = ? AND tba_event_key <> ?',
     ).bind(organizationId, event.key),
-    env.DB.prepare(`INSERT INTO events (id, organization_id, season_year, tba_event_key, name, is_current, tba_etag, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?) ON CONFLICT(organization_id, tba_event_key) DO UPDATE SET name = excluded.name,
-      is_current = 1, tba_etag = excluded.tba_etag, updated_at = excluded.updated_at`).bind(
+    env.DB.prepare(`INSERT INTO events (id, organization_id, season_year, tba_event_key, name, is_current, tba_etag, timezone, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?) ON CONFLICT(organization_id, tba_event_key) DO UPDATE SET name = excluded.name,
+      is_current = 1, tba_etag = excluded.tba_etag, timezone = excluded.timezone, updated_at = excluded.updated_at`).bind(
       eventId,
       organizationId,
       event.year,
       event.key,
       event.name,
       matchesResponse.headers.get('etag'),
+      event.timezone,
       now,
       now,
     ),
     ...matches.map((match) =>
       env.DB.prepare(`INSERT INTO matches
-        (id, organization_id, event_id, tba_match_key, comp_level, match_number, scheduled_at, predicted_at, alliances, result, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(organization_id, tba_match_key) DO UPDATE SET
+        (id, organization_id, event_id, tba_match_key, comp_level, match_number, scheduled_at, predicted_at, alliances, result, videos, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(organization_id, tba_match_key) DO UPDATE SET
         comp_level = excluded.comp_level, match_number = excluded.match_number, scheduled_at = excluded.scheduled_at,
-        predicted_at = excluded.predicted_at, alliances = excluded.alliances, result = excluded.result, updated_at = excluded.updated_at`).bind(
+        predicted_at = excluded.predicted_at, alliances = excluded.alliances, result = excluded.result,
+        videos = excluded.videos, updated_at = excluded.updated_at`).bind(
         `${organizationId}:${match.key}`,
         organizationId,
         eventId,
@@ -82,11 +92,14 @@ export async function syncTbaEvent(organizationId: string, eventKey: string) {
             match.alliances.red.score >= 0 ? match.alliances.red.score : null,
           blueScore:
             match.alliances.blue.score >= 0 ? match.alliances.blue.score : null,
+          scoreBreakdown: match.score_breakdown,
         }),
+        JSON.stringify(match.videos ?? []),
         now,
         now,
       ),
     ),
   ]);
+  await reconcileShiftAssignments(env.DB, organizationId, eventId);
   return { event, matchCount: matches.length, refreshedAt: now };
 }

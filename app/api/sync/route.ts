@@ -87,8 +87,8 @@ export async function POST(request: Request) {
       continue;
     }
 
-    const existing = await env.DB.prepare('SELECT payload FROM scout_entries WHERE organization_id = ? AND match_id = ? AND team_number = ? AND scout_user_id = ?')
-      .bind(mutation.organizationId, match.id, mutation.payload.teamNumber, session.user.id).first<{ payload: string }>();
+    const existing = await env.DB.prepare('SELECT id, payload FROM scout_entries WHERE organization_id = ? AND match_id = ? AND team_number = ? AND scout_user_id = ?')
+      .bind(mutation.organizationId, match.id, mutation.payload.teamNumber, session.user.id).first<{ id: string; payload: string }>();
     const reopened = existing ? Boolean((JSON.parse(existing.payload) as { reopened?: boolean }).reopened) : false;
     if (existing && !canOverwriteLockedEntry(membership.role, reopened)) {
       rejected.push({ id: mutation.id, error: 'This synchronized entry is locked. Ask strategy or an admin to reopen it.', retryable: false });
@@ -106,6 +106,11 @@ export async function POST(request: Request) {
       .bind(mutation.id, mutation.organizationId, event.id, match.id, mutation.payload.teamNumber, session.user.id,
         mutation.payload.station, mutation.payload.seasonYear, mutation.payload.schemaVersion, JSON.stringify({ ...mutation.payload, reopened: false, submittedAt: now }),
         mutation.createdAt, now, now).run();
+    if (existing && reopened)
+      await env.DB.prepare(
+        `INSERT INTO entry_audit (id, organization_id, entry_id, actor_user_id, action, created_at)
+         VALUES (?, ?, ?, ?, 'corrected', ?)`,
+      ).bind(crypto.randomUUID(), mutation.organizationId, existing.id, session.user.id, now).run();
     accepted.push(mutation.id);
   }
 

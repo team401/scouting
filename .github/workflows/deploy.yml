@@ -47,12 +47,14 @@ jobs:
         env:
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
           TBA_AUTH_KEY: ${{ secrets.TBA_AUTH_KEY }}
+          TBA_WEBHOOK_SECRET: ${{ secrets.TBA_WEBHOOK_SECRET }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
         run: |
-          node -e "if (!process.env.BETTER_AUTH_SECRET || process.env.BETTER_AUTH_SECRET.length < 32) throw new Error('BETTER_AUTH_SECRET must contain at least 32 characters'); const secrets = { BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET }; if (process.env.TBA_AUTH_KEY) secrets.TBA_AUTH_KEY = process.env.TBA_AUTH_KEY; require('node:fs').writeFileSync(process.env.RUNNER_TEMP + '/worker-secrets.json', JSON.stringify(secrets))"
+          node -e "if (!process.env.BETTER_AUTH_SECRET || process.env.BETTER_AUTH_SECRET.length < 32) throw new Error('BETTER_AUTH_SECRET must contain at least 32 characters'); if (!process.env.RESEND_API_KEY) throw new Error('RESEND_API_KEY is required'); if (!process.env.EMAIL_FROM) throw new Error('EMAIL_FROM is required'); const secrets = { BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET, RESEND_API_KEY: process.env.RESEND_API_KEY, EMAIL_FROM: process.env.EMAIL_FROM }; if (process.env.TBA_AUTH_KEY) secrets.TBA_AUTH_KEY = process.env.TBA_AUTH_KEY; if (process.env.TBA_WEBHOOK_SECRET) secrets.TBA_WEBHOOK_SECRET = process.env.TBA_WEBHOOK_SECRET; require('node:fs').writeFileSync(process.env.RUNNER_TEMP + '/worker-secrets.json', JSON.stringify(secrets))"
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --config dist/server/wrangler.json --secrets-file ${{ runner.temp }}/worker-secrets.json
-

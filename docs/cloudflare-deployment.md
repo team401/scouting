@@ -2,10 +2,10 @@
 
 The application uses two isolated Cloudflare environments:
 
-| Environment | Branch | Deployment | Worker | URL |
-| --- | --- | --- | --- | --- |
-| Staging | `staging` | Automatic after every push | `team401-scouting-staging` | `https://staging.scout.team401.org` |
-| Production | `main` | Manual workflow dispatch only | `team401-scouting` | `https://scout.team401.org` |
+| Environment | Branch    | Deployment                    | Worker                     | URL                                 |
+| ----------- | --------- | ----------------------------- | -------------------------- | ----------------------------------- |
+| Staging     | `staging` | Automatic after every push    | `team401-scouting-staging` | `https://staging.scout.team401.org` |
+| Production  | `main`    | Manual workflow dispatch only | `team401-scouting`         | `https://scout.team401.org`         |
 
 Each environment has its own D1 database, R2 bucket, and Better Auth secret so
 test accounts and scouting data cannot affect production.
@@ -52,8 +52,12 @@ secrets to each environment:
   `npx auth@latest secret`)
 - `TBA_AUTH_KEY` (a read API key from your The Blue Alliance account; this may
   be shared between environments)
-
-Add these environment variables with values for that environment:
+- `TBA_WEBHOOK_SECRET` (copy the secret generated and displayed by TBA for
+  this exact webhook; staging and production webhooks have different secrets)
+- `RESEND_API_KEY` (a Resend send-only key restricted to the verified sending
+  domain)
+- `EMAIL_FROM` (for example `Team 401 Scouting <scouting@team401.org>`)
+  Add these environment variables with values for that environment:
 
 - `CLOUDFLARE_D1_DATABASE_ID`
 - `CLOUDFLARE_R2_BUCKET_NAME`
@@ -61,6 +65,36 @@ Add these environment variables with values for that environment:
 Use `team401-scouting-files-staging` for the staging R2 variable and
 `team401-scouting-files` for production. Restrict the `staging` environment to
 the `staging` branch and `production` to `main`.
+
+The first account in a new database becomes the Team 401 owner. That owner
+must set the team invite code under **Admin → Team and event** before anyone
+else can create an account. The code is hashed in D1, can be rotated without a
+deployment, and should be different between staging and production.
+
+## The Blue Alliance webhook
+
+After deploying, create a webhook from your TBA account dashboard. Use
+`https://staging.scout.team401.org/api/tba-webhook` for staging or
+`https://scout.team401.org/api/tba-webhook` for production. TBA generates and
+displays a secret after the webhook is created. Copy that exact value to the
+matching GitHub environment as `TBA_WEBHOOK_SECRET`, then redeploy the Worker;
+do not generate a separate value. Enable match score and schedule
+notifications. After clicking **Resend code** in TBA, refresh **Admin → Team
+and event → TBA webhook verification** in the scouting app and enter the
+received code back in TBA. The status cards show whether TBA reached the
+Worker and whether its signature matched. The webhook accelerates updates,
+while the existing client polling remains the fallback if a delivery is
+delayed or missed.
+
+## Account email
+
+Password reset and account verification use Resend's HTTPS email API from the
+Worker. Add and verify `team401.org` (or a dedicated sending subdomain) in
+Resend, publish the SPF and DKIM records it provides in Cloudflare DNS, then
+create a send-only API key restricted to that domain. Add `RESEND_API_KEY` and
+`EMAIL_FROM` to both GitHub environments before merging this feature; deploys
+intentionally fail if either is absent. Existing accounts are marked verified
+by migration `0006`; new accounts must verify their email before signing in.
 
 Each deploy applies the D1 migrations before publishing. Authentication secrets
 are written to an ephemeral file on the GitHub-hosted runner and sent to

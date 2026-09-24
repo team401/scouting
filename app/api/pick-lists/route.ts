@@ -13,17 +13,52 @@ const entrySchema = z.object({
   tier: z.enum(['first', 'second', 'do-not-pick']),
   avoid: z.boolean(),
 });
-const listSchema = z.object({
-  entries: z.array(entrySchema).max(200),
-  selections: z
-    .array(
-      z.object({
-        teamNumber: z.number().int().positive(),
-        allianceNumber: z.number().int().min(1).max(16),
-      }),
-    )
-    .max(200),
-});
+const listSchema = z
+  .object({
+    entries: z.array(entrySchema).max(200),
+    selections: z
+      .array(
+        z.object({
+          teamNumber: z.number().int().positive(),
+          allianceNumber: z.number().int().min(1).max(16),
+        }),
+      )
+      .max(48),
+    unavailable: z
+      .array(
+        z.object({
+          teamNumber: z.number().int().positive(),
+          reason: z.enum(['declined', 'ineligible']),
+        }),
+      )
+      .max(200)
+      .optional()
+      .default([]),
+  })
+  .superRefine((data, context) => {
+    const selectedTeams = new Set<number>();
+    const allianceSizes = new Map<number, number>();
+    for (const selection of data.selections) {
+      if (selectedTeams.has(selection.teamNumber))
+        context.addIssue({
+          code: 'custom',
+          message: 'A team can only appear in one alliance.',
+        });
+      selectedTeams.add(selection.teamNumber);
+      const size = (allianceSizes.get(selection.allianceNumber) ?? 0) + 1;
+      allianceSizes.set(selection.allianceNumber, size);
+      if (size > 3)
+        context.addIssue({
+          code: 'custom',
+          message: 'An alliance cannot contain more than three teams.',
+        });
+    }
+    if (data.unavailable.some((team) => selectedTeams.has(team.teamNumber)))
+      context.addIssue({
+        code: 'custom',
+        message: 'A selected team cannot also be unavailable.',
+      });
+  });
 const saveSchema = z.object({
   mode: z.enum(['personal', 'official']),
   data: listSchema,
