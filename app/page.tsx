@@ -1787,6 +1787,14 @@ export default function Home() {
                     <RefreshCw className={packLoading ? 'animate-spin' : ''} />
                     Refresh live data
                   </Button>
+                  <Button
+                    variant="outline"
+                    disabled={!online || packLoading}
+                    onClick={() => void loadEventPack(false, true)}
+                  >
+                    <RefreshCw className={packLoading ? 'animate-spin' : ''} />
+                    Refresh live data
+                  </Button>
                   {canUseStrategy && (
                     <Button
                       variant="outline"
