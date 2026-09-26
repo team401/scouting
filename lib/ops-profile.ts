@@ -24,3 +24,21 @@ export function profileFromDocument(
     role: document.fields?.role?.stringValue ?? 'student',
   };
 }
+
+export function shouldRecoverScoutingOwner(
+  currentOwnerFirebaseUid: string | null,
+  profiles: OpsProfile[],
+  signedInUid: string,
+) {
+  if (
+    currentOwnerFirebaseUid &&
+    profiles.some(
+      (profile) =>
+        profile.uid === currentOwnerFirebaseUid && profile.role === 'coach',
+    )
+  )
+    return false;
+  return profiles.some(
+    (profile) => profile.uid === signedInUid && profile.role === 'coach',
+  );
+}

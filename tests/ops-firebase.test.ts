@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { profileFromDocument } from '../lib/ops-profile.ts';
+import {
+  profileFromDocument,
+  shouldRecoverScoutingOwner,
+  type OpsProfile,
+} from '../lib/ops-profile.ts';
 
 void test('parses an Ops Firestore user profile', () => {
   assert.deepEqual(
@@ -38,5 +42,42 @@ void test('uses the email prefix when an Ops display name is missing', () => {
       fields: { email: { stringValue: 'scout.two@team401.org' } },
     })?.displayName,
     'scout.two',
+  );
+});
+
+const roster: OpsProfile[] = [
+  {
+    uid: 'coach-1',
+    email: 'coach@team401.org',
+    displayName: 'Coach',
+    role: 'coach',
+  },
+  {
+    uid: 'student-1',
+    email: 'student@team401.org',
+    displayName: 'Student',
+    role: 'student',
+  },
+];
+
+void test('allows an Ops coach to recover an unlinked scouting owner', () => {
+  assert.equal(shouldRecoverScoutingOwner(null, roster, 'coach-1'), true);
+});
+
+void test('does not let a student recover scouting ownership', () => {
+  assert.equal(shouldRecoverScoutingOwner(null, roster, 'student-1'), false);
+});
+
+void test('allows a coach to recover ownership from a non-coach owner', () => {
+  assert.equal(
+    shouldRecoverScoutingOwner('student-1', roster, 'coach-1'),
+    true,
+  );
+});
+
+void test('does not replace an owner who is already an Ops coach', () => {
+  assert.equal(
+    shouldRecoverScoutingOwner('coach-1', roster, 'student-1'),
+    false,
   );
 });
