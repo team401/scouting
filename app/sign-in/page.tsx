@@ -1,16 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ComponentProps } from 'react';
 import { ArrowLeft, LoaderCircle, LockKeyhole, Mail } from 'lucide-react';
-import { signInWithOps } from '@/lib/auth-client';
+import { authClient, signInWithOps } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 export default function SignInPage() {
+  const { data: session, isPending } = authClient.useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -18,6 +19,10 @@ export default function SignInPage() {
   const [guestCode, setGuestCode] = useState('');
   const [guestBusy, setGuestBusy] = useState(false);
   const [guestError, setGuestError] = useState('');
+
+  useEffect(() => {
+    if (!isPending && session) window.location.replace('/');
+  }, [isPending, session]);
 
   async function submit(
     event: Parameters<NonNullable<ComponentProps<'form'>['onSubmit']>>[0],

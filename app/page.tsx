@@ -644,6 +644,10 @@ export default function Home() {
   }, [session]);
 
   useEffect(() => {
+    if (!isPending && !session) window.location.replace('/sign-in');
+  }, [isPending, session]);
+
+  useEffect(() => {
     if (!session || !online) return;
     const timer = window.setInterval(() => {
       if (document.visibilityState === 'visible') void loadEventPack(true);
@@ -1555,6 +1559,8 @@ export default function Home() {
         (assignment) => assignment.scoutUserId === member.id,
       ).length,
     })) ?? [];
+
+  if (isPending || !session) return null;
 
   return (
     <main className={dark ? 'dark app-shell' : 'app-shell'}>

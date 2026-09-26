@@ -4,15 +4,43 @@ import { useCallback, useEffect, useState } from 'react';
 
 export type ClientSession = {
   user: { id: string; email: string; name: string; emailVerified: boolean };
-  session: { id: string };
+  session: { id: string; expiresAt: string };
 };
 
+const SESSION_CACHE_KEY = 'team401-scouting-session-cache';
+
+function cachedSession() {
+  try {
+    const value = window.localStorage.getItem(SESSION_CACHE_KEY);
+    if (!value) return null;
+    const session = JSON.parse(value) as ClientSession;
+    if (new Date(session.session.expiresAt).getTime() <= Date.now()) {
+      window.localStorage.removeItem(SESSION_CACHE_KEY);
+      return null;
+    }
+    return session;
+  } catch {
+    return null;
+  }
+}
+
 async function loadSession() {
-  const response = await fetch('/api/auth/firebase-session', {
-    cache: 'no-store',
-  });
-  if (!response.ok) return null;
-  return (await response.json()) as ClientSession | null;
+  try {
+    const response = await fetch('/api/auth/firebase-session', {
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      window.localStorage.removeItem(SESSION_CACHE_KEY);
+      return null;
+    }
+    const session = (await response.json()) as ClientSession | null;
+    if (session)
+      window.localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify(session));
+    else window.localStorage.removeItem(SESSION_CACHE_KEY);
+    return session;
+  } catch {
+    return cachedSession();
+  }
 }
 
 function useSession() {
@@ -58,6 +86,9 @@ export async function signInWithOps(email: string, password: string) {
 export const authClient = {
   useSession,
   signOut: async () => {
-    await fetch('/api/auth/firebase-session', { method: 'DELETE' });
+    window.localStorage.removeItem(SESSION_CACHE_KEY);
+    await fetch('/api/auth/firebase-session', { method: 'DELETE' }).catch(
+      () => undefined,
+    );
   },
 };
