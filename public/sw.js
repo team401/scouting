@@ -1,4 +1,4 @@
-const CACHE = 'team401-scouting-shell-v3';
+const CACHE = 'team401-scouting-shell-v4';
 const SHELL = [
   '/',
   '/sign-in',

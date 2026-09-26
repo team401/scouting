@@ -47,7 +47,6 @@ import { TeamComparison } from '@/components/team-comparison';
 import { TeamTrendChart, type TeamTrend } from '@/components/team-trend-chart';
 import { ScoutingOperations } from '@/components/scouting-operations';
 import { ShiftScheduler } from '@/components/shift-scheduler';
-import { OfflineReadiness } from '@/components/offline-readiness';
 import { QrRelay } from '@/components/qr-relay';
 import { MatchSubmissionQr } from '@/components/match-submission-qr';
 import { GuestPassManager } from '@/components/guest-pass-manager';
@@ -1880,14 +1879,6 @@ export default function Home() {
                 </CardContent>
               </Card>
             )}
-            <OfflineReadiness
-              eventKey={eventPack?.event.key ?? ''}
-              eventName={eventPack?.event.name ?? ''}
-              matchCount={eventPack?.matches.length ?? 0}
-              teamCount={eventTeams.length}
-              online={online}
-              onRefresh={() => loadEventPack(false, true)}
-            />
             <QrRelay online={online} />
             <Card>
               <CardHeader>
