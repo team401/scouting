@@ -16,6 +16,7 @@ export const users = sqliteTable(
   'users',
   {
     id: text('id').primaryKey(),
+    firebaseUid: text('firebase_uid'),
     email: text('email').notNull(),
     name: text('name').notNull(),
     emailVerified: integer('email_verified', { mode: 'boolean' })
@@ -24,7 +25,10 @@ export const users = sqliteTable(
     image: text('image'),
     ...timestamps,
   },
-  (table) => [uniqueIndex('idx_users_email').on(table.email)],
+  (table) => [
+    uniqueIndex('idx_users_email').on(table.email),
+    uniqueIndex('idx_users_firebase_uid').on(table.firebaseUid),
+  ],
 );
 
 export const sessions = sqliteTable(
@@ -125,6 +129,30 @@ export const memberships = sqliteTable(
   (table) => [
     primaryKey({ columns: [table.organizationId, table.userId] }),
     index('idx_memberships_user').on(table.userId),
+  ],
+);
+
+export const guestAccessPasses = sqliteTable(
+  'guest_access_passes',
+  {
+    id: text('id').primaryKey(),
+    organizationId: text('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash').notNull(),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+    revokedAt: integer('revoked_at', { mode: 'timestamp_ms' }),
+    createdBy: text('created_by')
+      .notNull()
+      .references(() => users.id),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex('idx_guest_access_token').on(table.tokenHash),
+    index('idx_guest_access_org').on(table.organizationId),
   ],
 );
 

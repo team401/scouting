@@ -1,10 +1,8 @@
-import { env } from 'cloudflare:workers';
-import { auth } from '@/lib/auth';
-import { ensureAuthSchema } from '@/lib/ensure-auth-schema';
-
-async function handler(request: Request) {
-  await ensureAuthSchema(env.DB);
-  return auth.handler(request);
+async function handler() {
+  return Response.json(
+    { error: 'Scouting accounts are managed through Team 401 Ops.' },
+    { status: 404 },
+  );
 }
 
 export const GET = handler;

@@ -19,13 +19,10 @@ export default function ForgotPasswordPage() {
   ) {
     event.preventDefault();
     setBusy(true);
-    const response = await fetch('/api/auth/request-password-reset', {
+    const response = await fetch('/api/auth/firebase-password-reset', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        email: email.trim().toLowerCase(),
-        redirectTo: '/reset-password',
-      }),
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
     }).catch(() => null);
     setBusy(false);
     if (!response) {
@@ -35,7 +32,7 @@ export default function ForgotPasswordPage() {
       return;
     }
     if (response.status === 429) {
-      const retryAfter = Number(response.headers.get('x-retry-after'));
+      const retryAfter = Number(response.headers.get('retry-after'));
       setMessage(
         Number.isFinite(retryAfter) && retryAfter > 0
           ? `Too many reset attempts. Try again in ${retryAfter} seconds.`

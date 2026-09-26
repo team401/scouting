@@ -7,7 +7,6 @@ const updateSchema = z.object({
   role: z.enum(['admin', 'strategy', 'scout', 'video']).optional(),
   disabled: z.boolean().optional(),
 });
-const removeSchema = z.object({ userId: z.string() });
 
 async function getActor(request: Request) {
   const session = await auth.api.getSession({ headers: request.headers });
@@ -61,6 +60,11 @@ export async function PATCH(request: Request) {
     (parsed.data.role === undefined && parsed.data.disabled === undefined)
   )
     return Response.json({ error: 'Invalid member update.' }, { status: 400 });
+  if (parsed.data.userId.startsWith('guest:') && parsed.data.role)
+    return Response.json(
+      { error: 'Guest passes are restricted to the scout role.' },
+      { status: 400 },
+    );
   const authorization = await authorizeTarget(actor, parsed.data.userId);
   if ('error' in authorization)
     return Response.json(
@@ -108,31 +112,4 @@ export async function PATCH(request: Request) {
     role: parsed.data.role,
     disabled: parsed.data.disabled,
   });
-}
-
-export async function DELETE(request: Request) {
-  const actor = await getActor(request);
-  if (!actor)
-    return Response.json(
-      { error: 'Sign in to manage members.' },
-      { status: 401 },
-    );
-  const parsed = removeSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success)
-    return Response.json({ error: 'Invalid member.' }, { status: 400 });
-  const authorization = await authorizeTarget(actor, parsed.data.userId);
-  if ('error' in authorization)
-    return Response.json(
-      { error: authorization.error },
-      { status: authorization.status },
-    );
-  await env.DB.batch([
-    env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(
-      parsed.data.userId,
-    ),
-    env.DB.prepare(
-      'DELETE FROM memberships WHERE organization_id = ? AND user_id = ?',
-    ).bind(actor.membership.organization_id, parsed.data.userId),
-  ]);
-  return Response.json({ removed: true });
 }
