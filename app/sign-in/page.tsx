@@ -3,27 +3,17 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import type { ComponentProps } from 'react';
-import {
-  ArrowLeft,
-  KeyRound,
-  LoaderCircle,
-  LockKeyhole,
-  Mail,
-} from 'lucide-react';
-import { authClient } from '@/lib/auth-client';
+import { ArrowLeft, LoaderCircle, LockKeyhole, Mail } from 'lucide-react';
+import { signInWithOps } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 export default function SignInPage() {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
 
   async function submit(
@@ -32,31 +22,9 @@ export default function SignInPage() {
     event.preventDefault();
     setBusy(true);
     setError('');
-    setNotice('');
-    if (mode === 'signup') {
-      const response = await fetch('/api/auth/sign-up/email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Team-Invite-Code': inviteCode,
-        },
-        body: JSON.stringify({ name, email, password, callbackURL: '/' }),
-      });
-      const body = (await response.json().catch(() => null)) as {
-        message?: string;
-      } | null;
-      setBusy(false);
-      if (!response.ok) setError(body?.message || 'Unable to create account.');
-      else {
-        setMode('signin');
-        setPassword('');
-        setNotice('Check your email to verify the account before signing in.');
-      }
-      return;
-    }
-    const result = await authClient.signIn.email({ email, password });
+    const result = await signInWithOps(email.trim().toLowerCase(), password);
     setBusy(false);
-    if (result.error) setError(result.error.message || 'Unable to continue.');
+    if (result.error) setError(result.error.message);
     else window.location.replace('/');
   }
 
@@ -70,42 +38,10 @@ export default function SignInPage() {
           <div className="brand-lockup">
             <span className="brand-mark">401</span>
           </div>
-          <CardTitle>
-            {mode === 'signup' ? 'Create your scout account' : 'Welcome back'}
-          </CardTitle>
+          <CardTitle>Sign in with Team 401 Ops</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={submit}>
-            {mode === 'signup' && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input
-                    id="name"
-                    autoComplete="name"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Your name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="invite-code">Team invite code</Label>
-                  <div className="input-with-icon">
-                    <KeyRound />
-                    <Input
-                      id="invite-code"
-                      type="password"
-                      autoComplete="off"
-                      required
-                      value={inviteCode}
-                      onChange={(e) => setInviteCode(e.target.value)}
-                      placeholder="Provided by a Team 401 admin"
-                    />
-                  </div>
-                </div>
-              </>
-            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="input-with-icon">
@@ -116,8 +52,8 @@ export default function SignInPage() {
                   autoComplete="email"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="scout@example.com"
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="Your Ops account email"
                 />
               </div>
             </div>
@@ -128,14 +64,10 @@ export default function SignInPage() {
                 <Input
                   id="password"
                   type="password"
-                  minLength={10}
-                  autoComplete={
-                    mode === 'signup' ? 'new-password' : 'current-password'
-                  }
+                  autoComplete="current-password"
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="At least 10 characters"
+                  onChange={(event) => setPassword(event.target.value)}
                 />
               </div>
             </div>
@@ -144,39 +76,20 @@ export default function SignInPage() {
                 {error}
               </p>
             )}
-            {notice && (
-              <p className="text-sm text-muted-foreground">{notice}</p>
-            )}
             <Button type="submit" className="h-11 w-full" disabled={busy}>
-              {busy && <LoaderCircle className="animate-spin" />}
-              {mode === 'signup' ? 'Create account' : 'Sign in'}
+              {busy && <LoaderCircle className="animate-spin" />} Sign in
             </Button>
           </form>
-          {mode === 'signin' && (
-            <div className="mt-3 text-center">
-              <Link
-                className="text-sm text-primary hover:underline"
-                href="/forgot-password"
-              >
-                Forgot your password?
-              </Link>
-            </div>
-          )}
-          <div className="auth-switch">
-            <span>
-              {mode === 'signup'
-                ? 'Already have an account?'
-                : 'New to Team 401 scouting?'}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setMode(mode === 'signup' ? 'signin' : 'signup');
-                setError('');
-              }}
+          <div className="mt-3 space-y-2 text-center text-sm">
+            <Link
+              className="text-primary hover:underline"
+              href="/forgot-password"
             >
-              {mode === 'signup' ? 'Sign in' : 'Create account'}
-            </button>
+              Forgot your Ops password?
+            </Link>
+            <p className="text-muted-foreground">
+              Accounts are created and managed in Team 401 Ops.
+            </p>
           </div>
         </CardContent>
       </Card>

@@ -16,6 +16,7 @@ export const users = sqliteTable(
   'users',
   {
     id: text('id').primaryKey(),
+    firebaseUid: text('firebase_uid'),
     email: text('email').notNull(),
     name: text('name').notNull(),
     emailVerified: integer('email_verified', { mode: 'boolean' })
@@ -24,7 +25,10 @@ export const users = sqliteTable(
     image: text('image'),
     ...timestamps,
   },
-  (table) => [uniqueIndex('idx_users_email').on(table.email)],
+  (table) => [
+    uniqueIndex('idx_users_email').on(table.email),
+    uniqueIndex('idx_users_firebase_uid').on(table.firebaseUid),
+  ],
 );
 
 export const sessions = sqliteTable(

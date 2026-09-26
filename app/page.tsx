@@ -12,10 +12,7 @@ import {
   Cloud,
   CloudOff,
   Copy,
-  Eye,
-  EyeOff,
   Gauge,
-  KeyRound,
   LayoutDashboard,
   LogOut,
   Map,
@@ -28,7 +25,6 @@ import {
   Shield,
   Sun,
   TowerControl,
-  Trash2,
   Upload,
   UserCog,
   Users,
@@ -385,12 +381,6 @@ export default function Home() {
   >([]);
   const [currentSessionId, setCurrentSessionId] = useState('');
   const [sessionMessage, setSessionMessage] = useState('');
-  const [inviteCode, setInviteCode] = useState('');
-  const [storedInviteCode, setStoredInviteCode] = useState<string | null>(null);
-  const [inviteCodeVisible, setInviteCodeVisible] = useState(false);
-  const [inviteCodeConfigured, setInviteCodeConfigured] = useState(false);
-  const [inviteCodeBusy, setInviteCodeBusy] = useState(false);
-  const [inviteCodeMessage, setInviteCodeMessage] = useState('');
   const [tbaVerification, setTbaVerification] = useState<{
     verificationCode: string;
     receivedAt: number;
@@ -744,24 +734,6 @@ export default function Home() {
 
   useEffect(() => {
     if (activeView !== 'Admin' || !isAdmin || !online) return;
-    fetch('/api/invite-code')
-      .then(async (response) => {
-        const result = (await response.json()) as {
-          configured?: boolean;
-          code?: string | null;
-        };
-        if (!response.ok)
-          throw new Error('Could not load the current invite code.');
-        setInviteCodeConfigured(Boolean(result.configured));
-        setStoredInviteCode(result.code ?? null);
-      })
-      .catch((error: unknown) =>
-        setInviteCodeMessage(
-          error instanceof Error
-            ? error.message
-            : 'Could not load the current invite code.',
-        ),
-      );
     fetch('/api/tba-webhook-verification')
       .then(async (response) => {
         const result = (await response.json()) as {
@@ -1314,28 +1286,6 @@ export default function Home() {
     await loadEventPack();
   }
 
-  async function removeMember(userId: string, name: string) {
-    if (
-      !window.confirm(
-        `Remove ${name} from Team 401? Their historical scouting data will be retained.`,
-      )
-    )
-      return;
-    setAdminMessage('');
-    const response = await fetch('/api/members', {
-      method: 'DELETE',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ userId }),
-    });
-    const result = (await response.json()) as { error?: string };
-    if (!response.ok) {
-      setAdminMessage(result.error ?? 'Could not remove the member.');
-      return;
-    }
-    setAdminMessage(`${name} was removed from Team 401.`);
-    await loadEventPack();
-  }
-
   async function revokeSession(sessionId: string) {
     setSessionMessage('');
     const response = await fetch('/api/sessions', {
@@ -1359,39 +1309,6 @@ export default function Home() {
       items.filter((item) => item.id !== sessionId),
     );
     setSessionMessage('Session revoked.');
-  }
-
-  async function updateInviteCode() {
-    setInviteCodeMessage('');
-    setInviteCodeBusy(true);
-    try {
-      const response = await fetch('/api/invite-code', {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ code: inviteCode }),
-      });
-      const result = (await response.json().catch(() => ({}))) as {
-        error?: string;
-        code?: string;
-      };
-      if (!response.ok)
-        throw new Error(result.error ?? `Save failed (${response.status}).`);
-      setInviteCode('');
-      setStoredInviteCode(result.code ?? null);
-      setInviteCodeVisible(false);
-      setInviteCodeConfigured(true);
-      setInviteCodeMessage(
-        'Invite code saved. Existing accounts remain signed in.',
-      );
-    } catch (error) {
-      setInviteCodeMessage(
-        error instanceof Error
-          ? error.message
-          : 'Could not update the invite code.',
-      );
-    } finally {
-      setInviteCodeBusy(false);
-    }
   }
 
   async function syncNow() {
@@ -3418,93 +3335,6 @@ export default function Home() {
             <Card>
               <CardHeader>
                 <CardTitle>
-                  <KeyRound /> Team invite code
-                </CardTitle>
-                <Badge
-                  variant={inviteCodeConfigured ? 'outline' : 'destructive'}
-                >
-                  {inviteCodeConfigured ? 'Configured' : 'Signup closed'}
-                </Badge>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  New accounts must enter this code. Changing it takes effect
-                  immediately and does not sign out existing members. Only
-                  owners and admins can reveal or change it.
-                </p>
-                {storedInviteCode ? (
-                  <div className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center">
-                    <code className="min-w-0 flex-1 overflow-x-auto rounded bg-muted p-2 text-sm">
-                      {inviteCodeVisible
-                        ? storedInviteCode
-                        : '•'.repeat(Math.min(storedInviteCode.length, 24))}
-                    </code>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="outline"
-                      aria-label={
-                        inviteCodeVisible
-                          ? 'Hide invite code'
-                          : 'Show invite code'
-                      }
-                      onClick={() => setInviteCodeVisible(!inviteCodeVisible)}
-                    >
-                      {inviteCodeVisible ? <EyeOff /> : <Eye />}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        void navigator.clipboard
-                          .writeText(storedInviteCode)
-                          .then(() =>
-                            setInviteCodeMessage('Invite code copied.'),
-                          )
-                          .catch(() =>
-                            setInviteCodeMessage(
-                              'Could not copy automatically. Reveal and select the code manually.',
-                            ),
-                          );
-                      }}
-                    >
-                      <Copy /> Copy
-                    </Button>
-                  </div>
-                ) : inviteCodeConfigured ? (
-                  <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100">
-                    The existing code was saved before codes could be revealed.
-                    Set a new code below once; it will then be available here.
-                  </p>
-                ) : null}
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Input
-                    type="password"
-                    autoComplete="new-password"
-                    minLength={8}
-                    maxLength={128}
-                    value={inviteCode}
-                    onChange={(event) => setInviteCode(event.target.value)}
-                    placeholder="Enter a new invite code"
-                    aria-label="New team invite code"
-                  />
-                  <Button
-                    onClick={() => void updateInviteCode()}
-                    disabled={inviteCodeBusy || inviteCode.trim().length < 8}
-                  >
-                    {inviteCodeBusy ? 'Saving…' : 'Set invite code'}
-                  </Button>
-                </div>
-                {inviteCodeMessage && (
-                  <output className="block text-sm text-muted-foreground">
-                    {inviteCodeMessage}
-                  </output>
-                )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>
                   <Shield /> TBA webhook verification
                 </CardTitle>
                 <Badge variant={tbaVerification ? 'outline' : 'secondary'}>
@@ -3748,6 +3578,11 @@ export default function Home() {
                 </Badge>
               </CardHeader>
               <CardContent className="space-y-1">
+                <p className="pb-3 text-sm text-muted-foreground">
+                  Accounts and passwords come from Team 401 Ops. Scouting roles
+                  and scouting access are managed here. New Ops roster members
+                  appear after the next successful sign-in.
+                </p>
                 {eventPack?.members.map((member) => (
                   <div className="member-row" key={member.id}>
                     <div>
@@ -3782,16 +3617,6 @@ export default function Home() {
                           }
                         >
                           {member.disabled ? 'Enable' : 'Disable'}
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          aria-label={`Remove ${member.name}`}
-                          onClick={() =>
-                            void removeMember(member.id, member.name)
-                          }
-                        >
-                          <Trash2 />
                         </Button>
                       </div>
                     )}
