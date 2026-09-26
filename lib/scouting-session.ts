@@ -73,14 +73,21 @@ export async function getSessionFromHeaders(
   };
 }
 
-export async function createScoutingSession(request: Request, userId: string) {
+export async function createScoutingSession(
+  request: Request,
+  userId: string,
+  maximumExpiresAt?: number,
+) {
   const id = crypto.randomUUID();
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   const token = Array.from(bytes, (byte) =>
     byte.toString(16).padStart(2, '0'),
   ).join('');
   const now = Date.now();
-  const expiresAt = now + SESSION_LENGTH_MS;
+  const expiresAt = Math.min(
+    now + SESSION_LENGTH_MS,
+    maximumExpiresAt ?? Number.POSITIVE_INFINITY,
+  );
   await env.DB.prepare(
     `INSERT INTO sessions (id, expires_at, token, ip_address, user_agent, user_id, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -97,7 +104,8 @@ export async function createScoutingSession(request: Request, userId: string) {
     )
     .run();
   const secure = new URL(request.url).protocol === 'https:' ? '; Secure' : '';
-  return `${COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_LENGTH_MS / 1000}${secure}`;
+  const maxAge = Math.max(0, Math.floor((expiresAt - now) / 1000));
+  return `${COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;
 }
 
 export async function revokeCurrentSession(headers: Headers) {

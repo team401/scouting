@@ -79,6 +79,11 @@ sign into an empty scouting database becomes its owner. Existing database owners
 remain owners. Staging and production roles remain independent because their D1
 databases are independent.
 
+Owners and admins can create named guest passes under **Admin → Team and
+event** when scouting with partner teams. Each pass is displayed only once,
+expires automatically, and can be revoked immediately. Guest identities and
+scouting entries remain attributable in D1; guests do not need Ops accounts.
+
 After this change deploys, old scouting sessions no longer work. Sign in with
 the email and password used by Team 401 Ops. For local development, copy
 `.env.example` to `.env.local`, fill in the same Firebase project values, and

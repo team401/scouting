@@ -50,6 +50,7 @@ import { ShiftScheduler } from '@/components/shift-scheduler';
 import { OfflineReadiness } from '@/components/offline-readiness';
 import { QrRelay } from '@/components/qr-relay';
 import { MatchSubmissionQr } from '@/components/match-submission-qr';
+import { GuestPassManager } from '@/components/guest-pass-manager';
 import {
   getCachedValue,
   getDraft,
@@ -3570,6 +3571,7 @@ export default function Home() {
                 </Button>
               </CardContent>
             </Card>
+            <GuestPassManager />
             <Card>
               <CardHeader>
                 <CardTitle>Team members and roles</CardTitle>
@@ -3587,12 +3589,18 @@ export default function Home() {
                   <div className="member-row" key={member.id}>
                     <div>
                       <strong>{member.name}</strong>
-                      <small>{member.email}</small>
+                      <small>
+                        {member.email.endsWith('@guest.invalid')
+                          ? 'Temporary partner access'
+                          : member.email}
+                      </small>
                       {Boolean(member.disabled) && (
                         <Badge variant="destructive">Disabled</Badge>
                       )}
                     </div>
-                    {member.role === 'owner' ? (
+                    {member.email.endsWith('@guest.invalid') ? (
+                      <Badge variant="outline">Guest scout</Badge>
+                    ) : member.role === 'owner' ? (
                       <Badge>Owner</Badge>
                     ) : (
                       <select

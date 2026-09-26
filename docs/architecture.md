@@ -8,6 +8,8 @@ The application and its data services stay in one Cloudflare account. D1 provide
 
 Authentication uses the Firebase Email/Password accounts and Firestore user roster managed by Team 401 Ops. A successful login links the Firebase UID to an existing D1 user by email, or creates a new local user, then issues a secure HTTP-only scouting session cookie. D1 remains authoritative for scouting-specific roles and disabled status. New Ops roster members default to scout; owner, admin, strategy, scout, and video roles are managed in the scouting Admin view. Authorization is always checked server-side against `memberships`. Never accept an organization ID from the client without validating membership.
 
+Owner and admin users can also issue named, expiring guest passes for partner-team scouts. Only a SHA-256 hash of each high-entropy pass is stored. A guest receives an individual D1 identity and scout membership so their submissions remain attributable. Revocation disables that identity and deletes all of its active sessions; guest sessions cannot outlive the pass expiration.
+
 On Cloudflare Workers, Better Auth reads `CF-Connecting-IP` for per-client rate
 limits. Cloudflare replaces this header at the edge, so clients cannot select
 their own rate-limit identity. Authentication migrations may rebuild the

@@ -60,6 +60,11 @@ export async function PATCH(request: Request) {
     (parsed.data.role === undefined && parsed.data.disabled === undefined)
   )
     return Response.json({ error: 'Invalid member update.' }, { status: 400 });
+  if (parsed.data.userId.startsWith('guest:') && parsed.data.role)
+    return Response.json(
+      { error: 'Guest passes are restricted to the scout role.' },
+      { status: 400 },
+    );
   const authorization = await authorizeTarget(actor, parsed.data.userId);
   if ('error' in authorization)
     return Response.json(
