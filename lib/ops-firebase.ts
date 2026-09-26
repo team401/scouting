@@ -1,6 +1,7 @@
 import { env } from 'cloudflare:workers';
 import {
   profileFromDocument,
+  shouldRecoverScoutingOwner,
   type FirestoreDocument,
   type OpsProfile,
 } from '@/lib/ops-profile';
@@ -60,7 +61,7 @@ export async function synchronizeOpsRoster(
   let organization = await env.DB.prepare(
     "SELECT id FROM organizations WHERE id = 'team-401' LIMIT 1",
   ).first();
-  const rosterUsers: string[] = [];
+  const rosterUsers = new Map<string, string>();
   for (const profile of profiles) {
     const existing = await env.DB.prepare(
       'SELECT id FROM users WHERE firebase_uid = ? OR lower(email) = ? LIMIT 1',
@@ -68,7 +69,7 @@ export async function synchronizeOpsRoster(
       .bind(profile.uid, profile.email)
       .first<{ id: string }>();
     const userId = existing?.id ?? `firebase:${profile.uid}`;
-    rosterUsers.push(userId);
+    rosterUsers.set(profile.uid, userId);
     if (existing)
       await env.DB.prepare(
         'UPDATE users SET firebase_uid = ?, email = ?, name = ?, email_verified = 1, updated_at = ? WHERE id = ?',
@@ -98,21 +99,41 @@ export async function synchronizeOpsRoster(
       .run();
     organization = { id: 'team-401' };
   }
-  for (const userId of rosterUsers)
+  for (const profile of profiles) {
+    const userId = rosterUsers.get(profile.uid);
+    if (!userId) continue;
     await env.DB.prepare(
       `INSERT OR IGNORE INTO memberships (organization_id, user_id, role, disabled, created_at, updated_at)
        VALUES ('team-401', ?, ?, 0, ?, ?)`,
     )
-      .bind(userId, 'scout', now, now)
+      .bind(userId, profile.role === 'coach' ? 'admin' : 'scout', now, now)
       .run();
+  }
   const owner = await env.DB.prepare(
-    "SELECT owner_user_id AS ownerUserId FROM organizations WHERE id = 'team-401'",
-  ).first<{ ownerUserId: string }>();
-  if (owner?.ownerUserId === user.id)
+    `SELECT organizations.owner_user_id AS ownerUserId, users.firebase_uid AS firebaseUid
+     FROM organizations JOIN users ON users.id = organizations.owner_user_id
+     WHERE organizations.id = 'team-401'`,
+  ).first<{ ownerUserId: string; firebaseUid: string | null }>();
+  const shouldRecoverOwner = shouldRecoverScoutingOwner(
+    owner?.firebaseUid ?? null,
+    profiles,
+    signedInUid,
+  );
+  const effectiveOwnerId = shouldRecoverOwner ? user.id : owner?.ownerUserId;
+  if (shouldRecoverOwner)
+    await env.DB.batch([
+      env.DB.prepare(
+        "UPDATE memberships SET role = 'scout', updated_at = ? WHERE organization_id = 'team-401' AND role = 'owner' AND user_id <> ?",
+      ).bind(now, user.id),
+      env.DB.prepare(
+        "UPDATE organizations SET owner_user_id = ?, updated_at = ? WHERE id = 'team-401'",
+      ).bind(user.id, now),
+    ]);
+  if (effectiveOwnerId)
     await env.DB.prepare(
-      "UPDATE memberships SET role = 'owner', updated_at = ? WHERE organization_id = 'team-401' AND user_id = ?",
+      "UPDATE memberships SET role = 'owner', disabled = 0, updated_at = ? WHERE organization_id = 'team-401' AND user_id = ?",
     )
-      .bind(now, user.id)
+      .bind(now, effectiveOwnerId)
       .run();
   return user.id;
 }
