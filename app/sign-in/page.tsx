@@ -13,9 +13,7 @@ import { Label } from '@/components/ui/label';
 export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [guestCode, setGuestCode] = useState('');
   const [guestBusy, setGuestBusy] = useState(false);
