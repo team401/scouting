@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function SignInPage() {
   const { data: session, isPending } = authClient.useSession();
@@ -60,6 +61,7 @@ export default function SignInPage() {
 
   return (
     <main className="auth-shell">
+      <ThemeToggle className="auth-theme-toggle" />
       <Link href="/" className="back-link">
         <ArrowLeft /> Back to scouting
       </Link>

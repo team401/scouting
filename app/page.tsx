@@ -1560,10 +1560,24 @@ export default function Home() {
       ).length,
     })) ?? [];
 
+  useEffect(() => {
+    const frame = requestAnimationFrame(() =>
+      setDark(document.documentElement.classList.contains('dark')),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  function toggleTheme() {
+    const next = !dark;
+    document.documentElement.classList.toggle('dark', next);
+    localStorage.setItem('team401-theme', next ? 'dark' : 'light');
+    setDark(next);
+  }
+
   if (isPending || !session) return null;
 
   return (
-    <main className={dark ? 'dark app-shell' : 'app-shell'}>
+    <main className="app-shell">
       <aside className="desktop-nav">
         <div className="brand-mark">401</div>
         <nav aria-label="Primary navigation" className="mt-8 grid gap-2">
@@ -1657,7 +1671,7 @@ export default function Home() {
               aria-label="Toggle color theme"
               size="icon"
               variant="ghost"
-              onClick={() => setDark(!dark)}
+              onClick={toggleTheme}
             >
               {dark ? <Sun /> : <Moon />}
             </Button>
@@ -3649,7 +3663,7 @@ export default function Home() {
                     Choose the theme for this device.
                   </p>
                 </div>
-                <Button variant="outline" onClick={() => setDark(!dark)}>
+                <Button variant="outline" onClick={toggleTheme}>
                   {dark ? (
                     <>
                       <Sun />
