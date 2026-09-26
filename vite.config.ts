@@ -2,11 +2,11 @@ import tailwindcss from '@tailwindcss/postcss';
 import vinext from 'vinext';
 import { defineConfig } from 'vite';
 
-const LOCAL_D1_DATABASE_ID =
-  '00000000-0000-4000-8000-000000000000';
+const LOCAL_D1_DATABASE_ID = '00000000-0000-4000-8000-000000000000';
 const workerName =
   process.env.CLOUDFLARE_WORKER_NAME ?? 'team401-scouting-local';
-const appUrl = process.env.BETTER_AUTH_URL ?? 'http://localhost:3000';
+const firebaseWebApiKey = process.env.FIREBASE_WEB_API_KEY ?? '';
+const firebaseProjectId = process.env.FIREBASE_PROJECT_ID ?? '';
 const customDomain = process.env.CLOUDFLARE_CUSTOM_DOMAIN;
 
 const localBindingConfig = {
@@ -14,10 +14,11 @@ const localBindingConfig = {
   main: 'vinext/server/fetch-handler',
   compatibility_date: '2026-05-15',
   compatibility_flags: ['nodejs_compat'],
-  routes: customDomain
-    ? [{ pattern: customDomain, custom_domain: true }]
-    : [],
-  vars: { BETTER_AUTH_URL: appUrl },
+  routes: customDomain ? [{ pattern: customDomain, custom_domain: true }] : [],
+  vars: {
+    FIREBASE_WEB_API_KEY: firebaseWebApiKey,
+    FIREBASE_PROJECT_ID: firebaseProjectId,
+  },
   d1_databases: [
     {
       binding: 'DB',
@@ -32,8 +33,7 @@ const localBindingConfig = {
     {
       binding: 'FILES',
       bucket_name:
-        process.env.CLOUDFLARE_R2_BUCKET_NAME ??
-        'team401-scouting-files-local',
+        process.env.CLOUDFLARE_R2_BUCKET_NAME ?? 'team401-scouting-files-local',
     },
   ],
 };
