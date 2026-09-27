@@ -13,7 +13,7 @@
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "deploy": "wrangler deploy --config dist/server/wrangler.json",
-    "db:migrate:local": "wrangler d1 migrations apply DB --local --config dist/server/wrangler.json",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local --persist-to .wrangler/state --config dist/server/wrangler.json",
     "db:setup:local": "wrangler d1 execute DB --local --persist-to .wrangler/state --config dist/server/wrangler.json --file drizzle/local-application-schema.sql",
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote --config dist/server/wrangler.json",
     "lint": "oxlint",
