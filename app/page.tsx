@@ -11,7 +11,6 @@ import {
   ClipboardList,
   Cloud,
   CloudOff,
-  Copy,
   Gauge,
   LayoutDashboard,
   LogOut,
@@ -381,19 +380,6 @@ export default function Home() {
   >([]);
   const [currentSessionId, setCurrentSessionId] = useState('');
   const [sessionMessage, setSessionMessage] = useState('');
-  const [tbaVerification, setTbaVerification] = useState<{
-    verificationCode: string;
-    receivedAt: number;
-  } | null>(null);
-  const [tbaWebhookStatus, setTbaWebhookStatus] = useState<{
-    configured: boolean;
-    delivery: {
-      lastReceivedAt: number;
-      status: string;
-      messageType: string | null;
-    } | null;
-  }>({ configured: false, delivery: null });
-  const [tbaVerificationMessage, setTbaVerificationMessage] = useState('');
   const [adminSection, setAdminSection] = useState<'settings' | 'assignments'>(
     'settings',
   );
@@ -735,33 +721,6 @@ export default function Home() {
       })
       .finally(() => setEventsLoading(false));
   }, [activeView, eventYear, isAdmin, online]);
-
-  useEffect(() => {
-    if (activeView !== 'Admin' || !isAdmin || !online) return;
-    fetch('/api/tba-webhook-verification')
-      .then(async (response) => {
-        const result = (await response.json()) as {
-          verification?: typeof tbaVerification;
-          configured?: boolean;
-          delivery?: (typeof tbaWebhookStatus)['delivery'];
-          error?: string;
-        };
-        if (!response.ok)
-          throw new Error(result.error ?? 'Could not load webhook status.');
-        setTbaVerification(result.verification ?? null);
-        setTbaWebhookStatus({
-          configured: Boolean(result.configured),
-          delivery: result.delivery ?? null,
-        });
-      })
-      .catch((error: unknown) =>
-        setTbaVerificationMessage(
-          error instanceof Error
-            ? error.message
-            : 'Could not load webhook status.',
-        ),
-      );
-  }, [activeView, isAdmin, online]);
 
   useEffect(() => {
     if (activeView !== 'Settings' || !session || !online) return;
@@ -3344,152 +3303,6 @@ export default function Home() {
           )}
         {activeView === 'Admin' && isAdmin && adminSection === 'settings' && (
           <div className="grid gap-4 p-4 sm:p-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  <Shield /> TBA webhook verification
-                </CardTitle>
-                <Badge variant={tbaVerification ? 'outline' : 'secondary'}>
-                  {tbaVerification ? 'Code received' : 'Waiting for code'}
-                </Badge>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  TBA generates the webhook secret. Copy its displayed secret
-                  into the staging GitHub environment, redeploy, and then click
-                  Resend code on TBA.
-                </p>
-                <div className="grid gap-2 text-sm sm:grid-cols-2">
-                  <div className="rounded-lg border p-3">
-                    <p className="text-xs text-muted-foreground">
-                      Worker secret
-                    </p>
-                    <p className="font-medium">
-                      {tbaWebhookStatus.configured
-                        ? 'Configured'
-                        : 'Missing TBA_WEBHOOK_SECRET'}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border p-3">
-                    <p className="text-xs text-muted-foreground">
-                      Last delivery
-                    </p>
-                    <p className="font-medium">
-                      {!tbaWebhookStatus.delivery
-                        ? 'Nothing received'
-                        : tbaWebhookStatus.delivery.status === 'accepted'
-                          ? `Accepted${tbaWebhookStatus.delivery.messageType ? `: ${tbaWebhookStatus.delivery.messageType}` : ''}`
-                          : tbaWebhookStatus.delivery.status ===
-                              'rejected_signature'
-                            ? 'Rejected: secret does not match'
-                            : 'Rejected: invalid payload'}
-                    </p>
-                    {tbaWebhookStatus.delivery && (
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(
-                          tbaWebhookStatus.delivery.lastReceivedAt,
-                        ).toLocaleString()}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                {tbaVerification && (
-                  <div className="rounded-lg border p-3">
-                    <p className="text-xs text-muted-foreground">
-                      Received{' '}
-                      {new Date(tbaVerification.receivedAt).toLocaleString()}
-                    </p>
-                    <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
-                      <code className="min-w-0 flex-1 overflow-x-auto rounded bg-muted p-2 text-sm">
-                        {tbaVerification.verificationCode}
-                      </code>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          void navigator.clipboard
-                            .writeText(tbaVerification.verificationCode)
-                            .then(() =>
-                              setTbaVerificationMessage('Code copied.'),
-                            )
-                            .catch(() =>
-                              setTbaVerificationMessage(
-                                'Could not copy automatically. Select the code manually.',
-                              ),
-                            );
-                        }}
-                      >
-                        <Copy /> Copy code
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setTbaVerificationMessage('Checking for a new code…');
-                      void fetch('/api/tba-webhook-verification')
-                        .then(async (response) => {
-                          const result = (await response.json()) as {
-                            verification?: typeof tbaVerification;
-                            configured?: boolean;
-                            delivery?: (typeof tbaWebhookStatus)['delivery'];
-                            error?: string;
-                          };
-                          if (!response.ok)
-                            throw new Error(
-                              result.error ?? 'Could not retrieve the code.',
-                            );
-                          setTbaVerification(result.verification ?? null);
-                          setTbaWebhookStatus({
-                            configured: Boolean(result.configured),
-                            delivery: result.delivery ?? null,
-                          });
-                          setTbaVerificationMessage(
-                            result.verification
-                              ? 'Latest code loaded.'
-                              : 'No verification code has been received yet.',
-                          );
-                        })
-                        .catch((error: unknown) =>
-                          setTbaVerificationMessage(
-                            error instanceof Error
-                              ? error.message
-                              : 'Could not retrieve the code.',
-                          ),
-                        );
-                    }}
-                  >
-                    <RefreshCw /> Refresh code
-                  </Button>
-                  {tbaVerification && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => {
-                        void fetch('/api/tba-webhook-verification', {
-                          method: 'DELETE',
-                        }).then((response) => {
-                          if (response.ok) {
-                            setTbaVerification(null);
-                            setTbaVerificationMessage('Stored code cleared.');
-                          }
-                        });
-                      }}
-                    >
-                      Clear stored code
-                    </Button>
-                  )}
-                </div>
-                {tbaVerificationMessage && (
-                  <output className="block text-sm text-muted-foreground">
-                    {tbaVerificationMessage}
-                  </output>
-                )}
-              </CardContent>
-            </Card>
             <Card>
               <CardHeader>
                 <CardTitle>Current event</CardTitle>
