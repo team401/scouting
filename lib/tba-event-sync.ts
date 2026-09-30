@@ -21,6 +21,11 @@ type TbaMatch = {
   score_breakdown: unknown;
   videos: Array<{ type: string; key: string }>;
 };
+type TbaTeam = {
+  team_number: number;
+  nickname: string | null;
+  name: string;
+};
 
 export async function syncTbaEvent(organizationId: string, eventKey: string) {
   if (!env.TBA_AUTH_KEY)
@@ -30,17 +35,19 @@ export async function syncTbaEvent(organizationId: string, eventKey: string) {
     'User-Agent': 'Team401-Scouting/1.0',
   };
   const base = `https://www.thebluealliance.com/api/v3/event/${encodeURIComponent(eventKey)}`;
-  const [eventResponse, matchesResponse] = await Promise.all([
+  const [eventResponse, matchesResponse, teamsResponse] = await Promise.all([
     fetch(base, { headers }),
     fetch(`${base}/matches`, { headers }),
+    fetch(`${base}/teams/simple`, { headers }),
   ]);
-  if (!eventResponse.ok || !matchesResponse.ok)
+  if (!eventResponse.ok || !matchesResponse.ok || !teamsResponse.ok)
     throw new Error(
-      `TBA refresh failed (${eventResponse.status}/${matchesResponse.status}).`,
+      `TBA refresh failed (${eventResponse.status}/${matchesResponse.status}/${teamsResponse.status}).`,
     );
 
   const event = (await eventResponse.json()) as TbaEvent;
   const matches = (await matchesResponse.json()) as TbaMatch[];
+  const teams = (await teamsResponse.json()) as TbaTeam[];
   const eventId = `${organizationId}:${event.key}`;
   const now = Date.now();
   await env.DB.batch([
@@ -68,6 +75,17 @@ export async function syncTbaEvent(organizationId: string, eventKey: string) {
       event.timezone,
       now,
       now,
+    ),
+    ...teams.map((team) =>
+      env.DB.prepare(`INSERT INTO event_teams (organization_id, event_id, team_number, name, updated_at)
+        VALUES (?, ?, ?, ?, ?) ON CONFLICT(organization_id, event_id, team_number) DO UPDATE SET
+        name = excluded.name, updated_at = excluded.updated_at`).bind(
+        organizationId,
+        eventId,
+        team.team_number,
+        team.nickname?.trim() || team.name,
+        now,
+      ),
     ),
     ...matches.map((match) =>
       env.DB.prepare(`INSERT INTO matches

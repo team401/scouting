@@ -2,16 +2,15 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
-  ArrowLeft,
   BarChart3,
   CalendarDays,
-  Camera,
   Check,
   ChevronRight,
   ClipboardList,
   Cloud,
   CloudOff,
   Gauge,
+  House,
   LayoutDashboard,
   LogOut,
   Map,
@@ -89,6 +88,7 @@ type EventPack = {
     timezone: string | null;
   };
   matches: EventMatch[];
+  teams: { teamNumber: number; name: string }[];
   assignments: {
     matchId: string;
     teamNumber: number;
@@ -132,7 +132,13 @@ type PitDraft = {
   heightInches: number;
   fuelCapacity: number;
   climbCapability: string;
-  autonomousCapabilities: string;
+  fieldAccess: string;
+  fieldAccessPreference: string;
+  shooterType: string;
+  autonomousStart: string;
+  autonomousSwipe: string;
+  autonomousDepot: boolean;
+  autonomousNotes: string;
   notes: string;
 };
 type PitEntry = {
@@ -156,7 +162,13 @@ const emptyPitDraft: PitDraft = {
   heightInches: 0,
   fuelCapacity: 0,
   climbCapability: 'None',
-  autonomousCapabilities: '',
+  fieldAccess: 'Both',
+  fieldAccessPreference: 'No preference',
+  shooterType: 'Fixed',
+  autonomousStart: 'Unknown',
+  autonomousSwipe: 'None',
+  autonomousDepot: false,
+  autonomousNotes: '',
   notes: '',
 };
 
@@ -247,15 +259,13 @@ function planForMatch(
     ...emptyMatchPlan,
     ...plan,
     teamRoles: plan?.teamRoles ?? {},
-    board: plan?.board?.robots?.length
-      ? plan.board
-      : {
-          robots: initialRobotMarkers(
-            match.alliances.red,
-            match.alliances.blue,
-          ),
-          strokes: [],
-        },
+    board: {
+      robots:
+        plan?.board?.robots?.length === 6
+          ? plan.board.robots
+          : initialRobotMarkers(match.alliances.red, match.alliances.blue),
+      strokes: plan?.board?.strokes ?? [],
+    },
   };
 }
 
@@ -330,6 +340,7 @@ export default function Home() {
   >('directory');
   const navigationDepthRef = useRef(0);
   const selectedMatchKeyRef = useRef('');
+  const loadedPlanMatchIdRef = useRef('');
   const [autoFuel, setAutoFuel] = useState(0);
   const [activeFuel, setActiveFuel] = useState(0);
   const [inactiveFuel, setInactiveFuel] = useState(0);
@@ -396,9 +407,9 @@ export default function Home() {
   const [photoVersion, setPhotoVersion] = useState(0);
   const [matchPlan, setMatchPlan] = useState<MatchPlan>(emptyMatchPlan);
   const [planCanEdit, setPlanCanEdit] = useState(false);
-  const [planLoading, setPlanLoading] = useState(false);
   const [planMessage, setPlanMessage] = useState('');
   const [planAuthor, setPlanAuthor] = useState('');
+  const [planUpdatedAt, setPlanUpdatedAt] = useState<number | null>(null);
   const [planStats, setPlanStats] = useState<TeamAnalysis[]>([]);
   const organizationTeamNumber = eventPack?.organizationTeamNumber ?? 401;
   const planningMatches =
@@ -481,22 +492,6 @@ export default function Home() {
       url,
     );
     setActiveView(view);
-  }
-
-  function goBack() {
-    if (navigationDepthRef.current > 0) {
-      window.history.back();
-      return;
-    }
-    if (activeView === 'Home') return;
-    const url = new URL(window.location.href);
-    url.searchParams.set('view', 'home');
-    window.history.replaceState(
-      { scoutingApp: true, view: 'Home', depth: 0 },
-      '',
-      url,
-    );
-    setActiveView('Home');
   }
 
   function replaceView(view: View) {
@@ -751,8 +746,10 @@ export default function Home() {
 
   useEffect(() => {
     if (activeView !== 'Plan' || !currentMatch || !session) return;
-    setPlanLoading(true);
+    loadedPlanMatchIdRef.current = '';
     setPlanMessage('');
+    setPlanAuthor('');
+    setPlanUpdatedAt(null);
     const cacheId = `match-plan:${currentMatch.id}`;
     const draftId = `match-plan-draft:${currentMatch.id}`;
     void Promise.all([
@@ -761,6 +758,7 @@ export default function Home() {
         plan: MatchPlan | null;
         canEdit: boolean;
         authorName: string | null;
+        updatedAt?: number | null;
       }>(cacheId),
     ]).then(([draft, cached]) => {
       if (draft) setMatchPlan(planForMatch(draft.payload, currentMatch));
@@ -768,12 +766,13 @@ export default function Home() {
       if (cached) {
         setPlanCanEdit(cached.canEdit);
         setPlanAuthor(cached.authorName ?? '');
+        setPlanUpdatedAt(cached.updatedAt ?? null);
       }
       if (!online) {
         setPlanMessage(
           'Showing the match plan saved on this device. Changes will remain a local draft until reconnected.',
         );
-        setPlanLoading(false);
+        loadedPlanMatchIdRef.current = currentMatch.id;
       }
     });
     if (!online) return;
@@ -783,6 +782,7 @@ export default function Home() {
           plan: MatchPlan | null;
           canEdit: boolean;
           authorName: string | null;
+          updatedAt: number | null;
           error?: string;
         };
         if (!response.ok)
@@ -791,10 +791,12 @@ export default function Home() {
         if (!draft) setMatchPlan(planForMatch(result.plan, currentMatch));
         setPlanCanEdit(result.canEdit);
         setPlanAuthor(result.authorName ?? '');
+        setPlanUpdatedAt(result.updatedAt);
         await saveCachedValue(cacheId, {
           plan: result.plan,
           canEdit: result.canEdit,
           authorName: result.authorName,
+          updatedAt: result.updatedAt,
         });
       })
       .catch((error) => {
@@ -806,7 +808,9 @@ export default function Home() {
             : 'Unable to load this match plan.',
         );
       })
-      .finally(() => setPlanLoading(false));
+      .finally(() => {
+        loadedPlanMatchIdRef.current = currentMatch.id;
+      });
   }, [activeView, currentMatch, online, session]);
 
   useEffect(() => {
@@ -850,6 +854,25 @@ export default function Home() {
     );
     return () => window.clearTimeout(timer);
   }, [activeView, currentMatch, matchPlan, planCanEdit]);
+
+  useEffect(() => {
+    if (
+      activeView !== 'Plan' ||
+      !currentMatch ||
+      !planCanEdit ||
+      loadedPlanMatchIdRef.current !== currentMatch.id
+    )
+      return;
+
+    if (!online) {
+      setPlanMessage('Saved on this device. It will sync when reconnected.');
+      return;
+    }
+
+    setPlanMessage('Saving changes…');
+    const timer = window.setTimeout(() => void saveMatchPlan(), 700);
+    return () => window.clearTimeout(timer);
+  }, [activeView, currentMatch, matchPlan, online, planCanEdit]);
 
   useEffect(() => {
     if (!draftReady || !draftId) return;
@@ -904,7 +927,10 @@ export default function Home() {
               heightInches: serverEntry.dimensions?.height ?? 0,
             }
           : emptyPitDraft;
-        setPitDraft(draft?.payload ?? serverDraft);
+        setPitDraft({
+          ...emptyPitDraft,
+          ...(draft?.payload ?? serverDraft),
+        });
         setPitReady(true);
       })
       .catch(() => {
@@ -1314,8 +1340,7 @@ export default function Home() {
       setPlanMessage('Choose a match first.');
       return;
     }
-    setPlanLoading(true);
-    setPlanMessage('');
+    setPlanMessage('Saving changes…');
     try {
       const response = await fetch('/api/match-plans', {
         method: 'POST',
@@ -1325,29 +1350,31 @@ export default function Home() {
       const result = (await response.json()) as {
         error?: string;
         authorName?: string;
+        updatedAt?: number;
       };
       if (!response.ok)
         throw new Error(result.error ?? 'Unable to save this match plan.');
       setPlanAuthor(result.authorName ?? session?.user.name ?? '');
+      const savedAt = result.updatedAt ?? Date.now();
+      setPlanUpdatedAt(savedAt);
       await saveCachedValue(`match-plan:${currentMatch.id}`, {
         plan: matchPlan,
         canEdit: true,
         authorName: result.authorName ?? session?.user.name ?? null,
+        updatedAt: savedAt,
       });
       await saveDraft({
         id: `match-plan-draft:${currentMatch.id}`,
         payload: matchPlan,
         updatedAt: Date.now(),
       });
-      setPlanMessage('Match plan saved for the drive team.');
+      setPlanMessage('');
     } catch (error) {
       setPlanMessage(
         error instanceof Error
           ? error.message
           : 'Unable to save this match plan.',
       );
-    } finally {
-      setPlanLoading(false);
     }
   }
 
@@ -1483,30 +1510,11 @@ export default function Home() {
             ? ('red' as const)
             : ('blue' as const),
           stats: planStats.find((item) => item.teamNumber === team),
+          pit: eventPack?.pitEntries.find((item) => item.teamNumber === team),
+          name: eventPack?.teams?.find((item) => item.teamNumber === team)?.name,
         }),
       )
     : [];
-  const ourPlanAlliance = currentMatch?.alliances.red.includes(
-    organizationTeamNumber,
-  )
-    ? 'red'
-    : currentMatch?.alliances.blue.includes(organizationTeamNumber)
-      ? 'blue'
-      : null;
-  const bestPartner = planTeams
-    .filter(
-      (item) =>
-        item.alliance === ourPlanAlliance &&
-        item.team !== organizationTeamNumber,
-    )
-    .sort(
-      (a, b) => (b.stats?.medianPoints ?? 0) - (a.stats?.medianPoints ?? 0),
-    )[0]?.team;
-  const defenseTarget = planTeams
-    .filter((item) => item.alliance !== ourPlanAlliance)
-    .sort(
-      (a, b) => (b.stats?.medianPoints ?? 0) - (a.stats?.medianPoints ?? 0),
-    )[0]?.team;
   const totalSlots = (eventPack?.matches.length ?? 0) * 6;
   const currentMatchYoutubeVideo = currentMatch?.videos?.find(
     (video) => video.type === 'youtube',
@@ -1580,7 +1588,7 @@ export default function Home() {
           <span>Settings</span>
         </button>
       </aside>
-      <section className="min-w-0 flex-1">
+      <section className="h-dvh min-w-0 flex-1 overflow-y-auto">
         <header className="topbar">
           <div className="flex items-center gap-2">
             {activeView !== 'Home' && (
@@ -1588,22 +1596,19 @@ export default function Home() {
                 type="button"
                 size="icon"
                 variant="ghost"
-                aria-label="Go to previous scouting page"
-                onClick={goBack}
+                aria-label="Go to home"
+                onClick={() => replaceView('Home')}
               >
-                <ArrowLeft />
+                <House />
               </Button>
             )}
-            <div>
-              <p className="eyebrow">{eventPack?.event.name ?? 'Team 401'}</p>
-              <h1>
-                {activeView === 'Scout'
-                  ? currentMatch
-                    ? matchLabel(currentMatch)
-                    : 'Choose an assignment'
-                  : activeView}
-              </h1>
-            </div>
+            <h1>
+              {activeView === 'Scout'
+                ? currentMatch
+                  ? matchLabel(currentMatch)
+                  : 'Choose an assignment'
+                : activeView}
+            </h1>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="status-badge">
@@ -2061,14 +2066,26 @@ export default function Home() {
                       <Shield /> Defense
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="rating-row">
-                    {[0, 1, 2, 3].map((rating) => (
+                  <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {[
+                      { value: 0, label: 'None' },
+                      { value: 1, label: 'Ineffective' },
+                      { value: 2, label: 'Effective' },
+                      { value: 3, label: 'Dominant' },
+                    ].map(({ value, label }) => (
                       <button
-                        onClick={() => setDefenseRating(rating)}
-                        className={defenseRating === rating ? 'selected' : ''}
-                        key={rating}
+                        onClick={() => setDefenseRating(value)}
+                        className={
+                          defenseRating === value
+                            ? 'choice selected'
+                            : 'choice'
+                        }
+                        key={value}
                       >
-                        {rating}
+                        {defenseRating === value && <Check />}
+                        <span>
+                          <strong>{value}</strong> · {label}
+                        </span>
                       </button>
                     ))}
                   </CardContent>
@@ -2099,17 +2116,17 @@ export default function Home() {
                     </div>
                   </div>
                   <Counter
-                    label="Average cycle time"
-                    hint="Approximate seconds from intake to shot"
+                    label="Average full cycle time (seconds)"
+                    hint="Time from beginning one FUEL intake until beginning the next intake, including collecting, travel, shooting, and returning. Average 2–3 representative cycles."
                     value={cycleSeconds}
                     onChange={setCycleSeconds}
                   />
                   <Counter
-                    label="Penalty points caused"
-                    hint="Observed penalties attributable to this robot"
+                    label="Number of penalties"
+                    hint="Count referee-called penalties attributable to this robot; do not calculate penalty points."
                     value={penalties}
                     onChange={setPenalties}
-                    quickAdds={[5]}
+                    quickAdds={[1]}
                   />
                 </CardContent>
               </Card>
@@ -2218,7 +2235,7 @@ export default function Home() {
         )}
         {activeView === 'Pit' && (
           <div className="grid gap-4 p-4 sm:p-6 lg:grid-cols-[18rem_1fr]">
-            <Card>
+            <Card className="h-full min-h-0">
               <CardHeader>
                 <CardTitle>Pit queue</CardTitle>
                 <Badge variant="outline">
@@ -2226,7 +2243,7 @@ export default function Home() {
                   complete
                 </Badge>
               </CardHeader>
-              <CardContent className="max-h-[65vh] space-y-1 overflow-auto">
+              <CardContent className="min-h-0 flex-1 space-y-1 overflow-auto">
                 {eventTeams.map((team) => {
                   const complete = eventPack?.pitEntries.some(
                     (entry) => entry.teamNumber === team,
@@ -2405,21 +2422,161 @@ export default function Home() {
                           <option>Multiple levels</option>
                         </select>
                       </label>
+                      <label className="grid gap-1 text-sm">
+                        Shooter type
+                        <select
+                          className="h-10 rounded-md border bg-transparent px-3"
+                          value={pitDraft.shooterType}
+                          onChange={(event) =>
+                            setPitDraft({
+                              ...pitDraft,
+                              shooterType: event.target.value,
+                            })
+                          }
+                        >
+                          <option>Fixed</option>
+                          <option>Turreted</option>
+                          <option>Multiple shooters</option>
+                          <option>None</option>
+                          <option>Other</option>
+                        </select>
+                      </label>
                     </div>
-                    <label className="grid gap-1 text-sm">
-                      Autonomous capabilities
+                    <div className="space-y-3 rounded-lg border p-3">
+                      <div>
+                        <p className="mb-2 font-semibold">Field access</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {['Trench', 'Bump', 'Both'].map((item) => (
+                            <button
+                              type="button"
+                              className={
+                                pitDraft.fieldAccess === item
+                                  ? 'choice selected'
+                                  : 'choice'
+                              }
+                              onClick={() =>
+                                setPitDraft({ ...pitDraft, fieldAccess: item })
+                              }
+                              key={item}
+                            >
+                              {pitDraft.fieldAccess === item && <Check />}
+                              {item}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="mb-2 font-semibold">Preferred route</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {['Trench', 'Bump', 'No preference'].map((item) => (
+                            <button
+                              type="button"
+                              className={
+                                pitDraft.fieldAccessPreference === item
+                                  ? 'choice selected'
+                                  : 'choice'
+                              }
+                              onClick={() =>
+                                setPitDraft({
+                                  ...pitDraft,
+                                  fieldAccessPreference: item,
+                                })
+                              }
+                              key={item}
+                            >
+                              {pitDraft.fieldAccessPreference === item && (
+                                <Check />
+                              )}
+                              {item}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-3 rounded-lg border p-3">
+                      <p className="font-semibold">Autonomous capabilities</p>
+                      <div>
+                        <p className="mb-2 text-sm">Starting position</p>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          {['Left', 'Middle', 'Right', 'Unknown'].map((item) => (
+                            <button
+                              type="button"
+                              className={
+                                pitDraft.autonomousStart === item
+                                  ? 'choice selected'
+                                  : 'choice'
+                              }
+                              onClick={() =>
+                                setPitDraft({
+                                  ...pitDraft,
+                                  autonomousStart: item,
+                                })
+                              }
+                              key={item}
+                            >
+                              {pitDraft.autonomousStart === item && <Check />}
+                              {item}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="mb-2 text-sm">Swipe routine</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {['None', 'Single swipe', 'Double swipe'].map(
+                            (item) => (
+                              <button
+                                type="button"
+                                className={
+                                  pitDraft.autonomousSwipe === item
+                                    ? 'choice selected'
+                                    : 'choice'
+                                }
+                                onClick={() =>
+                                  setPitDraft({
+                                    ...pitDraft,
+                                    autonomousSwipe: item,
+                                  })
+                                }
+                                key={item}
+                              >
+                                {pitDraft.autonomousSwipe === item && <Check />}
+                                {item}
+                              </button>
+                            ),
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className={
+                          pitDraft.autonomousDepot
+                            ? 'choice selected w-full'
+                            : 'choice w-full'
+                        }
+                        onClick={() =>
+                          setPitDraft({
+                            ...pitDraft,
+                            autonomousDepot: !pitDraft.autonomousDepot,
+                          })
+                        }
+                      >
+                        {pitDraft.autonomousDepot && <Check />}
+                        Uses depot in autonomous
+                      </button>
                       <textarea
-                        className="min-h-20 rounded-md border bg-transparent p-3"
-                        value={pitDraft.autonomousCapabilities}
+                        aria-label="Additional autonomous notes"
+                        className="min-h-20 w-full rounded-md border bg-transparent p-3"
+                        value={pitDraft.autonomousNotes}
                         onChange={(event) =>
                           setPitDraft({
                             ...pitDraft,
-                            autonomousCapabilities: event.target.value,
+                            autonomousNotes: event.target.value,
                           })
                         }
-                        placeholder="Starting locations, paths, scoring routines…"
+                        placeholder="Additional autonomous notes…"
                       />
-                    </label>
+                    </div>
                     <label className="grid gap-1 text-sm">
                       Notes
                       <textarea
@@ -2434,6 +2591,43 @@ export default function Home() {
                         placeholder="Mechanisms, reliability concerns, programming notes…"
                       />
                     </label>
+                    <div className="space-y-3 rounded-lg border p-3">
+                      <p className="font-semibold">Robot photo</p>
+                      {existingPitPhoto && (
+                        <img
+                          className="aspect-video w-full max-w-md rounded-md object-cover"
+                          src={`/api/pit-photo?team=${pitTeam}&v=${photoVersion}`}
+                          alt={`Team ${pitTeam} robot`}
+                        />
+                      )}
+                      <p className="text-sm text-muted-foreground">
+                        Take or choose a JPEG, PNG, or WebP image up to 10 MB.
+                        Photo upload requires a connection.
+                      </p>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <Input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          capture="environment"
+                          onChange={(event) =>
+                            setPitPhoto(event.target.files?.[0] ?? null)
+                          }
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={!pitPhoto || photoUploading || !online}
+                          onClick={() => void uploadPitPhoto()}
+                        >
+                          <Upload />
+                          {photoUploading
+                            ? 'Uploading…'
+                            : existingPitPhoto
+                              ? 'Replace photo'
+                              : 'Upload photo'}
+                        </Button>
+                      </div>
+                    </div>
                     <Button
                       className="w-full sm:w-auto"
                       disabled={!pitReady}
@@ -2456,64 +2650,18 @@ export default function Home() {
             </Card>
           </div>
         )}
-        {activeView === 'Pit' && pitTeam && (
-          <div className="px-4 pb-4 sm:px-6 sm:pb-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  <Camera />
-                  Team {pitTeam} robot photo
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-4 sm:grid-cols-[12rem_1fr]">
-                {existingPitPhoto && (
-                  <img
-                    className="aspect-square w-full rounded-md object-cover"
-                    src={`/api/pit-photo?team=${pitTeam}&v=${photoVersion}`}
-                    alt={`Team ${pitTeam} robot`}
-                  />
-                )}
-                <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    JPEG, PNG, or WebP up to 10 MB. The pit report is
-                    synchronized before the image is stored privately in R2.
-                  </p>
-                  <Input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    capture="environment"
-                    onChange={(event) =>
-                      setPitPhoto(event.target.files?.[0] ?? null)
-                    }
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={!pitPhoto || photoUploading || !online}
-                    onClick={() => void uploadPitPhoto()}
-                  >
-                    <Upload />
-                    {photoUploading
-                      ? 'Uploading…'
-                      : existingPitPhoto
-                        ? 'Replace photo'
-                        : 'Upload photo'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
         {activeView === 'Plan' && (
-          <div className="grid gap-4 p-4 sm:p-6 lg:grid-cols-[18rem_1fr]">
+          <div className="p-2 sm:p-4">
             <Card>
-              <CardHeader>
-                <CardTitle>Match</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-5">
+                <div className="flex items-center gap-3">
+                  <label className="shrink-0 font-semibold" htmlFor="plan-match">
+                    Match
+                  </label>
                 <select
+                  id="plan-match"
                   aria-label="Match to plan"
-                  className="h-11 w-full rounded-md border bg-transparent px-3"
+                  className="h-11 min-w-0 flex-1 rounded-md border bg-transparent px-3"
                   value={selectedMatchKey}
                   onChange={(event) => setSelectedMatchKey(event.target.value)}
                 >
@@ -2524,84 +2672,43 @@ export default function Home() {
                     </option>
                   ))}
                 </select>
+                </div>
                 {eventPack && planningMatches.length === 0 && (
                   <p className="text-sm text-muted-foreground">
                     Team {organizationTeamNumber} is not scheduled for any
                     matches in this event pack.
                   </p>
                 )}
-                {currentMatch && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="rounded-lg border border-red-300 p-3">
-                      <p className="text-xs font-semibold text-red-600">RED</p>
-                      {currentMatch.alliances.red.map((team, index) => (
-                        <p key={team}>
-                          <strong>R{index + 1}</strong> · Team {team}
-                        </p>
-                      ))}
-                    </div>
-                    <div className="rounded-lg border border-blue-300 p-3">
-                      <p className="text-xs font-semibold text-blue-600">
-                        BLUE
-                      </p>
-                      {currentMatch.alliances.blue.map((team, index) => (
-                        <p key={team}>
-                          <strong>B{index + 1}</strong> · Team {team}
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {planAuthor && (
-                  <p className="text-xs text-muted-foreground">
-                    Last saved by {planAuthor}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-            <div className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Field strategy</CardTitle>
-                  <Badge variant="outline">
-                    {planCanEdit ? 'Drag robots and draw' : 'Read only'}
-                  </Badge>
-                </CardHeader>
-                <CardContent>
+                <div className="border-t pt-4">
                   <TacticalBoard
                     value={matchPlan.board}
                     readOnly={!planCanEdit}
                     onChange={(board) => setMatchPlan({ ...matchPlan, board })}
                   />
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Match intelligence</CardTitle>
-                  <div className="flex gap-2">
-                    {bestPartner && <Badge>Best partner · {bestPartner}</Badge>}
-                    {defenseTarget && (
-                      <Badge variant="outline">
-                        Defense target · {defenseTarget}
-                      </Badge>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {planTeams.map(({ team, alliance, stats }) => (
+                </div>
+                <div className="grid gap-3 border-t pt-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {planTeams.map(({ team, alliance, stats, pit, name }) => (
                     <div
                       className={
                         alliance === 'red'
-                          ? 'rounded-lg border border-red-300 p-3'
-                          : 'rounded-lg border border-blue-300 p-3'
+                          ? 'rounded-lg border border-l-8 border-red-500 bg-red-50 p-3 text-red-950 dark:bg-red-950/30 dark:text-red-50'
+                          : 'rounded-lg border border-l-8 border-blue-500 bg-blue-50 p-3 text-blue-950 dark:bg-blue-950/30 dark:text-blue-50'
                       }
                       key={team}
                     >
                       <div className="flex items-center justify-between">
-                        <strong>Team {team}</strong>
-                        <span className="text-xs font-semibold uppercase">
-                          {alliance}
-                        </span>
+                        <strong>
+                          Team {team}
+                          {name ? ` - ${name}` : ''}
+                        </strong>
+                        <span
+                          aria-label={`${alliance} alliance`}
+                          className={
+                            alliance === 'red'
+                              ? 'size-4 rounded-full bg-red-600 ring-2 ring-red-200'
+                              : 'size-4 rounded-full bg-blue-600 ring-2 ring-blue-200'
+                          }
+                        />
                       </div>
                       <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                         <span>
@@ -2634,14 +2741,6 @@ export default function Home() {
                         </span>
                         <span>
                           <strong>
-                            {Math.round((stats?.towerSuccessRate ?? 0) * 100)}%
-                          </strong>
-                          <small className="block text-muted-foreground">
-                            tower
-                          </small>
-                        </span>
-                        <span>
-                          <strong>
                             {Math.round((stats?.disabledRate ?? 0) * 100)}%
                           </strong>
                           <small className="block text-muted-foreground">
@@ -2649,19 +2748,72 @@ export default function Home() {
                           </small>
                         </span>
                       </div>
+                      <div className="mt-3 border-t pt-2 text-xs">
+                        <p className="font-semibold">Pit snapshot</p>
+                        {pit ? (
+                          <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-muted-foreground">
+                            <span>
+                              {pit.drivetrain ?? 'Unknown'}
+                              {pit.swerveModule
+                                ? ` · ${pit.swerveModule}`
+                                : ''}
+                            </span>
+                            <span>
+                              {pit.weightLbs ? `${pit.weightLbs} lb` : 'Weight —'}
+                            </span>
+                            <span>
+                              Capacity {pit.payload.fuelCapacity ?? '—'}
+                            </span>
+                            <span>
+                              Climb {pit.payload.climbCapability ?? '—'}
+                            </span>
+                            <span>
+                              Access {pit.payload.fieldAccess ?? '—'}
+                            </span>
+                            <span>
+                              Shooter {pit.payload.shooterType ?? '—'}
+                            </span>
+                            <span className="col-span-2 line-clamp-2">
+                              Auto:{' '}
+                              {[
+                                pit.payload.autonomousStart,
+                                pit.payload.autonomousSwipe !== 'None'
+                                  ? pit.payload.autonomousSwipe
+                                  : null,
+                                pit.payload.autonomousDepot ? 'Depot' : null,
+                              ]
+                                .filter(Boolean)
+                                .join(' · ') || '—'}
+                            </span>
+                          </div>
+                        ) : (
+                          <p className="mt-1 text-muted-foreground">
+                            No pit report
+                          </p>
+                        )}
+                      </div>
                       <p className="mt-2 text-xs text-muted-foreground">
                         {stats?.samples ?? 0} scouting samples ·{' '}
                         {Math.round((stats?.coverage ?? 0) * 100)}% coverage
                       </p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="mt-3 w-full bg-background/70"
+                        onClick={() => {
+                          setSelectedTeam(team);
+                          setTeamsSection('analysis');
+                          navigate('Teams');
+                        }}
+                      >
+                        View team {team}
+                        <ChevronRight />
+                      </Button>
                     </div>
                   ))}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Plan notes</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
+                </div>
+                <div className="space-y-3 border-t pt-4">
                   <textarea
                     aria-label="Match plan notes"
                     className="min-h-20 w-full rounded-md border bg-transparent p-3"
@@ -2672,28 +2824,15 @@ export default function Home() {
                     }
                     placeholder="Only details that are not clear from the field drawing"
                   />
-                  {planCanEdit && (
-                    <Button
-                      disabled={planLoading || !currentMatch || !online}
-                      onClick={() => void saveMatchPlan()}
-                    >
-                      <Check />
-                      {planLoading ? 'Saving…' : 'Save official plan'}
-                    </Button>
-                  )}
-                  {planMessage && (
+                  {(planMessage || planAuthor || planCanEdit) && (
                     <p className="text-sm text-muted-foreground" role="status">
-                      {planMessage}
+                      {planMessage ||
+                        (planAuthor && planUpdatedAt
+                          ? `Saved automatically by ${planAuthor} · ${new Date(planUpdatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
+                          : 'Changes save automatically.')}
                     </p>
                   )}
-                </CardContent>
-              </Card>
-              <MatchVideoLibrary
-                matchId={currentMatch?.id ?? null}
-                matchLabel={
-                  currentMatch ? matchLabel(currentMatch) : 'this match'
-                }
-              />
+                </div>
               {planCanEdit && currentMatch?.id === '__legacy-plan__' && (
                 <>
                   <Card>
@@ -2857,28 +2996,23 @@ export default function Home() {
                           })
                         }
                       />
-                      {planCanEdit && (
-                        <Button
-                          disabled={planLoading || !currentMatch || !online}
-                          onClick={() => void saveMatchPlan()}
-                        >
-                          <Check />
-                          {planLoading ? 'Saving…' : 'Save match plan'}
-                        </Button>
-                      )}
-                      {planMessage && (
+                      {(planMessage || planAuthor || planCanEdit) && (
                         <p
                           className="text-sm text-muted-foreground"
                           role="status"
                         >
-                          {planMessage}
+                          {planMessage ||
+                            (planAuthor && planUpdatedAt
+                              ? `Saved automatically by ${planAuthor} · ${new Date(planUpdatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
+                              : 'Changes save automatically.')}
                         </p>
                       )}
                     </CardContent>
                   </Card>
                 </>
               )}
-            </div>
+              </CardContent>
+            </Card>
           </div>
         )}
         {activeView === 'Admin' && isAdmin && (
@@ -3098,6 +3232,32 @@ export default function Home() {
           canUseStrategy &&
           teamsSection === 'review' && (
             <div className="grid gap-4 p-4 sm:p-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Match videos</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <select
+                    aria-label="Match video to manage"
+                    className="h-11 w-full rounded-md border bg-transparent px-3"
+                    value={selectedMatchKey}
+                    onChange={(event) => setSelectedMatchKey(event.target.value)}
+                  >
+                    {eventPack?.matches.map((match) => (
+                      <option value={match.key} key={match.key}>
+                        {matchLabel(match)} · {match.alliances.red.join(', ')} vs{' '}
+                        {match.alliances.blue.join(', ')}
+                      </option>
+                    ))}
+                  </select>
+                  <MatchVideoLibrary
+                    matchId={currentMatch?.id ?? null}
+                    matchLabel={
+                      currentMatch ? matchLabel(currentMatch) : 'this match'
+                    }
+                  />
+                </CardContent>
+              </Card>
               <ScoutingOperations
                 mode="review"
                 onVideoReview={startVideoReview}

@@ -8,6 +8,8 @@ CREATE INDEX IF NOT EXISTS idx_relay_devices_user ON relay_devices (organization
 CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY NOT NULL, organization_id TEXT NOT NULL REFERENCES organizations(id), season_year INTEGER NOT NULL REFERENCES seasons(year), tba_event_key TEXT NOT NULL, name TEXT NOT NULL, is_current INTEGER DEFAULT 0 NOT NULL, tba_etag TEXT, timezone TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_events_org_tba ON events (organization_id, tba_event_key);
 CREATE INDEX IF NOT EXISTS idx_events_current ON events (organization_id, is_current);
+CREATE TABLE IF NOT EXISTS event_teams (organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE, event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE, team_number INTEGER NOT NULL, name TEXT NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (organization_id, event_id, team_number));
+CREATE INDEX IF NOT EXISTS idx_event_teams_event ON event_teams (event_id, team_number);
 CREATE TABLE IF NOT EXISTS matches (id TEXT PRIMARY KEY NOT NULL, organization_id TEXT NOT NULL REFERENCES organizations(id), event_id TEXT NOT NULL REFERENCES events(id), tba_match_key TEXT NOT NULL, comp_level TEXT NOT NULL, match_number INTEGER NOT NULL, scheduled_at INTEGER, predicted_at INTEGER, alliances TEXT NOT NULL, result TEXT, videos TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_matches_org_tba ON matches (organization_id, tba_match_key);
 CREATE INDEX IF NOT EXISTS idx_matches_event_order ON matches (event_id, comp_level, match_number);
