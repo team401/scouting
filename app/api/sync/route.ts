@@ -27,8 +27,18 @@ const pitPayloadSchema = z.object({
   fieldAccess: z.enum(['Trench', 'Bump', 'Both']).default('Both'),
   fieldAccessPreference: z.enum(['Trench', 'Bump', 'No preference']).default('No preference'),
   shooterType: z.string().min(1).max(80).default('Fixed'),
-  autonomousStart: z.enum(['Left', 'Middle', 'Right', 'Unknown']).default('Unknown'),
-  autonomousSwipe: z.enum(['None', 'Single swipe', 'Double swipe']).default('None'),
+  autonomousStart: z
+    .union([
+      z.array(z.enum(['Left', 'Middle', 'Right', 'Unknown'])).min(1).max(4),
+      z.enum(['Left', 'Middle', 'Right', 'Unknown']).transform((value) => [value]),
+    ])
+    .default(['Unknown']),
+  autonomousSwipe: z
+    .union([
+      z.array(z.enum(['None', 'Single swipe', 'Double swipe'])).min(1).max(3),
+      z.enum(['None', 'Single swipe', 'Double swipe']).transform((value) => [value]),
+    ])
+    .default(['None']),
   autonomousDepot: z.boolean().default(false),
   autonomousNotes: z.string().max(500).default(''),
   autonomousCapabilities: z.string().max(500).optional(), notes: z.string().max(2000),

@@ -75,6 +75,18 @@ body {
 button {
   cursor: pointer;
 }
+select {
+  color: var(--foreground);
+  background-color: var(--card);
+}
+select option {
+  color: #202326;
+  background-color: #ffffff;
+}
+.dark select option {
+  color: #f2f4f5;
+  background-color: #202426;
+}
 .app-shell {
   height: 100dvh;
   overflow: hidden;

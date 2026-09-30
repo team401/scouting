@@ -135,8 +135,8 @@ type PitDraft = {
   fieldAccess: string;
   fieldAccessPreference: string;
   shooterType: string;
-  autonomousStart: string;
-  autonomousSwipe: string;
+  autonomousStart: string[];
+  autonomousSwipe: string[];
   autonomousDepot: boolean;
   autonomousNotes: string;
   notes: string;
@@ -165,12 +165,35 @@ const emptyPitDraft: PitDraft = {
   fieldAccess: 'Both',
   fieldAccessPreference: 'No preference',
   shooterType: 'Fixed',
-  autonomousStart: 'Unknown',
-  autonomousSwipe: 'None',
+  autonomousStart: ['Unknown'],
+  autonomousSwipe: ['None'],
   autonomousDepot: false,
   autonomousNotes: '',
   notes: '',
 };
+
+function normalizeSelections(value: unknown, fallback: string): string[] {
+  if (Array.isArray(value)) {
+    const selections = value.filter(
+      (item): item is string => typeof item === 'string' && item.length > 0,
+    );
+    return selections.length > 0 ? selections : [fallback];
+  }
+  return typeof value === 'string' && value.length > 0 ? [value] : [fallback];
+}
+
+function toggleSelection(
+  selections: string[],
+  value: string,
+  emptyValue: string,
+): string[] {
+  if (value === emptyValue) return [emptyValue];
+  const active = selections.filter((item) => item !== emptyValue);
+  const next = active.includes(value)
+    ? active.filter((item) => item !== value)
+    : [...active, value];
+  return next.length > 0 ? next : [emptyValue];
+}
 
 type EventMatch = {
   id: string;
@@ -255,15 +278,38 @@ function planForMatch(
   plan: Partial<MatchPlan> | null | undefined,
   match: EventMatch,
 ): MatchPlan {
+  const defaultRobots = initialRobotMarkers(
+    match.alliances.red,
+    match.alliances.blue,
+  );
+  const expectedTeams = defaultRobots.map((robot) => robot.team).sort((a, b) => a - b);
+  const savedTeams = (plan?.board?.robots ?? [])
+    .map((robot) => robot.team)
+    .sort((a, b) => a - b);
+  const savedBoardMatches =
+    savedTeams.length === expectedTeams.length &&
+    savedTeams.every((team, index) => team === expectedTeams[index]);
+  const robots = savedBoardMatches
+    ? (plan?.board?.robots ?? []).map((robot) => {
+        const assignment = defaultRobots.find(
+          (candidate) => candidate.team === robot.team,
+        );
+        return assignment
+          ? {
+              ...robot,
+              alliance: assignment.alliance,
+              station: assignment.station,
+            }
+          : robot;
+      })
+    : defaultRobots;
+
   return {
     ...emptyMatchPlan,
     ...plan,
     teamRoles: plan?.teamRoles ?? {},
     board: {
-      robots:
-        plan?.board?.robots?.length === 6
-          ? plan.board.robots
-          : initialRobotMarkers(match.alliances.red, match.alliances.blue),
+      robots,
       strokes: plan?.board?.strokes ?? [],
     },
   };
@@ -746,10 +792,12 @@ export default function Home() {
 
   useEffect(() => {
     if (activeView !== 'Plan' || !currentMatch || !session) return;
+    let cancelled = false;
     loadedPlanMatchIdRef.current = '';
     setPlanMessage('');
     setPlanAuthor('');
     setPlanUpdatedAt(null);
+    setMatchPlan(planForMatch(null, currentMatch));
     const cacheId = `match-plan:${currentMatch.id}`;
     const draftId = `match-plan-draft:${currentMatch.id}`;
     void Promise.all([
@@ -761,6 +809,7 @@ export default function Home() {
         updatedAt?: number | null;
       }>(cacheId),
     ]).then(([draft, cached]) => {
+      if (cancelled) return;
       if (draft) setMatchPlan(planForMatch(draft.payload, currentMatch));
       else if (cached) setMatchPlan(planForMatch(cached.plan, currentMatch));
       if (cached) {
@@ -775,7 +824,10 @@ export default function Home() {
         loadedPlanMatchIdRef.current = currentMatch.id;
       }
     });
-    if (!online) return;
+    if (!online)
+      return () => {
+        cancelled = true;
+      };
     fetch(`/api/match-plans?matchId=${encodeURIComponent(currentMatch.id)}`)
       .then(async (response) => {
         const result = (await response.json()) as {
@@ -788,6 +840,7 @@ export default function Home() {
         if (!response.ok)
           throw new Error(result.error ?? 'Unable to load this match plan.');
         const draft = await getDraft<MatchPlan>(draftId).catch(() => undefined);
+        if (cancelled) return;
         if (!draft) setMatchPlan(planForMatch(result.plan, currentMatch));
         setPlanCanEdit(result.canEdit);
         setPlanAuthor(result.authorName ?? '');
@@ -800,6 +853,7 @@ export default function Home() {
         });
       })
       .catch((error) => {
+        if (cancelled) return;
         setMatchPlan(planForMatch(null, currentMatch));
         setPlanCanEdit(false);
         setPlanMessage(
@@ -809,8 +863,11 @@ export default function Home() {
         );
       })
       .finally(() => {
-        loadedPlanMatchIdRef.current = currentMatch.id;
+        if (!cancelled) loadedPlanMatchIdRef.current = currentMatch.id;
       });
+    return () => {
+      cancelled = true;
+    };
   }, [activeView, currentMatch, online, session]);
 
   useEffect(() => {
@@ -927,9 +984,20 @@ export default function Home() {
               heightInches: serverEntry.dimensions?.height ?? 0,
             }
           : emptyPitDraft;
-        setPitDraft({
+        const loadedDraft = {
           ...emptyPitDraft,
           ...(draft?.payload ?? serverDraft),
+        };
+        setPitDraft({
+          ...loadedDraft,
+          autonomousStart: normalizeSelections(
+            loadedDraft.autonomousStart,
+            'Unknown',
+          ),
+          autonomousSwipe: normalizeSelections(
+            loadedDraft.autonomousSwipe,
+            'None',
+          ),
         });
         setPitReady(true);
       })
@@ -2502,19 +2570,25 @@ export default function Home() {
                             <button
                               type="button"
                               className={
-                                pitDraft.autonomousStart === item
+                                pitDraft.autonomousStart.includes(item)
                                   ? 'choice selected'
                                   : 'choice'
                               }
                               onClick={() =>
                                 setPitDraft({
                                   ...pitDraft,
-                                  autonomousStart: item,
+                                  autonomousStart: toggleSelection(
+                                    pitDraft.autonomousStart,
+                                    item,
+                                    'Unknown',
+                                  ),
                                 })
                               }
                               key={item}
                             >
-                              {pitDraft.autonomousStart === item && <Check />}
+                              {pitDraft.autonomousStart.includes(item) && (
+                                <Check />
+                              )}
                               {item}
                             </button>
                           ))}
@@ -2528,19 +2602,25 @@ export default function Home() {
                               <button
                                 type="button"
                                 className={
-                                  pitDraft.autonomousSwipe === item
+                                  pitDraft.autonomousSwipe.includes(item)
                                     ? 'choice selected'
                                     : 'choice'
                                 }
                                 onClick={() =>
                                   setPitDraft({
                                     ...pitDraft,
-                                    autonomousSwipe: item,
+                                    autonomousSwipe: toggleSelection(
+                                      pitDraft.autonomousSwipe,
+                                      item,
+                                      'None',
+                                    ),
                                   })
                                 }
                                 key={item}
                               >
-                                {pitDraft.autonomousSwipe === item && <Check />}
+                                {pitDraft.autonomousSwipe.includes(item) && (
+                                  <Check />
+                                )}
                                 {item}
                               </button>
                             ),
@@ -2776,10 +2856,16 @@ export default function Home() {
                             <span className="col-span-2 line-clamp-2">
                               Auto:{' '}
                               {[
-                                pit.payload.autonomousStart,
-                                pit.payload.autonomousSwipe !== 'None'
-                                  ? pit.payload.autonomousSwipe
-                                  : null,
+                                normalizeSelections(
+                                  pit.payload.autonomousStart,
+                                  'Unknown',
+                                ).join(', '),
+                                normalizeSelections(
+                                  pit.payload.autonomousSwipe,
+                                  'None',
+                                )
+                                  .filter((item) => item !== 'None')
+                                  .join(', ') || null,
                                 pit.payload.autonomousDepot ? 'Depot' : null,
                               ]
                                 .filter(Boolean)
