@@ -108,7 +108,7 @@ export async function GET(request: Request) {
     );
   const rows =
     await env.DB.prepare(`SELECT pick_lists.owner_user_id AS ownerUserId, pick_lists.is_official AS isOfficial,
-    pick_lists.rankings, users.name AS ownerName FROM pick_lists JOIN users ON users.id = pick_lists.owner_user_id
+    pick_lists.rankings, pick_lists.updated_at AS updatedAt, users.name AS ownerName FROM pick_lists JOIN users ON users.id = pick_lists.owner_user_id
     WHERE pick_lists.organization_id = ? AND pick_lists.event_id = ? ORDER BY pick_lists.updated_at DESC`)
       .bind(user.membership.organization_id, event.id)
       .all<{
@@ -116,12 +116,14 @@ export async function GET(request: Request) {
         isOfficial: number;
         rankings: string;
         ownerName: string;
+        updatedAt: number;
       }>();
   const personalLists = rows.results
     .filter((row) => !row.isOfficial)
     .map((row) => ({
       ownerUserId: row.ownerUserId,
       ownerName: row.ownerName,
+      updatedAt: row.updatedAt,
       data: parseList(row.rankings),
     }));
   return Response.json({
@@ -129,6 +131,7 @@ export async function GET(request: Request) {
     personal:
       personalLists.find((list) => list.ownerUserId === user.session.user.id)
         ?.data ?? null,
+    ballots: personalLists,
     official: rows.results.find((row) => row.isOfficial)?.rankings
       ? parseList(rows.results.find((row) => row.isOfficial)!.rankings)
       : null,

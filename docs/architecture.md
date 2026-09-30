@@ -25,7 +25,7 @@ is configured and tested for `team401.org`.
 
 ## Offline model
 
-The PWA service worker caches the app shell and recently used read data. IndexedDB stores current-event schedule/team snapshots, drafts, and an append-only mutation outbox. Every mutation has a client-generated UUID, organization ID, client timestamp, schema version, and idempotency key.
+The PWA service worker caches the app shell and recently used read data. IndexedDB stores current-event schedule and team records, drafts, and an append-only mutation outbox. Every mutation has a client-generated UUID, organization ID, client timestamp, schema version, and idempotency key.
 
 When online, the client sends queued mutations in order. The server performs idempotent upserts and returns an authoritative sync version. Match scouting is immutable after submission for scouts unless reopened by strategy/admin; this removes most conflict ambiguity. Draft conflicts use last-write-wins only within the same user-owned draft. Official pick lists, alliance state, and match plans use optimistic concurrency and reject stale versions for an explicit reload/merge.
 
