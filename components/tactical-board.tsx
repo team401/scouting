@@ -1,7 +1,13 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Eraser, Pencil, Undo2 } from 'lucide-react';
+import {
+  Eraser,
+  MousePointer2,
+  Pencil,
+  RotateCcw,
+  Undo2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export type BoardPoint = { x: number; y: number };
@@ -25,6 +31,30 @@ const colors = [
   '#111827',
 ];
 
+export function initialRobotMarkers(
+  red: number[],
+  blue: number[],
+): RobotMarker[] {
+  return [
+    ...red.map((team, index) => ({
+      team,
+      station: `R${index + 1}`,
+      alliance: 'red' as const,
+      x: 170,
+      y: 190 + index * 210,
+    })),
+    ...blue.map((team, index) => ({
+      team,
+      station: `B${index + 1}`,
+      alliance: 'blue' as const,
+      x: 1484,
+      // Driver-station numbering mirrors across the field: B1 is opposite R1,
+      // so it appears at the bottom when the field is viewed red-to-blue.
+      y: 610 - index * 210,
+    })),
+  ];
+}
+
 export function TacticalBoard({
   value,
   onChange,
@@ -35,8 +65,10 @@ export function TacticalBoard({
   readOnly?: boolean;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const dragRef = useRef<{ kind: 'draw'; strokeId: string } | null>(null);
-  const [mode, setMode] = useState<'draw' | 'erase'>('draw');
+  const dragRef = useRef<
+    { kind: 'robot'; team: number } | { kind: 'draw'; strokeId: string } | null
+  >(null);
+  const [mode, setMode] = useState<'move' | 'draw' | 'erase'>('move');
   const [color, setColor] = useState(colors[0]);
 
   function point(event: React.PointerEvent): BoardPoint {
@@ -69,19 +101,47 @@ export function TacticalBoard({
     const drag = dragRef.current;
     if (!drag || readOnly) return;
     const next = point(event);
-    onChange({
-      ...value,
-      strokes: value.strokes.map((stroke) =>
-        stroke.id === drag.strokeId
-          ? { ...stroke, points: [...stroke.points, next] }
-          : stroke,
-      ),
-    });
+    if (drag.kind === 'robot')
+      onChange({
+        ...value,
+        robots: value.robots.map((robot) =>
+          robot.team === drag.team ? { ...robot, ...next } : robot,
+        ),
+      });
+    else
+      onChange({
+        ...value,
+        strokes: value.strokes.map((stroke) =>
+          stroke.id === drag.strokeId
+            ? { ...stroke, points: [...stroke.points, next] }
+            : stroke,
+        ),
+      });
+  }
+
+  function resetRobots() {
+    const red = value.robots
+      .filter((robot) => robot.alliance === 'red')
+      .map((robot) => robot.team);
+    const blue = value.robots
+      .filter((robot) => robot.alliance === 'blue')
+      .map((robot) => robot.team);
+    onChange({ ...value, robots: initialRobotMarkers(red, blue) });
   }
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant={mode === 'move' ? 'default' : 'outline'}
+          disabled={readOnly}
+          onClick={() => setMode('move')}
+        >
+          <MousePointer2 />
+          Move robots
+        </Button>
         <Button
           type="button"
           size="sm"
@@ -141,6 +201,16 @@ export function TacticalBoard({
         >
           <Eraser />
           Clear ink
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={readOnly}
+          onClick={resetRobots}
+        >
+          <RotateCcw />
+          Reset robots
         </Button>
       </div>
       <svg
@@ -217,47 +287,6 @@ export function TacticalBoard({
           pointerEvents="none"
         />
         <g pointerEvents="none">
-          <text
-            x="827"
-            y="42"
-            textAnchor="middle"
-            fill="#f8fafc"
-            fontSize="22"
-            fontWeight="700"
-          >
-            CENTER LINE
-          </text>
-          <text
-            x="205"
-            y="770"
-            textAnchor="middle"
-            fill="#fecaca"
-            fontSize="20"
-            fontWeight="700"
-          >
-            RED ALLIANCE ZONE
-          </text>
-          <text
-            x="827"
-            y="770"
-            textAnchor="middle"
-            fill="#e2e8f0"
-            fontSize="20"
-            fontWeight="700"
-          >
-            NEUTRAL ZONE
-          </text>
-          <text
-            x="1447"
-            y="770"
-            textAnchor="middle"
-            fill="#bfdbfe"
-            fontSize="20"
-            fontWeight="700"
-          >
-            BLUE ALLIANCE ZONE
-          </text>
-
           {/* HUBS, centered between the paired BUMPS. */}
           <rect
             x="344"
@@ -316,28 +345,22 @@ export function TacticalBoard({
             HUB
           </text>
 
-          {/* BUMPS flank each HUB; TRENCHES join each BUMP to a guardrail. */}
-          {[92, 523].map((y) => (
-            <g key={`red-obstacle-${y}`}>
+          {/* Wall → TRENCH → BUMP → HUB → BUMP → TRENCH → wall. */}
+          {[112, 464].map((y) => (
+            <g key={`red-bump-${y}`}>
               <rect
-                x="290"
+                x="347"
                 y={y}
                 width="113"
-                height="185"
+                height={y === 112 ? 225 : 224}
                 rx="8"
                 fill="#b91c1c"
                 stroke="#fca5a5"
                 strokeWidth="4"
               />
-              <path
-                d={`M 290 ${y + 92} H 403`}
-                stroke="#fee2e2"
-                strokeWidth="3"
-                strokeDasharray="12 8"
-              />
               <text
-                x="346"
-                y={y + 101}
+                x="403"
+                y={y + 120}
                 textAnchor="middle"
                 fill="white"
                 fontSize="18"
@@ -345,70 +368,26 @@ export function TacticalBoard({
               >
                 BUMP
               </text>
+            </g>
+          ))}
+          {[12, 688].map((y) => (
+            <g key={`red-trench-${y}`}>
               <rect
-                x="290"
-                y={y === 92 ? 12 : 688}
-                width="119"
+                x="364"
+                y={y}
+                width="78"
                 height="100"
+                rx="4"
                 fill="#7f1d1d"
                 stroke="#fca5a5"
                 strokeWidth="4"
               />
               <text
-                x="349"
-                y={y === 92 ? 70 : 748}
+                x="403"
+                y={y + 57}
                 textAnchor="middle"
                 fill="white"
-                fontSize="17"
-                fontWeight="700"
-              >
-                TRENCH
-              </text>
-            </g>
-          ))}
-          {[92, 523].map((y) => (
-            <g key={`blue-obstacle-${y}`}>
-              <rect
-                x="1251"
-                y={y}
-                width="113"
-                height="185"
-                rx="8"
-                fill="#1d4ed8"
-                stroke="#93c5fd"
-                strokeWidth="4"
-              />
-              <path
-                d={`M 1251 ${y + 92} H 1364`}
-                stroke="#dbeafe"
-                strokeWidth="3"
-                strokeDasharray="12 8"
-              />
-              <text
-                x="1307"
-                y={y + 101}
-                textAnchor="middle"
-                fill="white"
-                fontSize="18"
-                fontWeight="700"
-              >
-                BUMP
-              </text>
-              <rect
-                x="1245"
-                y={y === 92 ? 12 : 688}
-                width="119"
-                height="100"
-                fill="#1e3a8a"
-                stroke="#93c5fd"
-                strokeWidth="4"
-              />
-              <text
-                x="1305"
-                y={y === 92 ? 70 : 748}
-                textAnchor="middle"
-                fill="white"
-                fontSize="17"
+                fontSize="14"
                 fontWeight="700"
               >
                 TRENCH
@@ -416,7 +395,56 @@ export function TacticalBoard({
             </g>
           ))}
 
-          {/* Alliance-wall game pieces. */}
+          {[112, 464].map((y) => (
+            <g key={`blue-bump-${y}`}>
+              <rect
+                x="1195"
+                y={y}
+                width="113"
+                height={y === 112 ? 225 : 224}
+                rx="8"
+                fill="#1d4ed8"
+                stroke="#93c5fd"
+                strokeWidth="4"
+              />
+              <text
+                x="1251"
+                y={y + 120}
+                textAnchor="middle"
+                fill="white"
+                fontSize="18"
+                fontWeight="700"
+              >
+                BUMP
+              </text>
+            </g>
+          ))}
+          {[12, 688].map((y) => (
+            <g key={`blue-trench-${y}`}>
+              <rect
+                x="1212"
+                y={y}
+                width="78"
+                height="100"
+                rx="4"
+                fill="#1e3a8a"
+                stroke="#93c5fd"
+                strokeWidth="4"
+              />
+              <text
+                x="1251"
+                y={y + 57}
+                textAnchor="middle"
+                fill="white"
+                fontSize="14"
+                fontWeight="700"
+              >
+                TRENCH
+              </text>
+            </g>
+          ))}
+
+          {/* Alliance-wall game pieces, oriented from the official top view. */}
           <rect
             x="12"
             y="675"
@@ -439,23 +467,41 @@ export function TacticalBoard({
           </text>
           <rect
             x="12"
-            y="20"
-            width="88"
-            height="150"
-            fill="#7f1d1d"
-            stroke="#fca5a5"
-            strokeWidth="5"
+            y="150"
+            width="72"
+            height="100"
+            fill="#fbbf24"
+            stroke="#fef3c7"
+            strokeWidth="4"
           />
           <text
-            x="56"
-            y="103"
+            x="48"
+            y="208"
             textAnchor="middle"
-            fill="white"
-            fontSize="17"
-            fontWeight="700"
-            transform="rotate(-90 56 103)"
+            fill="#111827"
+            fontSize="15"
+            fontWeight="800"
+            transform="rotate(-90 48 208)"
           >
             DEPOT
+          </text>
+          <path
+            d="M 12 332 H 98 V 468 H 12 Z M 98 350 L 126 400 L 98 450 Z"
+            fill="#111827"
+            stroke="#e5e7eb"
+            strokeWidth="5"
+            fillRule="evenodd"
+          />
+          <text
+            x="58"
+            y="407"
+            textAnchor="middle"
+            fill="white"
+            fontSize="16"
+            fontWeight="700"
+            transform="rotate(-90 58 407)"
+          >
+            TOWER
           </text>
 
           <rect
@@ -480,60 +526,82 @@ export function TacticalBoard({
           </text>
           <rect
             x="1554"
-            y="630"
+            y="550"
             width="88"
-            height="150"
-            fill="#1e3a8a"
-            stroke="#93c5fd"
-            strokeWidth="5"
+            height="100"
+            fill="#fbbf24"
+            stroke="#fef3c7"
+            strokeWidth="4"
           />
           <text
             x="1598"
-            y="713"
+            y="608"
             textAnchor="middle"
-            fill="white"
-            fontSize="17"
-            fontWeight="700"
-            transform="rotate(90 1598 713)"
+            fill="#111827"
+            fontSize="15"
+            fontWeight="800"
+            transform="rotate(90 1598 608)"
           >
             DEPOT
+          </text>
+          <path
+            d="M 1642 332 H 1556 V 468 H 1642 Z M 1556 350 L 1528 400 L 1556 450 Z"
+            fill="#111827"
+            stroke="#e5e7eb"
+            strokeWidth="5"
+            fillRule="evenodd"
+          />
+          <text
+            x="1596"
+            y="407"
+            textAnchor="middle"
+            fill="white"
+            fontSize="16"
+            fontWeight="700"
+            transform="rotate(90 1596 407)"
+          >
+            TOWER
           </text>
         </g>
         {[190, 400, 610].map((y, index) => (
           <g key={y} pointerEvents="none">
             <rect
               x="12"
-              y={y - 65}
-              width="34"
-              height="130"
+              y={y - 24}
+              width="25"
+              height="48"
+              rx="5"
               fill="#dc2626"
               stroke="#fecaca"
             />
             <text
-              x="29"
-              y={y + 6}
+              x="24.5"
+              y={y + 4}
               fill="white"
-              fontSize="24"
+              fontSize="12"
+              fontWeight="700"
               textAnchor="middle"
             >
               R{index + 1}
             </text>
             <rect
-              x="1608"
-              y={y - 65}
-              width="34"
-              height="130"
+              x="1617"
+              y={y - 24}
+              width="25"
+              height="48"
+              rx="5"
               fill="#2563eb"
               stroke="#bfdbfe"
             />
             <text
-              x="1625"
-              y={y + 6}
+              x="1629.5"
+              y={y + 4}
               fill="white"
-              fontSize="24"
+              fontSize="12"
+              fontWeight="700"
               textAnchor="middle"
             >
-              B{index + 1}
+              B{3 - index}
             </text>
           </g>
         ))}
@@ -577,6 +645,42 @@ export function TacticalBoard({
             </g>
           );
         })}
+        {value.robots.map((robot) => (
+          <g
+            key={robot.team}
+            transform={`translate(${robot.x} ${robot.y})`}
+            className={readOnly ? '' : 'cursor-grab'}
+            onPointerDown={(event) => {
+              if (readOnly || mode !== 'move') return;
+              event.stopPropagation();
+              dragRef.current = { kind: 'robot', team: robot.team };
+              event.currentTarget.setPointerCapture(event.pointerId);
+            }}
+          >
+            <rect
+              x="-48"
+              y="-36"
+              width="96"
+              height="72"
+              rx="12"
+              fill={robot.alliance === 'red' ? '#dc2626' : '#2563eb'}
+              stroke="white"
+              strokeWidth="4"
+            />
+            <text
+              y="-4"
+              textAnchor="middle"
+              fill="white"
+              fontSize="25"
+              fontWeight="700"
+            >
+              {robot.team}
+            </text>
+            <text y="22" textAnchor="middle" fill="white" fontSize="16">
+              {robot.station}
+            </text>
+          </g>
+        ))}
       </svg>
     </div>
   );

@@ -233,6 +233,27 @@ export const events = sqliteTable(
   ],
 );
 
+export const eventTeams = sqliteTable(
+  'event_teams',
+  {
+    organizationId: text('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    eventId: text('event_id')
+      .notNull()
+      .references(() => events.id, { onDelete: 'cascade' }),
+    teamNumber: integer('team_number').notNull(),
+    name: text('name').notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.organizationId, table.eventId, table.teamNumber],
+    }),
+    index('idx_event_teams_event').on(table.eventId, table.teamNumber),
+  ],
+);
+
 export const matches = sqliteTable(
   'matches',
   {

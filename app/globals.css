@@ -76,7 +76,8 @@ button {
   cursor: pointer;
 }
 .app-shell {
-  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
   display: flex;
   background: var(--background);
   color: var(--foreground);
@@ -85,18 +86,21 @@ button {
     color 0.2s;
 }
 .desktop-nav {
-  width: 108px;
-  flex: 0 0 108px;
-  min-height: 100dvh;
-  padding: 18px 12px;
+  width: 76px;
+  flex: 0 0 76px;
+  height: 100dvh;
+  overflow: hidden;
+  position: sticky;
+  top: 0;
+  padding: 14px 7px;
   display: flex;
   flex-direction: column;
   background: #65152f;
   color: #fff7fa;
 }
 .brand-mark {
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   margin: 0 auto;
   display: grid;
   place-items: center;
@@ -104,22 +108,22 @@ button {
   background: #d6552d;
   color: white;
   font-weight: 900;
-  font-size: 22px;
+  font-size: 18px;
   transform: rotate(-4deg);
 }
 .nav-item {
   display: flex;
-  min-height: 58px;
+  min-height: 50px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 4px;
   border-radius: 10px;
   color: #e9cbd6;
-  font-size: 11px;
+  font-size: 10px;
 }
 .nav-item svg {
-  width: 20px;
+  width: 18px;
 }
 .nav-item:hover,
 .nav-item.active {
@@ -130,28 +134,28 @@ button {
   box-shadow: inset 3px 0 #f18761;
 }
 .topbar {
-  min-height: 84px;
+  min-height: 60px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  padding: 14px clamp(16px, 3vw, 38px);
-  border-bottom: 1px solid #d7dee5;
-  background: #fff;
-  color: #17212b;
+  padding: 8px clamp(12px, 2vw, 24px);
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+  color: var(--card-foreground);
 }
 .topbar .eyebrow {
-  color: #5c6875;
+  color: var(--muted-foreground);
 }
 .topbar [data-slot='button'],
 .topbar [data-slot='badge'] {
-  border-color: #ccd5dd;
-  color: #17212b;
-  background: #fff;
+  border-color: var(--border);
+  color: var(--card-foreground);
+  background: var(--card);
 }
 .topbar [data-slot='button']:hover {
-  color: #17212b;
-  background: #edf2f6;
+  color: var(--accent-foreground);
+  background: var(--accent);
 }
 .topbar h1 {
   margin: 1px 0 0;
@@ -522,7 +526,7 @@ button {
     padding-inline: 8px;
   }
   .topbar {
-    min-height: 72px;
+    min-height: 56px;
   }
   .content-grid {
     padding-top: 16px;
