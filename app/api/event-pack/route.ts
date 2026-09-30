@@ -122,6 +122,7 @@ export async function GET(request: Request) {
     return Response.json({
       event: null,
       matches: [],
+      teams: [],
       assignments: [],
       members: members.results,
       pitEntries: [],
@@ -153,6 +154,11 @@ export async function GET(request: Request) {
   )
     .bind(identity.membership.organization_id, event.id)
     .all<MatchRow>();
+  const teams = await env.DB.prepare(
+    'SELECT team_number AS teamNumber, name FROM event_teams WHERE organization_id = ? AND event_id = ? ORDER BY team_number',
+  )
+    .bind(identity.membership.organization_id, event.id)
+    .all<{ teamNumber: number; name: string }>();
   const assignments = await env.DB.prepare(
     'SELECT match_id AS matchId, team_number AS teamNumber, scout_user_id AS scoutUserId, station FROM scout_assignments WHERE organization_id = ? AND event_id = ?',
   )
@@ -221,6 +227,7 @@ export async function GET(request: Request) {
       timezone: event.timezone,
     },
     matches: normalizedMatches,
+    teams: teams.results,
     assignments: assignments.results,
     members: members.results,
     pitEntries: pitEntries.results.map((entry) => ({

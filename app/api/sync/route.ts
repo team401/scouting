@@ -23,7 +23,15 @@ const pitPayloadSchema = z.object({
   eventKey: z.string().min(1), teamNumber: z.number().int().positive(), seasonYear: z.number().int(), schemaVersion: z.number().int().positive(),
   drivetrain: z.string().min(1).max(60), swerveModule: z.string().max(80), motorTypes: z.array(z.string().max(80)).max(12),
   weightLbs: z.number().nonnegative().max(500), widthInches: z.number().nonnegative().max(200), lengthInches: z.number().nonnegative().max(200), heightInches: z.number().nonnegative().max(300),
-  fuelCapacity: z.number().int().nonnegative().max(500), climbCapability: z.string().max(120), autonomousCapabilities: z.string().max(500), notes: z.string().max(2000),
+  fuelCapacity: z.number().int().nonnegative().max(500), climbCapability: z.string().max(120),
+  fieldAccess: z.enum(['Trench', 'Bump', 'Both']).default('Both'),
+  fieldAccessPreference: z.enum(['Trench', 'Bump', 'No preference']).default('No preference'),
+  shooterType: z.string().min(1).max(80).default('Fixed'),
+  autonomousStart: z.enum(['Left', 'Middle', 'Right', 'Unknown']).default('Unknown'),
+  autonomousSwipe: z.enum(['None', 'Single swipe', 'Double swipe']).default('None'),
+  autonomousDepot: z.boolean().default(false),
+  autonomousNotes: z.string().max(500).default(''),
+  autonomousCapabilities: z.string().max(500).optional(), notes: z.string().max(2000),
 });
 
 const mutationBase = {
