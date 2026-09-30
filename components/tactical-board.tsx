@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Eraser, MousePointer2, Pencil, RotateCcw, Undo2 } from 'lucide-react';
+import { Eraser, Pencil, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export type BoardPoint = { x: number; y: number };
@@ -25,28 +25,6 @@ const colors = [
   '#111827',
 ];
 
-export function initialRobotMarkers(
-  red: number[],
-  blue: number[],
-): RobotMarker[] {
-  return [
-    ...red.map((team, index) => ({
-      team,
-      station: `R${index + 1}`,
-      alliance: 'red' as const,
-      x: 125,
-      y: 190 + index * 210,
-    })),
-    ...blue.map((team, index) => ({
-      team,
-      station: `B${index + 1}`,
-      alliance: 'blue' as const,
-      x: 1529,
-      y: 190 + index * 210,
-    })),
-  ];
-}
-
 export function TacticalBoard({
   value,
   onChange,
@@ -57,10 +35,8 @@ export function TacticalBoard({
   readOnly?: boolean;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const dragRef = useRef<
-    { kind: 'robot'; team: number } | { kind: 'draw'; strokeId: string } | null
-  >(null);
-  const [mode, setMode] = useState<'move' | 'draw'>('move');
+  const dragRef = useRef<{ kind: 'draw'; strokeId: string } | null>(null);
+  const [mode, setMode] = useState<'draw' | 'erase'>('draw');
   const [color, setColor] = useState(colors[0]);
 
   function point(event: React.PointerEvent): BoardPoint {
@@ -93,47 +69,19 @@ export function TacticalBoard({
     const drag = dragRef.current;
     if (!drag || readOnly) return;
     const next = point(event);
-    if (drag.kind === 'robot')
-      onChange({
-        ...value,
-        robots: value.robots.map((robot) =>
-          robot.team === drag.team ? { ...robot, ...next } : robot,
-        ),
-      });
-    else
-      onChange({
-        ...value,
-        strokes: value.strokes.map((stroke) =>
-          stroke.id === drag.strokeId
-            ? { ...stroke, points: [...stroke.points, next] }
-            : stroke,
-        ),
-      });
-  }
-
-  function resetRobots() {
-    const red = value.robots
-      .filter((robot) => robot.alliance === 'red')
-      .map((robot) => robot.team);
-    const blue = value.robots
-      .filter((robot) => robot.alliance === 'blue')
-      .map((robot) => robot.team);
-    onChange({ ...value, robots: initialRobotMarkers(red, blue) });
+    onChange({
+      ...value,
+      strokes: value.strokes.map((stroke) =>
+        stroke.id === drag.strokeId
+          ? { ...stroke, points: [...stroke.points, next] }
+          : stroke,
+      ),
+    });
   }
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant={mode === 'move' ? 'default' : 'outline'}
-          disabled={readOnly}
-          onClick={() => setMode('move')}
-        >
-          <MousePointer2 />
-          Move robots
-        </Button>
         <Button
           type="button"
           size="sm"
@@ -143,6 +91,16 @@ export function TacticalBoard({
         >
           <Pencil />
           Draw paths
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={mode === 'erase' ? 'default' : 'outline'}
+          disabled={readOnly || value.strokes.length === 0}
+          onClick={() => setMode('erase')}
+        >
+          <Eraser />
+          Erase a line
         </Button>
         {colors.map((item) => (
           <button
@@ -183,16 +141,6 @@ export function TacticalBoard({
         >
           <Eraser />
           Clear ink
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={readOnly}
-          onClick={resetRobots}
-        >
-          <RotateCcw />
-          Reset robots
         </Button>
       </div>
       <svg
@@ -468,7 +416,7 @@ export function TacticalBoard({
             </g>
           ))}
 
-          {/* Alliance-wall game pieces: depot, tower, and outpost. */}
+          {/* Alliance-wall game pieces. */}
           <rect
             x="12"
             y="675"
@@ -487,27 +435,7 @@ export function TacticalBoard({
             fontWeight="800"
             transform="rotate(-90 47 735)"
           >
-            DEPOT
-          </text>
-          <rect
-            x="12"
-            y="456"
-            width="114"
-            height="125"
-            fill="#450a0a"
-            stroke="#f87171"
-            strokeWidth="5"
-          />
-          <text
-            x="69"
-            y="526"
-            textAnchor="middle"
-            fill="white"
-            fontSize="18"
-            fontWeight="700"
-            transform="rotate(-90 69 526)"
-          >
-            TOWER
+            OUTPOST
           </text>
           <rect
             x="12"
@@ -527,7 +455,7 @@ export function TacticalBoard({
             fontWeight="700"
             transform="rotate(-90 56 103)"
           >
-            OUTPOST
+            DEPOT
           </text>
 
           <rect
@@ -548,27 +476,7 @@ export function TacticalBoard({
             fontWeight="800"
             transform="rotate(90 1608 80)"
           >
-            DEPOT
-          </text>
-          <rect
-            x="1528"
-            y="219"
-            width="114"
-            height="125"
-            fill="#172554"
-            stroke="#60a5fa"
-            strokeWidth="5"
-          />
-          <text
-            x="1585"
-            y="288"
-            textAnchor="middle"
-            fill="white"
-            fontSize="18"
-            fontWeight="700"
-            transform="rotate(90 1585 288)"
-          >
-            TOWER
+            OUTPOST
           </text>
           <rect
             x="1554"
@@ -588,7 +496,7 @@ export function TacticalBoard({
             fontWeight="700"
             transform="rotate(90 1598 713)"
           >
-            OUTPOST
+            DEPOT
           </text>
         </g>
         {[190, 400, 610].map((y, index) => (
@@ -629,54 +537,46 @@ export function TacticalBoard({
             </text>
           </g>
         ))}
-        {value.strokes.map((stroke) => (
-          <polyline
-            key={stroke.id}
-            points={stroke.points.map((p) => `${p.x},${p.y}`).join(' ')}
-            fill="none"
-            stroke={stroke.color}
-            strokeWidth="10"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            pointerEvents="none"
-          />
-        ))}
-        {value.robots.map((robot) => (
-          <g
-            key={robot.team}
-            transform={`translate(${robot.x} ${robot.y})`}
-            className={readOnly ? '' : 'cursor-grab'}
-            onPointerDown={(event) => {
-              if (readOnly || mode !== 'move') return;
-              event.stopPropagation();
-              dragRef.current = { kind: 'robot', team: robot.team };
-              event.currentTarget.setPointerCapture(event.pointerId);
-            }}
-          >
-            <rect
-              x="-48"
-              y="-36"
-              width="96"
-              height="72"
-              rx="12"
-              fill={robot.alliance === 'red' ? '#dc2626' : '#2563eb'}
-              stroke="white"
-              strokeWidth="4"
-            />
-            <text
-              y="-4"
-              textAnchor="middle"
-              fill="white"
-              fontSize="25"
-              fontWeight="700"
-            >
-              {robot.team}
-            </text>
-            <text y="22" textAnchor="middle" fill="white" fontSize="16">
-              {robot.station}
-            </text>
-          </g>
-        ))}
+        {value.strokes.map((stroke) => {
+          const points = stroke.points.map((p) => `${p.x},${p.y}`).join(' ');
+          return (
+            <g key={stroke.id}>
+              <polyline
+                points={points}
+                fill="none"
+                stroke={stroke.color}
+                strokeWidth="10"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                pointerEvents="none"
+              />
+              <polyline
+                points={points}
+                fill="none"
+                stroke="transparent"
+                strokeWidth="34"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                pointerEvents={
+                  mode === 'erase' && !readOnly ? 'stroke' : 'none'
+                }
+                className={
+                  mode === 'erase' && !readOnly ? 'cursor-pointer' : ''
+                }
+                onPointerDown={(event) => {
+                  if (mode !== 'erase' || readOnly) return;
+                  event.stopPropagation();
+                  onChange({
+                    ...value,
+                    strokes: value.strokes.filter(
+                      (item) => item.id !== stroke.id,
+                    ),
+                  });
+                }}
+              />
+            </g>
+          );
+        })}
       </svg>
     </div>
   );

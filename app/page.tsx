@@ -36,7 +36,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
-  initialRobotMarkers,
   TacticalBoard,
   type TacticalBoardData,
 } from '@/components/tactical-board';
@@ -241,21 +240,16 @@ const emptyMatchPlan: MatchPlan = {
 
 function planForMatch(
   plan: Partial<MatchPlan> | null | undefined,
-  match: EventMatch,
+  _match: EventMatch,
 ): MatchPlan {
   return {
     ...emptyMatchPlan,
     ...plan,
     teamRoles: plan?.teamRoles ?? {},
-    board: plan?.board?.robots?.length
-      ? plan.board
-      : {
-          robots: initialRobotMarkers(
-            match.alliances.red,
-            match.alliances.blue,
-          ),
-          strokes: [],
-        },
+    board: {
+      robots: [],
+      strokes: plan?.board?.strokes ?? [],
+    },
   };
 }
 
@@ -1483,6 +1477,7 @@ export default function Home() {
             ? ('red' as const)
             : ('blue' as const),
           stats: planStats.find((item) => item.teamNumber === team),
+          pit: eventPack?.pitEntries.find((item) => item.teamNumber === team),
         }),
       )
     : [];
@@ -2505,7 +2500,7 @@ export default function Home() {
           </div>
         )}
         {activeView === 'Plan' && (
-          <div className="grid gap-4 p-4 sm:p-6 lg:grid-cols-[18rem_1fr]">
+          <div className="grid gap-4 p-2 sm:p-4">
             <Card>
               <CardHeader>
                 <CardTitle>Match</CardTitle>
@@ -2564,10 +2559,10 @@ export default function Home() {
                 <CardHeader>
                   <CardTitle>Field strategy</CardTitle>
                   <Badge variant="outline">
-                    {planCanEdit ? 'Drag robots and draw' : 'Read only'}
+                    {planCanEdit ? 'Draw alliance paths' : 'Read only'}
                   </Badge>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-2 pb-2 sm:px-3 sm:pb-3">
                   <TacticalBoard
                     value={matchPlan.board}
                     readOnly={!planCanEdit}
@@ -2588,7 +2583,7 @@ export default function Home() {
                   </div>
                 </CardHeader>
                 <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {planTeams.map(({ team, alliance, stats }) => (
+                  {planTeams.map(({ team, alliance, stats, pit }) => (
                     <div
                       className={
                         alliance === 'red'
@@ -2634,20 +2629,43 @@ export default function Home() {
                         </span>
                         <span>
                           <strong>
-                            {Math.round((stats?.towerSuccessRate ?? 0) * 100)}%
-                          </strong>
-                          <small className="block text-muted-foreground">
-                            tower
-                          </small>
-                        </span>
-                        <span>
-                          <strong>
                             {Math.round((stats?.disabledRate ?? 0) * 100)}%
                           </strong>
                           <small className="block text-muted-foreground">
                             disabled
                           </small>
                         </span>
+                      </div>
+                      <div className="mt-3 border-t pt-2 text-xs">
+                        <p className="font-semibold">Pit snapshot</p>
+                        {pit ? (
+                          <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-muted-foreground">
+                            <span>
+                              {pit.drivetrain ?? 'Unknown'}
+                              {pit.swerveModule
+                                ? ` · ${pit.swerveModule}`
+                                : ''}
+                            </span>
+                            <span>
+                              {pit.weightLbs ? `${pit.weightLbs} lb` : 'Weight —'}
+                            </span>
+                            <span>
+                              Capacity {pit.payload.fuelCapacity ?? '—'}
+                            </span>
+                            <span>
+                              Climb {pit.payload.climbCapability ?? '—'}
+                            </span>
+                            {pit.payload.autonomousCapabilities && (
+                              <span className="col-span-2 line-clamp-2">
+                                Auto: {pit.payload.autonomousCapabilities}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="mt-1 text-muted-foreground">
+                            No pit report
+                          </p>
+                        )}
                       </div>
                       <p className="mt-2 text-xs text-muted-foreground">
                         {stats?.samples ?? 0} scouting samples ·{' '}
