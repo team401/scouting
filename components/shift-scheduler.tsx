@@ -23,6 +23,11 @@ function localInput(date: Date) {
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 }
 
+const defaultShiftStart = new Date();
+defaultShiftStart.setMinutes(0, 0, 0);
+defaultShiftStart.setHours(defaultShiftStart.getHours() + 1);
+const defaultShiftEnd = new Date(defaultShiftStart.getTime() + 60 * 60_000);
+
 export function ShiftScheduler({
   members,
   onChanged,
@@ -30,13 +35,8 @@ export function ShiftScheduler({
   members: Array<{ id: string; name: string; disabled?: number | boolean }>;
   onChanged: () => void | Promise<void>;
 }) {
-  const startDefault = new Date();
-  startDefault.setMinutes(0, 0, 0);
-  startDefault.setHours(startDefault.getHours() + 1);
-  const [startsAt, setStartsAt] = useState(localInput(startDefault));
-  const [endsAt, setEndsAt] = useState(
-    localInput(new Date(startDefault.getTime() + 60 * 60_000)),
-  );
+  const [startsAt, setStartsAt] = useState(localInput(defaultShiftStart));
+  const [endsAt, setEndsAt] = useState(localInput(defaultShiftEnd));
   const [assignments, setAssignments] = useState<Record<Station, string>>({
     red1: '',
     red2: '',
