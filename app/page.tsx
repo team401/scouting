@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
-  BarChart3,
   CalendarDays,
   Check,
   ChevronRight,
@@ -27,7 +26,6 @@ import {
   UserCog,
   Users,
   Wrench,
-  Zap,
 } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';
 import { Badge } from '@/components/ui/badge';
@@ -135,8 +133,8 @@ type PitDraft = {
   fieldAccess: string;
   fieldAccessPreference: string;
   shooterType: string;
-  autonomousStart: string;
-  autonomousSwipe: string;
+  autonomousStart: string[];
+  autonomousSwipe: string[];
   autonomousDepot: boolean;
   autonomousNotes: string;
   notes: string;
@@ -165,12 +163,35 @@ const emptyPitDraft: PitDraft = {
   fieldAccess: 'Both',
   fieldAccessPreference: 'No preference',
   shooterType: 'Fixed',
-  autonomousStart: 'Unknown',
-  autonomousSwipe: 'None',
+  autonomousStart: ['Unknown'],
+  autonomousSwipe: ['None'],
   autonomousDepot: false,
   autonomousNotes: '',
   notes: '',
 };
+
+function normalizeSelections(value: unknown, fallback: string): string[] {
+  if (Array.isArray(value)) {
+    const selections = value.filter(
+      (item): item is string => typeof item === 'string' && item.length > 0,
+    );
+    return selections.length > 0 ? selections : [fallback];
+  }
+  return typeof value === 'string' && value.length > 0 ? [value] : [fallback];
+}
+
+function toggleSelection(
+  selections: string[],
+  value: string,
+  emptyValue: string,
+): string[] {
+  if (value === emptyValue) return [emptyValue];
+  const active = selections.filter((item) => item !== emptyValue);
+  const next = active.includes(value)
+    ? active.filter((item) => item !== value)
+    : [...active, value];
+  return next.length > 0 ? next : [emptyValue];
+}
 
 type EventMatch = {
   id: string;
@@ -255,15 +276,38 @@ function planForMatch(
   plan: Partial<MatchPlan> | null | undefined,
   match: EventMatch,
 ): MatchPlan {
+  const defaultRobots = initialRobotMarkers(
+    match.alliances.red,
+    match.alliances.blue,
+  );
+  const expectedTeams = defaultRobots.map((robot) => robot.team).sort((a, b) => a - b);
+  const savedTeams = (plan?.board?.robots ?? [])
+    .map((robot) => robot.team)
+    .sort((a, b) => a - b);
+  const savedBoardMatches =
+    savedTeams.length === expectedTeams.length &&
+    savedTeams.every((team, index) => team === expectedTeams[index]);
+  const robots = savedBoardMatches
+    ? (plan?.board?.robots ?? []).map((robot) => {
+        const assignment = defaultRobots.find(
+          (candidate) => candidate.team === robot.team,
+        );
+        return assignment
+          ? {
+              ...robot,
+              alliance: assignment.alliance,
+              station: assignment.station,
+            }
+          : robot;
+      })
+    : defaultRobots;
+
   return {
     ...emptyMatchPlan,
     ...plan,
     teamRoles: plan?.teamRoles ?? {},
     board: {
-      robots:
-        plan?.board?.robots?.length === 6
-          ? plan.board.robots
-          : initialRobotMarkers(match.alliances.red, match.alliances.blue),
+      robots,
       strokes: plan?.board?.strokes ?? [],
     },
   };
@@ -343,8 +387,6 @@ export default function Home() {
   const loadedPlanMatchIdRef = useRef('');
   const [autoFuel, setAutoFuel] = useState(0);
   const [activeFuel, setActiveFuel] = useState(0);
-  const [inactiveFuel, setInactiveFuel] = useState(0);
-  const [cycles, setCycles] = useState(0);
   const [autoTower, setAutoTower] = useState('None');
   const [tower, setTower] = useState('None');
   const [path, setPath] = useState('Trench');
@@ -355,7 +397,6 @@ export default function Home() {
   const [noShow, setNoShow] = useState(false);
   const [penalties, setPenalties] = useState(0);
   const [shootingRange, setShootingRange] = useState('Mixed');
-  const [cycleSeconds, setCycleSeconds] = useState(0);
   const [notes, setNotes] = useState('');
   const [draftReady, setDraftReady] = useState(false);
   const [queuedCount, setQueuedCount] = useState(0);
@@ -455,19 +496,19 @@ export default function Home() {
       ].sort((a, b) => a - b)
     : [];
   const currentPayload: ScoutingPayload = {
-    autoFuel,
-    activeFuel,
-    inactiveFuel,
-    cycles,
-    autoTower,
-    tower,
-    path,
-    defenseRating,
-    disabled,
+    autoFuel: noShow ? 0 : autoFuel,
+    activeFuel: noShow ? 0 : activeFuel,
+    inactiveFuel: 0,
+    cycles: 0,
+    autoTower: noShow ? 'None' : autoTower,
+    tower: noShow ? 'None' : tower,
+    path: noShow ? 'None' : path,
+    defenseRating: noShow ? 0 : defenseRating,
+    disabled: noShow ? false : disabled,
     noShow,
-    penalties,
-    shootingRange,
-    cycleSeconds,
+    penalties: noShow ? 0 : penalties,
+    shootingRange: noShow ? 'None' : shootingRange,
+    cycleSeconds: 0,
     notes,
   };
   const estimatedPoints = observedPoints(currentPayload);
@@ -571,25 +612,23 @@ export default function Home() {
             ? draft.payload
             : serverEntry?.payload;
         if (payload) {
-          setAutoFuel(payload.autoFuel);
-          setActiveFuel(payload.activeFuel);
-          setInactiveFuel(payload.inactiveFuel);
-          setCycles(payload.cycles);
-          setAutoTower(payload.autoTower);
-          setTower(payload.tower);
-          setPath(payload.path);
-          setDefenseRating(payload.defenseRating ?? 0);
-          setDisabled(payload.disabled ?? false);
-          setNoShow(payload.noShow ?? false);
-          setPenalties(payload.penalties ?? 0);
-          setShootingRange(payload.shootingRange ?? 'Mixed');
-          setCycleSeconds(payload.cycleSeconds ?? 0);
+          const didNotShow = payload.noShow ?? false;
+          setAutoFuel(didNotShow ? 0 : payload.autoFuel);
+          setActiveFuel(didNotShow ? 0 : payload.activeFuel);
+          setAutoTower(didNotShow ? 'None' : payload.autoTower);
+          setTower(didNotShow ? 'None' : payload.tower);
+          setPath(didNotShow ? 'None' : payload.path);
+          setDefenseRating(didNotShow ? 0 : (payload.defenseRating ?? 0));
+          setDisabled(didNotShow ? false : (payload.disabled ?? false));
+          setNoShow(didNotShow);
+          setPenalties(didNotShow ? 0 : (payload.penalties ?? 0));
+          setShootingRange(
+            didNotShow ? 'None' : (payload.shootingRange ?? 'Mixed'),
+          );
           setNotes(payload.notes ?? '');
         } else {
           setAutoFuel(0);
           setActiveFuel(0);
-          setInactiveFuel(0);
-          setCycles(0);
           setAutoTower('None');
           setTower('None');
           setPath('Trench');
@@ -598,7 +637,6 @@ export default function Home() {
           setNoShow(false);
           setPenalties(0);
           setShootingRange('Mixed');
-          setCycleSeconds(0);
           setNotes('');
         }
         setDraftReady(true);
@@ -746,10 +784,12 @@ export default function Home() {
 
   useEffect(() => {
     if (activeView !== 'Plan' || !currentMatch || !session) return;
+    let cancelled = false;
     loadedPlanMatchIdRef.current = '';
     setPlanMessage('');
     setPlanAuthor('');
     setPlanUpdatedAt(null);
+    setMatchPlan(planForMatch(null, currentMatch));
     const cacheId = `match-plan:${currentMatch.id}`;
     const draftId = `match-plan-draft:${currentMatch.id}`;
     void Promise.all([
@@ -761,6 +801,7 @@ export default function Home() {
         updatedAt?: number | null;
       }>(cacheId),
     ]).then(([draft, cached]) => {
+      if (cancelled) return;
       if (draft) setMatchPlan(planForMatch(draft.payload, currentMatch));
       else if (cached) setMatchPlan(planForMatch(cached.plan, currentMatch));
       if (cached) {
@@ -775,7 +816,10 @@ export default function Home() {
         loadedPlanMatchIdRef.current = currentMatch.id;
       }
     });
-    if (!online) return;
+    if (!online)
+      return () => {
+        cancelled = true;
+      };
     fetch(`/api/match-plans?matchId=${encodeURIComponent(currentMatch.id)}`)
       .then(async (response) => {
         const result = (await response.json()) as {
@@ -788,6 +832,7 @@ export default function Home() {
         if (!response.ok)
           throw new Error(result.error ?? 'Unable to load this match plan.');
         const draft = await getDraft<MatchPlan>(draftId).catch(() => undefined);
+        if (cancelled) return;
         if (!draft) setMatchPlan(planForMatch(result.plan, currentMatch));
         setPlanCanEdit(result.canEdit);
         setPlanAuthor(result.authorName ?? '');
@@ -800,6 +845,7 @@ export default function Home() {
         });
       })
       .catch((error) => {
+        if (cancelled) return;
         setMatchPlan(planForMatch(null, currentMatch));
         setPlanCanEdit(false);
         setPlanMessage(
@@ -809,8 +855,11 @@ export default function Home() {
         );
       })
       .finally(() => {
-        loadedPlanMatchIdRef.current = currentMatch.id;
+        if (!cancelled) loadedPlanMatchIdRef.current = currentMatch.id;
       });
+    return () => {
+      cancelled = true;
+    };
   }, [activeView, currentMatch, online, session]);
 
   useEffect(() => {
@@ -886,13 +935,10 @@ export default function Home() {
     activeFuel,
     autoFuel,
     autoTower,
-    cycleSeconds,
-    cycles,
     defenseRating,
     disabled,
     draftId,
     draftReady,
-    inactiveFuel,
     noShow,
     notes,
     path,
@@ -927,9 +973,20 @@ export default function Home() {
               heightInches: serverEntry.dimensions?.height ?? 0,
             }
           : emptyPitDraft;
-        setPitDraft({
+        const loadedDraft = {
           ...emptyPitDraft,
           ...(draft?.payload ?? serverDraft),
+        };
+        setPitDraft({
+          ...loadedDraft,
+          autonomousStart: normalizeSelections(
+            loadedDraft.autonomousStart,
+            'Unknown',
+          ),
+          autonomousSwipe: normalizeSelections(
+            loadedDraft.autonomousSwipe,
+            'None',
+          ),
         });
         setPitReady(true);
       })
@@ -1642,81 +1699,7 @@ export default function Home() {
           </div>
         </header>
         {activeView === 'Home' && (
-          <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-3">
-            <Card className="sm:col-span-2">
-              <CardHeader>
-                <CardTitle>Welcome, {session?.user.name ?? 'scout'}</CardTitle>
-                <Badge variant="outline">
-                  {eventPack?.role ?? 'signed out'}
-                </Badge>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  {eventPack?.event.name ??
-                    'An admin needs to load the current event.'}
-                </p>
-                {eventPack?.event.updatedAt ? (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Live data updated{' '}
-                    {new Date(eventPack.event.updatedAt).toLocaleTimeString(
-                      [],
-                      {
-                        hour: 'numeric',
-                        minute: '2-digit',
-                        second: '2-digit',
-                      },
-                    )}
-                  </p>
-                ) : null}
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {isAdmin && (
-                    <Button
-                      onClick={() => {
-                        setAdminSection('assignments');
-                        navigate('Admin');
-                      }}
-                    >
-                      <CalendarDays />
-                      Scout assignments
-                    </Button>
-                  )}
-                  <Button
-                    variant="outline"
-                    disabled={!online || packLoading}
-                    onClick={() => void loadEventPack(false, true)}
-                  >
-                    <RefreshCw className={packLoading ? 'animate-spin' : ''} />
-                    Refresh live data
-                  </Button>
-                  <Button
-                    variant="outline"
-                    disabled={!online || packLoading}
-                    onClick={() => void loadEventPack(false, true)}
-                  >
-                    <RefreshCw className={packLoading ? 'animate-spin' : ''} />
-                    Refresh live data
-                  </Button>
-                  {canUseStrategy && (
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setTeamsSection('analysis');
-                        navigate('Teams');
-                      }}
-                    >
-                      <BarChart3 />
-                      Analysis workspace
-                    </Button>
-                  )}
-                  {isAdmin && (
-                    <Button variant="outline" onClick={() => navigate('Admin')}>
-                      <UserCog />
-                      Administration
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+          <div className="mx-auto grid w-full max-w-3xl gap-4 p-4 sm:p-6">
             <Card>
               <CardHeader>
                 <CardTitle>Next assignment</CardTitle>
@@ -1765,70 +1748,6 @@ export default function Home() {
                 )}
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>My assignments</CardTitle>
-                <Badge variant="outline">{myAssignments.length}</Badge>
-              </CardHeader>
-              <CardContent className="space-y-1">
-                {myAssignments.slice(0, 5).map(
-                  ({ assignment, match }) =>
-                    match && (
-                      <button
-                        className="schedule-row w-full text-left"
-                        onClick={() =>
-                          selectAssignment(
-                            match,
-                            assignment.teamNumber,
-                            assignment.station,
-                          )
-                        }
-                        key={`${match.id}-${assignment.station}`}
-                      >
-                        <strong>{matchLabel(match)}</strong>
-                        <span>Team {assignment.teamNumber}</span>
-                        <small>{assignment.station.toUpperCase()}</small>
-                      </button>
-                    ),
-                )}
-                {myAssignments.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    No assignments yet.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>My scout shifts</CardTitle>
-                <Badge variant="outline">
-                  {eventPack?.event.timezone ?? 'Event time'}
-                </Badge>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {eventPack?.scoutShifts.map((shift) => (
-                  <div className="schedule-row" key={shift.id}>
-                    <strong>{shift.station.toUpperCase()}</strong>
-                    <span>
-                      {new Date(shift.startsAt).toLocaleTimeString([], {
-                        hour: 'numeric',
-                        minute: '2-digit',
-                      })}
-                      {' – '}
-                      {new Date(shift.endsAt).toLocaleTimeString([], {
-                        hour: 'numeric',
-                        minute: '2-digit',
-                      })}
-                    </span>
-                  </div>
-                ))}
-                {!eventPack?.scoutShifts.length && (
-                  <p className="text-sm text-muted-foreground">
-                    No time-block shift assigned.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
             {reopenedEntries.length > 0 && (
               <Card className="border-amber-400">
                 <CardHeader>
@@ -1863,38 +1782,6 @@ export default function Home() {
                 </CardContent>
               </Card>
             )}
-            <QrRelay online={online} />
-            <Card>
-              <CardHeader>
-                <CardTitle>Event coverage</CardTitle>
-              </CardHeader>
-              <CardContent className="mini-stats">
-                <span>
-                  <strong>{eventPack?.assignments.length ?? 0}</strong> assigned
-                  slots
-                </span>
-                <span>
-                  <strong>{totalSlots}</strong> total slots
-                </span>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick links</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-2">
-                <Button variant="outline" onClick={() => navigate('Teams')}>
-                  Browse {eventTeams.length} teams
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => void syncNow()}
-                  disabled={!queuedCount || syncing}
-                >
-                  Sync this device
-                </Button>
-              </CardContent>
-            </Card>
           </div>
         )}
         {activeView === 'Scout' && (
@@ -1976,10 +1863,7 @@ export default function Home() {
               </Card>
               <Card>
                 <CardHeader className="border-b">
-                  <CardTitle>Autonomous · 20 seconds</CardTitle>
-                  <Badge variant="secondary">
-                    <Zap /> HUB active
-                  </Badge>
+                  <CardTitle>Autonomous</CardTitle>
                 </CardHeader>
                 <CardContent className="divide-y divide-border p-0">
                   <Counter
@@ -1989,11 +1873,8 @@ export default function Home() {
                     onChange={setAutoFuel}
                     quickAdds={[5]}
                   />
-                  <div className="choice-section">
-                    <span>
-                      <strong>Auto TOWER</strong>
-                      <small>LEVEL 1 only</small>
-                    </span>
+                  <div className="flex items-center justify-between gap-3 px-4 py-2">
+                    <strong>Auto TOWER</strong>
                     <div className="two-choices">
                       {['None', 'Level 1'].map((item) => (
                         <button
@@ -2001,7 +1882,9 @@ export default function Home() {
                           onClick={() => setAutoTower(item)}
                           key={item}
                           className={
-                            autoTower === item ? 'choice selected' : 'choice'
+                            autoTower === item
+                              ? 'choice selected h-9 min-h-0 px-3 text-sm'
+                              : 'choice h-9 min-h-0 px-3 text-sm'
                           }
                         >
                           {autoTower === item && <Check />}
@@ -2015,28 +1898,14 @@ export default function Home() {
               <Card>
                 <CardHeader className="border-b">
                   <CardTitle>Teleoperated FUEL</CardTitle>
-                  <Badge variant="outline">Shift-aware</Badge>
                 </CardHeader>
                 <CardContent className="divide-y divide-border p-0">
                   <Counter
-                    label="Active HUB FUEL"
+                    label="FUEL scored"
                     hint="Add observed bursts with +5 or +10; fine-tune anytime"
                     value={activeFuel}
                     onChange={setActiveFuel}
                     quickAdds={[5, 10]}
-                  />
-                  <Counter
-                    label="Inactive HUB attempts"
-                    hint="Useful efficiency and awareness signal"
-                    value={inactiveFuel}
-                    onChange={setInactiveFuel}
-                    quickAdds={[5]}
-                  />
-                  <Counter
-                    label="Scoring cycles"
-                    hint="Intake → shoot cycles completed"
-                    value={cycles}
-                    onChange={setCycles}
                   />
                 </CardContent>
               </Card>
@@ -2066,7 +1935,7 @@ export default function Home() {
                       <Shield /> Defense
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <CardContent className="grid grid-cols-2 gap-2">
                     {[
                       { value: 0, label: 'None' },
                       { value: 1, label: 'Ineffective' },
@@ -2075,17 +1944,16 @@ export default function Home() {
                     ].map(({ value, label }) => (
                       <button
                         onClick={() => setDefenseRating(value)}
+                        aria-pressed={defenseRating === value}
                         className={
                           defenseRating === value
-                            ? 'choice selected'
-                            : 'choice'
+                            ? 'choice selected min-h-10 justify-start px-2 text-xs'
+                            : 'choice min-h-10 justify-start px-2 text-xs'
                         }
                         key={value}
                       >
-                        {defenseRating === value && <Check />}
-                        <span>
-                          <strong>{value}</strong> · {label}
-                        </span>
+                        <strong className="text-base">{value}</strong>
+                        <span>{label}</span>
                       </button>
                     ))}
                   </CardContent>
@@ -2115,12 +1983,6 @@ export default function Home() {
                       ))}
                     </div>
                   </div>
-                  <Counter
-                    label="Average full cycle time (seconds)"
-                    hint="Time from beginning one FUEL intake until beginning the next intake, including collecting, travel, shooting, and returning. Average 2–3 representative cycles."
-                    value={cycleSeconds}
-                    onChange={setCycleSeconds}
-                  />
                   <Counter
                     label="Number of penalties"
                     hint="Count referee-called penalties attributable to this robot; do not calculate penalty points."
@@ -2163,7 +2025,21 @@ export default function Home() {
                     </button>
                     <button
                       className={noShow ? 'choice selected' : 'choice'}
-                      onClick={() => setNoShow(!noShow)}
+                      onClick={() => {
+                        const nextNoShow = !noShow;
+                        setNoShow(nextNoShow);
+                        if (nextNoShow) {
+                          setAutoFuel(0);
+                          setActiveFuel(0);
+                          setAutoTower('None');
+                          setTower('None');
+                          setPath('None');
+                          setDefenseRating(0);
+                          setDisabled(false);
+                          setPenalties(0);
+                          setShootingRange('None');
+                        }
+                      }}
                     >
                       {noShow && <Check />}No-show
                     </button>
@@ -2502,19 +2378,25 @@ export default function Home() {
                             <button
                               type="button"
                               className={
-                                pitDraft.autonomousStart === item
+                                pitDraft.autonomousStart.includes(item)
                                   ? 'choice selected'
                                   : 'choice'
                               }
                               onClick={() =>
                                 setPitDraft({
                                   ...pitDraft,
-                                  autonomousStart: item,
+                                  autonomousStart: toggleSelection(
+                                    pitDraft.autonomousStart,
+                                    item,
+                                    'Unknown',
+                                  ),
                                 })
                               }
                               key={item}
                             >
-                              {pitDraft.autonomousStart === item && <Check />}
+                              {pitDraft.autonomousStart.includes(item) && (
+                                <Check />
+                              )}
                               {item}
                             </button>
                           ))}
@@ -2528,19 +2410,25 @@ export default function Home() {
                               <button
                                 type="button"
                                 className={
-                                  pitDraft.autonomousSwipe === item
+                                  pitDraft.autonomousSwipe.includes(item)
                                     ? 'choice selected'
                                     : 'choice'
                                 }
                                 onClick={() =>
                                   setPitDraft({
                                     ...pitDraft,
-                                    autonomousSwipe: item,
+                                    autonomousSwipe: toggleSelection(
+                                      pitDraft.autonomousSwipe,
+                                      item,
+                                      'None',
+                                    ),
                                   })
                                 }
                                 key={item}
                               >
-                                {pitDraft.autonomousSwipe === item && <Check />}
+                                {pitDraft.autonomousSwipe.includes(item) && (
+                                  <Check />
+                                )}
                                 {item}
                               </button>
                             ),
@@ -2749,7 +2637,7 @@ export default function Home() {
                         </span>
                       </div>
                       <div className="mt-3 border-t pt-2 text-xs">
-                        <p className="font-semibold">Pit snapshot</p>
+                        <p className="font-semibold">Pit summary</p>
                         {pit ? (
                           <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-muted-foreground">
                             <span>
@@ -2776,10 +2664,16 @@ export default function Home() {
                             <span className="col-span-2 line-clamp-2">
                               Auto:{' '}
                               {[
-                                pit.payload.autonomousStart,
-                                pit.payload.autonomousSwipe !== 'None'
-                                  ? pit.payload.autonomousSwipe
-                                  : null,
+                                normalizeSelections(
+                                  pit.payload.autonomousStart,
+                                  'Unknown',
+                                ).join(', '),
+                                normalizeSelections(
+                                  pit.payload.autonomousSwipe,
+                                  'None',
+                                )
+                                  .filter((item) => item !== 'None')
+                                  .join(', ') || null,
                                 pit.payload.autonomousDepot ? 'Depot' : null,
                               ]
                                 .filter(Boolean)
@@ -3343,7 +3237,7 @@ export default function Home() {
                 <CardHeader>
                   <CardTitle>
                     {selectedTeam
-                      ? `Team ${selectedTeam} snapshot`
+                      ? `Team ${selectedTeam} summary`
                       : 'Select a team above'}
                   </CardTitle>
                   <Badge variant="outline">
@@ -3690,6 +3584,18 @@ export default function Home() {
                 )}
               </CardContent>
             </Card>
+            <details className="rounded-xl border bg-card p-4 text-card-foreground">
+              <summary className="cursor-pointer font-semibold">
+                Offline QR relay
+              </summary>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Scan another scout&apos;s completed match only when their device
+                cannot upload it directly.
+              </p>
+              <div className="mt-4">
+                <QrRelay online={online} />
+              </div>
+            </details>
           </div>
         )}
       </section>

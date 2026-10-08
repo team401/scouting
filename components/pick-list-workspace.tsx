@@ -6,6 +6,7 @@ import {
   ArrowUp,
   Check,
   Download,
+  Eye,
   GripVertical,
   Printer,
   RotateCcw,
@@ -41,6 +42,12 @@ type PickListsResponse = {
   consensus: ConsensusEntry[];
   ballotCount: number;
   canEditOfficial: boolean;
+  ballots?: Array<{
+    ownerUserId: string;
+    ownerName: string;
+    updatedAt: number;
+    data: PickListData;
+  }>;
   error?: string;
 };
 
@@ -80,9 +87,10 @@ export function PickListWorkspace({
   organizationTeamNumber: number;
 }) {
   const [response, setResponse] = useState<PickListsResponse | null>(null);
-  const [mode, setMode] = useState<'personal' | 'official' | 'selection'>(
-    'personal',
-  );
+  const [mode, setMode] = useState<
+    'personal' | 'review' | 'official' | 'selection'
+  >('personal');
+  const [reviewOwnerId, setReviewOwnerId] = useState('');
   const [personal, setPersonal] = useState<PickListData>(emptyPickList);
   const [official, setOfficial] = useState<PickListData>(emptyPickList);
   const [message, setMessage] = useState('');
@@ -336,6 +344,19 @@ export function PickListWorkspace({
           </Button>
           <Button
             size="sm"
+            variant={mode === 'review' ? 'default' : 'outline'}
+            disabled={!response?.ballots?.length}
+            onClick={() => {
+              setReviewOwnerId(
+                reviewOwnerId || response?.ballots?.[0]?.ownerUserId || '',
+              );
+              setMode('review');
+            }}
+          >
+            <Eye /> Review lists
+          </Button>
+          <Button
+            size="sm"
             variant={mode === 'official' ? 'default' : 'outline'}
             onClick={() => setMode('official')}
           >
@@ -364,7 +385,86 @@ export function PickListWorkspace({
           )}
         </div>
 
-        {mode !== 'selection' && (
+        {mode === 'review' && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="font-semibold" htmlFor="review-pick-list">
+                Scout
+              </label>
+              <select
+                id="review-pick-list"
+                className="h-10 min-w-56 rounded-md border px-3"
+                value={reviewOwnerId}
+                onChange={(event) => setReviewOwnerId(event.target.value)}
+              >
+                {(response?.ballots ?? []).map((ballot) => (
+                  <option value={ballot.ownerUserId} key={ballot.ownerUserId}>
+                    {ballot.ownerName}
+                  </option>
+                ))}
+              </select>
+              {response?.ballots?.find(
+                (ballot) => ballot.ownerUserId === reviewOwnerId,
+              )?.updatedAt ? (
+                <span className="text-xs text-muted-foreground">
+                  Updated{' '}
+                  {new Date(
+                    response.ballots.find(
+                      (ballot) => ballot.ownerUserId === reviewOwnerId,
+                    )!.updatedAt,
+                  ).toLocaleString([], {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  })}
+                </span>
+              ) : null}
+            </div>
+            <div className="overflow-x-auto rounded-lg border">
+              <div className="min-w-[620px] divide-y">
+                {(response?.ballots ?? [])
+                  .find((ballot) => ballot.ownerUserId === reviewOwnerId)
+                  ?.data.entries.map((entry, index) => {
+                    const team = metrics.get(entry.teamNumber);
+                    return (
+                      <div
+                        className={
+                          entry.avoid
+                            ? 'grid grid-cols-[54px_90px_90px_90px_120px_1fr] items-center gap-2 bg-destructive/5 p-3'
+                            : 'grid grid-cols-[54px_90px_90px_90px_120px_1fr] items-center gap-2 p-3'
+                        }
+                        key={entry.teamNumber}
+                      >
+                        <strong>#{index + 1}</strong>
+                        <strong>{entry.teamNumber}</strong>
+                        <span className="text-sm">
+                          EPA {team?.epa?.toFixed(1) ?? '—'}
+                        </span>
+                        <span className="text-sm">
+                          OPR {team?.opr?.toFixed(1) ?? '—'}
+                        </span>
+                        <Badge variant={entry.avoid ? 'destructive' : 'outline'}>
+                          {entry.avoid
+                            ? 'Avoid'
+                            : entry.tier === 'first'
+                              ? 'First pick'
+                              : entry.tier === 'second'
+                                ? 'Second pick'
+                                : 'Do not pick'}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          {entry.note || 'No notes'}
+                        </span>
+                      </div>
+                    );
+                  }) ?? null}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {mode !== 'selection' && mode !== 'review' && (
           <>
             <div className="flex flex-wrap gap-2">
               {mode === 'official' && (
