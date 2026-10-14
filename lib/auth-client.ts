@@ -75,8 +75,10 @@ export async function signInWithOps(email: string, password: string) {
   });
   const body = (await response.json().catch(() => null)) as {
     error?: string;
+    mustResetPassword?: boolean;
   } | null;
   return {
+    mustResetPassword: body?.mustResetPassword ?? false,
     error: response.ok
       ? null
       : { message: body?.error ?? 'Unable to sign in.' },

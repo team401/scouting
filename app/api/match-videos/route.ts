@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { auth } from '@/lib/auth';
 
 const allowedTypes = new Set(['video/mp4', 'video/webm', 'video/quicktime']);
-const uploadRoles = new Set(['owner', 'admin', 'strategy', 'video']);
 const maxBytes = 2 * 1024 * 1024 * 1024;
 
 const initSchema = z.object({
@@ -125,7 +124,7 @@ export async function GET(request: Request) {
     }>();
   return Response.json({
     videos: videos.results,
-    canUpload: uploadRoles.has(user.role),
+    canUpload: true,
     canDeleteAny: ['owner', 'admin'].includes(user.role),
     userId: user.userId,
   });
@@ -137,11 +136,6 @@ export async function POST(request: Request) {
     return Response.json(
       { error: 'Sign in to manage match videos.' },
       { status: 401 },
-    );
-  if (!uploadRoles.has(user.role))
-    return Response.json(
-      { error: 'Your role cannot upload match videos.' },
-      { status: 403 },
     );
   const url = new URL(request.url);
   const action = url.searchParams.get('action');

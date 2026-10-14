@@ -292,6 +292,49 @@ select option {
 .schedule-row small {
   color: var(--muted-foreground);
 }
+.pit-queue-row {
+  margin-inline: -8px;
+  width: calc(100% + 16px);
+  padding: 6px 8px;
+  border-left: 4px solid transparent;
+  border-radius: 8px;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+.pit-queue-row:hover,
+.pit-queue-row.selected {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+.pit-queue-complete {
+  border-left-color: oklch(0.55 0.16 150);
+  background: color-mix(in oklch, oklch(0.68 0.16 150) 14%, transparent);
+}
+.pit-queue-needed {
+  border-left-color: oklch(0.65 0.16 65);
+  background: color-mix(in oklch, oklch(0.76 0.15 75) 12%, transparent);
+}
+.pit-queue-complete .pit-queue-status,
+.pit-queue-complete > svg {
+  color: oklch(0.46 0.15 150);
+}
+.pit-queue-needed .pit-queue-status,
+.pit-queue-needed > svg {
+  color: oklch(0.49 0.13 55);
+}
+.dark .pit-queue-complete .pit-queue-status,
+.dark .pit-queue-complete > svg {
+  color: oklch(0.78 0.14 150);
+}
+.dark .pit-queue-needed .pit-queue-status,
+.dark .pit-queue-needed > svg {
+  color: oklch(0.82 0.13 75);
+}
+.pit-queue-status {
+  font-size: 0.875rem;
+  font-weight: 650;
+}
 .right-rail {
   display: grid;
   align-content: start;

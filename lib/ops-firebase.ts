@@ -30,6 +30,40 @@ export async function signInToOps(email: string, password: string) {
   return body as FirebaseSignIn;
 }
 
+export async function changeOpsPassword(idToken: string, password: string) {
+  const response = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${encodeURIComponent(env.FIREBASE_WEB_API_KEY)}`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ idToken, password, returnSecureToken: true }),
+    },
+  );
+  const body: unknown = await response.json();
+  if (!response.ok) throw new Error(firebaseError(body));
+  return body as { idToken: string };
+}
+
+export async function clearOpsPasswordReset(idToken: string, uid: string) {
+  const response = await fetch(
+    `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(env.FIREBASE_PROJECT_ID)}/databases/(default)/documents/users/${encodeURIComponent(uid)}?updateMask.fieldPaths=mustResetPassword`,
+    {
+      method: 'PATCH',
+      headers: {
+        authorization: `Bearer ${idToken}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        fields: { mustResetPassword: { booleanValue: false } },
+      }),
+    },
+  );
+  if (!response.ok)
+    throw new Error(
+      'The password changed, but Ops could not finish activating the account. Sign in to Ops to complete setup.',
+    );
+}
+
 export async function loadOpsRoster(idToken: string) {
   const response = await fetch(
     `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(env.FIREBASE_PROJECT_ID)}/databases/(default)/documents:runQuery`,

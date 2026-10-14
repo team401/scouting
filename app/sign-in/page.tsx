@@ -15,9 +15,13 @@ export default function SignInPage() {
   const { data: session, isPending } = authClient.useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [mustResetPassword, setMustResetPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [guestCode, setGuestCode] = useState('');
+  const [guestName, setGuestName] = useState('');
   const [guestBusy, setGuestBusy] = useState(false);
   const [guestError, setGuestError] = useState('');
 
@@ -33,6 +37,44 @@ export default function SignInPage() {
     setError('');
     const result = await signInWithOps(email.trim().toLowerCase(), password);
     setBusy(false);
+    if (result.mustResetPassword) setMustResetPassword(true);
+    else if (result.error) setError(result.error.message);
+    else window.location.replace('/');
+  }
+
+  async function setFirstPassword(
+    event: Parameters<NonNullable<ComponentProps<'form'>['onSubmit']>>[0],
+  ) {
+    event.preventDefault();
+    setError('');
+    if (newPassword.length < 6) {
+      setError('Use at least 6 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("Passwords don't match.");
+      return;
+    }
+    setBusy(true);
+    const response = await fetch('/api/auth/firebase-password', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        email: email.trim().toLowerCase(),
+        currentPassword: password,
+        newPassword,
+      }),
+    });
+    const body = (await response.json().catch(() => null)) as {
+      error?: string;
+    } | null;
+    if (!response.ok) {
+      setBusy(false);
+      setError(body?.error ?? 'Could not change your password.');
+      return;
+    }
+    const result = await signInWithOps(email.trim().toLowerCase(), newPassword);
+    setBusy(false);
     if (result.error) setError(result.error.message);
     else window.location.replace('/');
   }
@@ -46,7 +88,7 @@ export default function SignInPage() {
     const response = await fetch('/api/auth/guest-session', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ code: guestCode }),
+      body: JSON.stringify({ code: guestCode, name: guestName }),
     });
     const body = (await response.json().catch(() => null)) as {
       error?: string;
@@ -70,59 +112,107 @@ export default function SignInPage() {
           <div className="brand-lockup">
             <span className="brand-mark">401</span>
           </div>
-          <CardTitle>Sign in with Team 401 Ops</CardTitle>
+          <CardTitle>
+            {mustResetPassword
+              ? 'Choose your permanent password'
+              : 'Sign in with Team 401 Ops'}
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <form className="space-y-4" onSubmit={submit}>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="input-with-icon">
-                <Mail />
-                <Input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="Your Ops account email"
-                />
+          <form
+            className="space-y-4"
+            onSubmit={mustResetPassword ? setFirstPassword : submit}
+          >
+            {mustResetPassword && (
+              <p className="text-sm text-muted-foreground">
+                Replace the temporary password your coach gave you before using
+                Scouting or Ops.
+              </p>
+            )}
+            {!mustResetPassword && (
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <div className="input-with-icon">
+                  <Mail />
+                  <Input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="Your Ops account email"
+                  />
+                </div>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="input-with-icon">
-                <LockKeyhole />
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                />
+            )}
+            {!mustResetPassword && (
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <div className="input-with-icon">
+                  <LockKeyhole />
+                  <Input
+                    id="password"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                  />
+                </div>
               </div>
-            </div>
+            )}
+            {mustResetPassword && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">New password</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={6}
+                    required
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirm new password</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={6}
+                    required
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                  />
+                </div>
+              </>
+            )}
             {error && (
               <p role="alert" className="auth-error">
                 {error}
               </p>
             )}
             <Button type="submit" className="h-11 w-full" disabled={busy}>
-              {busy && <LoaderCircle className="animate-spin" />} Sign in
+              {busy && <LoaderCircle className="animate-spin" />}
+              {mustResetPassword ? 'Save and continue' : 'Sign in'}
             </Button>
           </form>
-          <div className="mt-3 space-y-2 text-center text-sm">
-            <Link
-              className="text-primary hover:underline"
-              href="/forgot-password"
-            >
-              Forgot your Ops password?
-            </Link>
-            <p className="text-muted-foreground">
-              Accounts are created and managed in Team 401 Ops.
-            </p>
-          </div>
+          {!mustResetPassword && (
+            <div className="mt-3 space-y-2 text-center text-sm">
+              <Link
+                className="text-primary hover:underline"
+                href="/forgot-password"
+              >
+                Forgot your Ops password?
+              </Link>
+              <p className="text-muted-foreground">
+                Accounts are created and managed in Team 401 Ops.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
       <Card className="auth-card">
@@ -132,11 +222,24 @@ export default function SignInPage() {
         <CardContent>
           <form className="space-y-4" onSubmit={guestSubmit}>
             <p className="text-sm text-muted-foreground">
-              Scouting with Team 401 temporarily? Enter the individual guest
-              pass provided by a scouting administrator.
+              Scouting with Team 401 temporarily? Enter your name and the
+              shared code provided to your team.
             </p>
             <div className="space-y-2">
-              <Label htmlFor="guest-code">Guest pass</Label>
+              <Label htmlFor="guest-name">Your name</Label>
+              <Input
+                id="guest-name"
+                autoComplete="name"
+                required
+                minLength={2}
+                maxLength={80}
+                value={guestName}
+                onChange={(event) => setGuestName(event.target.value)}
+                placeholder="First and last name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="guest-code">Team guest code</Label>
               <Input
                 id="guest-code"
                 autoComplete="off"
@@ -144,7 +247,7 @@ export default function SignInPage() {
                 required
                 value={guestCode}
                 onChange={(event) => setGuestCode(event.target.value)}
-                placeholder="401-XXXX-XXXX-XXXX-XXXX"
+                placeholder="401-XXXX-XXXX"
               />
             </div>
             {guestError && (

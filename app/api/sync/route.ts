@@ -15,6 +15,9 @@ const scoutPayloadSchema = z.object({
   inactiveFuel: z.number().int().nonnegative(),
   cycles: z.number().int().nonnegative(),
   autoTower: z.string(),
+  autoStartPosition: z
+    .enum(['Left trench', 'Left bump', 'Center', 'Right bump', 'Right trench'])
+    .optional(),
   tower: z.string(),
   path: z.string(),
 });
@@ -22,15 +25,45 @@ const scoutPayloadSchema = z.object({
 const pitPayloadSchema = z.object({
   eventKey: z.string().min(1), teamNumber: z.number().int().positive(), seasonYear: z.number().int(), schemaVersion: z.number().int().positive(),
   drivetrain: z.string().min(1).max(60), swerveModule: z.string().max(80), motorTypes: z.array(z.string().max(80)).max(12),
-  weightLbs: z.number().nonnegative().max(500), widthInches: z.number().nonnegative().max(200), lengthInches: z.number().nonnegative().max(200), heightInches: z.number().nonnegative().max(300),
+  weightLbs: z.number().nonnegative().max(500),
   fuelCapacity: z.number().int().nonnegative().max(500), climbCapability: z.string().max(120),
   fieldAccess: z.enum(['Trench', 'Bump', 'Both']).default('Both'),
   fieldAccessPreference: z.enum(['Trench', 'Bump', 'No preference']).default('No preference'),
-  shooterType: z.string().min(1).max(80).default('Fixed'),
+  shooterMount: z.enum(['Fixed', 'Turreted']).default('Fixed'),
+  shooterBarrels: z.enum(['1', '2', '3', 'Drum']).default('1'),
+  adjustableHood: z.boolean().default(false),
+  shooterType: z.string().min(1).max(80).optional(),
   autonomousStart: z
     .union([
-      z.array(z.enum(['Left', 'Middle', 'Right', 'Unknown'])).min(1).max(4),
-      z.enum(['Left', 'Middle', 'Right', 'Unknown']).transform((value) => [value]),
+      z
+        .array(
+          z.enum([
+            'Left trench',
+            'Left bump',
+            'Center',
+            'Right bump',
+            'Right trench',
+            'Unknown',
+            'Left',
+            'Middle',
+            'Right',
+          ]),
+        )
+        .min(1)
+        .max(9),
+      z
+        .enum([
+          'Left trench',
+          'Left bump',
+          'Center',
+          'Right bump',
+          'Right trench',
+          'Unknown',
+          'Left',
+          'Middle',
+          'Right',
+        ])
+        .transform((value) => [value]),
     ])
     .default(['Unknown']),
   autonomousSwipe: z
@@ -94,7 +127,7 @@ export async function POST(request: Request) {
           payload = excluded.payload, updated_at = excluded.updated_at`)
         .bind(mutation.id, mutation.organizationId, event.id, payload.teamNumber, session.user.id, payload.seasonYear,
           payload.drivetrain, payload.swerveModule || null, JSON.stringify(payload.motorTypes), payload.weightLbs || null,
-          JSON.stringify({ width: payload.widthInches, length: payload.lengthInches, height: payload.heightInches }), JSON.stringify(payload), now, now).run();
+          null, JSON.stringify(payload), now, now).run();
       accepted.push(mutation.id);
       continue;
     }

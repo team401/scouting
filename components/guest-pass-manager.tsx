@@ -82,18 +82,19 @@ export function GuestPassManager() {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Create an individual pass for each visiting scout. Guest accounts can
-          submit scouting data but do not need a Team 401 Ops account.
+          Create one shared code for a partner team. Each visiting scout enters
+          the code and their own name. Revoking the code signs out the entire
+          guest group.
         </p>
         <div className="grid gap-3 sm:grid-cols-[1fr_10rem_auto] sm:items-end">
           <div className="space-y-2">
-            <Label htmlFor="guest-name">Guest name or partner team</Label>
+            <Label htmlFor="guest-name">Partner team or group</Label>
             <Input
               id="guest-name"
               value={name}
               maxLength={80}
               onChange={(event) => setName(event.target.value)}
-              placeholder="Alex — Team 1234"
+              placeholder="Team 1234"
             />
           </div>
           <div className="space-y-2">
@@ -118,7 +119,7 @@ export function GuestPassManager() {
         {newCode && (
           <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
             <p className="text-xs font-medium text-muted-foreground">
-              New guest pass — shown only now
+              New team code — shown only now
             </p>
             <div className="mt-1 flex items-center gap-2">
               <code className="min-w-0 flex-1 overflow-x-auto text-base font-semibold">
@@ -127,7 +128,7 @@ export function GuestPassManager() {
               <Button
                 size="icon"
                 variant="outline"
-                aria-label="Copy guest pass"
+                aria-label="Copy team code"
                 onClick={() => void navigator.clipboard.writeText(newCode)}
               >
                 <Copy />

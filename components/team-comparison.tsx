@@ -53,12 +53,20 @@ function formatNumber(value: number | null, digits = 1) {
 
 export function TeamComparison({
   teams,
-  matchTeams,
+  matches,
 }: {
   teams: ComparisonTeam[];
-  matchTeams: number[];
+  matches: Array<{
+    key: string;
+    label: string;
+    red: number[];
+    blue: number[];
+  }>;
 }) {
   const [selected, setSelected] = useState<number[]>([]);
+  const [selectedMatchKey, setSelectedMatchKey] = useState(
+    matches[0]?.key ?? '',
+  );
   const [teamInput, setTeamInput] = useState('');
   const [details, setDetails] = useState<Record<number, AnalysisResponse>>({});
   const [message, setMessage] = useState('');
@@ -68,6 +76,14 @@ export function TeamComparison({
     () => new Map(teams.map((team) => [team.teamNumber, team])),
     [teams],
   );
+  const selectedMatch = matches.find(
+    (match) => match.key === selectedMatchKey,
+  );
+
+  useEffect(() => {
+    if (matches.some((match) => match.key === selectedMatchKey)) return;
+    setSelectedMatchKey(matches[0]?.key ?? '');
+  }, [matches, selectedMatchKey]);
 
   useEffect(() => {
     const missing = selected.filter((team) => !details[team]);
@@ -194,17 +210,40 @@ export function TeamComparison({
               <Plus /> Add
             </Button>
           </form>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={matchTeams.length === 0}
-            onClick={() => {
-              setSelected([...new Set(matchTeams)].slice(0, 6));
-              setMessage('');
-            }}
-          >
-            Current match teams
-          </Button>
+          <div className="flex min-w-64 flex-1 gap-2 sm:flex-initial">
+            <label className="sr-only" htmlFor="comparison-match">
+              Match to compare
+            </label>
+            <select
+              id="comparison-match"
+              className="h-9 min-w-32 flex-1 rounded-md border px-3 text-sm"
+              value={selectedMatchKey}
+              onChange={(event) => setSelectedMatchKey(event.target.value)}
+            >
+              {matches.map((match) => (
+                <option value={match.key} key={match.key}>
+                  {match.label}
+                </option>
+              ))}
+            </select>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!selectedMatch}
+              onClick={() => {
+                if (!selectedMatch) return;
+                setSelected(
+                  [...new Set([...selectedMatch.red, ...selectedMatch.blue])].slice(
+                    0,
+                    6,
+                  ),
+                );
+                setMessage('');
+              }}
+            >
+              Load teams
+            </Button>
+          </div>
           {selected.length > 0 && (
             <Button
               type="button"

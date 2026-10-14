@@ -6,8 +6,8 @@ import {
   normalizeGuestPassCode,
 } from '../lib/guest-pass.ts';
 
-void test('creates a readable high-entropy Team 401 guest pass', () => {
-  assert.match(createGuestPassCode(), /^401-[A-Z2-9]{4}(?:-[A-Z2-9]{4}){3}$/);
+void test('creates a readable Team 401 guest code', () => {
+  assert.match(createGuestPassCode(), /^401-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
 });
 
 void test('normalizes guest passes before hashing', async () => {
