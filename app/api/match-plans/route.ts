@@ -11,6 +11,7 @@ const planSchema = z.object({
   endgame: z.string().max(1000),
   notes: z.string().max(2000),
   teamRoles: z.record(z.string(), z.string().max(500)),
+  absentTeams: z.array(z.number().int().positive()).max(6).optional().default([]),
   board: z.object({
     robots: z
       .array(

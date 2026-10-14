@@ -78,7 +78,15 @@ async function identity(request: Request) {
 function parseList(value: string): PickListData {
   try {
     const parsed = listSchema.safeParse(JSON.parse(value));
-    return parsed.success ? parsed.data : emptyPickList;
+    if (!parsed.success) return emptyPickList;
+    return {
+      ...parsed.data,
+      entries: parsed.data.entries.map((entry) => ({
+        ...entry,
+        tier: entry.avoid ? ('do-not-pick' as const) : entry.tier,
+        avoid: false,
+      })),
+    };
   } catch {
     return emptyPickList;
   }

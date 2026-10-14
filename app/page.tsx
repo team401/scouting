@@ -13,6 +13,7 @@ import {
   KeyRound,
   LayoutDashboard,
   Map,
+  Menu,
   Minus,
   Moon,
   Plus,
@@ -290,6 +291,7 @@ type MatchPlan = {
   endgame: string;
   notes: string;
   teamRoles: Record<string, string>;
+  absentTeams: number[];
   board: TacticalBoardData;
 };
 const emptyMatchPlan: MatchPlan = {
@@ -300,6 +302,7 @@ const emptyMatchPlan: MatchPlan = {
   endgame: '',
   notes: '',
   teamRoles: {},
+  absentTeams: [],
   board: { robots: [], strokes: [] },
 };
 
@@ -311,7 +314,16 @@ function planForMatch(
     match.alliances.red,
     match.alliances.blue,
   );
-  const expectedTeams = defaultRobots.map((robot) => robot.team).sort((a, b) => a - b);
+  const scheduledTeams = new Set(defaultRobots.map((robot) => robot.team));
+  const absentTeams = (plan?.absentTeams ?? []).filter((team) =>
+    scheduledTeams.has(team),
+  );
+  const availableRobots = defaultRobots.filter(
+    (robot) => !absentTeams.includes(robot.team),
+  );
+  const expectedTeams = availableRobots
+    .map((robot) => robot.team)
+    .sort((a, b) => a - b);
   const savedTeams = (plan?.board?.robots ?? [])
     .map((robot) => robot.team)
     .sort((a, b) => a - b);
@@ -320,7 +332,7 @@ function planForMatch(
     savedTeams.every((team, index) => team === expectedTeams[index]);
   const robots = savedBoardMatches
     ? (plan?.board?.robots ?? []).map((robot) => {
-        const assignment = defaultRobots.find(
+        const assignment = availableRobots.find(
           (candidate) => candidate.team === robot.team,
         );
         return assignment
@@ -331,12 +343,13 @@ function planForMatch(
             }
           : robot;
       })
-    : defaultRobots;
+    : availableRobots;
 
   return {
     ...emptyMatchPlan,
     ...plan,
     teamRoles: plan?.teamRoles ?? {},
+    absentTeams,
     board: {
       robots,
       strokes: plan?.board?.strokes ?? [],
@@ -410,6 +423,7 @@ function Counter({
 export default function Home() {
   const { data: session, isPending } = authClient.useSession();
   const [activeView, setActiveView] = useState<View>('Home');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [teamsSection, setTeamsSection] = useState<
     'analysis' | 'picklist' | 'review'
   >('analysis');
@@ -420,6 +434,11 @@ export default function Home() {
   const loadedPlanMatchIdRef = useRef('');
   const [autoFuel, setAutoFuel] = useState(0);
   const [activeFuel, setActiveFuel] = useState(0);
+  const [centerSwipes, setCenterSwipes] = useState(0);
+  const [passedFuel, setPassedFuel] = useState(0);
+  const [scoutingPhase, setScoutingPhase] = useState<
+    'pre' | 'auto' | 'tele' | 'post'
+  >('pre');
   const [autoTower, setAutoTower] = useState('');
   const [autoStartPosition, setAutoStartPosition] = useState('');
   const [tower, setTower] = useState('');
@@ -542,23 +561,25 @@ export default function Home() {
       ].sort((a, b) => a - b)
     : [];
   const currentPayload: ScoutingPayload = {
-    autoFuel: noShow ? 0 : autoFuel,
-    activeFuel: noShow ? 0 : activeFuel,
+    autoFuel,
+    activeFuel,
+    centerSwipes,
+    passedFuel,
     inactiveFuel: 0,
     cycles: 0,
-    autoTower: noShow ? 'None' : autoTower,
-    autoStartPosition: noShow ? 'None' : autoStartPosition,
-    tower: noShow ? 'None' : tower,
-    path: noShow ? 'None' : path,
-    defenseRating: noShow ? 0 : (defenseRating ?? 0),
-    disabled: noShow ? false : (disabled ?? false),
+    autoTower,
+    autoStartPosition,
+    tower,
+    path,
+    defenseRating: defenseRating ?? 0,
+    disabled: disabled ?? false,
     noShow,
-    penalties: noShow ? 0 : penalties,
-    shootingRange: noShow ? 'None' : shootingRange,
+    penalties,
+    shootingRange,
     cycleSeconds: 0,
     notes,
   };
-  const estimatedPoints = observedPoints(currentPayload);
+  const estimatedPoints = noShow ? 0 : observedPoints(currentPayload);
   const pitDraftId =
     eventPack && pitTeam ? `pit-${eventPack.event.key}-${pitTeam}` : null;
   const existingPitPhoto = pitTeam
@@ -577,6 +598,7 @@ export default function Home() {
   );
 
   function navigate(view: View) {
+    setMobileMenuOpen(false);
     if (view === activeView) return;
     navigationDepthRef.current += 1;
     const url = new URL(window.location.href);
@@ -672,27 +694,27 @@ export default function Home() {
             : serverEntry?.payload;
         if (payload) {
           const didNotShow = payload.noShow ?? false;
-          setAutoFuel(didNotShow ? 0 : payload.autoFuel);
-          setActiveFuel(didNotShow ? 0 : payload.activeFuel);
-          setAutoTower(didNotShow ? 'None' : (payload.autoTower ?? ''));
+          setAutoFuel(payload.autoFuel);
+          setActiveFuel(payload.activeFuel);
+          setCenterSwipes(payload.centerSwipes ?? 0);
+          setPassedFuel(payload.passedFuel ?? 0);
+          setAutoTower(payload.autoTower ?? '');
           setAutoStartPosition(
-            didNotShow ? 'None' : (payload.autoStartPosition ?? ''),
+            payload.autoStartPosition ?? '',
           );
-          setTower(didNotShow ? 'None' : (payload.tower ?? ''));
-          setPath(didNotShow ? 'None' : (payload.path ?? ''));
-          setDefenseRating(
-            didNotShow ? 0 : (payload.defenseRating ?? null),
-          );
-          setDisabled(didNotShow ? false : (payload.disabled ?? null));
+          setTower(payload.tower ?? '');
+          setPath(payload.path ?? '');
+          setDefenseRating(payload.defenseRating ?? null);
+          setDisabled(payload.disabled ?? null);
           setNoShow(didNotShow);
-          setPenalties(didNotShow ? 0 : (payload.penalties ?? 0));
-          setShootingRange(
-            didNotShow ? 'None' : (payload.shootingRange ?? ''),
-          );
+          setPenalties(payload.penalties ?? 0);
+          setShootingRange(payload.shootingRange ?? '');
           setNotes(payload.notes ?? '');
         } else {
           setAutoFuel(0);
           setActiveFuel(0);
+          setCenterSwipes(0);
+          setPassedFuel(0);
           setAutoTower('');
           setAutoStartPosition('');
           setTower('');
@@ -1018,6 +1040,7 @@ export default function Home() {
     autoFuel,
     autoStartPosition,
     autoTower,
+    centerSwipes,
     defenseRating,
     disabled,
     draftId,
@@ -1025,6 +1048,7 @@ export default function Home() {
     noShow,
     notes,
     path,
+    passedFuel,
     penalties,
     shootingRange,
     tower,
@@ -1119,11 +1143,11 @@ export default function Home() {
       return;
     }
     if (
-      [autoFuel, activeFuel, penalties].some(
+      [autoFuel, activeFuel, centerSwipes, passedFuel, penalties].some(
         (value) => !Number.isInteger(value) || value < 0,
       )
     ) {
-      setSaveError('Fuel and penalty counts must be zero or a positive whole number.');
+      setSaveError('All counts must be zero or a positive whole number.');
       return;
     }
     setSaveError('');
@@ -1342,6 +1366,7 @@ export default function Home() {
     setSubmissionStatus('draft');
     setSubmittedMatchMutation(null);
     setVideoReview(null);
+    setScoutingPhase('pre');
     navigate('Scout');
   }
 
@@ -1799,7 +1824,7 @@ export default function Home() {
           <span>Account</span>
         </button>
       </aside>
-      <section className="h-dvh min-w-0 flex-1 overflow-y-auto">
+      <section className="app-content h-dvh min-w-0 flex-1 overflow-y-auto">
         <header className="topbar">
           <div className="flex items-center gap-2">
             <h1>
@@ -1813,7 +1838,9 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="status-badge">
               {online ? <Cloud /> : <CloudOff />}
-              {online ? 'Online' : 'Offline ready'}
+              <span className="status-text">
+                {online ? 'Online' : 'Offline ready'}
+              </span>
             </Badge>
             {!isPending &&
               (session ? (
@@ -2080,10 +2107,22 @@ export default function Home() {
                   </label>
                 </CardContent>
               </Card>
-              <Card className="match-card">
+              <Card
+                className={
+                  selectedStation.startsWith('blue')
+                    ? 'match-card match-card-blue'
+                    : 'match-card'
+                }
+              >
                 <CardContent className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <span className="station-dot" />
+                    <span
+                      className={
+                        selectedStation.startsWith('blue')
+                          ? 'station-dot station-dot-blue'
+                          : 'station-dot'
+                      }
+                    />
                     <div>
                       <p className="eyebrow">
                         {selectedStation
@@ -2112,85 +2151,143 @@ export default function Home() {
                   </div>
                 </CardContent>
               </Card>
-              <Card>
-                <CardHeader className="border-b">
-                  <CardTitle>Autonomous</CardTitle>
-                </CardHeader>
-                <CardContent className="divide-y divide-border p-0">
-                  <div className="space-y-2 px-4 py-3">
-                    <div>
-                      <strong>Starting position</strong>
-                      <p className="text-xs text-muted-foreground">
-                        Left and right are viewed from the driver station.
+              <div className="grid grid-cols-4 gap-1 rounded-xl border bg-card p-1">
+                {([
+                  ['pre', 'Pre-match'],
+                  ['auto', 'Auto'],
+                  ['tele', 'Teleop'],
+                  ['post', 'Post-match'],
+                ] as const).map(([phase, label]) => (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={scoutingPhase === phase ? 'default' : 'ghost'}
+                    aria-current={scoutingPhase === phase ? 'step' : undefined}
+                    onClick={() => setScoutingPhase(phase)}
+                    className="min-w-0 px-1 text-xs sm:text-sm"
+                    key={phase}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+
+              {scoutingPhase === 'pre' && (
+                <Card>
+                  <CardHeader className="border-b">
+                    <CardTitle>Pre-match</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-5 pt-4">
+                    <div className="space-y-2">
+                      <div>
+                        <strong>Starting position</strong>
+                        <p className="text-xs text-muted-foreground">
+                          Left and right are viewed from the driver station.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                        {[
+                          'Left trench',
+                          'Left bump',
+                          'Center',
+                          'Right bump',
+                          'Right trench',
+                        ].map((position) => (
+                          <button
+                            type="button"
+                            className={
+                              autoStartPosition === position
+                                ? 'choice selected min-h-12 px-2 text-center text-sm'
+                                : 'choice min-h-12 px-2 text-center text-sm'
+                            }
+                            aria-pressed={autoStartPosition === position}
+                            onClick={() => setAutoStartPosition(position)}
+                            key={position}
+                          >
+                            {position}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className={noShow ? 'choice selected w-full' : 'choice w-full'}
+                      onClick={() => setNoShow((value) => !value)}
+                    >
+                      {noShow && <Check />} No-show
+                    </button>
+                    {noShow && (
+                      <p className="text-sm text-muted-foreground">
+                        This report will submit as a no-show. Existing observations
+                        are preserved if you turn this off.
                       </p>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {scoutingPhase === 'auto' && (
+                <Card>
+                  <CardHeader className="border-b">
+                    <CardTitle>Autonomous</CardTitle>
+                  </CardHeader>
+                  <CardContent className="divide-y divide-border p-0">
+                    <Counter
+                      label="Fuel scored"
+                      hint="Use +5 for a burst, then adjust or type the total"
+                      value={autoFuel}
+                      onChange={setAutoFuel}
+                      quickAdds={[5]}
+                    />
+                    <Counter
+                      label="Center swipes"
+                      hint="Count completed center-line swipe routines"
+                      value={centerSwipes}
+                      onChange={setCenterSwipes}
+                      quickAdds={[1]}
+                    />
+                    <div className="flex items-center justify-between gap-3 px-4 py-3">
+                      <strong>Auto tower</strong>
+                      <div className="two-choices">
+                        {['None', 'Level 1'].map((item) => (
+                          <button
+                            type="button"
+                            onClick={() => setAutoTower(item)}
+                            key={item}
+                            className={
+                              autoTower === item
+                                ? 'choice selected h-9 min-h-0 px-3 text-sm'
+                                : 'choice h-9 min-h-0 px-3 text-sm'
+                            }
+                          >
+                            {autoTower === item && <Check />}
+                            {item}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                      {[
-                        'Left trench',
-                        'Left bump',
-                        'Center',
-                        'Right bump',
-                        'Right trench',
-                      ].map((position) => (
-                        <button
-                          type="button"
-                          className={
-                            autoStartPosition === position
-                              ? 'choice selected min-h-12 px-2 text-center text-sm'
-                              : 'choice min-h-12 px-2 text-center text-sm'
-                          }
-                          aria-pressed={autoStartPosition === position}
-                          onClick={() => setAutoStartPosition(position)}
-                          key={position}
-                        >
-                          {position}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <Counter
-                    label="Fuel scored"
-                    hint="Use +5 for a burst, then adjust or type the total"
-                    value={autoFuel}
-                    onChange={setAutoFuel}
-                    quickAdds={[5]}
-                  />
-                  <div className="flex items-center justify-between gap-3 px-4 py-2">
-                    <strong>Auto tower</strong>
-                    <div className="two-choices">
-                      {['None', 'Level 1'].map((item) => (
-                        <button
-                          type="button"
-                          onClick={() => setAutoTower(item)}
-                          key={item}
-                          className={
-                            autoTower === item
-                              ? 'choice selected h-9 min-h-0 px-3 text-sm'
-                              : 'choice h-9 min-h-0 px-3 text-sm'
-                          }
-                        >
-                          {autoTower === item && <Check />}
-                          {item}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="border-b">
-                  <CardTitle>Teleoperated fuel</CardTitle>
-                </CardHeader>
-                <CardContent className="divide-y divide-border p-0">
-                  <Counter
-                    label="Fuel scored"
-                    hint="Add observed bursts with +5 or +10; fine-tune anytime"
-                    value={activeFuel}
-                    onChange={setActiveFuel}
-                    quickAdds={[5, 10]}
-                  />
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
+
+              {scoutingPhase === 'tele' && (
+                <Card>
+                  <CardHeader className="border-b">
+                    <CardTitle>Teleoperated</CardTitle>
+                  </CardHeader>
+                  <CardContent className="divide-y divide-border p-0">
+                    <Counter
+                      label="Fuel scored"
+                      hint="Add observed bursts with +5 or +10; fine-tune anytime"
+                      value={activeFuel}
+                      onChange={setActiveFuel}
+                      quickAdds={[5, 10]}
+                    />
+                  </CardContent>
+                </Card>
+              )}
+
+              {scoutingPhase === 'post' && <>
               <Card>
                 <CardHeader>
                   <CardTitle>Field movement</CardTitle>
@@ -2268,6 +2365,13 @@ export default function Home() {
                     onChange={setPenalties}
                     quickAdds={[1]}
                   />
+                  <Counter
+                    label="Fuel passed"
+                    hint="Estimate FUEL deliberately transferred to an alliance partner."
+                    value={passedFuel}
+                    onChange={setPassedFuel}
+                    quickAdds={[5]}
+                  />
                 </CardContent>
               </Card>
               <Card>
@@ -2292,8 +2396,7 @@ export default function Home() {
                   <CardTitle>Reliability and notes</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div>
+                  <div>
                       <p className="mb-2 font-semibold">Robot reliability</p>
                       <div className="grid grid-cols-2 gap-2">
                         {[
@@ -2315,36 +2418,6 @@ export default function Home() {
                           </button>
                         ))}
                       </div>
-                    </div>
-                    <button
-                      type="button"
-                      className={noShow ? 'choice selected' : 'choice'}
-                      onClick={() => {
-                        const nextNoShow = !noShow;
-                        setNoShow(nextNoShow);
-                        if (nextNoShow) {
-                          setAutoFuel(0);
-                          setActiveFuel(0);
-                          setAutoTower('None');
-                          setTower('None');
-                          setPath('None');
-                          setDefenseRating(0);
-                          setDisabled(false);
-                          setPenalties(0);
-                          setShootingRange('None');
-                        } else {
-                          setAutoStartPosition('');
-                          setAutoTower('');
-                          setTower('');
-                          setPath('');
-                          setDefenseRating(null);
-                          setDisabled(null);
-                          setShootingRange('');
-                        }
-                      }}
-                    >
-                      {noShow && <Check />}No-show
-                    </button>
                   </div>
                   <textarea
                     className="min-h-24 w-full rounded-lg border bg-transparent p-3 text-base"
@@ -2355,12 +2428,50 @@ export default function Home() {
                   />
                 </CardContent>
               </Card>
+              </>}
+
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={scoutingPhase === 'pre'}
+                  onClick={() =>
+                    setScoutingPhase(
+                      scoutingPhase === 'post'
+                        ? 'tele'
+                        : scoutingPhase === 'tele'
+                          ? 'auto'
+                          : 'pre',
+                    )
+                  }
+                >
+                  Previous
+                </Button>
+                {scoutingPhase !== 'post' ? (
+                  <Button
+                    type="button"
+                    onClick={() =>
+                      setScoutingPhase(
+                        scoutingPhase === 'pre'
+                          ? 'auto'
+                          : scoutingPhase === 'auto'
+                            ? 'tele'
+                            : 'post',
+                      )
+                    }
+                  >
+                    Next <ChevronRight />
+                  </Button>
+                ) : (
+                  <span />
+                )}
+              </div>
               {saveError && (
                 <p role="alert" className="auth-error">
                   {saveError}
                 </p>
               )}
-              <Button
+              {scoutingPhase === 'post' && <Button
                 className="h-12 w-full text-base"
                 disabled={!draftReady || submissionStatus === 'synchronized'}
                 onClick={submitMatch}
@@ -2383,7 +2494,7 @@ export default function Home() {
                 ) : (
                   <>Opening offline storage…</>
                 )}
-              </Button>
+              </Button>}
               {(submissionStatus === 'queued' ||
                 submissionStatus === 'synchronized') && (
                 <>
@@ -2413,8 +2524,41 @@ export default function Home() {
           </div>
         )}
         {activeView === 'Pit' && (
-          <div className="grid gap-4 p-4 sm:p-6 lg:grid-cols-[18rem_1fr]">
-            <Card className="h-full min-h-0">
+          <div className="pit-layout grid gap-4 p-4 sm:p-6 lg:grid-cols-[18rem_1fr]">
+            <Card className="pit-mobile-picker">
+              <CardContent className="p-3">
+                <label className="grid gap-1 text-sm font-semibold">
+                  Team to pit scout
+                  <select
+                    className="h-11 w-full rounded-md border bg-background px-3 text-foreground"
+                    value={pitTeam ?? ''}
+                    onChange={(event) =>
+                      setPitTeam(
+                        event.target.value ? Number(event.target.value) : null,
+                      )
+                    }
+                  >
+                    <option value="">Choose a team</option>
+                    {eventTeams.map((team) => {
+                      const complete = eventPack?.pitEntries.some(
+                        (entry) => entry.teamNumber === team,
+                      );
+                      return (
+                        <option value={team} key={team}>
+                          Team {team} — {complete ? 'Scouted' : 'Needs scouting'}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+                {pitTeam && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Team {pitTeam} selected · changes save on this device
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+            <Card className="pit-queue-card h-full min-h-0">
               <CardHeader>
                 <CardTitle>Pit queue</CardTitle>
                 <Badge variant="outline">
@@ -2612,7 +2756,7 @@ export default function Home() {
                     <div className="space-y-3 rounded-lg border p-3">
                       <div>
                         <p className="mb-2 font-semibold">Field access</p>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                           {['Trench', 'Bump', 'Both'].map((item) => (
                             <button
                               type="button"
@@ -2634,7 +2778,7 @@ export default function Home() {
                       </div>
                       <div>
                         <p className="mb-2 font-semibold">Preferred route</p>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                           {['Trench', 'Bump', 'No preference'].map((item) => (
                             <button
                               type="button"
@@ -2712,7 +2856,7 @@ export default function Home() {
                       </div>
                       <div>
                         <p className="mb-2 text-sm">Swipe routine</p>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                           {['None', 'Single swipe', 'Double swipe'].map(
                             (item) => (
                               <button
@@ -2893,10 +3037,17 @@ export default function Home() {
                       key={team}
                     >
                       <div className="flex items-center justify-between">
-                        <strong>
-                          Team {team}
-                          {name ? ` - ${name}` : ''}
-                        </strong>
+                        <div>
+                          <strong>
+                            Team {team}
+                            {name ? ` - ${name}` : ''}
+                          </strong>
+                          {matchPlan.absentTeams.includes(team) && (
+                            <Badge className="ml-2" variant="destructive">
+                              Not playing
+                            </Badge>
+                          )}
+                        </div>
                         <span
                           aria-label={`${alliance} alliance`}
                           className={
@@ -2906,6 +3057,42 @@ export default function Home() {
                           }
                         />
                       </div>
+                      {planCanEdit && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="mt-2"
+                          onClick={() => {
+                            const isAbsent = matchPlan.absentTeams.includes(team);
+                            const absentTeams = isAbsent
+                              ? matchPlan.absentTeams.filter(
+                                  (item) => item !== team,
+                                )
+                              : [...matchPlan.absentTeams, team];
+                            const robots = isAbsent
+                              ? [
+                                  ...matchPlan.board.robots,
+                                  ...initialRobotMarkers(
+                                    currentMatch?.alliances.red ?? [],
+                                    currentMatch?.alliances.blue ?? [],
+                                  ).filter((robot) => robot.team === team),
+                                ]
+                              : matchPlan.board.robots.filter(
+                                  (robot) => robot.team !== team,
+                                );
+                            setMatchPlan({
+                              ...matchPlan,
+                              absentTeams,
+                              board: { ...matchPlan.board, robots },
+                            });
+                          }}
+                        >
+                          {matchPlan.absentTeams.includes(team)
+                            ? 'Return robot to field'
+                            : 'Robot not playing'}
+                        </Button>
+                      )}
                       <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                         <span>
                           <strong>{stats?.epa?.toFixed(1) ?? '—'}</strong>
@@ -3223,7 +3410,7 @@ export default function Home() {
           </div>
         )}
         {activeView === 'Admin' && isAdmin && (
-          <div className="flex gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
+          <div className="section-tabs flex gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
             <Button
               variant={adminSection === 'settings' ? 'default' : 'outline'}
               onClick={() => setAdminSection('settings')}
@@ -3399,7 +3586,7 @@ export default function Home() {
             </div>
           )}
         {activeView === 'Teams' && (
-          <div className="flex flex-wrap gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
+          <div className="section-tabs flex gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
             {(
               [
                 ['analysis', 'Analysis'],
@@ -4038,7 +4225,7 @@ export default function Home() {
                 <CardTitle>Signed-in devices</CardTitle>
                 <Badge variant="outline">{accountSessions.length}</Badge>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="account-sessions space-y-2">
                 {accountSessions.map((item) => (
                   <div className="schedule-row" key={item.id}>
                     <strong>
@@ -4085,8 +4272,40 @@ export default function Home() {
           </div>
         )}
       </section>
+      {mobileMenuOpen && (
+        <>
+        <button
+          type="button"
+          className="mobile-more-backdrop"
+          aria-label="Close more navigation"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+        <div className="mobile-more-menu" role="dialog" aria-label="More navigation">
+          {visibleNav
+            .filter(({ label }) => !['Home', 'Scout', 'Pit', 'Teams'].includes(label))
+            .map(({ label, icon: Icon }) => (
+              <button type="button" onClick={() => navigate(label)} key={label}>
+                <Icon />
+                <span>{label}</span>
+              </button>
+            ))}
+          {isAdmin && (
+            <button type="button" onClick={() => navigate('Admin')}>
+              <UserCog />
+              <span>Admin</span>
+            </button>
+          )}
+          <button type="button" onClick={() => navigate('Account')}>
+            <CircleUserRound />
+            <span>Account</span>
+          </button>
+        </div>
+        </>
+      )}
       <nav aria-label="Mobile navigation" className="mobile-nav">
-        {visibleNav.map(({ label, icon: Icon }) => (
+        {visibleNav
+          .filter(({ label }) => ['Home', 'Scout', 'Pit', 'Teams'].includes(label))
+          .map(({ label, icon: Icon }) => (
           <button
             type="button"
             aria-current={activeView === label ? 'page' : undefined}
@@ -4098,16 +4317,19 @@ export default function Home() {
             <span>{label}</span>
           </button>
         ))}
-        {isAdmin && (
-          <button
-            type="button"
-            onClick={() => navigate('Admin')}
-            className={activeView === 'Admin' ? 'active' : ''}
-          >
-            <UserCog />
-            <span>Admin</span>
-          </button>
-        )}
+        <button
+          type="button"
+          aria-expanded={mobileMenuOpen}
+          onClick={() => setMobileMenuOpen((open) => !open)}
+          className={
+            mobileMenuOpen || ['Plan', 'Alliance', 'Admin', 'Account'].includes(activeView)
+              ? 'active'
+              : ''
+          }
+        >
+          <Menu />
+          <span>More</span>
+        </button>
       </nav>
     </main>
   );

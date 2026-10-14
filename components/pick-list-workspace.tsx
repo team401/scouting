@@ -432,17 +432,19 @@ export function PickListWorkspace({
                 </span>
               ) : null}
             </div>
-            <div className="overflow-x-auto rounded-lg border">
+            <div className="pick-list-desktop-editor overflow-x-auto rounded-lg border">
               <div className="min-w-[620px] divide-y">
                 {(response?.ballots ?? [])
                   .find((ballot) => ballot.ownerUserId === reviewOwnerId)
                   ?.data.entries.map((entry, index) => {
                     const team = metrics.get(entry.teamNumber);
+                    const isDoNotPick =
+                      entry.tier === 'do-not-pick' || entry.avoid;
                     return (
                       <div
                         className={
-                          entry.avoid
-                            ? 'grid grid-cols-[54px_90px_90px_90px_120px_1fr] items-center gap-2 bg-destructive/5 p-3'
+                          isDoNotPick
+                            ? 'grid grid-cols-[54px_90px_90px_90px_120px_1fr] items-center gap-2 bg-destructive/10 p-3 text-destructive'
                             : 'grid grid-cols-[54px_90px_90px_90px_120px_1fr] items-center gap-2 p-3'
                         }
                         key={entry.teamNumber}
@@ -455,12 +457,10 @@ export function PickListWorkspace({
                         <span className="text-sm">
                           OPR {team?.opr?.toFixed(1) ?? '—'}
                         </span>
-                        <Badge variant={entry.avoid ? 'destructive' : 'outline'}>
-                          {entry.avoid
-                            ? 'Avoid'
-                            : entry.tier === 'first'
+                        <Badge variant={isDoNotPick ? 'destructive' : 'outline'}>
+                          {entry.tier === 'first' && !entry.avoid
                               ? 'First pick'
-                              : entry.tier === 'second'
+                              : entry.tier === 'second' && !entry.avoid
                                 ? 'Second pick'
                                 : 'Do not pick'}
                         </Badge>
@@ -471,6 +471,89 @@ export function PickListWorkspace({
                     );
                   }) ?? null}
               </div>
+            </div>
+            <div className="pick-list-mobile-editor space-y-2">
+              {list.entries.map((entry, index) => {
+                const team = metrics.get(entry.teamNumber);
+                const isDoNotPick =
+                  entry.tier === 'do-not-pick' || entry.avoid;
+                return (
+                  <div
+                    className={
+                      isDoNotPick
+                        ? 'rounded-lg border border-destructive/40 bg-destructive/10 p-3'
+                        : 'rounded-lg border p-3'
+                    }
+                    key={entry.teamNumber}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <strong>#{index + 1} · Team {entry.teamNumber}</strong>
+                        <p className="text-xs text-muted-foreground">
+                          EPA {team?.epa?.toFixed(1) ?? '—'} · OPR{' '}
+                          {team?.opr?.toFixed(1) ?? '—'}
+                        </p>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          size="icon-sm"
+                          variant="outline"
+                          aria-label={`Move Team ${entry.teamNumber} up`}
+                          disabled={index === 0}
+                          onClick={() =>
+                            setList({
+                              ...list,
+                              entries: reorder(list.entries, index, index - 1),
+                            })
+                          }
+                        >
+                          <ArrowUp />
+                        </Button>
+                        <Button
+                          size="icon-sm"
+                          variant="outline"
+                          aria-label={`Move Team ${entry.teamNumber} down`}
+                          disabled={index === list.entries.length - 1}
+                          onClick={() =>
+                            setList({
+                              ...list,
+                              entries: reorder(list.entries, index, index + 1),
+                            })
+                          }
+                        >
+                          <ArrowDown />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="mt-2 grid gap-2">
+                      <select
+                        aria-label={`Pick tier for Team ${entry.teamNumber}`}
+                        className="h-10 w-full rounded-md border bg-transparent px-2"
+                        value={isDoNotPick ? 'do-not-pick' : entry.tier}
+                        onChange={(event) =>
+                          updateEntry(index, {
+                            tier: event.target.value as PickListEntry['tier'],
+                            avoid: false,
+                          })
+                        }
+                      >
+                        <option value="first">First pick</option>
+                        <option value="second">Second pick</option>
+                        <option value="do-not-pick">Do not pick</option>
+                      </select>
+                      <input
+                        aria-label={`Notes for team ${entry.teamNumber}`}
+                        className="h-10 w-full rounded-md border bg-transparent px-2"
+                        placeholder="Notes"
+                        value={entry.note}
+                        onChange={(event) =>
+                          updateEntry(index, { note: event.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -519,6 +602,8 @@ export function PickListWorkspace({
               <div className="min-w-[760px] divide-y">
                 {list.entries.map((entry, index) => {
                   const team = metrics.get(entry.teamNumber);
+                  const isDoNotPick =
+                    entry.tier === 'do-not-pick' || entry.avoid;
                   const consensus = response?.consensus.find(
                     (item) => item.teamNumber === entry.teamNumber,
                   );
@@ -543,8 +628,8 @@ export function PickListWorkspace({
                         dragIndex.current = null;
                       }}
                       className={
-                        entry.avoid
-                          ? 'grid grid-cols-[36px_54px_90px_80px_80px_120px_1fr] items-center gap-2 bg-destructive/5 p-2'
+                        isDoNotPick
+                          ? 'grid grid-cols-[36px_54px_90px_80px_80px_120px_1fr] items-center gap-2 bg-destructive/10 p-2 text-destructive'
                           : 'grid grid-cols-[36px_54px_90px_80px_80px_120px_1fr] items-center gap-2 p-2'
                       }
                     >
@@ -564,10 +649,11 @@ export function PickListWorkspace({
                       <div className="flex items-center gap-2">
                         <select
                           className="h-9 rounded-md border bg-transparent px-2"
-                          value={entry.tier}
+                          value={isDoNotPick ? 'do-not-pick' : entry.tier}
                           onChange={(event) =>
                             updateEntry(index, {
                               tier: event.target.value as PickListEntry['tier'],
+                              avoid: false,
                             })
                           }
                         >
@@ -575,18 +661,6 @@ export function PickListWorkspace({
                           <option value="second">Second pick</option>
                           <option value="do-not-pick">Do not pick</option>
                         </select>
-                        <label className="flex items-center gap-1 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={entry.avoid}
-                            onChange={(event) =>
-                              updateEntry(index, {
-                                avoid: event.target.checked,
-                              })
-                            }
-                          />{' '}
-                          Avoid
-                        </label>
                         <input
                           aria-label={`Notes for team ${entry.teamNumber}`}
                           className="h-9 min-w-40 flex-1 rounded-md border bg-transparent px-2"
@@ -632,8 +706,8 @@ export function PickListWorkspace({
         )}
 
         {mode === 'selection' && (
-          <div className="grid min-h-[70vh] gap-3 lg:grid-cols-[19rem_1fr]">
-            <aside className="flex min-h-0 flex-col rounded-lg border bg-muted/30">
+          <div className="alliance-selection-layout grid min-h-[70vh] gap-3 lg:grid-cols-[19rem_1fr]">
+            <aside className="selection-team-pool flex min-h-0 flex-col rounded-lg border bg-muted/30">
               <div className="grid grid-cols-2 border-b">
                 <button
                   type="button"

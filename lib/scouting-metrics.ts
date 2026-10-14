@@ -1,5 +1,6 @@
 export type ScoutingPayload = {
   autoFuel: number; activeFuel: number; inactiveFuel: number; cycles: number;
+  centerSwipes?: number; passedFuel?: number;
   autoTower: string; tower: string; path: string; defenseRating?: number;
   autoStartPosition?: string;
   disabled?: boolean; noShow?: boolean; penalties?: number; shootingRange?: string;

@@ -27,7 +27,7 @@ void test('builds consensus from average personal rank', () => {
   assert.equal(result[0].ballots, 2);
 });
 
-void test('excludes avoided and do-not-pick teams from consensus', () => {
+void test('excludes legacy avoided and do-not-pick teams from consensus', () => {
   const ballot = list([401, 254, 111]);
   ballot.entries[0].avoid = true;
   ballot.entries[1].tier = 'do-not-pick';

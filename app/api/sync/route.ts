@@ -12,11 +12,15 @@ const scoutPayloadSchema = z.object({
   schemaVersion: z.number().int().positive(),
   autoFuel: z.number().int().nonnegative(),
   activeFuel: z.number().int().nonnegative(),
+  centerSwipes: z.number().int().nonnegative().default(0),
+  passedFuel: z.number().int().nonnegative().default(0),
   inactiveFuel: z.number().int().nonnegative(),
   cycles: z.number().int().nonnegative(),
   autoTower: z.string(),
   autoStartPosition: z
     .enum(['Left trench', 'Left bump', 'Center', 'Right bump', 'Right trench'])
+    .or(z.literal(''))
+    .or(z.literal('None'))
     .optional(),
   tower: z.string(),
   path: z.string(),

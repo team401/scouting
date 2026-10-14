@@ -130,8 +130,8 @@ export function TacticalBoard({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="tactical-board space-y-3">
+      <div className="tactical-board-tools flex flex-wrap items-center gap-2">
         <Button
           type="button"
           size="sm"
@@ -213,6 +213,7 @@ export function TacticalBoard({
           Reset robots
         </Button>
       </div>
+      <div className="tactical-board-viewport">
       <svg
         ref={svgRef}
         viewBox="0 0 1654 800"
@@ -640,6 +641,7 @@ export function TacticalBoard({
           </g>
         ))}
       </svg>
+      </div>
     </div>
   );
 }

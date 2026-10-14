@@ -32,7 +32,8 @@ type Operations = {
     submittedAt: number | null;
     points: number | null;
     activeFuel: number | null;
-    cycles: number | null;
+    centerSwipes: number | null;
+    passedFuel: number | null;
     flags: string[];
     reopened: boolean;
     reviewSource: string | null;
@@ -319,7 +320,7 @@ export function ScoutingOperations({
                 {issue.scoutName}
                 {issue.points === null
                   ? ''
-                  : ` · ${issue.points} pts · ${issue.activeFuel} active FUEL · ${issue.cycles} cycles`}
+                  : ` · ${issue.points} pts · ${issue.activeFuel} teleop FUEL · ${issue.centerSwipes} center swipes · ${issue.passedFuel} FUEL passed`}
                 {' · '}
                 {issue.flags.join(' · ')}
               </span>
