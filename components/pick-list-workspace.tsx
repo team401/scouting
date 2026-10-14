@@ -4,13 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ArrowDown,
   ArrowUp,
-  Check,
   Download,
   Eye,
   GripVertical,
   Printer,
   RotateCcw,
-  Save,
   Search,
   Undo2,
   UserX,
@@ -62,7 +60,6 @@ function seededList(
         teamNumber: team.teamNumber,
         note: '',
         tier: 'first' as const,
-        avoid: false,
       })),
     selections: [],
     unavailable: [],
@@ -103,7 +100,10 @@ export function PickListWorkspace({
   const [selectionListMode, setSelectionListMode] = useState<
     'rankings' | 'picklist'
   >('picklist');
+  const standaloneSelection = initialMode === 'selection';
   const dragIndex = useRef<number | null>(null);
+  const lastSavedPersonal = useRef(JSON.stringify(emptyPickList));
+  const lastSavedOfficial = useRef(JSON.stringify(emptyPickList));
   const cacheKey = `pick-lists:${eventKey}:${userId}`;
   const draftKey = `pick-lists-draft:${eventKey}:${userId}`;
 
@@ -147,10 +147,15 @@ export function PickListWorkspace({
         if (cancelled) return;
         setResponse(data);
         if (!hasDraft) {
-          setPersonal(
-            data.personal ?? seededList(teams, organizationTeamNumber),
+          const nextPersonal =
+            data.personal ?? seededList(teams, organizationTeamNumber);
+          const nextOfficial = data.official ?? emptyPickList;
+          setPersonal(nextPersonal);
+          setOfficial(nextOfficial);
+          lastSavedPersonal.current = JSON.stringify(
+            data.personal ?? emptyPickList,
           );
-          setOfficial(data.official ?? emptyPickList);
+          lastSavedOfficial.current = JSON.stringify(nextOfficial);
         }
         localStorage.setItem(cacheKey, JSON.stringify(data));
       } catch (error) {
@@ -176,6 +181,9 @@ export function PickListWorkspace({
   const setList = mode === 'personal' ? setPersonal : setOfficial;
   const metrics = new Map(teams.map((team) => [team.teamNumber, team]));
   const nextPick = nextAlliancePick(official.selections);
+  const reviewedBallot = response?.ballots?.find(
+    (ballot) => ballot.ownerUserId === reviewOwnerId,
+  );
 
   async function save(target: 'personal' | 'official', data: PickListData) {
     setSaving(true);
@@ -189,6 +197,9 @@ export function PickListWorkspace({
       const body = (await result.json()) as { error?: string };
       if (!result.ok)
         throw new Error(body.error ?? 'Unable to save the pick list.');
+      const serialized = JSON.stringify(data);
+      if (target === 'personal') lastSavedPersonal.current = serialized;
+      else lastSavedOfficial.current = serialized;
       let next: PickListsResponse = {
         personal: null,
         official: null,
@@ -206,8 +217,8 @@ export function PickListWorkspace({
       localStorage.setItem(cacheKey, JSON.stringify(next));
       setMessage(
         target === 'official'
-          ? 'Definitive list saved.'
-          : 'Personal list saved.',
+          ? `Team pick list saved automatically at ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`
+          : `Pick list saved automatically at ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`,
       );
     } catch (error) {
       setMessage(
@@ -219,6 +230,23 @@ export function PickListWorkspace({
       setSaving(false);
     }
   }
+
+  useEffect(() => {
+    if (!hydrated || personal.entries.length === 0) return;
+    const serialized = JSON.stringify(personal);
+    if (serialized === lastSavedPersonal.current) return;
+    const timeout = window.setTimeout(() => void save('personal', personal), 800);
+    return () => window.clearTimeout(timeout);
+  }, [hydrated, personal]);
+
+  useEffect(() => {
+    if (!hydrated || !response?.canEditOfficial || official.entries.length === 0)
+      return;
+    const serialized = JSON.stringify(official);
+    if (serialized === lastSavedOfficial.current) return;
+    const timeout = window.setTimeout(() => void save('official', official), 800);
+    return () => window.clearTimeout(timeout);
+  }, [hydrated, official, response?.canEditOfficial]);
 
   function updateEntry(index: number, patch: Partial<PickListEntry>) {
     setList({
@@ -278,7 +306,6 @@ export function PickListWorkspace({
       'rank',
       'team_number',
       'tier',
-      'avoid',
       'epa',
       'opr',
       'selected_by_alliance',
@@ -295,7 +322,6 @@ export function PickListWorkspace({
         index + 1,
         entry.teamNumber,
         entry.tier,
-        entry.avoid,
         team?.epa,
         team?.opr,
         selection?.allianceNumber,
@@ -321,35 +347,35 @@ export function PickListWorkspace({
       <CardHeader>
         <div>
           <CardTitle>
-            {response?.canEditOfficial
-              ? 'Pick lists and alliance selection'
-              : 'My pick list'}
+            {standaloneSelection ? 'Alliance selection' : 'Pick lists'}
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            {response?.canEditOfficial
-              ? 'Personal ballots feed consensus; the definitive list drives the live selection board.'
+            {standaloneSelection
+              ? 'Run the live draft using the team pick list and event rankings.'
+              : response?.canEditOfficial
+              ? 'Build your own list, review scout lists, and maintain the team list used for alliance selection.'
               : 'Rank teams and keep notes on your own pick list.'}
           </p>
         </div>
-        {response?.canEditOfficial && (
-          <Badge variant="outline">{response.ballotCount} ballots</Badge>
+        {response?.canEditOfficial && !standaloneSelection && (
+          <Badge variant="outline">{response.ballotCount} scout lists</Badge>
         )}
       </CardHeader>
       <CardContent className="space-y-4">
+        {!standaloneSelection && (
         <div className="pick-list-controls flex flex-wrap gap-2">
           <Button
             size="sm"
             variant={mode === 'personal' ? 'default' : 'outline'}
             onClick={() => setMode('personal')}
           >
-            <UserRoundCheck /> My list
+            <UserRoundCheck /> My pick list
           </Button>
           {response?.canEditOfficial && (
             <>
               <Button
                 size="sm"
                 variant={mode === 'review' ? 'default' : 'outline'}
-                disabled={!response.ballots?.length}
                 onClick={() => {
                   setReviewOwnerId(
                     reviewOwnerId || response.ballots?.[0]?.ownerUserId || '',
@@ -357,21 +383,14 @@ export function PickListWorkspace({
                   setMode('review');
                 }}
               >
-                <Eye /> Review lists
+                <Eye /> Review scout lists
               </Button>
               <Button
                 size="sm"
                 variant={mode === 'official' ? 'default' : 'outline'}
                 onClick={() => setMode('official')}
               >
-                <Users /> Definitive list
-              </Button>
-              <Button
-                size="sm"
-                variant={mode === 'selection' ? 'default' : 'outline'}
-                onClick={() => setMode('selection')}
-              >
-                <Check /> Alliance selection
+                <Users /> Team pick list
               </Button>
             </>
           )}
@@ -390,35 +409,35 @@ export function PickListWorkspace({
             </>
           )}
         </div>
+        )}
 
         {mode === 'review' && (
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <label className="font-semibold" htmlFor="review-pick-list">
-                Scout
+                Scout&apos;s pick list
               </label>
               <select
                 id="review-pick-list"
                 className="h-10 min-w-56 rounded-md border px-3"
                 value={reviewOwnerId}
+                disabled={!response?.ballots?.length}
                 onChange={(event) => setReviewOwnerId(event.target.value)}
               >
+                {!response?.ballots?.length && (
+                  <option value="">No scout lists yet</option>
+                )}
                 {(response?.ballots ?? []).map((ballot) => (
                   <option value={ballot.ownerUserId} key={ballot.ownerUserId}>
                     {ballot.ownerName}
+                    {ballot.ownerUserId === userId ? ' (you)' : ''}
                   </option>
                 ))}
               </select>
-              {response?.ballots?.find(
-                (ballot) => ballot.ownerUserId === reviewOwnerId,
-              )?.updatedAt ? (
+              {reviewedBallot?.updatedAt ? (
                 <span className="text-xs text-muted-foreground">
                   Updated{' '}
-                  {new Date(
-                    response.ballots.find(
-                      (ballot) => ballot.ownerUserId === reviewOwnerId,
-                    )!.updatedAt,
-                  ).toLocaleString([], {
+                  {new Date(reviewedBallot.updatedAt).toLocaleString([], {
                     month: 'short',
                     day: 'numeric',
                     hour: 'numeric',
@@ -427,14 +446,18 @@ export function PickListWorkspace({
                 </span>
               ) : null}
             </div>
+            {!reviewedBallot && (
+              <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground">
+                No scouts have saved a personal pick list for this event yet.
+              </div>
+            )}
+            {reviewedBallot && <>
             <div className="pick-list-desktop-editor overflow-x-auto rounded-lg border">
               <div className="min-w-[620px] divide-y">
-                {(response?.ballots ?? [])
-                  .find((ballot) => ballot.ownerUserId === reviewOwnerId)
-                  ?.data.entries.map((entry, index) => {
+                {reviewedBallot.data.entries.map((entry, index) => {
                     const team = metrics.get(entry.teamNumber);
                     const isDoNotPick =
-                      entry.tier === 'do-not-pick' || entry.avoid;
+                      entry.tier === 'do-not-pick';
                     return (
                       <div
                         className={
@@ -453,9 +476,9 @@ export function PickListWorkspace({
                           OPR {team?.opr?.toFixed(1) ?? '—'}
                         </span>
                         <Badge variant={isDoNotPick ? 'destructive' : 'outline'}>
-                          {entry.tier === 'first' && !entry.avoid
+                          {entry.tier === 'first'
                               ? 'First pick'
-                              : entry.tier === 'second' && !entry.avoid
+                              : entry.tier === 'second'
                                 ? 'Second pick'
                                 : 'Do not pick'}
                         </Badge>
@@ -464,14 +487,14 @@ export function PickListWorkspace({
                         </span>
                       </div>
                     );
-                  }) ?? null}
+                  })}
               </div>
             </div>
             <div className="pick-list-mobile-editor space-y-2">
-              {list.entries.map((entry, index) => {
+              {reviewedBallot.data.entries.map((entry, index) => {
                 const team = metrics.get(entry.teamNumber);
                 const isDoNotPick =
-                  entry.tier === 'do-not-pick' || entry.avoid;
+                  entry.tier === 'do-not-pick';
                 return (
                   <div
                     className={
@@ -481,7 +504,7 @@ export function PickListWorkspace({
                     }
                     key={entry.teamNumber}
                   >
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-start justify-between gap-2">
                       <div>
                         <strong>#{index + 1} · Team {entry.teamNumber}</strong>
                         <p className="text-xs text-muted-foreground">
@@ -489,67 +512,22 @@ export function PickListWorkspace({
                           {team?.opr?.toFixed(1) ?? '—'}
                         </p>
                       </div>
-                      <div className="flex gap-1">
-                        <Button
-                          size="icon-sm"
-                          variant="outline"
-                          aria-label={`Move Team ${entry.teamNumber} up`}
-                          disabled={index === 0}
-                          onClick={() =>
-                            setList({
-                              ...list,
-                              entries: reorder(list.entries, index, index - 1),
-                            })
-                          }
-                        >
-                          <ArrowUp />
-                        </Button>
-                        <Button
-                          size="icon-sm"
-                          variant="outline"
-                          aria-label={`Move Team ${entry.teamNumber} down`}
-                          disabled={index === list.entries.length - 1}
-                          onClick={() =>
-                            setList({
-                              ...list,
-                              entries: reorder(list.entries, index, index + 1),
-                            })
-                          }
-                        >
-                          <ArrowDown />
-                        </Button>
-                      </div>
+                      <Badge variant={isDoNotPick ? 'destructive' : 'outline'}>
+                        {isDoNotPick
+                          ? 'Do not pick'
+                          : entry.tier === 'first'
+                            ? 'First pick'
+                            : 'Second pick'}
+                      </Badge>
                     </div>
-                    <div className="mt-2 grid gap-2">
-                      <select
-                        aria-label={`Pick tier for Team ${entry.teamNumber}`}
-                        className="h-10 w-full rounded-md border bg-transparent px-2"
-                        value={isDoNotPick ? 'do-not-pick' : entry.tier}
-                        onChange={(event) =>
-                          updateEntry(index, {
-                            tier: event.target.value as PickListEntry['tier'],
-                            avoid: false,
-                          })
-                        }
-                      >
-                        <option value="first">First pick</option>
-                        <option value="second">Second pick</option>
-                        <option value="do-not-pick">Do not pick</option>
-                      </select>
-                      <input
-                        aria-label={`Notes for team ${entry.teamNumber}`}
-                        className="h-10 w-full rounded-md border bg-transparent px-2"
-                        placeholder="Notes"
-                        value={entry.note}
-                        onChange={(event) =>
-                          updateEntry(index, { note: event.target.value })
-                        }
-                      />
-                    </div>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {entry.note || 'No notes'}
+                    </p>
                   </div>
                 );
               })}
             </div>
+            </>}
           </div>
         )}
 
@@ -566,7 +544,6 @@ export function PickListWorkspace({
                         teamNumber: item.teamNumber,
                         note: '',
                         tier: 'first',
-                        avoid: false,
                       })),
                       selections: official.selections,
                       unavailable: official.unavailable ?? [],
@@ -585,20 +562,16 @@ export function PickListWorkspace({
               >
                 <RotateCcw /> Seed from metrics
               </Button>
-              <Button
-                size="sm"
-                disabled={saving}
-                onClick={() => void save(mode, list)}
-              >
-                <Save /> {saving ? 'Saving…' : 'Save list'}
-              </Button>
+              <span className="self-center text-xs text-muted-foreground">
+                {saving ? 'Saving changes…' : 'Changes save automatically'}
+              </span>
             </div>
             <div className="overflow-x-auto rounded-lg border">
               <div className="min-w-[760px] divide-y">
                 {list.entries.map((entry, index) => {
                   const team = metrics.get(entry.teamNumber);
                   const isDoNotPick =
-                    entry.tier === 'do-not-pick' || entry.avoid;
+                    entry.tier === 'do-not-pick';
                   const consensus = response?.consensus.find(
                     (item) => item.teamNumber === entry.teamNumber,
                   );
@@ -648,7 +621,6 @@ export function PickListWorkspace({
                           onChange={(event) =>
                             updateEntry(index, {
                               tier: event.target.value as PickListEntry['tier'],
-                              avoid: false,
                             })
                           }
                         >
@@ -743,7 +715,7 @@ export function PickListWorkspace({
                       teamNumber: entry.teamNumber,
                       rank,
                       note: entry.note,
-                      blocked: entry.avoid || entry.tier === 'do-not-pick',
+                      blocked: entry.tier === 'do-not-pick',
                     }))
                   : [...teams]
                       .sort(
@@ -829,14 +801,9 @@ export function PickListWorkspace({
                   >
                     <Undo2 /> Undo
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={saving}
-                    onClick={() => void save('official', official)}
-                  >
-                    <Save /> {saving ? 'Saving…' : 'Save'}
-                  </Button>
+                  <span className="self-center text-xs text-muted-foreground">
+                    {saving ? 'Saving changes…' : 'Changes save automatically'}
+                  </span>
                 </div>
               </div>
 

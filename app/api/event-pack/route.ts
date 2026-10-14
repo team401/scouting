@@ -31,11 +31,12 @@ type MatchRow = {
 };
 type PitEntryRow = {
   teamNumber: number;
+  scoutUserId: string;
+  scoutName: string;
   drivetrain: string | null;
   swerveModule: string | null;
   motorTypes: string | null;
   weightLbs: number | null;
-  dimensions: string | null;
   payload: string;
   photoObjectKey: string | null;
   updatedAt: number;
@@ -165,7 +166,17 @@ export async function GET(request: Request) {
     .bind(identity.membership.organization_id, event.id)
     .all();
   const pitEntries = await env.DB.prepare(
-    'SELECT team_number AS teamNumber, drivetrain, swerve_module AS swerveModule, motor_types AS motorTypes, weight_lbs AS weightLbs, dimensions, payload, photo_object_key AS photoObjectKey, updated_at AS updatedAt FROM pit_entries WHERE organization_id = ? AND event_id = ? ORDER BY team_number',
+    `SELECT pit_entries.team_number AS teamNumber,
+      pit_entries.scout_user_id AS scoutUserId, users.name AS scoutName,
+      pit_entries.drivetrain, pit_entries.swerve_module AS swerveModule,
+      pit_entries.motor_types AS motorTypes, pit_entries.weight_lbs AS weightLbs,
+      pit_entries.payload,
+      pit_entries.photo_object_key AS photoObjectKey,
+      pit_entries.updated_at AS updatedAt
+     FROM pit_entries
+     JOIN users ON users.id = pit_entries.scout_user_id
+     WHERE pit_entries.organization_id = ? AND pit_entries.event_id = ?
+     ORDER BY pit_entries.team_number`,
   )
     .bind(identity.membership.organization_id, event.id)
     .all<PitEntryRow>();
@@ -233,7 +244,6 @@ export async function GET(request: Request) {
     pitEntries: pitEntries.results.map((entry) => ({
       ...entry,
       motorTypes: entry.motorTypes ? JSON.parse(entry.motorTypes) : [],
-      dimensions: entry.dimensions ? JSON.parse(entry.dimensions) : null,
       payload: JSON.parse(entry.payload),
     })),
     scoutEntries: scoutEntries.results.map((entry) => ({

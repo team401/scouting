@@ -58,6 +58,8 @@ async function ownedUpload(mediaId: string, organizationId: string) {
 export async function GET(request: Request) {
   const user = await identity(request);
   if (!user) return new Response('Unauthorized', { status: 401 });
+  if (user.userId.startsWith('guest:'))
+    return new Response('Team 401 membership is required.', { status: 403 });
   const url = new URL(request.url);
   const mediaId = url.searchParams.get('mediaId');
   if (mediaId) {
@@ -136,6 +138,11 @@ export async function POST(request: Request) {
     return Response.json(
       { error: 'Sign in to manage match videos.' },
       { status: 401 },
+    );
+  if (user.userId.startsWith('guest:'))
+    return Response.json(
+      { error: 'Team 401 membership is required.' },
+      { status: 403 },
     );
   const url = new URL(request.url);
   const action = url.searchParams.get('action');
@@ -248,6 +255,11 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   const user = await identity(request);
   if (!user) return Response.json({ error: 'Sign in first.' }, { status: 401 });
+  if (user.userId.startsWith('guest:'))
+    return Response.json(
+      { error: 'Team 401 membership is required.' },
+      { status: 403 },
+    );
   const url = new URL(request.url);
   const mediaId = url.searchParams.get('mediaId') ?? '';
   const uploadId = url.searchParams.get('uploadId');

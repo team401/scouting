@@ -4,7 +4,6 @@ export type PickListEntry = {
   teamNumber: number;
   note: string;
   tier: PickTier;
-  avoid: boolean;
 };
 
 export type AllianceSelection = {
@@ -77,7 +76,7 @@ export function buildConsensus(lists: PickListData[]): ConsensusEntry[] {
   const ranks = new Map<number, number[]>();
   for (const list of lists) {
     list.entries.forEach((entry, index) => {
-      if (entry.avoid || entry.tier === 'do-not-pick') return;
+      if (entry.tier === 'do-not-pick') return;
       ranks.set(entry.teamNumber, [
         ...(ranks.get(entry.teamNumber) ?? []),
         index + 1,

@@ -11,7 +11,6 @@ const entrySchema = z.object({
   teamNumber: z.number().int().positive(),
   note: z.string().max(500),
   tier: z.enum(['first', 'second', 'do-not-pick']),
-  avoid: z.boolean(),
 });
 const listSchema = z
   .object({
@@ -79,14 +78,7 @@ function parseList(value: string): PickListData {
   try {
     const parsed = listSchema.safeParse(JSON.parse(value));
     if (!parsed.success) return emptyPickList;
-    return {
-      ...parsed.data,
-      entries: parsed.data.entries.map((entry) => ({
-        ...entry,
-        tier: entry.avoid ? ('do-not-pick' as const) : entry.tier,
-        avoid: false,
-      })),
-    };
+    return parsed.data;
   } catch {
     return emptyPickList;
   }
@@ -126,7 +118,7 @@ export async function GET(request: Request) {
         ownerName: string;
         updatedAt: number;
       }>();
-  const personalLists = rows.results
+  const allPersonalLists = rows.results
     .filter((row) => !row.isOfficial)
     .map((row) => ({
       ownerUserId: row.ownerUserId,
@@ -134,13 +126,18 @@ export async function GET(request: Request) {
       updatedAt: row.updatedAt,
       data: parseList(row.rankings),
     }));
+  const personalLists = allPersonalLists.filter(
+    (list) => list.data.entries.length > 0,
+  );
   const canEditOfficial = ['owner', 'admin', 'strategy'].includes(
     user.membership.role,
   );
   return Response.json({
     eventKey: event.eventKey,
     personal:
-      personalLists.find((list) => list.ownerUserId === user.session.user.id)
+      allPersonalLists.find(
+        (list) => list.ownerUserId === user.session.user.id,
+      )
         ?.data ?? null,
     ballots: canEditOfficial ? personalLists : [],
     official: canEditOfficial

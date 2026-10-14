@@ -11,8 +11,6 @@ void test('calculates observed REBUILT points', () => {
     observedPoints({
       autoFuel: 5,
       activeFuel: 30,
-      inactiveFuel: 9,
-      cycles: 4,
       autoTower: 'Level 1',
       tower: 'Level 2',
       path: 'Both',
@@ -32,8 +30,6 @@ void test('excludes no-shows from performance aggregates', () => {
     {
       autoFuel: 5,
       activeFuel: 20,
-      inactiveFuel: 0,
-      cycles: 4,
       autoTower: 'None',
       tower: 'Level 1',
       path: 'Trench',
@@ -41,8 +37,6 @@ void test('excludes no-shows from performance aggregates', () => {
     {
       autoFuel: 0,
       activeFuel: 0,
-      inactiveFuel: 0,
-      cycles: 0,
       autoTower: 'None',
       tower: 'None',
       path: 'Trench',
@@ -60,8 +54,6 @@ void test('does not count defense N/A values against a team', () => {
   const base = {
     autoFuel: 0,
     activeFuel: 0,
-    inactiveFuel: 0,
-    cycles: 0,
     autoTower: 'None',
     tower: 'None',
     path: 'Trench',

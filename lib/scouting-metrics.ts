@@ -1,10 +1,12 @@
 export type ScoutingPayload = {
-  autoFuel: number; activeFuel: number; inactiveFuel: number; cycles: number;
+  autoFuel: number; activeFuel: number;
   centerSwipes?: number; passedFuel?: number;
   autoTower: string; tower: string; path: string; defenseRating?: number | null;
   autoStartPosition?: string;
   disabled?: boolean; noShow?: boolean; penalties?: number; shootingRange?: string;
-  cycleSeconds?: number; notes?: string;
+  autoDepot?: boolean; autoOutpost?: boolean;
+  autoPenalties?: number; teleopPenalties?: number;
+  notes?: string;
 };
 
 export function towerPoints(level: string, autonomous = false) {
@@ -34,7 +36,6 @@ export function summarizeEntries(payloads: ScoutingPayload[]) {
     samples: payloads.length,
     medianPoints: median(played.map(observedPoints)),
     medianActiveFuel: median(played.map((payload) => payload.activeFuel)),
-    medianFuelPerCycle: median(played.map((payload) => payload.activeFuel / Math.max(1, payload.cycles))),
     towerSuccessRate: played.length ? played.filter((payload) => payload.tower !== 'None').length / played.length : 0,
     disabledRate: played.length ? played.filter((payload) => payload.disabled).length / played.length : 0,
     averageDefense: defenseRatings.length

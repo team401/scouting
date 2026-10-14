@@ -13,7 +13,6 @@ const list = (teams: number[]): PickListData => ({
     teamNumber,
     note: '',
     tier: 'first',
-    avoid: false,
   })),
   selections: [],
 });
@@ -28,13 +27,12 @@ void test('builds consensus from average personal rank', () => {
   assert.equal(result[0].ballots, 2);
 });
 
-void test('excludes legacy avoided and do-not-pick teams from consensus', () => {
+void test('excludes do-not-pick teams from consensus', () => {
   const ballot = list([401, 254, 111]);
-  ballot.entries[0].avoid = true;
-  ballot.entries[1].tier = 'do-not-pick';
+  ballot.entries[0].tier = 'do-not-pick';
   assert.deepEqual(
     buildConsensus([ballot]).map((entry) => entry.teamNumber),
-    [111],
+    [254, 111],
   );
 });
 

@@ -444,7 +444,6 @@ export const pitEntries = sqliteTable(
     swerveModule: text('swerve_module'),
     motorTypes: text('motor_types', { mode: 'json' }),
     weightLbs: integer('weight_lbs'),
-    dimensions: text('dimensions', { mode: 'json' }),
     payload: text('payload', { mode: 'json' }).notNull(),
     photoObjectKey: text('photo_object_key'),
     ...timestamps,

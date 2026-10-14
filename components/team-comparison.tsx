@@ -26,7 +26,6 @@ export type ComparisonTeam = {
   coverage: number;
   medianPoints: number;
   medianActiveFuel: number;
-  medianFuelPerCycle: number;
   towerSuccessRate: number;
   disabledRate: number;
   averageDefense: number;
@@ -281,7 +280,6 @@ export function TeamComparison({
                     <th className="p-2">EPA</th>
                     <th className="p-2">OPR</th>
                     <th className="p-2">Median pts</th>
-                    <th className="p-2">FUEL/cycle</th>
                     <th className="p-2">Tower</th>
                     <th className="p-2">Disabled</th>
                     <th className="p-2">Defense</th>
@@ -299,9 +297,6 @@ export function TeamComparison({
                       <td className="p-2">{formatNumber(team.epa)}</td>
                       <td className="p-2">{formatNumber(team.opr)}</td>
                       <td className="p-2">{team.medianPoints.toFixed(1)}</td>
-                      <td className="p-2">
-                        {team.medianFuelPerCycle.toFixed(1)}
-                      </td>
                       <td className="p-2">
                         {Math.round(team.towerSuccessRate * 100)}%
                       </td>

@@ -350,6 +350,9 @@ select option {
 .mobile-nav {
   display: none;
 }
+.mobile-header-menu-button {
+  display: none;
+}
 .pit-mobile-picker,
 .mobile-more-menu,
 .mobile-more-backdrop,
@@ -570,43 +573,14 @@ select option {
   .right-rail {
     display: none;
   }
-  .mobile-nav {
-    position: fixed;
-    inset: auto 0 0;
-    z-index: 10;
-    display: flex;
-    padding-bottom: env(safe-area-inset-bottom);
-    border-top: 1px solid var(--border);
-    background: color-mix(in oklch, var(--card) 94%, transparent);
-    color: var(--card-foreground);
-    backdrop-filter: blur(12px);
-  }
-  .mobile-nav button {
-    min-width: 0;
-    min-height: 56px;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    color: var(--muted-foreground);
-    font-size: 10px;
-  }
-  .mobile-nav svg {
-    width: 19px;
-  }
-  .mobile-nav .active {
-    color: var(--primary);
-    background: color-mix(in oklch, var(--primary) 10%, transparent);
-  }
   .mobile-more-menu {
     position: fixed;
     right: 10px;
-    bottom: calc(62px + env(safe-area-inset-bottom));
+    top: calc(60px + env(safe-area-inset-top));
     z-index: 20;
     display: grid;
-    min-width: 190px;
+    width: min(20rem, calc(100vw - 20px));
+    max-height: calc(100dvh - 70px - env(safe-area-inset-top));
     overflow: hidden;
     border: 1px solid var(--border);
     border-radius: 14px;
@@ -635,11 +609,45 @@ select option {
   .mobile-more-menu button:hover {
     background: var(--accent);
   }
+  .mobile-more-menu button[aria-current='page'] {
+    color: var(--primary);
+    background: color-mix(in oklch, var(--primary) 12%, transparent);
+  }
   .mobile-more-menu svg {
     width: 18px;
   }
+  .mobile-menu-account {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 12px 12px;
+  }
+  .mobile-menu-account > svg {
+    width: 22px;
+  }
+  .mobile-menu-account div {
+    display: grid;
+    min-width: 0;
+  }
+  .mobile-menu-account strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mobile-menu-account span {
+    color: var(--muted-foreground);
+    font-size: 12px;
+  }
+  .mobile-menu-links {
+    overflow-y: auto;
+    padding-block: 4px;
+  }
+  .mobile-theme-toggle {
+    border-top: 1px solid var(--border);
+  }
   .app-content {
-    padding-bottom: calc(56px + env(safe-area-inset-bottom));
+    padding-bottom: 0;
   }
   .topbar {
     position: sticky;
@@ -647,11 +655,23 @@ select option {
     z-index: 15;
     min-height: 52px;
   }
+  .desktop-header-actions {
+    display: none !important;
+  }
+  .mobile-header-menu-button {
+    display: inline-flex;
+    flex: 0 0 auto;
+  }
   .topbar h1 {
-    max-width: 9rem;
+    max-width: calc(100vw - 84px);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .topbar h1.scout-heading {
+    font-size: 17px;
+    line-height: 1.08;
+    white-space: normal;
   }
   .section-tabs {
     overflow-x: auto;
@@ -770,15 +790,58 @@ select option {
   .topbar [data-slot='button']:has(svg + *) svg {
     margin: 0;
   }
+  .scout-form > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.5rem;
+  }
+  .scout-form [data-slot='card'] {
+    --card-spacing: 0.5rem;
+    gap: 0.25rem;
+    padding-block: 0.5rem;
+  }
+  .scout-form [data-slot='card-header'] {
+    min-height: 0;
+    padding: 0.25rem 0.75rem;
+  }
+  .scout-form [data-slot='card-content'] {
+    padding-block: 0.25rem;
+    padding-inline: 12px;
+  }
+  .scout-form .counter-row {
+    min-height: 0;
+    gap: 8px;
+    padding: 9px 12px;
+  }
+  .scout-form .counter-controls {
+    gap: 5px;
+    flex-wrap: nowrap;
+  }
+  .scout-form .counter-controls [data-slot='button'] {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    padding-inline: 8px;
+  }
+  .scout-form .counter-input {
+    width: 48px;
+    height: 40px;
+    font-size: 1.1rem;
+  }
+  .scout-form .choice {
+    min-height: 42px;
+  }
 }
 @media (max-width: 520px) {
-  .counter-row {
-    align-items: flex-start;
-    flex-direction: column;
+  .scout-form .counter-row {
+    align-items: center;
+    flex-direction: row;
   }
-  .counter-controls {
-    width: 100%;
-    justify-content: flex-end;
+  .scout-form .counter-row > div:first-child {
+    min-width: 5.25rem;
+  }
+  .scout-form .counter-controls {
+    width: auto;
+    min-width: 0;
+    margin-left: auto;
   }
 }
 @media (max-width: 390px) {
