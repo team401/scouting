@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Film, Trash2, Upload } from 'lucide-react';
+import { Trash2, Upload } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -176,9 +176,7 @@ export function MatchVideoLibrary({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Film /> Match video
-        </CardTitle>
+        <CardTitle>Match video</CardTitle>
         <Badge variant="outline">{data?.videos.length ?? 0} uploaded</Badge>
       </CardHeader>
       <CardContent className="space-y-4">

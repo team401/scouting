@@ -91,9 +91,9 @@ export async function GET(request: Request) {
       { error: 'Sign in to view pick lists.' },
       { status: 401 },
     );
-  if (!['owner', 'admin', 'strategy'].includes(user.membership.role))
+  if (user.session.user.id.startsWith('guest:'))
     return Response.json(
-      { error: 'Strategy access is required.' },
+      { error: 'Team 401 membership is required.' },
       { status: 403 },
     );
   const event = await env.DB.prepare(
@@ -126,20 +126,25 @@ export async function GET(request: Request) {
       updatedAt: row.updatedAt,
       data: parseList(row.rankings),
     }));
+  const canEditOfficial = ['owner', 'admin', 'strategy'].includes(
+    user.membership.role,
+  );
   return Response.json({
     eventKey: event.eventKey,
     personal:
       personalLists.find((list) => list.ownerUserId === user.session.user.id)
         ?.data ?? null,
-    ballots: personalLists,
-    official: rows.results.find((row) => row.isOfficial)?.rankings
-      ? parseList(rows.results.find((row) => row.isOfficial)!.rankings)
+    ballots: canEditOfficial ? personalLists : [],
+    official: canEditOfficial
+      ? rows.results.find((row) => row.isOfficial)?.rankings
+        ? parseList(rows.results.find((row) => row.isOfficial)!.rankings)
+        : null
       : null,
-    consensus: buildConsensus(personalLists.map((list) => list.data)),
-    ballotCount: personalLists.length,
-    canEditOfficial: ['owner', 'admin', 'strategy'].includes(
-      user.membership.role,
-    ),
+    consensus: canEditOfficial
+      ? buildConsensus(personalLists.map((list) => list.data))
+      : [],
+    ballotCount: canEditOfficial ? personalLists.length : 0,
+    canEditOfficial,
   });
 }
 
@@ -150,9 +155,9 @@ export async function POST(request: Request) {
       { error: 'Sign in to save a pick list.' },
       { status: 401 },
     );
-  if (!['owner', 'admin', 'strategy'].includes(user.membership.role))
+  if (user.session.user.id.startsWith('guest:'))
     return Response.json(
-      { error: 'Strategy access is required.' },
+      { error: 'Team 401 membership is required.' },
       { status: 403 },
     );
   const parsed = saveSchema.safeParse(await request.json().catch(() => null));
@@ -172,6 +177,14 @@ export async function POST(request: Request) {
       { status: 404 },
     );
   const official = parsed.data.mode === 'official';
+  if (
+    official &&
+    !['owner', 'admin', 'strategy'].includes(user.membership.role)
+  )
+    return Response.json(
+      { error: 'Strategy access is required to edit the definitive list.' },
+      { status: 403 },
+    );
   const id = official
     ? `pick-list:${user.membership.organization_id}:${event.id}:official`
     : `pick-list:${user.membership.organization_id}:${event.id}:${user.session.user.id}`;

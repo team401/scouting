@@ -4,6 +4,14 @@ import { summarizeEntries, type ScoutingPayload } from '@/lib/scouting-metrics';
 import { teamNumberFromTbaKey } from '@/lib/scouting-policy';
 
 type TbaOprs = { oprs?: Record<string, number> };
+type TbaRankings = {
+  rankings?: Array<{
+    rank: number;
+    team_key: string;
+    matches_played?: number;
+    record?: { wins?: number; losses?: number; ties?: number };
+  }>;
+};
 type StatboticsTeamEvent = {
   team?: number;
   epa_end?: number;
@@ -22,13 +30,13 @@ export async function GET(request: Request) {
       { status: 401 },
     );
   const membership = await env.DB.prepare(
-    'SELECT organization_id FROM memberships WHERE user_id = ? LIMIT 1',
+    'SELECT organization_id, role FROM memberships WHERE user_id = ? LIMIT 1',
   )
     .bind(session.user.id)
-    .first<{ organization_id: string }>();
+    .first<{ organization_id: string; role: string }>();
   if (!membership)
     return Response.json(
-      { error: 'No team membership found.' },
+      { error: 'An active scouting account is required.' },
       { status: 403 },
     );
   const event = await env.DB.prepare(
@@ -67,12 +75,34 @@ export async function GET(request: Request) {
       JSON.parse(row.payload) as ScoutingPayload,
     ]);
   let oprs: Record<string, number> = {};
+  const rankings = new Map<
+    number,
+    {
+      eventRank: number;
+      matchesPlayed: number;
+      wins: number;
+      losses: number;
+      ties: number;
+    }
+  >();
   const epas = new Map<number, number>();
   if (event) {
-    const [tbaResult, statboticsResult] = await Promise.allSettled([
+    const [tbaResult, rankingsResult, statboticsResult] =
+      await Promise.allSettled([
       env.TBA_AUTH_KEY
         ? fetch(
             `https://www.thebluealliance.com/api/v3/event/${encodeURIComponent(event.eventKey)}/oprs`,
+            {
+              headers: {
+                'X-TBA-Auth-Key': env.TBA_AUTH_KEY,
+                'User-Agent': 'Team401-Scouting/1.0',
+              },
+            },
+          )
+        : Promise.reject(new Error('TBA is not configured.')),
+      env.TBA_AUTH_KEY
+        ? fetch(
+            `https://www.thebluealliance.com/api/v3/event/${encodeURIComponent(event.eventKey)}/rankings`,
             {
               headers: {
                 'X-TBA-Auth-Key': env.TBA_AUTH_KEY,
@@ -88,6 +118,20 @@ export async function GET(request: Request) {
     if (tbaResult.status === 'fulfilled' && tbaResult.value.ok) {
       const data = (await tbaResult.value.json()) as TbaOprs;
       oprs = data.oprs ?? {};
+    }
+    if (rankingsResult.status === 'fulfilled' && rankingsResult.value.ok) {
+      const data = (await rankingsResult.value.json()) as TbaRankings | null;
+      for (const row of data?.rankings ?? []) {
+        const teamNumber = teamNumberFromTbaKey(row.team_key);
+        if (!teamNumber) continue;
+        rankings.set(teamNumber, {
+          eventRank: row.rank,
+          matchesPlayed: row.matches_played ?? 0,
+          wins: row.record?.wins ?? 0,
+          losses: row.record?.losses ?? 0,
+          ties: row.record?.ties ?? 0,
+        });
+      }
     }
     if (statboticsResult.status === 'fulfilled' && statboticsResult.value.ok) {
       const data =
@@ -108,6 +152,11 @@ export async function GET(request: Request) {
         teamNumber,
         epa: epas.get(teamNumber) ?? null,
         opr: finiteNumber(oprs[`frc${teamNumber}`]),
+        eventRank: rankings.get(teamNumber)?.eventRank ?? null,
+        matchesPlayed: rankings.get(teamNumber)?.matchesPlayed ?? 0,
+        wins: rankings.get(teamNumber)?.wins ?? 0,
+        losses: rankings.get(teamNumber)?.losses ?? 0,
+        ties: rankings.get(teamNumber)?.ties ?? 0,
         scheduledMatches: scheduled.get(teamNumber) ?? 0,
         coverage:
           (scheduled.get(teamNumber) ?? 0)

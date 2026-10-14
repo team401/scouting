@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { GitCompareArrows, Plus, X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import {
   CartesianGrid,
   Legend,
@@ -169,9 +169,7 @@ export function TeamComparison({
     <Card className="sm:col-span-2">
       <CardHeader>
         <div>
-          <CardTitle className="flex items-center gap-2">
-            <GitCompareArrows /> Team comparison
-          </CardTitle>
+          <CardTitle>Team comparison</CardTitle>
           <p className="text-sm text-muted-foreground">
             Compare scouting output, external ratings, reliability, and trends.
           </p>

@@ -7,7 +7,6 @@ import {
   Film,
   RefreshCw,
   RotateCcw,
-  Users,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -170,9 +169,7 @@ export function ScoutingOperations({
     return (
       <Card className="mb-4">
         <CardHeader>
-          <CardTitle>
-            <Users /> Live station coverage
-          </CardTitle>
+          <CardTitle>Live station coverage</CardTitle>
           <div className="flex gap-2">
             <Badge variant="outline">
               {data?.summary.submitted ?? 0} submitted
@@ -232,9 +229,7 @@ export function ScoutingOperations({
   return (
     <Card className="sm:col-span-2">
       <CardHeader>
-        <CardTitle>
-          <AlertTriangle /> Scouting data review
-        </CardTitle>
+        <CardTitle>Scouting data review</CardTitle>
         <div className="flex gap-2">
           <Badge variant="outline">
             {data?.summary.submitted ?? 0}/{data?.summary.assigned ?? 0} covered

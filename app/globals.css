@@ -490,12 +490,16 @@ select option {
 }
 .strategy-table {
   display: grid;
-  grid-template-columns: minmax(64px, 1fr) repeat(4, minmax(76px, 1fr));
+  grid-template-columns: minmax(56px, 0.7fr) minmax(64px, 1fr) repeat(3, minmax(76px, 1fr));
   min-width: 500px;
   align-items: center;
 }
 .strategy-table > strong {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   padding: 8px;
+  background: var(--card);
   color: var(--muted-foreground);
   font-size: 11px;
   text-transform: uppercase;

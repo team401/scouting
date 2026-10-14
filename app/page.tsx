@@ -9,18 +9,15 @@ import {
   ClipboardList,
   Cloud,
   CloudOff,
-  Gauge,
+  Handshake,
   KeyRound,
   LayoutDashboard,
   Map,
   Minus,
-  MonitorSmartphone,
   Moon,
   Plus,
   RefreshCw,
-  Shield,
   Sun,
-  TowerControl,
   Upload,
   UserCog,
   Users,
@@ -62,7 +59,15 @@ import {
   scoutEntryMutationId,
 } from '@/lib/scouting-policy';
 
-type View = 'Home' | 'Scout' | 'Pit' | 'Plan' | 'Teams' | 'Admin' | 'Account';
+type View =
+  | 'Home'
+  | 'Scout'
+  | 'Pit'
+  | 'Plan'
+  | 'Teams'
+  | 'Alliance'
+  | 'Admin'
+  | 'Account';
 
 const nav: {
   label: Exclude<View, 'Account' | 'Admin'>;
@@ -73,6 +78,7 @@ const nav: {
   { label: 'Pit', icon: Wrench },
   { label: 'Plan', icon: Map },
   { label: 'Teams', icon: Users },
+  { label: 'Alliance', icon: Handshake },
 ];
 
 type EventPack = {
@@ -239,6 +245,11 @@ type TeamAnalysis = {
   teamNumber: number;
   epa: number | null;
   opr: number | null;
+  eventRank: number | null;
+  matchesPlayed: number;
+  wins: number;
+  losses: number;
+  ties: number;
   samples: number;
   scheduledMatches: number;
   coverage: number;
@@ -250,6 +261,14 @@ type TeamAnalysis = {
   averageDefense: number;
   pointStdDev: number;
   trends?: TeamTrend[];
+  pit?: {
+    drivetrain: string | null;
+    swerveModule: string | null;
+    motorTypes: string[];
+    weightLbs: number | null;
+    payload: Partial<PitDraft>;
+    photoObjectKey: string | null;
+  } | null;
   entries: {
     id: string;
     matchKey: string;
@@ -392,8 +411,9 @@ export default function Home() {
   const { data: session, isPending } = authClient.useSession();
   const [activeView, setActiveView] = useState<View>('Home');
   const [teamsSection, setTeamsSection] = useState<
-    'directory' | 'analysis' | 'picks' | 'review'
-  >('directory');
+    'analysis' | 'picklist' | 'review'
+  >('analysis');
+  const [rankingSort, setRankingSort] = useState<'rank' | 'team'>('rank');
   const [videoMatchesMineOnly, setVideoMatchesMineOnly] = useState(true);
   const navigationDepthRef = useRef(0);
   const selectedMatchKeyRef = useRef('');
@@ -454,6 +474,7 @@ export default function Home() {
   const [adminSection, setAdminSection] = useState<'settings' | 'assignments'>(
     'settings',
   );
+  const [assignmentMode, setAssignmentMode] = useState<'time' | 'match'>('time');
   const [scheduleFilter, setScheduleFilter] = useState<
     'all' | 'mine' | 'unassigned'
   >('all');
@@ -546,8 +567,13 @@ export default function Home() {
     : null;
   const isAdmin = Boolean(eventPack && canManageAssignments(eventPack.role));
   const canUseStrategy = Boolean(eventPack && canReopenEntries(eventPack.role));
+  const isGuest = Boolean(eventPack?.userId.startsWith('guest:'));
+  const canUsePickLists = Boolean(eventPack && !isGuest);
   const visibleNav = nav.filter(
-    ({ label }) => label !== 'Plan' || canUseStrategy,
+    ({ label }) =>
+      label === 'Teams' ||
+      !['Plan', 'Alliance'].includes(label) ||
+      canUseStrategy,
   );
 
   function navigate(view: View) {
@@ -581,6 +607,7 @@ export default function Home() {
       'Pit',
       'Plan',
       'Teams',
+      'Alliance',
       'Admin',
       'Account',
     ];
@@ -719,7 +746,7 @@ export default function Home() {
   }, [online, queuedCount, session]);
 
   useEffect(() => {
-    if (activeView !== 'Teams' || !canUseStrategy || !selectedTeam || !online)
+    if (activeView !== 'Teams' || !selectedTeam || !online)
       return;
     fetch(`/api/analysis?team=${selectedTeam}`)
       .then(async (response) => {
@@ -735,8 +762,8 @@ export default function Home() {
 
   useEffect(() => {
     if (
-      !['Plan', 'Teams'].includes(activeView) ||
-      !canUseStrategy ||
+      !['Plan', 'Teams', 'Alliance'].includes(activeView) ||
+      (activeView !== 'Teams' && !canUseStrategy) ||
       !online ||
       !session
     )
@@ -764,9 +791,19 @@ export default function Home() {
   }, [activeView, canUseStrategy, eventPack, isAdmin]);
 
   useEffect(() => {
-    if (!canUseStrategy && teamsSection !== 'directory')
-      setTeamsSection('directory');
-  }, [canUseStrategy, teamsSection]);
+    if (
+      eventPack &&
+      !canUseStrategy &&
+      (activeView === 'Plan' || activeView === 'Alliance')
+    )
+      replaceView('Home');
+  }, [activeView, canUseStrategy, eventPack]);
+
+  useEffect(() => {
+    if (isGuest && teamsSection !== 'analysis') setTeamsSection('analysis');
+    else if (!canUseStrategy && teamsSection === 'review')
+      setTeamsSection('analysis');
+  }, [canUseStrategy, isGuest, teamsSection]);
 
   useEffect(() => {
     if (activeView !== 'Admin' || !isAdmin || !online) return;
@@ -1686,6 +1723,9 @@ export default function Home() {
         }),
       )
     : [];
+  const selectedStrategyTeam = strategyTeams.find(
+    (team) => team.teamNumber === selectedTeam,
+  );
   const totalSlots = (eventPack?.matches.length ?? 0) * 6;
   const currentMatchYoutubeVideo = currentMatch?.videos?.find(
     (video) => video.type === 'youtube',
@@ -1831,9 +1871,7 @@ export default function Home() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>
-                  <CalendarDays /> My scouting schedule
-                </CardTitle>
+                <CardTitle>My scouting schedule</CardTitle>
                 <Badge variant="outline">
                   {myAssignments.length} match
                   {myAssignments.length === 1 ? '' : 'es'}
@@ -1899,9 +1937,7 @@ export default function Home() {
             {reopenedEntries.length > 0 && (
               <Card className="border-amber-400">
                 <CardHeader>
-                  <CardTitle>
-                    <RefreshCw /> Corrections requested
-                  </CardTitle>
+                  <CardTitle>Corrections requested</CardTitle>
                   <Badge variant="destructive">{reopenedEntries.length}</Badge>
                 </CardHeader>
                 <CardContent className="space-y-2">
@@ -2157,9 +2193,7 @@ export default function Home() {
               </Card>
               <Card>
                 <CardHeader>
-                  <CardTitle>
-                    <Gauge /> Field movement
-                  </CardTitle>
+                  <CardTitle>Field movement</CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-3 gap-2">
                   {['Trench', 'Bump', 'Both'].map((item) => (
@@ -2176,7 +2210,7 @@ export default function Home() {
               </Card>
                 <Card>
                   <CardHeader>
-                    <CardTitle><Shield /> Defense effectiveness</CardTitle>
+                    <CardTitle>Defense effectiveness</CardTitle>
                   </CardHeader>
                   <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                     {[
@@ -2238,9 +2272,7 @@ export default function Home() {
               </Card>
               <Card>
                 <CardHeader className="border-b">
-                  <CardTitle>
-                      <TowerControl /> Endgame tower
-                  </CardTitle>
+                  <CardTitle>Endgame tower</CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {['None', 'Level 1', 'Level 2', 'Level 3'].map((item) => (
@@ -3210,11 +3242,36 @@ export default function Home() {
           isAdmin &&
           adminSection === 'assignments' && (
             <div className="p-4 sm:p-6">
-              <ShiftScheduler
-                members={eventPack?.members ?? []}
-                onChanged={() => loadEventPack(false, true)}
-              />
+              <div className="mb-4 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant={assignmentMode === 'time' ? 'default' : 'outline'}
+                  onClick={() => setAssignmentMode('time')}
+                >
+                  <CalendarDays /> Time blocks
+                </Button>
+                <Button
+                  type="button"
+                  variant={assignmentMode === 'match' ? 'default' : 'outline'}
+                  onClick={() => setAssignmentMode('match')}
+                >
+                  Individual matches
+                </Button>
+              </div>
+              {assignmentMode === 'time' && (
+                <ShiftScheduler
+                  members={eventPack?.members ?? []}
+                  matches={(eventPack?.matches ?? []).map((match) => ({
+                    key: match.key,
+                    label: matchLabel(match),
+                    scheduledAt: match.scheduledAt,
+                    predictedAt: match.predictedAt,
+                  }))}
+                  onChanged={() => loadEventPack(false, true)}
+                />
+              )}
               <ScoutingOperations mode="coverage" />
+              {assignmentMode === 'match' && (
               <Card>
                 <CardHeader>
                   <CardTitle>
@@ -3338,16 +3395,20 @@ export default function Home() {
                   )}
                 </CardContent>
               </Card>
+              )}
             </div>
           )}
-        {activeView === 'Teams' && canUseStrategy && (
+        {activeView === 'Teams' && (
           <div className="flex flex-wrap gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
             {(
               [
-                ['directory', 'Directory'],
                 ['analysis', 'Analysis'],
-                ['picks', 'Pick list'],
-                ['review', 'Data review'],
+                ...(canUsePickLists
+                  ? ([['picklist', 'My pick list']] as const)
+                  : []),
+                ...(canUseStrategy
+                  ? ([['review', 'Data review']] as const)
+                  : []),
               ] as const
             ).map(([section, label]) => (
               <Button
@@ -3361,48 +3422,21 @@ export default function Home() {
             ))}
           </div>
         )}
-        {activeView === 'Teams' && teamsSection === 'directory' && (
-          <div className="p-4 sm:p-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  Teams at {eventPack?.event.name ?? 'this event'}
-                </CardTitle>
-                <Badge variant="outline">{eventTeams.length} teams</Badge>
-              </CardHeader>
-              <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {eventTeams.map((team) => (
-                  <button
-                    onClick={() => {
-                      setSelectedTeam(team);
-                      if (canUseStrategy) setTeamsSection('analysis');
-                      else {
-                        setPitTeam(team);
-                        navigate('Pit');
-                      }
-                    }}
-                    className="schedule-row w-full text-left"
-                    key={team}
-                  >
-                    <strong>Team {team}</strong>
-                    <span>
-                      {
-                        eventPack?.matches.filter((match) =>
-                          [
-                            ...match.alliances.red,
-                            ...match.alliances.blue,
-                          ].includes(team),
-                        ).length
-                      }{' '}
-                      matches
-                    </span>
-                    <ChevronRight />
-                  </button>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        {activeView === 'Teams' &&
+          canUsePickLists &&
+          teamsSection === 'picklist' && (
+            <div className="p-4 sm:p-6">
+              {eventPack && (
+                <PickListWorkspace
+                  teams={strategyTeams}
+                  eventKey={eventPack.event.key}
+                  organizationTeamNumber={organizationTeamNumber}
+                  userId={eventPack.userId}
+                  initialMode="personal"
+                />
+              )}
+            </div>
+          )}
         {activeView === 'Teams' &&
           canUseStrategy &&
           teamsSection === 'review' && (
@@ -3466,21 +3500,20 @@ export default function Home() {
               />
             </div>
           )}
+        {activeView === 'Alliance' && canUseStrategy && (
+          <div className="p-2 sm:p-4">
+            {eventPack && (
+              <PickListWorkspace
+                teams={strategyTeams}
+                eventKey={eventPack.event.key}
+                organizationTeamNumber={organizationTeamNumber}
+                userId={eventPack.userId}
+                initialMode="selection"
+              />
+            )}
+          </div>
+        )}
         {activeView === 'Teams' &&
-          canUseStrategy &&
-          teamsSection === 'picks' && (
-            <div className="grid gap-4 p-4 sm:p-6">
-              {eventPack && (
-                <PickListWorkspace
-                  teams={strategyTeams}
-                  eventKey={eventPack.event.key}
-                  organizationTeamNumber={organizationTeamNumber}
-                />
-              )}
-            </div>
-          )}
-        {activeView === 'Teams' &&
-          canUseStrategy &&
           teamsSection === 'analysis' && (
             <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
               <TeamComparison
@@ -3495,10 +3528,24 @@ export default function Home() {
               <Card className="sm:col-span-2">
                 <CardHeader>
                   <CardTitle>Event ranking workspace</CardTitle>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Badge variant="outline">
                       {strategyTeams.length} teams
                     </Badge>
+                    <Button
+                      size="sm"
+                      variant={rankingSort === 'rank' ? 'default' : 'outline'}
+                      onClick={() => setRankingSort('rank')}
+                    >
+                      Event rank
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={rankingSort === 'team' ? 'default' : 'outline'}
+                      onClick={() => setRankingSort('team')}
+                    >
+                      Team number
+                    </Button>
                     {eventPack && canReopenEntries(eventPack.role) && (
                       <Button
                         nativeButton={false}
@@ -3514,13 +3561,19 @@ export default function Home() {
                 </CardHeader>
                 <CardContent className="max-h-96 overflow-auto">
                   <div className="strategy-table">
+                    <strong>Rank</strong>
                     <strong>Team</strong>
                     <strong>Samples</strong>
                     <strong>Median pts</strong>
-                    <strong>Fuel/cycle</strong>
                     <strong>Coverage</strong>
                     {[...strategyTeams]
-                      .sort((a, b) => b.medianPoints - a.medianPoints)
+                      .sort((a, b) => {
+                        if (rankingSort === 'team')
+                          return a.teamNumber - b.teamNumber;
+                        if (a.eventRank === null) return 1;
+                        if (b.eventRank === null) return -1;
+                        return a.eventRank - b.eventRank;
+                      })
                       .map((team) => (
                         <button
                           key={team.teamNumber}
@@ -3529,10 +3582,10 @@ export default function Home() {
                             selectedTeam === team.teamNumber ? 'selected' : ''
                           }
                         >
+                          <span>{team.eventRank ?? '—'}</span>
                           <span>{team.teamNumber}</span>
                           <span>{team.samples}</span>
                           <span>{team.medianPoints.toFixed(1)}</span>
-                          <span>{team.medianFuelPerCycle.toFixed(1)}</span>
                           <span>{Math.round(team.coverage * 100)}%</span>
                         </button>
                       ))}
@@ -3583,6 +3636,37 @@ export default function Home() {
               </Card>
               <Card>
                 <CardHeader>
+                  <CardTitle>TBA and external ratings</CardTitle>
+                </CardHeader>
+                <CardContent className="mini-stats">
+                  <span>
+                    <strong>{selectedStrategyTeam?.eventRank ?? '—'}</strong>{' '}
+                    event rank
+                  </span>
+                  <span>
+                    <strong>
+                      {selectedStrategyTeam
+                        ? `${selectedStrategyTeam.wins}-${selectedStrategyTeam.losses}-${selectedStrategyTeam.ties}`
+                        : '—'}
+                    </strong>{' '}
+                    TBA record
+                  </span>
+                  <span>
+                    <strong>
+                      {selectedStrategyTeam?.opr?.toFixed(1) ?? '—'}
+                    </strong>{' '}
+                    TBA OPR
+                  </span>
+                  <span>
+                    <strong>
+                      {selectedStrategyTeam?.epa?.toFixed(1) ?? '—'}
+                    </strong>{' '}
+                    Statbotics EPA
+                  </span>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
                   <CardTitle>Reliability and coverage</CardTitle>
                 </CardHeader>
                 <CardContent className="mini-stats">
@@ -3612,6 +3696,70 @@ export default function Home() {
               </Card>
               <Card className="sm:col-span-2">
                 <CardHeader>
+                  <CardTitle>Pit scouting</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {analysis?.pit ? (
+                    <div className="mini-stats">
+                      <span>
+                        <strong>{analysis.pit.drivetrain ?? 'Unknown'}</strong>{' '}
+                        drivetrain
+                      </span>
+                      <span>
+                        <strong>
+                          {analysis.pit.weightLbs
+                            ? `${analysis.pit.weightLbs} lb`
+                            : 'Unknown'}
+                        </strong>{' '}
+                        robot weight
+                      </span>
+                      <span>
+                        <strong>
+                          {analysis.pit.payload.shooterMount ?? 'Unknown'}
+                        </strong>{' '}
+                        shooter mount
+                      </span>
+                      <span>
+                        <strong>
+                          {analysis.pit.payload.shooterBarrels ?? 'Unknown'}
+                        </strong>{' '}
+                        shooter barrels
+                      </span>
+                      <span>
+                        <strong>
+                          {analysis.pit.payload.fieldAccess ?? 'Unknown'}
+                        </strong>{' '}
+                        field access
+                      </span>
+                      <span>
+                        <strong>
+                          {analysis.pit.payload.climbCapability ?? 'Unknown'}
+                        </strong>{' '}
+                        climb capability
+                      </span>
+                      <span>
+                        <strong>
+                          {analysis.pit.payload.autonomousStart?.join(', ') ??
+                            'Unknown'}
+                        </strong>{' '}
+                        autonomous starts
+                      </span>
+                      <span>
+                        <strong>
+                          {analysis.pit.payload.adjustableHood ? 'Yes' : 'No'}
+                        </strong>{' '}
+                        adjustable hood
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No pit report has been submitted for this team.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+              <Card className="sm:col-span-2">
+                <CardHeader>
                   <CardTitle>
                     {selectedTeam
                       ? `Team ${selectedTeam} trends`
@@ -3620,6 +3768,10 @@ export default function Home() {
                   <Badge variant="outline">Match by match</Badge>
                 </CardHeader>
                 <CardContent>
+                  <p className="mb-3 text-sm text-muted-foreground">
+                    Match-by-match observed points, autonomous FUEL,
+                    teleoperated FUEL, and defense rating (0–4).
+                  </p>
                   <TeamTrendChart trends={analysis?.trends ?? []} />
                 </CardContent>
               </Card>
@@ -3827,9 +3979,7 @@ export default function Home() {
           <div className="grid gap-4 p-4 sm:p-6">
             <Card>
               <CardHeader>
-                <CardTitle>
-                  <KeyRound /> Change password
-                </CardTitle>
+                <CardTitle>Change password</CardTitle>
               </CardHeader>
               <CardContent>
                 <form className="grid max-w-lg gap-3" onSubmit={changePassword}>
@@ -3885,9 +4035,7 @@ export default function Home() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>
-                  <MonitorSmartphone /> Signed-in devices
-                </CardTitle>
+                <CardTitle>Signed-in devices</CardTitle>
                 <Badge variant="outline">{accountSessions.length}</Badge>
               </CardHeader>
               <CardContent className="space-y-2">

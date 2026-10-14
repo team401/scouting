@@ -15,8 +15,9 @@ export type TeamTrend = {
   matchKey: string;
   matchNumber: number;
   points: number;
+  autoFuel: number;
   activeFuel: number;
-  cycleSeconds: number;
+  defenseRating: number;
 };
 
 export function TeamTrendChart({ trends }: { trends: TeamTrend[] }) {
@@ -58,9 +59,16 @@ export function TeamTrendChart({ trends }: { trends: TeamTrend[] }) {
           />
           <Line
             type="monotone"
-            dataKey="cycleSeconds"
-            name="Cycle seconds"
+            dataKey="autoFuel"
+            name="Autonomous FUEL"
             stroke="#22c55e"
+            strokeWidth={2}
+          />
+          <Line
+            type="monotone"
+            dataKey="defenseRating"
+            name="Defense rating (0–4)"
+            stroke="#a855f7"
             strokeWidth={2}
           />
         </LineChart>
