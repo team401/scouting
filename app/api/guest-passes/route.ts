@@ -12,7 +12,10 @@ const createSchema = z.object({
     z.literal(168),
   ]),
 });
-const revokeSchema = z.object({ id: z.string().uuid() });
+const revokeSchema = z.object({
+  id: z.string().uuid(),
+  action: z.enum(['revoke', 'remove']).optional().default('revoke'),
+});
 
 async function getAdmin(request: Request) {
   const session = await auth.api.getSession({ headers: request.headers });
@@ -110,6 +113,24 @@ export async function DELETE(request: Request) {
   if (!pass)
     return Response.json({ error: 'Guest pass not found.' }, { status: 404 });
   const now = Date.now();
+  if (parsed.data.action === 'remove') {
+    await env.DB.batch([
+      env.DB.prepare(
+        'DELETE FROM sessions WHERE user_id = ? OR user_id LIKE ?',
+      ).bind(pass.userId, `guest:${parsed.data.id}:%`),
+      env.DB.prepare(
+        'DELETE FROM guest_access_passes WHERE id = ? AND organization_id = ?',
+      ).bind(parsed.data.id, actor.membership.organizationId),
+      env.DB.prepare(
+        'DELETE FROM memberships WHERE organization_id = ? AND (user_id = ? OR user_id LIKE ?)',
+      ).bind(
+        actor.membership.organizationId,
+        pass.userId,
+        `guest:${parsed.data.id}:%`,
+      ),
+    ]);
+    return Response.json({ removed: true });
+  }
   await env.DB.batch([
     env.DB.prepare(
       'UPDATE guest_access_passes SET revoked_at = ?, updated_at = ? WHERE id = ?',
