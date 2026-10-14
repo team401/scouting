@@ -51,10 +51,19 @@ export async function POST(request: Request) {
       parsed.data.password,
     );
     const roster = await loadOpsRoster(firebase.idToken);
-    if (!roster.some((profile) => profile.uid === firebase.localId))
+    const profile = roster.find((item) => item.uid === firebase.localId);
+    if (!profile)
       return Response.json(
         { error: 'This Firebase account is not in the Team 401 Ops roster.' },
         { status: 403 },
+      );
+    if (profile.mustResetPassword)
+      return Response.json(
+        {
+          error: 'Set a new password before continuing.',
+          mustResetPassword: true,
+        },
+        { status: 409 },
       );
     const userId = await synchronizeOpsRoster(roster, firebase.localId);
     const membership = await env.DB.prepare(

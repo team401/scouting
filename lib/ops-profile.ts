@@ -1,4 +1,4 @@
-type FirestoreValue = { stringValue?: string };
+type FirestoreValue = { stringValue?: string; booleanValue?: boolean };
 export type FirestoreDocument = {
   name: string;
   fields?: Record<string, FirestoreValue>;
@@ -8,6 +8,7 @@ export type OpsProfile = {
   email: string;
   displayName: string;
   role: string;
+  mustResetPassword: boolean;
 };
 
 export function profileFromDocument(
@@ -22,6 +23,8 @@ export function profileFromDocument(
     displayName:
       document.fields?.displayName?.stringValue?.trim() || email.split('@')[0],
     role: document.fields?.role?.stringValue ?? 'student',
+    mustResetPassword:
+      document.fields?.mustResetPassword?.booleanValue ?? false,
   };
 }
 

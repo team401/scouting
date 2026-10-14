@@ -313,7 +313,10 @@ export function ScoutingOperations({
             );
           })
           .map((issue) => (
-            <div className="schedule-row" key={issue.id}>
+            <div
+              className="grid gap-3 border-b pb-4 last:border-b-0"
+              key={issue.id}
+            >
               <strong>
                 {matchLabel(issue.matchKey)} · {issue.teamNumber}
               </strong>

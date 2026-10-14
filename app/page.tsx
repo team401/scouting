@@ -5,20 +5,19 @@ import {
   CalendarDays,
   Check,
   ChevronRight,
+  CircleUserRound,
   ClipboardList,
   Cloud,
   CloudOff,
   Gauge,
-  House,
+  KeyRound,
   LayoutDashboard,
-  LogOut,
   Map,
   Minus,
   MonitorSmartphone,
   Moon,
   Plus,
   RefreshCw,
-  Settings,
   Shield,
   Sun,
   TowerControl,
@@ -63,10 +62,10 @@ import {
   scoutEntryMutationId,
 } from '@/lib/scouting-policy';
 
-type View = 'Home' | 'Scout' | 'Pit' | 'Plan' | 'Teams' | 'Admin' | 'Settings';
+type View = 'Home' | 'Scout' | 'Pit' | 'Plan' | 'Teams' | 'Admin' | 'Account';
 
 const nav: {
-  label: Exclude<View, 'Settings' | 'Admin'>;
+  label: Exclude<View, 'Account' | 'Admin'>;
   icon: typeof ClipboardList;
 }[] = [
   { label: 'Home', icon: LayoutDashboard },
@@ -125,14 +124,13 @@ type PitDraft = {
   swerveModule: string;
   motorTypes: string;
   weightLbs: number;
-  widthInches: number;
-  lengthInches: number;
-  heightInches: number;
   fuelCapacity: number;
   climbCapability: string;
   fieldAccess: string;
   fieldAccessPreference: string;
-  shooterType: string;
+  shooterMount: string;
+  shooterBarrels: string;
+  adjustableHood: boolean;
   autonomousStart: string[];
   autonomousSwipe: string[];
   autonomousDepot: boolean;
@@ -155,14 +153,13 @@ const emptyPitDraft: PitDraft = {
   swerveModule: '',
   motorTypes: '',
   weightLbs: 0,
-  widthInches: 0,
-  lengthInches: 0,
-  heightInches: 0,
   fuelCapacity: 0,
   climbCapability: 'None',
   fieldAccess: 'Both',
   fieldAccessPreference: 'No preference',
-  shooterType: 'Fixed',
+  shooterMount: 'Fixed',
+  shooterBarrels: '1',
+  adjustableHood: false,
   autonomousStart: ['Unknown'],
   autonomousSwipe: ['None'],
   autonomousDepot: false,
@@ -191,6 +188,21 @@ function toggleSelection(
     ? active.filter((item) => item !== value)
     : [...active, value];
   return next.length > 0 ? next : [emptyValue];
+}
+
+function shooterSummary(
+  payload: Partial<PitDraft> & { shooterType?: string },
+) {
+  const mount =
+    payload.shooterMount ??
+    (payload.shooterType === 'Turreted' ? 'Turreted' : 'Fixed');
+  const barrels = payload.shooterBarrels ?? '—';
+  const hood = payload.adjustableHood ? 'adjustable hood' : 'fixed hood';
+  const barrelDescription =
+    barrels === 'Drum'
+      ? 'drum'
+      : `${barrels} ${barrels === '1' ? 'barrel' : 'barrels'}`;
+  return `${mount} · ${barrelDescription} · ${hood}`;
 }
 
 type EventMatch = {
@@ -382,21 +394,23 @@ export default function Home() {
   const [teamsSection, setTeamsSection] = useState<
     'directory' | 'analysis' | 'picks' | 'review'
   >('directory');
+  const [videoMatchesMineOnly, setVideoMatchesMineOnly] = useState(true);
   const navigationDepthRef = useRef(0);
   const selectedMatchKeyRef = useRef('');
   const loadedPlanMatchIdRef = useRef('');
   const [autoFuel, setAutoFuel] = useState(0);
   const [activeFuel, setActiveFuel] = useState(0);
-  const [autoTower, setAutoTower] = useState('None');
-  const [tower, setTower] = useState('None');
-  const [path, setPath] = useState('Trench');
+  const [autoTower, setAutoTower] = useState('');
+  const [autoStartPosition, setAutoStartPosition] = useState('');
+  const [tower, setTower] = useState('');
+  const [path, setPath] = useState('');
   const [dark, setDark] = useState(false);
   const [_saved, setSaved] = useState(false);
-  const [defenseRating, setDefenseRating] = useState(0);
-  const [disabled, setDisabled] = useState(false);
+  const [defenseRating, setDefenseRating] = useState<number | null>(null);
+  const [disabled, setDisabled] = useState<boolean | null>(null);
   const [noShow, setNoShow] = useState(false);
   const [penalties, setPenalties] = useState(0);
-  const [shootingRange, setShootingRange] = useState('Mixed');
+  const [shootingRange, setShootingRange] = useState('');
   const [notes, setNotes] = useState('');
   const [draftReady, setDraftReady] = useState(false);
   const [queuedCount, setQueuedCount] = useState(0);
@@ -432,6 +446,11 @@ export default function Home() {
   >([]);
   const [currentSessionId, setCurrentSessionId] = useState('');
   const [sessionMessage, setSessionMessage] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
   const [adminSection, setAdminSection] = useState<'settings' | 'assignments'>(
     'settings',
   );
@@ -459,7 +478,13 @@ export default function Home() {
         organizationTeamNumber,
       ),
     ) ?? [];
+  const videoMatches = videoMatchesMineOnly
+    ? planningMatches
+    : (eventPack?.matches ?? []);
   const currentMatch = eventPack?.matches.find(
+    (match) => match.key === selectedMatchKey,
+  );
+  const selectedVideoMatch = videoMatches.find(
     (match) => match.key === selectedMatchKey,
   );
   const draftId =
@@ -501,10 +526,11 @@ export default function Home() {
     inactiveFuel: 0,
     cycles: 0,
     autoTower: noShow ? 'None' : autoTower,
+    autoStartPosition: noShow ? 'None' : autoStartPosition,
     tower: noShow ? 'None' : tower,
     path: noShow ? 'None' : path,
-    defenseRating: noShow ? 0 : defenseRating,
-    disabled: noShow ? false : disabled,
+    defenseRating: noShow ? 0 : (defenseRating ?? 0),
+    disabled: noShow ? false : (disabled ?? false),
     noShow,
     penalties: noShow ? 0 : penalties,
     shootingRange: noShow ? 'None' : shootingRange,
@@ -520,7 +546,9 @@ export default function Home() {
     : null;
   const isAdmin = Boolean(eventPack && canManageAssignments(eventPack.role));
   const canUseStrategy = Boolean(eventPack && canReopenEntries(eventPack.role));
-  const visibleNav = nav;
+  const visibleNav = nav.filter(
+    ({ label }) => label !== 'Plan' || canUseStrategy,
+  );
 
   function navigate(view: View) {
     if (view === activeView) return;
@@ -554,11 +582,15 @@ export default function Home() {
       'Plan',
       'Teams',
       'Admin',
-      'Settings',
+      'Account',
     ];
     const requested = new URL(window.location.href).searchParams.get('view');
     const initial =
-      views.find((view) => view.toLowerCase() === requested?.toLowerCase()) ??
+      (requested?.toLowerCase() === 'settings'
+        ? 'Account'
+        : views.find(
+            (view) => view.toLowerCase() === requested?.toLowerCase(),
+          )) ??
       'Home';
     window.history.replaceState(
       { scoutingApp: true, view: initial, depth: 0 },
@@ -615,28 +647,34 @@ export default function Home() {
           const didNotShow = payload.noShow ?? false;
           setAutoFuel(didNotShow ? 0 : payload.autoFuel);
           setActiveFuel(didNotShow ? 0 : payload.activeFuel);
-          setAutoTower(didNotShow ? 'None' : payload.autoTower);
-          setTower(didNotShow ? 'None' : payload.tower);
-          setPath(didNotShow ? 'None' : payload.path);
-          setDefenseRating(didNotShow ? 0 : (payload.defenseRating ?? 0));
-          setDisabled(didNotShow ? false : (payload.disabled ?? false));
+          setAutoTower(didNotShow ? 'None' : (payload.autoTower ?? ''));
+          setAutoStartPosition(
+            didNotShow ? 'None' : (payload.autoStartPosition ?? ''),
+          );
+          setTower(didNotShow ? 'None' : (payload.tower ?? ''));
+          setPath(didNotShow ? 'None' : (payload.path ?? ''));
+          setDefenseRating(
+            didNotShow ? 0 : (payload.defenseRating ?? null),
+          );
+          setDisabled(didNotShow ? false : (payload.disabled ?? null));
           setNoShow(didNotShow);
           setPenalties(didNotShow ? 0 : (payload.penalties ?? 0));
           setShootingRange(
-            didNotShow ? 'None' : (payload.shootingRange ?? 'Mixed'),
+            didNotShow ? 'None' : (payload.shootingRange ?? ''),
           );
           setNotes(payload.notes ?? '');
         } else {
           setAutoFuel(0);
           setActiveFuel(0);
-          setAutoTower('None');
-          setTower('None');
-          setPath('Trench');
-          setDefenseRating(0);
-          setDisabled(false);
+          setAutoTower('');
+          setAutoStartPosition('');
+          setTower('');
+          setPath('');
+          setDefenseRating(null);
+          setDisabled(null);
           setNoShow(false);
           setPenalties(0);
-          setShootingRange('Mixed');
+          setShootingRange('');
           setNotes('');
         }
         setDraftReady(true);
@@ -756,7 +794,7 @@ export default function Home() {
   }, [activeView, eventYear, isAdmin, online]);
 
   useEffect(() => {
-    if (activeView !== 'Settings' || !session || !online) return;
+    if (activeView !== 'Account' || !session || !online) return;
     fetch('/api/sessions')
       .then(async (response) => {
         const result = (await response.json()) as {
@@ -781,6 +819,13 @@ export default function Home() {
     if (!planningMatches.some((match) => match.key === selectedMatchKey))
       setSelectedMatchKey(planningMatches[0].key);
   }, [activeView, planningMatches, selectedMatchKey]);
+
+  useEffect(() => {
+    if (activeView !== 'Teams' || teamsSection !== 'review') return;
+    if (videoMatches.length === 0) return;
+    if (!videoMatches.some((match) => match.key === selectedMatchKey))
+      setSelectedMatchKey(videoMatches[0].key);
+  }, [activeView, selectedMatchKey, teamsSection, videoMatches]);
 
   useEffect(() => {
     if (activeView !== 'Plan' || !currentMatch || !session) return;
@@ -934,6 +979,7 @@ export default function Home() {
   }, [
     activeFuel,
     autoFuel,
+    autoStartPosition,
     autoTower,
     defenseRating,
     disabled,
@@ -968,17 +1014,21 @@ export default function Home() {
               swerveModule: serverEntry.swerveModule ?? '',
               motorTypes: serverEntry.motorTypes.join(', '),
               weightLbs: serverEntry.weightLbs ?? 0,
-              widthInches: serverEntry.dimensions?.width ?? 0,
-              lengthInches: serverEntry.dimensions?.length ?? 0,
-              heightInches: serverEntry.dimensions?.height ?? 0,
             }
           : emptyPitDraft;
+        const savedDraft = draft?.payload ?? serverDraft;
+        const legacyShooterType = (
+          savedDraft as Partial<PitDraft> & { shooterType?: string }
+        ).shooterType;
         const loadedDraft = {
           ...emptyPitDraft,
-          ...(draft?.payload ?? serverDraft),
+          ...savedDraft,
         };
         setPitDraft({
           ...loadedDraft,
+          shooterMount:
+            (savedDraft as Partial<PitDraft>).shooterMount ??
+            (legacyShooterType === 'Turreted' ? 'Turreted' : 'Fixed'),
           autonomousStart: normalizeSelections(
             loadedDraft.autonomousStart,
             'Unknown',
@@ -1014,6 +1064,29 @@ export default function Home() {
   async function submitMatch() {
     if (!draftId || !eventPack || !currentMatch || !selectedTeam) {
       setSaveError('Choose a match and team from the schedule first.');
+      return;
+    }
+    const missingFields = noShow
+      ? []
+      : [
+          !autoStartPosition && 'autonomous starting position',
+          !autoTower && 'autonomous tower',
+          !path && 'field movement',
+          defenseRating === null && 'defense effectiveness',
+          !shootingRange && 'shooting range',
+          !tower && 'endgame tower',
+          disabled === null && 'reliability',
+        ].filter((field): field is string => Boolean(field));
+    if (missingFields.length > 0) {
+      setSaveError(`Complete: ${missingFields.join(', ')}.`);
+      return;
+    }
+    if (
+      [autoFuel, activeFuel, penalties].some(
+        (value) => !Number.isInteger(value) || value < 0,
+      )
+    ) {
+      setSaveError('Fuel and penalty counts must be zero or a positive whole number.');
       return;
     }
     setSaveError('');
@@ -1054,6 +1127,10 @@ export default function Home() {
   async function submitPit() {
     if (!eventPack || !pitTeam) {
       setPitMessage('Choose a team first.');
+      return;
+    }
+    if (pitDraft.weightLbs <= 0) {
+      setPitMessage('Enter the robot weight before saving the pit report.');
       return;
     }
     const id = `pit:${eventPack.event.key}:${pitTeam}`;
@@ -1172,9 +1249,18 @@ export default function Home() {
       setEventKey(pack.event.key);
       await saveCachedValue('current-event-pack', pack);
       if (!selectedMatchKeyRef.current && pack.matches.length > 0) {
-        const mine = pack.assignments.find(
-          (assignment) => assignment.scoutUserId === pack.userId,
-        );
+        const mine = pack.assignments
+          .filter((assignment) => assignment.scoutUserId === pack.userId)
+          .map((assignment) => ({
+            assignment,
+            match: pack.matches.find((item) => item.id === assignment.matchId),
+          }))
+          .filter((item) => item.match && !item.match.result?.actualTime)
+          .sort(
+            (a, b) =>
+              (a.match?.predictedAt ?? a.match?.scheduledAt ?? Infinity) -
+              (b.match?.predictedAt ?? b.match?.scheduledAt ?? Infinity),
+          )[0]?.assignment;
         const match =
           pack.matches.find((item) => item.id === mine?.matchId) ??
           pack.matches[0];
@@ -1357,6 +1443,35 @@ export default function Home() {
     setSessionMessage('Session revoked.');
   }
 
+  async function changePassword(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPasswordMessage('');
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage('The new passwords do not match.');
+      return;
+    }
+    setChangingPassword(true);
+    const response = await fetch('/api/auth/firebase-password', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    const result = (await response.json().catch(() => null)) as {
+      error?: string;
+    } | null;
+    setChangingPassword(false);
+    if (!response.ok) {
+      setPasswordMessage(result?.error ?? 'Could not change your password.');
+      return;
+    }
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordMessage(
+      'Password changed for both Scouting and Ops. Other scouting sessions were signed out.',
+    );
+  }
+
   async function syncNow() {
     if (!session) {
       setSyncMessage('Sign in before synchronizing.');
@@ -1532,7 +1647,6 @@ export default function Home() {
           (a.match?.predictedAt ?? a.match?.scheduledAt ?? Infinity) -
           (b.match?.predictedAt ?? b.match?.scheduledAt ?? Infinity),
       ) ?? [];
-  const nextAssignment = myAssignments[0];
   const reopenedEntries =
     eventPack?.scoutEntries.filter(
       (entry) =>
@@ -1633,32 +1747,21 @@ export default function Home() {
         </nav>
         <button
           type="button"
-          aria-current={activeView === 'Settings' ? 'page' : undefined}
-          onClick={() => navigate('Settings')}
+          aria-current={activeView === 'Account' ? 'page' : undefined}
+          onClick={() => navigate('Account')}
           className={
-            activeView === 'Settings'
+            activeView === 'Account'
               ? 'nav-item active mt-auto'
               : 'nav-item mt-auto'
           }
         >
-          <Settings />
-          <span>Settings</span>
+          <CircleUserRound />
+          <span>Account</span>
         </button>
       </aside>
       <section className="h-dvh min-w-0 flex-1 overflow-y-auto">
         <header className="topbar">
           <div className="flex items-center gap-2">
-            {activeView !== 'Home' && (
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                aria-label="Go to home"
-                onClick={() => replaceView('Home')}
-              >
-                <House />
-              </Button>
-            )}
             <h1>
               {activeView === 'Scout'
                 ? currentMatch
@@ -1676,11 +1779,9 @@ export default function Home() {
               (session ? (
                 <Button
                   variant="outline"
-                  onClick={() =>
-                    authClient.signOut().then(() => window.location.reload())
-                  }
+                  onClick={() => navigate('Account')}
                 >
-                  <LogOut />
+                  <CircleUserRound />
                   {session.user.name}
                 </Button>
               ) : (
@@ -1701,51 +1802,98 @@ export default function Home() {
         {activeView === 'Home' && (
           <div className="mx-auto grid w-full max-w-3xl gap-4 p-4 sm:p-6">
             <Card>
+              <CardContent className="flex flex-col justify-between gap-3 p-4 sm:flex-row sm:items-center">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">
+                    {eventPack?.event.name ?? 'No current event selected'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {eventPack?.event.updatedAt
+                      ? `Updated ${new Date(eventPack.event.updatedAt).toLocaleTimeString([], {
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })}`
+                      : isAdmin
+                        ? 'Choose an event from Admin.'
+                        : 'A scouting administrator needs to choose an event.'}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!online || packLoading}
+                  onClick={() => void loadEventPack(false, true)}
+                >
+                  <RefreshCw className={packLoading ? 'animate-spin' : ''} />
+                  Refresh
+                </Button>
+              </CardContent>
+            </Card>
+            <Card>
               <CardHeader>
-                <CardTitle>Next assignment</CardTitle>
+                <CardTitle>
+                  <CalendarDays /> My scouting schedule
+                </CardTitle>
+                <Badge variant="outline">
+                  {myAssignments.length} match
+                  {myAssignments.length === 1 ? '' : 'es'}
+                </Badge>
               </CardHeader>
               <CardContent className="space-y-3">
-                {nextAssignment?.match ? (
-                  <>
-                    <div>
-                      <p className="text-2xl font-bold">
-                        {matchLabel(nextAssignment.match)}
-                      </p>
-                      <p className="text-muted-foreground">
-                        Team {nextAssignment.assignment.teamNumber} ·{' '}
-                        {nextAssignment.assignment.station.toUpperCase()}
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {nextAssignment.match.predictedAt
+                {eventPack?.scoutShifts.map((shift) => (
+                  <div className="schedule-row" key={shift.id}>
+                    <strong>{shift.station.toUpperCase()}</strong>
+                    <span>
+                      {new Date(shift.startsAt).toLocaleString([], {
+                        weekday: 'short',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}{' '}
+                      –{' '}
+                      {new Date(shift.endsAt).toLocaleTimeString([], {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  </div>
+                ))}
+                {myAssignments.map(({ assignment, match }, index) =>
+                  match ? (
+                    <Button
+                      key={`${match.id}:${assignment.station}`}
+                      className="w-full"
+                      variant={index === 0 ? 'default' : 'outline'}
+                      onClick={() =>
+                        selectAssignment(
+                          match,
+                          assignment.teamNumber,
+                          assignment.station,
+                        )
+                      }
+                    >
+                      <span className="flex-1 text-left">
+                        {matchLabel(match)} · Team {assignment.teamNumber} ·{' '}
+                        {assignment.station.toUpperCase()}
+                      </span>
+                      <span>
+                        {match.predictedAt || match.scheduledAt
                           ? new Date(
-                              nextAssignment.match.predictedAt,
+                              match.predictedAt ?? match.scheduledAt!,
                             ).toLocaleTimeString([], {
                               hour: 'numeric',
                               minute: '2-digit',
                             })
-                          : 'Time TBD'}{' '}
-                        · {nextAssignment.match.alliances.red.join(', ')} vs{' '}
-                        {nextAssignment.match.alliances.blue.join(', ')}
-                      </p>
-                    </div>
-                    <Button
-                      className="w-full"
-                      onClick={() =>
-                        selectAssignment(
-                          nextAssignment.match!,
-                          nextAssignment.assignment.teamNumber,
-                          nextAssignment.assignment.station,
-                        )
-                      }
-                    >
-                      Start scouting
+                          : 'TBD'}
+                      </span>
                     </Button>
-                  </>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No assignment has been scheduled for you yet.
-                  </p>
+                  ) : null,
                 )}
+                {!eventPack?.scoutShifts.length &&
+                  myAssignments.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    No scouting shifts or matches are assigned to you yet.
+                  </p>
+                  )}
               </CardContent>
             </Card>
             {reopenedEntries.length > 0 && (
@@ -1829,6 +1977,73 @@ export default function Home() {
               </Card>
             )}
             <div className="min-w-0 space-y-4">
+              <Card>
+                <CardContent className="grid gap-3 p-4 sm:grid-cols-2">
+                  <label className="grid gap-1 text-sm font-medium">
+                    Match
+                    <select
+                      className="h-10 rounded-md border bg-background px-3 text-foreground"
+                      value={selectedMatchKey}
+                      onChange={(event) => {
+                        const match = eventPack?.matches.find(
+                          (item) => item.key === event.target.value,
+                        );
+                        if (!match) return;
+                        const assignment = eventPack?.assignments.find(
+                          (item) =>
+                            item.matchId === match.id &&
+                            item.scoutUserId === eventPack.userId,
+                        );
+                        selectAssignment(
+                          match,
+                          assignment?.teamNumber ?? match.alliances.red[0],
+                          assignment?.station ?? 'red1',
+                        );
+                      }}
+                    >
+                      {eventPack?.matches.map((match) => (
+                        <option value={match.key} key={match.key}>
+                          {matchLabel(match)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid gap-1 text-sm font-medium">
+                    Team and station
+                    <select
+                      className="h-10 rounded-md border bg-background px-3 text-foreground"
+                      value={selectedStation}
+                      onChange={(event) => {
+                        if (!currentMatch) return;
+                        const station = event.target.value;
+                        const alliance = station.startsWith('red')
+                          ? currentMatch.alliances.red
+                          : currentMatch.alliances.blue;
+                        const index = Number(station.at(-1)) - 1;
+                        const team = alliance[index];
+                        if (team)
+                          selectAssignment(currentMatch, team, station);
+                      }}
+                    >
+                      {currentMatch &&
+                        [
+                          ...currentMatch.alliances.red.map((team, index) => ({
+                            team,
+                            station: `red${index + 1}`,
+                          })),
+                          ...currentMatch.alliances.blue.map((team, index) => ({
+                            team,
+                            station: `blue${index + 1}`,
+                          })),
+                        ].map(({ team, station }) => (
+                          <option value={station} key={station}>
+                            {station.toUpperCase()} · Team {team}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                </CardContent>
+              </Card>
               <Card className="match-card">
                 <CardContent className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
@@ -1848,7 +2063,7 @@ export default function Home() {
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-muted-foreground">
-                      {eventPack?.event.year ?? 2026} REBUILT
+                        {eventPack?.event.year ?? 2026} Rebuilt
                     </p>
                     <p className="font-mono text-lg font-bold text-primary">
                       {currentMatch?.predictedAt
@@ -1866,15 +2081,46 @@ export default function Home() {
                   <CardTitle>Autonomous</CardTitle>
                 </CardHeader>
                 <CardContent className="divide-y divide-border p-0">
+                  <div className="space-y-2 px-4 py-3">
+                    <div>
+                      <strong>Starting position</strong>
+                      <p className="text-xs text-muted-foreground">
+                        Left and right are viewed from the driver station.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                      {[
+                        'Left trench',
+                        'Left bump',
+                        'Center',
+                        'Right bump',
+                        'Right trench',
+                      ].map((position) => (
+                        <button
+                          type="button"
+                          className={
+                            autoStartPosition === position
+                              ? 'choice selected min-h-12 px-2 text-center text-sm'
+                              : 'choice min-h-12 px-2 text-center text-sm'
+                          }
+                          aria-pressed={autoStartPosition === position}
+                          onClick={() => setAutoStartPosition(position)}
+                          key={position}
+                        >
+                          {position}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <Counter
-                    label="FUEL scored"
+                    label="Fuel scored"
                     hint="Use +5 for a burst, then adjust or type the total"
                     value={autoFuel}
                     onChange={setAutoFuel}
                     quickAdds={[5]}
                   />
                   <div className="flex items-center justify-between gap-3 px-4 py-2">
-                    <strong>Auto TOWER</strong>
+                    <strong>Auto tower</strong>
                     <div className="two-choices">
                       {['None', 'Level 1'].map((item) => (
                         <button
@@ -1897,11 +2143,11 @@ export default function Home() {
               </Card>
               <Card>
                 <CardHeader className="border-b">
-                  <CardTitle>Teleoperated FUEL</CardTitle>
+                  <CardTitle>Teleoperated fuel</CardTitle>
                 </CardHeader>
                 <CardContent className="divide-y divide-border p-0">
                   <Counter
-                    label="FUEL scored"
+                    label="Fuel scored"
                     hint="Add observed bursts with +5 or +10; fine-tune anytime"
                     value={activeFuel}
                     onChange={setActiveFuel}
@@ -1909,56 +2155,54 @@ export default function Home() {
                   />
                 </CardContent>
               </Card>
-              <div className="form-pair">
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    <Gauge /> Field movement
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-3 gap-2">
+                  {['Trench', 'Bump', 'Both'].map((item) => (
+                    <button
+                      key={item}
+                      onClick={() => setPath(item)}
+                      className={path === item ? 'choice selected' : 'choice'}
+                    >
+                      {path === item && <Check />}
+                      {item}
+                    </button>
+                  ))}
+                </CardContent>
+              </Card>
                 <Card>
                   <CardHeader>
-                    <CardTitle>
-                      <Gauge /> Field movement
-                    </CardTitle>
+                    <CardTitle><Shield /> Defense effectiveness</CardTitle>
                   </CardHeader>
-                  <CardContent className="grid grid-cols-3 gap-2">
-                    {['Trench', 'Bump', 'Both'].map((item) => (
-                      <button
-                        key={item}
-                        onClick={() => setPath(item)}
-                        className={path === item ? 'choice selected' : 'choice'}
-                      >
-                        {path === item && <Check />}
-                        {item}
-                      </button>
-                    ))}
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>
-                      <Shield /> Defense
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-2 gap-2">
+                  <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                     {[
                       { value: 0, label: 'None' },
                       { value: 1, label: 'Ineffective' },
-                      { value: 2, label: 'Effective' },
-                      { value: 3, label: 'Dominant' },
+                      { value: 2, label: 'Some impact' },
+                      { value: 3, label: 'Effective' },
+                      { value: 4, label: 'Dominant' },
                     ].map(({ value, label }) => (
                       <button
+                        type="button"
                         onClick={() => setDefenseRating(value)}
                         aria-pressed={defenseRating === value}
                         className={
                           defenseRating === value
-                            ? 'choice selected min-h-10 justify-start px-2 text-xs'
-                            : 'choice min-h-10 justify-start px-2 text-xs'
+                            ? 'choice selected min-h-16 flex-col gap-1 px-2 text-center text-sm'
+                            : 'choice min-h-16 flex-col gap-1 px-2 text-center text-sm'
                         }
                         key={value}
                       >
-                        <strong className="text-base">{value}</strong>
+                        <strong className="text-lg">{value}</strong>
                         <span>{label}</span>
                       </button>
                     ))}
                   </CardContent>
                 </Card>
-              </div>
               <Card>
                 <CardHeader className="border-b">
                   <CardTitle>Scoring profile</CardTitle>
@@ -1995,7 +2239,7 @@ export default function Home() {
               <Card>
                 <CardHeader className="border-b">
                   <CardTitle>
-                    <TowerControl /> Endgame TOWER
+                      <TowerControl /> Endgame tower
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -2016,14 +2260,32 @@ export default function Home() {
                   <CardTitle>Reliability and notes</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="mb-2 font-semibold">Robot reliability</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { value: false, label: 'Working' },
+                          { value: true, label: 'Disabled or broken' },
+                        ].map((item) => (
+                          <button
+                            type="button"
+                            className={
+                              disabled === item.value
+                                ? 'choice selected'
+                                : 'choice'
+                            }
+                            aria-pressed={disabled === item.value}
+                            onClick={() => setDisabled(item.value)}
+                            key={item.label}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     <button
-                      className={disabled ? 'choice selected' : 'choice'}
-                      onClick={() => setDisabled(!disabled)}
-                    >
-                      {disabled && <Check />}Disabled or broken
-                    </button>
-                    <button
+                      type="button"
                       className={noShow ? 'choice selected' : 'choice'}
                       onClick={() => {
                         const nextNoShow = !noShow;
@@ -2038,6 +2300,14 @@ export default function Home() {
                           setDisabled(false);
                           setPenalties(0);
                           setShootingRange('None');
+                        } else {
+                          setAutoStartPosition('');
+                          setAutoTower('');
+                          setTower('');
+                          setPath('');
+                          setDefenseRating(null);
+                          setDisabled(null);
+                          setShootingRange('');
                         }
                       }}
                     >
@@ -2075,7 +2345,8 @@ export default function Home() {
                   </>
                 ) : draftReady ? (
                   <>
-                    Save match offline <ChevronRight />
+                    {online ? 'Submit match' : 'Save match offline'}{' '}
+                    <ChevronRight />
                   </>
                 ) : (
                   <>Opening offline storage…</>
@@ -2127,16 +2398,16 @@ export default function Home() {
                   return (
                     <button
                       type="button"
-                      className={
-                        pitTeam === team
-                          ? 'schedule-row selected w-full text-left'
-                          : 'schedule-row w-full text-left'
-                      }
+                      className={`schedule-row pit-queue-row ${
+                        complete ? 'pit-queue-complete' : 'pit-queue-needed'
+                      } ${pitTeam === team ? 'selected' : ''} w-full text-left`}
                       onClick={() => setPitTeam(team)}
                       key={team}
                     >
                       <strong>Team {team}</strong>
-                      <span>{complete ? 'Report saved' : 'Not scouted'}</span>
+                      <span className="pit-queue-status">
+                        {complete ? 'Scouted' : 'Needs scouting'}
+                      </span>
                       {complete ? <Check /> : <ChevronRight />}
                     </button>
                   );
@@ -2208,58 +2479,14 @@ export default function Home() {
                         Weight (lb)
                         <Input
                           type="number"
-                          min="0"
+                          min="1"
                           inputMode="decimal"
+                          required
                           value={pitDraft.weightLbs || ''}
                           onChange={(event) =>
                             setPitDraft({
                               ...pitDraft,
                               weightLbs: Number(event.target.value),
-                            })
-                          }
-                        />
-                      </label>
-                      <label className="grid gap-1 text-sm">
-                        Width (in)
-                        <Input
-                          type="number"
-                          min="0"
-                          inputMode="decimal"
-                          value={pitDraft.widthInches || ''}
-                          onChange={(event) =>
-                            setPitDraft({
-                              ...pitDraft,
-                              widthInches: Number(event.target.value),
-                            })
-                          }
-                        />
-                      </label>
-                      <label className="grid gap-1 text-sm">
-                        Length (in)
-                        <Input
-                          type="number"
-                          min="0"
-                          inputMode="decimal"
-                          value={pitDraft.lengthInches || ''}
-                          onChange={(event) =>
-                            setPitDraft({
-                              ...pitDraft,
-                              lengthInches: Number(event.target.value),
-                            })
-                          }
-                        />
-                      </label>
-                      <label className="grid gap-1 text-sm">
-                        Height (in)
-                        <Input
-                          type="number"
-                          min="0"
-                          inputMode="decimal"
-                          value={pitDraft.heightInches || ''}
-                          onChange={(event) =>
-                            setPitDraft({
-                              ...pitDraft,
-                              heightInches: Number(event.target.value),
                             })
                           }
                         />
@@ -2299,24 +2526,56 @@ export default function Home() {
                         </select>
                       </label>
                       <label className="grid gap-1 text-sm">
-                        Shooter type
+                        Shooter mounting
                         <select
                           className="h-10 rounded-md border bg-transparent px-3"
-                          value={pitDraft.shooterType}
+                          value={pitDraft.shooterMount}
                           onChange={(event) =>
                             setPitDraft({
                               ...pitDraft,
-                              shooterType: event.target.value,
+                              shooterMount: event.target.value,
                             })
                           }
                         >
                           <option>Fixed</option>
                           <option>Turreted</option>
-                          <option>Multiple shooters</option>
-                          <option>None</option>
-                          <option>Other</option>
                         </select>
                       </label>
+                      <label className="grid gap-1 text-sm">
+                        Shooter barrels
+                        <select
+                          className="h-10 rounded-md border bg-transparent px-3"
+                          value={pitDraft.shooterBarrels}
+                          onChange={(event) =>
+                            setPitDraft({
+                              ...pitDraft,
+                              shooterBarrels: event.target.value,
+                            })
+                          }
+                        >
+                          <option value="1">1</option>
+                          <option value="2">2</option>
+                          <option value="3">3</option>
+                          <option value="Drum">Drum</option>
+                        </select>
+                      </label>
+                      <button
+                        type="button"
+                        className={
+                          pitDraft.adjustableHood
+                            ? 'choice selected self-end'
+                            : 'choice self-end'
+                        }
+                        onClick={() =>
+                          setPitDraft({
+                            ...pitDraft,
+                            adjustableHood: !pitDraft.adjustableHood,
+                          })
+                        }
+                      >
+                        {pitDraft.adjustableHood && <Check />}
+                        Adjustable hood
+                      </button>
                     </div>
                     <div className="space-y-3 rounded-lg border p-3">
                       <div>
@@ -2370,11 +2629,28 @@ export default function Home() {
                       </div>
                     </div>
                     <div className="space-y-3 rounded-lg border p-3">
-                      <p className="font-semibold">Autonomous capabilities</p>
                       <div>
-                        <p className="mb-2 text-sm">Starting position</p>
-                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                          {['Left', 'Middle', 'Right', 'Unknown'].map((item) => (
+                        <p className="font-semibold">Autonomous capabilities</p>
+                        <p className="text-xs text-muted-foreground">
+                          Select every routine the robot can run.
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm">Starting positions</p>
+                        <p className="mb-2 text-xs text-muted-foreground">
+                          Select every position the robot has an autonomous
+                          routine for. Left and right are viewed from the driver
+                          station.
+                        </p>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                          {[
+                            'Left trench',
+                            'Left bump',
+                            'Center',
+                            'Right bump',
+                            'Right trench',
+                            'Unknown',
+                          ].map((item) => (
                             <button
                               type="button"
                               className={
@@ -2659,7 +2935,12 @@ export default function Home() {
                               Access {pit.payload.fieldAccess ?? '—'}
                             </span>
                             <span>
-                              Shooter {pit.payload.shooterType ?? '—'}
+                              Shooter{' '}
+                              {shooterSummary(
+                                pit.payload as Partial<PitDraft> & {
+                                  shooterType?: string;
+                                },
+                              )}
                             </span>
                             <span className="col-span-2 line-clamp-2">
                               Auto:{' '}
@@ -3131,23 +3412,50 @@ export default function Home() {
                   <CardTitle>Match videos</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={videoMatchesMineOnly ? 'default' : 'outline'}
+                      onClick={() => setVideoMatchesMineOnly(true)}
+                    >
+                      Team {organizationTeamNumber} matches
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={!videoMatchesMineOnly ? 'default' : 'outline'}
+                      onClick={() => setVideoMatchesMineOnly(false)}
+                    >
+                      All matches
+                    </Button>
+                  </div>
                   <select
                     aria-label="Match video to manage"
                     className="h-11 w-full rounded-md border bg-transparent px-3"
                     value={selectedMatchKey}
+                    disabled={videoMatches.length === 0}
                     onChange={(event) => setSelectedMatchKey(event.target.value)}
                   >
-                    {eventPack?.matches.map((match) => (
+                    {videoMatches.map((match) => (
                       <option value={match.key} key={match.key}>
                         {matchLabel(match)} · {match.alliances.red.join(', ')} vs{' '}
                         {match.alliances.blue.join(', ')}
                       </option>
                     ))}
                   </select>
+                  {eventPack && videoMatches.length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      Team {organizationTeamNumber} is not scheduled for this
+                      event.
+                    </p>
+                  )}
                   <MatchVideoLibrary
-                    matchId={currentMatch?.id ?? null}
+                    matchId={selectedVideoMatch?.id ?? null}
                     matchLabel={
-                      currentMatch ? matchLabel(currentMatch) : 'this match'
+                      selectedVideoMatch
+                        ? matchLabel(selectedVideoMatch)
+                        : 'this match'
                     }
                   />
                 </CardContent>
@@ -3177,14 +3485,12 @@ export default function Home() {
             <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
               <TeamComparison
                 teams={strategyTeams}
-                matchTeams={
-                  currentMatch
-                    ? [
-                        ...currentMatch.alliances.red,
-                        ...currentMatch.alliances.blue,
-                      ]
-                    : []
-                }
+                matches={(eventPack?.matches ?? []).map((match) => ({
+                  key: match.key,
+                  label: matchLabel(match),
+                  red: match.alliances.red,
+                  blue: match.alliances.blue,
+                }))}
               />
               <Card className="sm:col-span-2">
                 <CardHeader>
@@ -3517,32 +3823,64 @@ export default function Home() {
             </Card>
           </div>
         )}
-        {activeView === 'Settings' && (
+        {activeView === 'Account' && (
           <div className="grid gap-4 p-4 sm:p-6">
             <Card>
               <CardHeader>
-                <CardTitle>Display settings</CardTitle>
+                <CardTitle>
+                  <KeyRound /> Change password
+                </CardTitle>
               </CardHeader>
-              <CardContent className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="font-semibold">Color theme</p>
+              <CardContent>
+                <form className="grid max-w-lg gap-3" onSubmit={changePassword}>
                   <p className="text-sm text-muted-foreground">
-                    Choose the theme for this device.
+                    This changes your shared Team 401 password for both Scouting
+                    and Ops.
                   </p>
-                </div>
-                <Button variant="outline" onClick={toggleTheme}>
-                  {dark ? (
-                    <>
-                      <Sun />
-                      Use light mode
-                    </>
-                  ) : (
-                    <>
-                      <Moon />
-                      Use dark mode
-                    </>
+                  <Input
+                    type="password"
+                    autoComplete="current-password"
+                    aria-label="Current password"
+                    placeholder="Current password"
+                    value={currentPassword}
+                    onChange={(event) => setCurrentPassword(event.target.value)}
+                    required
+                  />
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    aria-label="New password"
+                    placeholder="New password"
+                    minLength={6}
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                    required
+                  />
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    aria-label="Confirm new password"
+                    placeholder="Confirm new password"
+                    minLength={6}
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    required
+                  />
+                  <Button type="submit" disabled={changingPassword}>
+                    <KeyRound />
+                    {changingPassword
+                      ? 'Changing password…'
+                      : 'Change password'}
+                  </Button>
+                  {passwordMessage && (
+                    <p
+                      className="text-sm text-muted-foreground"
+                      role="status"
+                    >
+                      {passwordMessage}
+                    </p>
                   )}
-                </Button>
+                </form>
               </CardContent>
             </Card>
             <Card>

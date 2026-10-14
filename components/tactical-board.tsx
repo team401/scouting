@@ -563,48 +563,6 @@ export function TacticalBoard({
             TOWER
           </text>
         </g>
-        {[190, 400, 610].map((y, index) => (
-          <g key={y} pointerEvents="none">
-            <rect
-              x="12"
-              y={y - 24}
-              width="25"
-              height="48"
-              rx="5"
-              fill="#dc2626"
-              stroke="#fecaca"
-            />
-            <text
-              x="24.5"
-              y={y + 4}
-              fill="white"
-              fontSize="12"
-              fontWeight="700"
-              textAnchor="middle"
-            >
-              R{index + 1}
-            </text>
-            <rect
-              x="1617"
-              y={y - 24}
-              width="25"
-              height="48"
-              rx="5"
-              fill="#2563eb"
-              stroke="#bfdbfe"
-            />
-            <text
-              x="1629.5"
-              y={y + 4}
-              fill="white"
-              fontSize="12"
-              fontWeight="700"
-              textAnchor="middle"
-            >
-              B{3 - index}
-            </text>
-          </g>
-        ))}
         {value.strokes.map((stroke) => {
           const points = stroke.points.map((p) => `${p.x},${p.y}`).join(' ');
           return (

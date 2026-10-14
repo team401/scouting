@@ -56,7 +56,10 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Admin access is required.' }, { status: 403 });
   const parsed = createSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success)
-    return Response.json({ error: 'Enter a guest name and duration.' }, { status: 400 });
+    return Response.json(
+      { error: 'Enter a partner team or group and duration.' },
+      { status: 400 },
+    );
 
   const id = crypto.randomUUID();
   const userId = `guest:${id}`;
@@ -114,7 +117,17 @@ export async function DELETE(request: Request) {
     env.DB.prepare(
       'UPDATE memberships SET disabled = 1, updated_at = ? WHERE organization_id = ? AND user_id = ?',
     ).bind(now, actor.membership.organizationId, pass.userId),
-    env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(pass.userId),
+    env.DB.prepare(
+      `UPDATE memberships SET disabled = 1, updated_at = ?
+       WHERE organization_id = ? AND user_id LIKE ?`,
+    ).bind(
+      now,
+      actor.membership.organizationId,
+      `guest:${parsed.data.id}:%`,
+    ),
+    env.DB.prepare(
+      'DELETE FROM sessions WHERE user_id = ? OR user_id LIKE ?',
+    ).bind(pass.userId, `guest:${parsed.data.id}:%`),
   ]);
   return Response.json({ revoked: true });
 }
