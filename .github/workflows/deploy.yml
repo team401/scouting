@@ -50,8 +50,9 @@ jobs:
         env:
           TBA_AUTH_KEY: ${{ secrets.TBA_AUTH_KEY }}
           TBA_WEBHOOK_SECRET: ${{ secrets.TBA_WEBHOOK_SECRET }}
+          MATCH13_API_KEY: ${{ secrets.MATCH13_API_KEY }}
         run: |
-          node -e "const secrets = {}; if (process.env.TBA_AUTH_KEY) secrets.TBA_AUTH_KEY = process.env.TBA_AUTH_KEY; if (process.env.TBA_WEBHOOK_SECRET) secrets.TBA_WEBHOOK_SECRET = process.env.TBA_WEBHOOK_SECRET; require('node:fs').writeFileSync(process.env.RUNNER_TEMP + '/worker-secrets.json', JSON.stringify(secrets))"
+          node -e "const secrets = {}; if (process.env.TBA_AUTH_KEY) secrets.TBA_AUTH_KEY = process.env.TBA_AUTH_KEY; if (process.env.TBA_WEBHOOK_SECRET) secrets.TBA_WEBHOOK_SECRET = process.env.TBA_WEBHOOK_SECRET; if (process.env.MATCH13_API_KEY) secrets.MATCH13_API_KEY = process.env.MATCH13_API_KEY; require('node:fs').writeFileSync(process.env.RUNNER_TEMP + '/worker-secrets.json', JSON.stringify(secrets))"
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v4
         with:

@@ -20,7 +20,7 @@ import type { TeamTrend } from '@/components/team-trend-chart';
 
 export type ComparisonTeam = {
   teamNumber: number;
-  epa: number | null;
+  xp: number | null;
   opr: number | null;
   samples: number;
   coverage: number;
@@ -32,7 +32,7 @@ export type ComparisonTeam = {
   pointStdDev: number;
 };
 
-type AnalysisResponse = Omit<ComparisonTeam, 'epa' | 'opr'> & {
+type AnalysisResponse = Omit<ComparisonTeam, 'xp' | 'opr'> & {
   trends?: TeamTrend[];
   error?: string;
 };
@@ -75,9 +75,7 @@ export function TeamComparison({
     () => new Map(teams.map((team) => [team.teamNumber, team])),
     [teams],
   );
-  const selectedMatch = matches.find(
-    (match) => match.key === selectedMatchKey,
-  );
+  const selectedMatch = matches.find((match) => match.key === selectedMatchKey);
 
   useEffect(() => {
     if (matches.some((match) => match.key === selectedMatchKey)) return;
@@ -230,10 +228,9 @@ export function TeamComparison({
               onClick={() => {
                 if (!selectedMatch) return;
                 setSelected(
-                  [...new Set([...selectedMatch.red, ...selectedMatch.blue])].slice(
-                    0,
-                    6,
-                  ),
+                  [
+                    ...new Set([...selectedMatch.red, ...selectedMatch.blue]),
+                  ].slice(0, 6),
                 );
                 setMessage('');
               }}
@@ -277,7 +274,7 @@ export function TeamComparison({
                 <thead>
                   <tr className="border-b text-left">
                     <th className="p-2">Team</th>
-                    <th className="p-2">EPA</th>
+                    <th className="p-2">Match13 xP</th>
                     <th className="p-2">OPR</th>
                     <th className="p-2">Median pts</th>
                     <th className="p-2">Tower</th>
@@ -294,7 +291,7 @@ export function TeamComparison({
                       className="border-b last:border-0"
                     >
                       <th className="p-2 text-left">{team.teamNumber}</th>
-                      <td className="p-2">{formatNumber(team.epa)}</td>
+                      <td className="p-2">{formatNumber(team.xp)}</td>
                       <td className="p-2">{formatNumber(team.opr)}</td>
                       <td className="p-2">{team.medianPoints.toFixed(1)}</td>
                       <td className="p-2">
@@ -318,12 +315,40 @@ export function TeamComparison({
                 <div className="rounded-lg border p-3" key={team.teamNumber}>
                   <strong className="text-lg">Team {team.teamNumber}</strong>
                   <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                    <span><strong>{formatNumber(team.epa)}</strong><small className="block text-muted-foreground">EPA</small></span>
-                    <span><strong>{formatNumber(team.opr)}</strong><small className="block text-muted-foreground">OPR</small></span>
-                    <span><strong>{team.medianPoints.toFixed(1)}</strong><small className="block text-muted-foreground">Median points</small></span>
-                    <span><strong>{team.averageDefense.toFixed(1)}</strong><small className="block text-muted-foreground">Defense</small></span>
-                    <span><strong>{Math.round(team.disabledRate * 100)}%</strong><small className="block text-muted-foreground">Disabled</small></span>
-                    <span><strong>{Math.round(team.coverage * 100)}%</strong><small className="block text-muted-foreground">Coverage ({team.samples})</small></span>
+                    <span>
+                      <strong>{formatNumber(team.xp)}</strong>
+                      <small className="block text-muted-foreground">
+                        Match13 xP
+                      </small>
+                    </span>
+                    <span>
+                      <strong>{formatNumber(team.opr)}</strong>
+                      <small className="block text-muted-foreground">OPR</small>
+                    </span>
+                    <span>
+                      <strong>{team.medianPoints.toFixed(1)}</strong>
+                      <small className="block text-muted-foreground">
+                        Median points
+                      </small>
+                    </span>
+                    <span>
+                      <strong>{team.averageDefense.toFixed(1)}</strong>
+                      <small className="block text-muted-foreground">
+                        Defense
+                      </small>
+                    </span>
+                    <span>
+                      <strong>{Math.round(team.disabledRate * 100)}%</strong>
+                      <small className="block text-muted-foreground">
+                        Disabled
+                      </small>
+                    </span>
+                    <span>
+                      <strong>{Math.round(team.coverage * 100)}%</strong>
+                      <small className="block text-muted-foreground">
+                        Coverage ({team.samples})
+                      </small>
+                    </span>
                   </div>
                 </div>
               ))}

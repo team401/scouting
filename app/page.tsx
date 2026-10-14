@@ -13,6 +13,7 @@ import {
   Handshake,
   KeyRound,
   LayoutDashboard,
+  LogOut,
   Map,
   Menu,
   Minus,
@@ -269,7 +270,7 @@ type MatchDraft = ScoutingPayload;
 
 type TeamAnalysis = {
   teamNumber: number;
-  epa: number | null;
+  xp: number | null;
   opr: number | null;
   eventRank: number | null;
   matchesPlayed: number;
@@ -532,6 +533,7 @@ export default function Home() {
   >([]);
   const [currentSessionId, setCurrentSessionId] = useState('');
   const [sessionMessage, setSessionMessage] = useState('');
+  const [signingOut, setSigningOut] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -1637,6 +1639,12 @@ export default function Home() {
       items.filter((item) => item.id !== sessionId),
     );
     setSessionMessage('Session revoked.');
+  }
+
+  async function signOut() {
+    setSigningOut(true);
+    await authClient.signOut();
+    window.location.href = '/sign-in';
   }
 
   async function changePassword(event: React.FormEvent<HTMLFormElement>) {
@@ -3404,9 +3412,9 @@ export default function Home() {
                         )}
                         <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                           <span>
-                            <strong>{stats?.epa?.toFixed(1) ?? '—'}</strong>
+                            <strong>{stats?.xp?.toFixed(1) ?? '—'}</strong>
                             <small className="block text-muted-foreground">
-                              EPA
+                              Match13 xP
                             </small>
                           </span>
                           <span>
@@ -3969,10 +3977,8 @@ export default function Home() {
                   TBA OPR
                 </span>
                 <span>
-                  <strong>
-                    {selectedStrategyTeam?.epa?.toFixed(1) ?? '—'}
-                  </strong>{' '}
-                  Statbotics EPA
+                  <strong>{selectedStrategyTeam?.xp?.toFixed(1) ?? '—'}</strong>{' '}
+                  Match13 xP
                 </span>
               </CardContent>
             </Card>
@@ -4217,65 +4223,82 @@ export default function Home() {
                     <option value="all">All accounts</option>
                   </select>
                 </div>
-                {filteredMembers.map((member) => (
-                  <div className="member-row" key={member.id}>
-                    <div>
-                      <strong>{member.name}</strong>
-                      <small>
-                        {member.email.endsWith('@guest.invalid')
-                          ? 'Temporary partner access'
-                          : member.email}
-                      </small>
-                      {Boolean(member.disabled) && (
-                        <Badge variant="destructive">Disabled</Badge>
-                      )}
-                    </div>
-                    {member.email.endsWith('@guest.invalid') ? (
-                      <Badge variant="outline">Guest scout</Badge>
-                    ) : member.role === 'owner' ? (
-                      <Badge>Owner</Badge>
-                    ) : (
-                      <select
-                        value={member.role}
-                        onChange={(event) =>
-                          void updateMemberRole(member.id, event.target.value)
-                        }
+                <div className="member-card-grid">
+                  {filteredMembers.map((member) => {
+                    const guest = member.email.endsWith('@guest.invalid');
+                    return (
+                      <article
+                        className="member-card"
+                        data-role={guest ? 'guest' : member.role}
+                        key={member.id}
                       >
-                        <option value="admin">Admin</option>
-                        <option value="strategy">Strategy</option>
-                        <option value="scout">Scout</option>
-                        <option value="video">Video</option>
-                      </select>
-                    )}
-                    {member.role !== 'owner' && (
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            void setMemberDisabled(member.id, !member.disabled)
-                          }
-                        >
-                          {member.disabled ? 'Enable' : 'Disable'}
-                        </Button>
-                        {Boolean(member.disabled) && (
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() =>
-                              setMemberPendingRemoval({
-                                id: member.id,
-                                name: member.name,
-                              })
-                            }
-                          >
-                            Remove
-                          </Button>
+                        <div className="member-card-heading">
+                          <strong>{member.name}</strong>
+                          {Boolean(member.disabled) && (
+                            <Badge variant="destructive">Disabled</Badge>
+                          )}
+                        </div>
+                        <small className="member-card-email">
+                          {guest ? 'Temporary partner access' : member.email}
+                        </small>
+                        <div className="member-card-role">
+                          <span>Scouting role</span>
+                          {guest ? (
+                            <Badge variant="outline">Guest scout</Badge>
+                          ) : member.role === 'owner' ? (
+                            <Badge>Owner</Badge>
+                          ) : (
+                            <select
+                              aria-label={`Scouting role for ${member.name}`}
+                              value={member.role}
+                              onChange={(event) =>
+                                void updateMemberRole(
+                                  member.id,
+                                  event.target.value,
+                                )
+                              }
+                            >
+                              <option value="admin">Admin</option>
+                              <option value="strategy">Strategy</option>
+                              <option value="scout">Scout</option>
+                              <option value="video">Video</option>
+                            </select>
+                          )}
+                        </div>
+                        {member.role !== 'owner' && (
+                          <div className="member-card-actions">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                void setMemberDisabled(
+                                  member.id,
+                                  !member.disabled,
+                                )
+                              }
+                            >
+                              {member.disabled ? 'Enable' : 'Disable'}
+                            </Button>
+                            {Boolean(member.disabled) && (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() =>
+                                  setMemberPendingRemoval({
+                                    id: member.id,
+                                    name: member.name,
+                                  })
+                                }
+                              >
+                                Remove
+                              </Button>
+                            )}
+                          </div>
                         )}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                      </article>
+                    );
+                  })}
+                </div>
                 {!filteredMembers.length && (
                   <p className="py-4 text-center text-sm text-muted-foreground">
                     No accounts match this search and filter.
@@ -4292,6 +4315,27 @@ export default function Home() {
         )}
         {activeView === 'Account' && (
           <div className="grid gap-4 p-4 sm:p-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Account</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <strong className="block">{session.user.name}</strong>
+                  <span className="block text-sm text-muted-foreground [overflow-wrap:anywhere]">
+                    {session.user.email}
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  disabled={signingOut}
+                  onClick={() => void signOut()}
+                >
+                  <LogOut />
+                  {signingOut ? 'Signing out…' : 'Sign out'}
+                </Button>
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader>
                 <CardTitle>Change password</CardTitle>
@@ -4347,32 +4391,40 @@ export default function Home() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>Signed-in devices</CardTitle>
-                <Badge variant="outline">{accountSessions.length}</Badge>
+                <CardTitle>Other signed-in devices</CardTitle>
+                <Badge variant="outline">
+                  {
+                    accountSessions.filter(
+                      (item) => item.id !== currentSessionId,
+                    ).length
+                  }
+                </Badge>
               </CardHeader>
               <CardContent className="account-sessions space-y-2">
-                {accountSessions.map((item) => (
-                  <div className="schedule-row" key={item.id}>
-                    <strong>
-                      {item.id === currentSessionId ? 'This device' : 'Session'}
-                    </strong>
-                    <span>
-                      {item.userAgent?.split(' ').slice(0, 4).join(' ') ??
-                        'Unknown device'}
-                      {item.ipAddress ? ` · ${item.ipAddress}` : ''}
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => void revokeSession(item.id)}
-                    >
-                      {item.id === currentSessionId ? 'Sign out' : 'Revoke'}
-                    </Button>
-                  </div>
-                ))}
-                {!accountSessions.length && (
+                {accountSessions
+                  .filter((item) => item.id !== currentSessionId)
+                  .map((item) => (
+                    <div className="schedule-row" key={item.id}>
+                      <strong>Session</strong>
+                      <span>
+                        {item.userAgent?.split(' ').slice(0, 4).join(' ') ??
+                          'Unknown device'}
+                        {item.ipAddress ? ` · ${item.ipAddress}` : ''}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void revokeSession(item.id)}
+                      >
+                        Revoke
+                      </Button>
+                    </div>
+                  ))}
+                {!accountSessions.some(
+                  (item) => item.id !== currentSessionId,
+                ) && (
                   <p className="text-sm text-muted-foreground">
-                    No active sessions were found.
+                    No other active sessions were found.
                   </p>
                 )}
                 {sessionMessage && (

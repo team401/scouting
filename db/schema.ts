@@ -12,6 +12,19 @@ const timestamps = {
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
 };
 
+export const externalApiCache = sqliteTable(
+  'external_api_cache',
+  {
+    provider: text('provider').notNull(),
+    cacheKey: text('cache_key').notNull(),
+    payload: text('payload'),
+    etag: text('etag'),
+    fetchedAt: integer('fetched_at').notNull().default(0),
+    refreshingUntil: integer('refreshing_until').notNull().default(0),
+  },
+  (table) => [primaryKey({ columns: [table.provider, table.cacheKey] })],
+);
+
 export const users = sqliteTable(
   'users',
   {
