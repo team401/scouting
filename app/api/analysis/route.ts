@@ -83,7 +83,7 @@ export async function GET(request: Request) {
       points: observedPoints(payloads[index]),
       autoFuel: payloads[index].autoFuel,
       activeFuel: payloads[index].activeFuel,
-      defenseRating: payloads[index].defenseRating ?? 0,
+      defenseRating: payloads[index].defenseRating ?? null,
     })),
     pit: pitEntry
       ? {

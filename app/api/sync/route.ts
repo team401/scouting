@@ -24,6 +24,14 @@ const scoutPayloadSchema = z.object({
     .optional(),
   tower: z.string(),
   path: z.string(),
+  defenseRating: z.number().int().min(1).max(4).nullable().optional(),
+  disabled: z.boolean().optional(),
+  noShow: z.boolean().optional(),
+  penalties: z.number().int().nonnegative().optional(),
+  shootingRange: z.string().optional(),
+  cycleSeconds: z.number().nonnegative().optional(),
+  notes: z.string().max(1000).optional(),
+  reviewSource: z.enum(['live', 'video_review']).optional(),
 });
 
 const pitPayloadSchema = z.object({

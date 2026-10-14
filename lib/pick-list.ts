@@ -40,8 +40,7 @@ export function nextAllianceAfterSelection(
   previousPickCount: number,
   allianceCount = 8,
 ) {
-  if (previousPickCount === 0)
-    return allianceNumber < allianceCount ? allianceNumber + 1 : 1;
+  if (previousPickCount === 0) return allianceNumber;
   if (previousPickCount === 1)
     return allianceNumber < allianceCount ? allianceNumber + 1 : allianceCount;
   return allianceNumber > 1 ? allianceNumber - 1 : 1;
@@ -49,6 +48,29 @@ export function nextAllianceAfterSelection(
 
 export function nextAllianceSlot(pickCount: number) {
   return ['Captain', 'First pick', 'Second pick'][pickCount] ?? 'Complete';
+}
+
+export function nextAlliancePick(
+  selections: AllianceSelection[],
+  allianceCount = 8,
+) {
+  const pickCounts = new Map<number, number>();
+  for (const selection of selections) {
+    pickCounts.set(
+      selection.allianceNumber,
+      (pickCounts.get(selection.allianceNumber) ?? 0) + 1,
+    );
+  }
+
+  for (let allianceNumber = 1; allianceNumber <= allianceCount; allianceNumber += 1) {
+    const pickCount = pickCounts.get(allianceNumber) ?? 0;
+    if (pickCount < 2) return { allianceNumber, pickCount };
+  }
+  for (let allianceNumber = allianceCount; allianceNumber >= 1; allianceNumber -= 1) {
+    if ((pickCounts.get(allianceNumber) ?? 0) === 2)
+      return { allianceNumber, pickCount: 2 };
+  }
+  return null;
 }
 
 export function buildConsensus(lists: PickListData[]): ConsensusEntry[] {

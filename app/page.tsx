@@ -445,7 +445,9 @@ export default function Home() {
   const [path, setPath] = useState('');
   const [dark, setDark] = useState(false);
   const [_saved, setSaved] = useState(false);
-  const [defenseRating, setDefenseRating] = useState<number | null>(null);
+  const [defenseRating, setDefenseRating] = useState<
+    number | null | undefined
+  >(undefined);
   const [disabled, setDisabled] = useState<boolean | null>(null);
   const [noShow, setNoShow] = useState(false);
   const [penalties, setPenalties] = useState(0);
@@ -571,7 +573,7 @@ export default function Home() {
     autoStartPosition,
     tower,
     path,
-    defenseRating: defenseRating ?? 0,
+    defenseRating,
     disabled: disabled ?? false,
     noShow,
     penalties,
@@ -580,6 +582,44 @@ export default function Home() {
     notes,
   };
   const estimatedPoints = noShow ? 0 : observedPoints(currentPayload);
+  const scoutingPhases = ['pre', 'auto', 'tele', 'post'] as const;
+
+  function moveToScoutingPhase(
+    target: (typeof scoutingPhases)[number],
+  ) {
+    if (noShow) {
+      if (target === 'auto' || target === 'tele') return;
+      setSaveError('');
+      setScoutingPhase(target);
+      return;
+    }
+
+    const currentIndex = scoutingPhases.indexOf(scoutingPhase);
+    const targetIndex = scoutingPhases.indexOf(target);
+    if (targetIndex <= currentIndex) {
+      setSaveError('');
+      setScoutingPhase(target);
+      return;
+    }
+
+    const incompletePhase = scoutingPhases
+      .slice(currentIndex, targetIndex)
+      .find((phase) => {
+        if (phase === 'pre') return !autoStartPosition;
+        if (phase === 'auto') return !autoTower;
+        return false;
+      });
+    if (incompletePhase === 'pre') {
+      setSaveError('Choose a starting position before continuing.');
+      return;
+    }
+    if (incompletePhase === 'auto') {
+      setSaveError('Choose an autonomous tower result before continuing.');
+      return;
+    }
+    setSaveError('');
+    setScoutingPhase(target);
+  }
   const pitDraftId =
     eventPack && pitTeam ? `pit-${eventPack.event.key}-${pitTeam}` : null;
   const existingPitPhoto = pitTeam
@@ -704,7 +744,11 @@ export default function Home() {
           );
           setTower(payload.tower ?? '');
           setPath(payload.path ?? '');
-          setDefenseRating(payload.defenseRating ?? null);
+          setDefenseRating(
+            payload.defenseRating === undefined
+              ? undefined
+              : payload.defenseRating,
+          );
           setDisabled(payload.disabled ?? null);
           setNoShow(didNotShow);
           setPenalties(payload.penalties ?? 0);
@@ -719,7 +763,7 @@ export default function Home() {
           setAutoStartPosition('');
           setTower('');
           setPath('');
-          setDefenseRating(null);
+          setDefenseRating(undefined);
           setDisabled(null);
           setNoShow(false);
           setPenalties(0);
@@ -1133,7 +1177,7 @@ export default function Home() {
           !autoStartPosition && 'autonomous starting position',
           !autoTower && 'autonomous tower',
           !path && 'field movement',
-          defenseRating === null && 'defense effectiveness',
+          defenseRating === undefined && 'whether the robot played defense',
           !shootingRange && 'shooting range',
           !tower && 'endgame tower',
           disabled === null && 'reliability',
@@ -1143,6 +1187,7 @@ export default function Home() {
       return;
     }
     if (
+      !noShow &&
       [autoFuel, activeFuel, centerSwipes, passedFuel, penalties].some(
         (value) => !Number.isInteger(value) || value < 0,
       )
@@ -1172,7 +1217,23 @@ export default function Home() {
           seasonYear: eventPack.event.year,
           schemaVersion: 1,
           reviewSource: videoReview ? 'video_review' : 'live',
-          ...currentPayload,
+          ...(noShow
+            ? {
+                ...currentPayload,
+                autoFuel: 0,
+                activeFuel: 0,
+                centerSwipes: 0,
+                passedFuel: 0,
+                autoTower: 'None',
+                autoStartPosition: 'None',
+                tower: 'None',
+                path: 'None',
+                defenseRating: null,
+                disabled: false,
+                penalties: 0,
+                shootingRange: 'None',
+              }
+            : currentPayload),
         },
       };
       await queueMutation(mutation);
@@ -2052,16 +2113,13 @@ export default function Home() {
                           (item) => item.key === event.target.value,
                         );
                         if (!match) return;
-                        const assignment = eventPack?.assignments.find(
-                          (item) =>
-                            item.matchId === match.id &&
-                            item.scoutUserId === eventPack.userId,
-                        );
-                        selectAssignment(
-                          match,
-                          assignment?.teamNumber ?? match.alliances.red[0],
-                          assignment?.station ?? 'red1',
-                        );
+                        const station = selectedStation || 'red1';
+                        const alliance = station.startsWith('blue')
+                          ? match.alliances.blue
+                          : match.alliances.red;
+                        const stationIndex = Number(station.at(-1)) - 1;
+                        const team = alliance[stationIndex];
+                        if (team) selectAssignment(match, team, station);
                       }}
                     >
                       {eventPack?.matches.map((match) => (
@@ -2163,7 +2221,8 @@ export default function Home() {
                     size="sm"
                     variant={scoutingPhase === phase ? 'default' : 'ghost'}
                     aria-current={scoutingPhase === phase ? 'step' : undefined}
-                    onClick={() => setScoutingPhase(phase)}
+                    disabled={noShow && (phase === 'auto' || phase === 'tele')}
+                    onClick={() => moveToScoutingPhase(phase)}
                     className="min-w-0 px-1 text-xs sm:text-sm"
                     key={phase}
                   >
@@ -2212,7 +2271,12 @@ export default function Home() {
                     <button
                       type="button"
                       className={noShow ? 'choice selected w-full' : 'choice w-full'}
-                      onClick={() => setNoShow((value) => !value)}
+                      onClick={() => {
+                        const nextNoShow = !noShow;
+                        setNoShow(nextNoShow);
+                        setSaveError('');
+                        if (nextNoShow) setScoutingPhase('post');
+                      }}
                     >
                       {noShow && <Check />} No-show
                     </button>
@@ -2244,7 +2308,6 @@ export default function Home() {
                       hint="Count completed center-line swipe routines"
                       value={centerSwipes}
                       onChange={setCenterSwipes}
-                      quickAdds={[1]}
                     />
                     <div className="flex items-center justify-between gap-3 px-4 py-3">
                       <strong>Auto tower</strong>
@@ -2283,11 +2346,32 @@ export default function Home() {
                       onChange={setActiveFuel}
                       quickAdds={[5, 10]}
                     />
+                    <Counter
+                      label="Fuel passed"
+                      hint="Estimate FUEL deliberately transferred to an alliance partner."
+                      value={passedFuel}
+                      onChange={setPassedFuel}
+                      quickAdds={[5]}
+                    />
                   </CardContent>
                 </Card>
               )}
 
               {scoutingPhase === 'post' && <>
+              {noShow ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>No-show report</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <p>This report is ready to submit as a no-show.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Match observations will be submitted as zero. Return to
+                      pre-match if the robot is on the field.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : <>
               <Card>
                 <CardHeader>
                   <CardTitle>Field movement</CardTitle>
@@ -2307,11 +2391,11 @@ export default function Home() {
               </Card>
                 <Card>
                   <CardHeader>
-                    <CardTitle>Defense effectiveness</CardTitle>
+                    <CardTitle>Played defense</CardTitle>
                   </CardHeader>
                   <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                     {[
-                      { value: 0, label: 'None' },
+                      { value: null, label: 'N/A' },
                       { value: 1, label: 'Ineffective' },
                       { value: 2, label: 'Some impact' },
                       { value: 3, label: 'Effective' },
@@ -2326,7 +2410,7 @@ export default function Home() {
                             ? 'choice selected min-h-16 flex-col gap-1 px-2 text-center text-sm'
                             : 'choice min-h-16 flex-col gap-1 px-2 text-center text-sm'
                         }
-                        key={value}
+                        key={label}
                       >
                         <strong className="text-lg">{value}</strong>
                         <span>{label}</span>
@@ -2363,14 +2447,6 @@ export default function Home() {
                     hint="Count referee-called penalties attributable to this robot; do not calculate penalty points."
                     value={penalties}
                     onChange={setPenalties}
-                    quickAdds={[1]}
-                  />
-                  <Counter
-                    label="Fuel passed"
-                    hint="Estimate FUEL deliberately transferred to an alliance partner."
-                    value={passedFuel}
-                    onChange={setPassedFuel}
-                    quickAdds={[5]}
                   />
                 </CardContent>
               </Card>
@@ -2429,6 +2505,7 @@ export default function Home() {
                 </CardContent>
               </Card>
               </>}
+              </>}
 
               <div className="grid grid-cols-2 gap-2">
                 <Button
@@ -2436,14 +2513,15 @@ export default function Home() {
                   variant="outline"
                   disabled={scoutingPhase === 'pre'}
                   onClick={() =>
-                    setScoutingPhase(
+                    moveToScoutingPhase(
                       scoutingPhase === 'post'
-                        ? 'tele'
+                        ? noShow
+                          ? 'pre'
+                          : 'tele'
                         : scoutingPhase === 'tele'
                           ? 'auto'
                           : 'pre',
-                    )
-                  }
+                    )}
                 >
                   Previous
                 </Button>
@@ -2451,7 +2529,7 @@ export default function Home() {
                   <Button
                     type="button"
                     onClick={() =>
-                      setScoutingPhase(
+                      moveToScoutingPhase(
                         scoutingPhase === 'pre'
                           ? 'auto'
                           : scoutingPhase === 'auto'
@@ -4295,10 +4373,6 @@ export default function Home() {
               <span>Admin</span>
             </button>
           )}
-          <button type="button" onClick={() => navigate('Account')}>
-            <CircleUserRound />
-            <span>Account</span>
-          </button>
         </div>
         </>
       )}
@@ -4322,7 +4396,7 @@ export default function Home() {
           aria-expanded={mobileMenuOpen}
           onClick={() => setMobileMenuOpen((open) => !open)}
           className={
-            mobileMenuOpen || ['Plan', 'Alliance', 'Admin', 'Account'].includes(activeView)
+            mobileMenuOpen || ['Plan', 'Alliance', 'Admin'].includes(activeView)
               ? 'active'
               : ''
           }

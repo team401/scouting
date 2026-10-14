@@ -23,8 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
   emptyPickList,
-  nextAllianceAfterSelection,
-  nextAllianceSlot,
+  nextAlliancePick,
   type ConsensusEntry,
   type PickListData,
   type PickListEntry,
@@ -100,7 +99,6 @@ export function PickListWorkspace({
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
   const [hydrated, setHydrated] = useState(false);
-  const [allianceNumber, setAllianceNumber] = useState(1);
   const [selectionSearch, setSelectionSearch] = useState('');
   const [selectionListMode, setSelectionListMode] = useState<
     'rankings' | 'picklist'
@@ -177,6 +175,7 @@ export function PickListWorkspace({
   const list = mode === 'personal' ? personal : official;
   const setList = mode === 'personal' ? setPersonal : setOfficial;
   const metrics = new Map(teams.map((team) => [team.teamNumber, team]));
+  const nextPick = nextAlliancePick(official.selections);
 
   async function save(target: 'personal' | 'official', data: PickListData) {
     setSaving(true);
@@ -233,20 +232,17 @@ export function PickListWorkspace({
   function markTaken(teamNumber: number) {
     if (official.selections.some((item) => item.teamNumber === teamNumber))
       return;
-    const previousPickCount = official.selections.filter(
-      (item) => item.allianceNumber === allianceNumber,
-    ).length;
-    if (previousPickCount >= 3) {
-      setMessage(`Alliance ${allianceNumber} is already complete.`);
+    if (!nextPick) {
+      setMessage('Alliance selection is complete.');
       return;
     }
     setOfficial({
       ...official,
-      selections: [...official.selections, { teamNumber, allianceNumber }],
+      selections: [
+        ...official.selections,
+        { teamNumber, allianceNumber: nextPick.allianceNumber },
+      ],
     });
-    setAllianceNumber(
-      nextAllianceAfterSelection(allianceNumber, previousPickCount),
-    );
     setSelectionSearch('');
   }
 
@@ -275,7 +271,6 @@ export function PickListWorkspace({
       ...official,
       selections: official.selections.slice(0, -1),
     });
-    setAllianceNumber(last.allianceNumber);
   }
 
   function exportOfficialList() {
@@ -824,15 +819,7 @@ export function PickListWorkspace({
             </aside>
 
             <div className="flex min-w-0 flex-col gap-3">
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-primary px-4 py-3 text-primary-foreground">
-                <strong>
-                  Select {nextAllianceSlot(
-                    official.selections.filter(
-                      (item) => item.allianceNumber === allianceNumber,
-                    ).length,
-                  ).toLowerCase()}{' '}
-                  for Alliance {allianceNumber}
-                </strong>
+              <div className="flex flex-wrap items-center justify-end gap-2">
                 <div className="flex gap-2">
                   <Button
                     size="sm"
@@ -861,17 +848,12 @@ export function PickListWorkspace({
                     );
                     return (
                       <section
-                        className={
-                          alliance === allianceNumber
-                            ? 'overflow-hidden rounded-lg border-2 border-primary bg-card'
-                            : 'overflow-hidden rounded-lg border bg-card'
-                        }
+                        className="overflow-hidden rounded-lg border bg-card"
                         key={alliance}
                       >
                         <button
                           type="button"
                           className="w-full border-b bg-muted/60 px-3 py-2 text-center font-semibold"
-                          onClick={() => setAllianceNumber(alliance)}
                         >
                           Alliance {alliance}
                         </button>
@@ -882,9 +864,13 @@ export function PickListWorkspace({
                               return (
                                 <button
                                   type="button"
-                                  className="min-h-20 p-2 text-center hover:bg-muted/50"
+                                  className={
+                                    nextPick?.allianceNumber === alliance &&
+                                    nextPick.pickCount === index
+                                      ? 'relative z-10 min-h-20 p-2 text-center outline-3 outline-offset-[-3px] outline-primary hover:bg-muted/50'
+                                      : 'min-h-20 p-2 text-center hover:bg-muted/50'
+                                  }
                                   onClick={() => {
-                                    setAllianceNumber(alliance);
                                     if (selection)
                                       setOfficial({
                                         ...official,
@@ -899,7 +885,10 @@ export function PickListWorkspace({
                                   title={
                                     selection
                                       ? `Remove Team ${selection.teamNumber}`
-                                      : `Select ${role.toLowerCase()}`
+                                      : nextPick?.allianceNumber === alliance &&
+                                          nextPick.pickCount === index
+                                        ? `Next pick: ${role.toLowerCase()} for Alliance ${alliance}`
+                                        : `${role} is waiting for its turn`
                                   }
                                   key={role}
                                 >

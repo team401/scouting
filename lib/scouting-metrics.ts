@@ -1,7 +1,7 @@
 export type ScoutingPayload = {
   autoFuel: number; activeFuel: number; inactiveFuel: number; cycles: number;
   centerSwipes?: number; passedFuel?: number;
-  autoTower: string; tower: string; path: string; defenseRating?: number;
+  autoTower: string; tower: string; path: string; defenseRating?: number | null;
   autoStartPosition?: string;
   disabled?: boolean; noShow?: boolean; penalties?: number; shootingRange?: string;
   cycleSeconds?: number; notes?: string;
@@ -25,6 +25,9 @@ export function median(values: number[]) {
 
 export function summarizeEntries(payloads: ScoutingPayload[]) {
   const played = payloads.filter((payload) => !payload.noShow);
+  const defenseRatings = played.flatMap((payload) =>
+    typeof payload.defenseRating === 'number' ? [payload.defenseRating] : [],
+  );
   const points = played.map(observedPoints);
   const meanPoints = points.length ? points.reduce((sum, value) => sum + value, 0) / points.length : 0;
   return {
@@ -34,7 +37,10 @@ export function summarizeEntries(payloads: ScoutingPayload[]) {
     medianFuelPerCycle: median(played.map((payload) => payload.activeFuel / Math.max(1, payload.cycles))),
     towerSuccessRate: played.length ? played.filter((payload) => payload.tower !== 'None').length / played.length : 0,
     disabledRate: played.length ? played.filter((payload) => payload.disabled).length / played.length : 0,
-    averageDefense: played.length ? played.reduce((sum, payload) => sum + (payload.defenseRating ?? 0), 0) / played.length : 0,
+    averageDefense: defenseRatings.length
+      ? defenseRatings.reduce((sum, rating) => sum + rating, 0) /
+        defenseRatings.length
+      : 0,
     pointStdDev: points.length ? Math.sqrt(points.reduce((sum, value) => sum + (value - meanPoints) ** 2, 0) / points.length) : 0,
   };
 }

@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   buildConsensus,
   nextAllianceAfterSelection,
+  nextAlliancePick,
   nextAllianceSlot,
   type PickListData,
 } from '../lib/pick-list.ts';
@@ -38,10 +39,43 @@ void test('excludes legacy avoided and do-not-pick teams from consensus', () => 
 });
 
 void test('advances captain and first picks forward, then second picks backward', () => {
-  assert.equal(nextAllianceAfterSelection(8, 0), 1);
+  assert.equal(nextAllianceAfterSelection(8, 0), 8);
   assert.equal(nextAllianceAfterSelection(8, 1), 8);
   assert.equal(nextAllianceAfterSelection(8, 2), 7);
   assert.equal(nextAllianceAfterSelection(1, 2), 1);
   assert.equal(nextAllianceSlot(0), 'Captain');
   assert.equal(nextAllianceSlot(3), 'Complete');
+});
+
+void test('highlights captain and first pick together before reversing second picks', () => {
+  assert.deepEqual(nextAlliancePick([], 2), {
+    allianceNumber: 1,
+    pickCount: 0,
+  });
+  assert.deepEqual(
+    nextAlliancePick([{ teamNumber: 401, allianceNumber: 1 }], 2),
+    { allianceNumber: 1, pickCount: 1 },
+  );
+  assert.deepEqual(
+    nextAlliancePick(
+      [
+        { teamNumber: 401, allianceNumber: 1 },
+        { teamNumber: 422, allianceNumber: 1 },
+      ],
+      2,
+    ),
+    { allianceNumber: 2, pickCount: 0 },
+  );
+  assert.deepEqual(
+    nextAlliancePick(
+      [
+        { teamNumber: 401, allianceNumber: 1 },
+        { teamNumber: 422, allianceNumber: 1 },
+        { teamNumber: 346, allianceNumber: 2 },
+        { teamNumber: 540, allianceNumber: 2 },
+      ],
+      2,
+    ),
+    { allianceNumber: 2, pickCount: 2 },
+  );
 });

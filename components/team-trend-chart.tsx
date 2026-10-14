@@ -17,7 +17,7 @@ export type TeamTrend = {
   points: number;
   autoFuel: number;
   activeFuel: number;
-  defenseRating: number;
+  defenseRating: number | null;
 };
 
 export function TeamTrendChart({ trends }: { trends: TeamTrend[] }) {
