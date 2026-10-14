@@ -29,10 +29,12 @@ const chunkBytes = 8 * 1024 * 1024;
 export function MatchVideoLibrary({
   matchId,
   matchLabel,
+  externalVideos = [],
   playbackOnly = false,
 }: {
   matchId: string | null;
   matchLabel: string;
+  externalVideos?: Array<{ type: string; key: string }>;
   playbackOnly?: boolean;
 }) {
   const [data, setData] = useState<VideoResponse | null>(null);
@@ -262,7 +264,9 @@ export function MatchVideoLibrary({
     <Card>
       <CardHeader>
         <CardTitle>Match video</CardTitle>
-        <Badge variant="outline">{data?.videos.length ?? 0} uploaded</Badge>
+        <Badge variant="outline">
+          {(data?.videos.length ?? 0) + externalVideos.length} available
+        </Badge>
       </CardHeader>
       <CardContent className="space-y-4">
         {!matchId ? (
@@ -271,6 +275,22 @@ export function MatchVideoLibrary({
           </p>
         ) : (
           <>
+            {externalVideos.map((video) =>
+              video.type === 'youtube' ? (
+                <div className="space-y-2 rounded-lg border p-3" key={`tba:${video.key}`}>
+                  <iframe
+                    className="aspect-video w-full rounded-md bg-black"
+                    src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(video.key)}`}
+                    title={`${matchLabel} TBA video`}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {matchLabel} · provided by The Blue Alliance
+                  </p>
+                </div>
+              ) : null,
+            )}
             {data?.videos.map((video) => (
               <div className="space-y-2 rounded-lg border p-3" key={video.id}>
                 <video
@@ -302,7 +322,7 @@ export function MatchVideoLibrary({
                 </div>
               </div>
             ))}
-            {data && data.videos.length === 0 && (
+            {data && data.videos.length === 0 && externalVideos.length === 0 && (
               <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
                 No video has been uploaded for {matchLabel}.
               </p>

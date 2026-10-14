@@ -353,6 +353,9 @@ select option {
 .mobile-header-menu-button {
   display: none;
 }
+.mobile-brand-mark {
+  display: none;
+}
 .pit-mobile-picker,
 .mobile-more-menu,
 .mobile-more-backdrop,
@@ -661,6 +664,19 @@ select option {
   .mobile-header-menu-button {
     display: inline-flex;
     flex: 0 0 auto;
+  }
+  .mobile-brand-mark {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    place-items: center;
+    border-radius: 9px;
+    background: #d6552d;
+    color: white;
+    font-size: 13px;
+    font-weight: 900;
+    transform: rotate(-4deg);
   }
   .topbar h1 {
     max-width: calc(100vw - 84px);

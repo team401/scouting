@@ -74,6 +74,22 @@ export function GuestPassManager() {
     if (response.ok) await load();
   }
 
+  async function removePass(pass: GuestPass) {
+    if (!window.confirm(`Remove ${pass.name} from the guest list?`)) return;
+    const response = await fetch('/api/guest-passes', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: pass.id, action: 'remove' }),
+    });
+    const body = (await response.json()) as { error?: string };
+    setMessage(
+      response.ok
+        ? `${pass.name} was removed.`
+        : (body.error ?? 'Could not remove the guest pass.'),
+    );
+    if (response.ok) await load();
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -161,6 +177,15 @@ export function GuestPassManager() {
                 {active && (
                   <Button variant="outline" size="sm" onClick={() => revokePass(pass)}>
                     Revoke
+                  </Button>
+                )}
+                {!active && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => removePass(pass)}
+                  >
+                    Remove
                   </Button>
                 )}
               </div>

@@ -96,6 +96,7 @@ export async function synchronizeOpsRoster(
     "SELECT id FROM organizations WHERE id = 'team-401' LIMIT 1",
   ).first();
   const rosterUsers = new Map<string, string>();
+  const newlyCreatedUsers = new Set<string>();
   for (const profile of profiles) {
     const existing = await env.DB.prepare(
       'SELECT id FROM users WHERE firebase_uid = ? OR lower(email) = ? LIMIT 1',
@@ -117,6 +118,7 @@ export async function synchronizeOpsRoster(
       )
         .bind(userId, profile.uid, profile.email, profile.displayName, now, now)
         .run();
+    if (!existing) newlyCreatedUsers.add(userId);
   }
   const user = await env.DB.prepare(
     'SELECT id FROM users WHERE firebase_uid = ? LIMIT 1',
@@ -135,7 +137,7 @@ export async function synchronizeOpsRoster(
   }
   for (const profile of profiles) {
     const userId = rosterUsers.get(profile.uid);
-    if (!userId) continue;
+    if (!userId || !newlyCreatedUsers.has(userId)) continue;
     await env.DB.prepare(
       `INSERT OR IGNORE INTO memberships (organization_id, user_id, role, disabled, created_at, updated_at)
        VALUES ('team-401', ?, ?, 0, ?, ?)`,
@@ -169,5 +171,26 @@ export async function synchronizeOpsRoster(
     )
       .bind(now, effectiveOwnerId)
       .run();
+  const rosterUids = new Set(profiles.map((profile) => profile.uid));
+  const linkedMemberships = await env.DB.prepare(
+    `SELECT memberships.user_id AS userId, memberships.role, users.firebase_uid AS firebaseUid
+     FROM memberships JOIN users ON users.id = memberships.user_id
+     WHERE memberships.organization_id = 'team-401' AND users.firebase_uid IS NOT NULL`,
+  ).all<{ userId: string; role: string; firebaseUid: string }>();
+  for (const membership of linkedMemberships.results) {
+    if (
+      rosterUids.has(membership.firebaseUid) ||
+      membership.role === 'owner'
+    )
+      continue;
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(
+        membership.userId,
+      ),
+      env.DB.prepare(
+        "DELETE FROM memberships WHERE organization_id = 'team-401' AND user_id = ?",
+      ).bind(membership.userId),
+    ]);
+  }
   return user.id;
 }

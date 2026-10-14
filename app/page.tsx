@@ -191,6 +191,14 @@ function normalizeSelections(value: unknown, fallback: string): string[] {
   return [fallback];
 }
 
+function displaySelections(value: unknown, fallback = 'Unknown') {
+  if (Array.isArray(value)) {
+    const selections = value.filter((item): item is string => typeof item === 'string');
+    return selections.length ? selections.join(', ') : fallback;
+  }
+  return typeof value === 'string' && value ? value : fallback;
+}
+
 function toggleSelection(
   selections: string[],
   value: string,
@@ -495,6 +503,10 @@ export default function Home() {
   const [assignmentMessage, setAssignmentMessage] = useState('');
   const [strategyTeams, setStrategyTeams] = useState<TeamAnalysis[]>([]);
   const [adminMessage, setAdminMessage] = useState('');
+  const [memberSearch, setMemberSearch] = useState('');
+  const [memberFilter, setMemberFilter] = useState<
+    'all' | 'active' | 'disabled' | 'guests'
+  >('active');
   const [accountSessions, setAccountSessions] = useState<
     Array<{
       id: string;
@@ -1577,6 +1589,24 @@ export default function Home() {
     await loadEventPack();
   }
 
+  async function removeMember(userId: string, name: string) {
+    if (!window.confirm(`Remove ${name} from Scouting? Their historical scouting data will be kept.`))
+      return;
+    setAdminMessage('');
+    const response = await fetch('/api/members', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    });
+    const result = (await response.json()) as { error?: string };
+    if (!response.ok) {
+      setAdminMessage(result.error ?? 'Could not remove the account.');
+      return;
+    }
+    setAdminMessage('Account removed from Scouting.');
+    await loadEventPack();
+  }
+
   async function revokeSession(sessionId: string) {
     setSessionMessage('');
     const response = await fetch('/api/sessions', {
@@ -1859,6 +1889,30 @@ export default function Home() {
         (assignment) => assignment.scoutUserId === member.id,
       ).length,
     })) ?? [];
+  const filteredMembers =
+    eventPack?.members.filter((member) => {
+      const guest = member.email.endsWith('@guest.invalid');
+      const matchesSearch = `${member.name} ${member.email}`
+        .toLowerCase()
+        .includes(memberSearch.trim().toLowerCase());
+      const matchesFilter =
+        memberFilter === 'all' ||
+        (memberFilter === 'active' && !member.disabled && !guest) ||
+        (memberFilter === 'disabled' && Boolean(member.disabled)) ||
+        (memberFilter === 'guests' && guest);
+      return matchesSearch && matchesFilter;
+    }) ?? [];
+
+  const pageTitle =
+    activeView === 'Scout'
+      ? currentMatch
+        ? `${matchHeaderLabel(currentMatch)}${selectedStation ? ` · ${selectedStation.replace('red', 'Red ').replace('blue', 'Blue ')}` : ''}${selectedTeam ? ` · Team ${selectedTeam}` : ''}`
+        : 'Choose an assignment'
+      : activeView === 'Pit'
+        ? 'Pit Scouting'
+        : activeView === 'Plan' && currentMatch
+          ? `Plan · ${matchHeaderLabel(currentMatch)}`
+          : activeView;
 
   useEffect(() => {
     const frame = requestAnimationFrame(() =>
@@ -1924,12 +1978,9 @@ export default function Home() {
       <section className="app-content h-dvh min-w-0 flex-1 overflow-y-auto">
         <header className="topbar">
           <div className="flex min-w-0 items-center gap-2">
+            <div className="mobile-brand-mark" aria-hidden="true">401</div>
             <h1 className={activeView === 'Scout' ? 'scout-heading' : undefined}>
-              {activeView === 'Scout'
-                ? currentMatch
-                  ? `${matchHeaderLabel(currentMatch)}${selectedTeam ? ` · Team ${selectedTeam}` : ''}${selectedStation ? ` · ${selectedStation.replace('red', 'Red ').replace('blue', 'Blue ')}` : ''}`
-                  : 'Choose an assignment'
-                : activeView}
+              {pageTitle}
             </h1>
           </div>
           <div className="desktop-header-actions flex items-center gap-2">
@@ -3420,6 +3471,39 @@ export default function Home() {
                   Individual matches
                 </Button>
               </div>
+              <Card className="mb-4">
+                <CardHeader>
+                  <CardTitle>Assignment coverage</CardTitle>
+                  <Badge variant="outline">
+                    {eventPack?.assignments.length ?? 0}/{totalSlots}
+                  </Badge>
+                </CardHeader>
+                <CardContent>
+                  <div className="coverage-track">
+                    <span
+                      style={{
+                        width: `${totalSlots ? Math.min(100, ((eventPack?.assignments.length ?? 0) / totalSlots) * 100) : 0}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="mt-3 grid gap-1 sm:grid-cols-2">
+                    {assignmentCounts.map(({ member, count }) => (
+                      <div className="schedule-row" key={member.id}>
+                        <strong>{count}</strong>
+                        <span>{member.name}</span>
+                        <small>slots</small>
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    className="mt-3"
+                    variant="outline"
+                    onClick={() => setScheduleFilter('unassigned')}
+                  >
+                    Review unassigned matches
+                  </Button>
+                </CardContent>
+              </Card>
               {assignmentMode === 'time' && (
                 <ShiftScheduler
                   members={eventPack?.members ?? []}
@@ -3645,6 +3729,7 @@ export default function Home() {
               matchLabel={
                 selectedVideoMatch ? matchLabel(selectedVideoMatch) : 'this match'
               }
+              externalVideos={selectedVideoMatch?.videos ?? []}
             />
           </div>
         )}
@@ -3888,8 +3973,9 @@ export default function Home() {
                       </span>
                       <span>
                         <strong>
-                          {analysis.pit.payload.autonomousStart?.join(', ') ??
-                            'Unknown'}
+                          {displaySelections(
+                            analysis.pit.payload.autonomousStart,
+                          )}
                         </strong>{' '}
                         autonomous starts
                       </span>
@@ -4020,42 +4106,6 @@ export default function Home() {
                 )}
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Assignment coverage</CardTitle>
-                <Badge variant="outline">
-                  {eventPack?.assignments.length ?? 0}/{totalSlots}
-                </Badge>
-              </CardHeader>
-              <CardContent>
-                <div className="coverage-track">
-                  <span
-                    style={{
-                      width: `${totalSlots ? Math.min(100, ((eventPack?.assignments.length ?? 0) / totalSlots) * 100) : 0}%`,
-                    }}
-                  />
-                </div>
-                <div className="mt-3 grid gap-1 sm:grid-cols-2">
-                  {assignmentCounts.map(({ member, count }) => (
-                    <div className="schedule-row" key={member.id}>
-                      <strong>{count}</strong>
-                      <span>{member.name}</span>
-                      <small>slots</small>
-                    </div>
-                  ))}
-                </div>
-                <Button
-                  className="mt-3"
-                  variant="outline"
-                  onClick={() => {
-                    setScheduleFilter('unassigned');
-                    setAdminSection('assignments');
-                  }}
-                >
-                  Review unassigned matches
-                </Button>
-              </CardContent>
-            </Card>
             <GuestPassManager />
             <Card>
               <CardHeader>
@@ -4067,10 +4117,34 @@ export default function Home() {
               <CardContent className="space-y-1">
                 <p className="pb-3 text-sm text-muted-foreground">
                   Accounts and passwords come from Team 401 Ops. Scouting roles
-                  and scouting access are managed here. New Ops roster members
-                  appear after the next successful sign-in.
+                  and scouting access are managed here. A successful Team 401
+                  sign-in syncs the full Ops roster, including users who have
+                  never signed in themselves.
                 </p>
-                {eventPack?.members.map((member) => (
+                <div className="grid gap-2 pb-3 sm:grid-cols-[1fr_10rem]">
+                  <Input
+                    value={memberSearch}
+                    onChange={(event) => setMemberSearch(event.target.value)}
+                    placeholder="Search name or email"
+                    aria-label="Search team members"
+                  />
+                  <select
+                    className="h-8 rounded-lg border bg-background px-2.5 text-sm"
+                    value={memberFilter}
+                    onChange={(event) =>
+                      setMemberFilter(
+                        event.target.value as typeof memberFilter,
+                      )
+                    }
+                    aria-label="Filter team members"
+                  >
+                    <option value="active">Active members</option>
+                    <option value="disabled">Disabled</option>
+                    <option value="guests">Guests</option>
+                    <option value="all">All accounts</option>
+                  </select>
+                </div>
+                {filteredMembers.map((member) => (
                   <div className="member-row" key={member.id}>
                     <div>
                       <strong>{member.name}</strong>
@@ -4111,10 +4185,26 @@ export default function Home() {
                         >
                           {member.disabled ? 'Enable' : 'Disable'}
                         </Button>
+                        {Boolean(member.disabled) && (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() =>
+                              void removeMember(member.id, member.name)
+                            }
+                          >
+                            Remove
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>
                 ))}
+                {!filteredMembers.length && (
+                  <p className="py-4 text-center text-sm text-muted-foreground">
+                    No accounts match this search and filter.
+                  </p>
+                )}
                 {adminMessage && (
                   <p className="text-sm text-muted-foreground" role="status">
                     {adminMessage}
