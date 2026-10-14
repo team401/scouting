@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarClock, Plus, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Copy, Plus, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,9 +30,16 @@ const defaultShiftEnd = new Date(defaultShiftStart.getTime() + 60 * 60_000);
 
 export function ShiftScheduler({
   members,
+  matches,
   onChanged,
 }: {
   members: Array<{ id: string; name: string; disabled?: number | boolean }>;
+  matches: Array<{
+    key: string;
+    label: string;
+    scheduledAt: number | null;
+    predictedAt: number | null;
+  }>;
   onChanged: () => void | Promise<void>;
 }) {
   const [startsAt, setStartsAt] = useState(localInput(defaultShiftStart));
@@ -46,21 +53,33 @@ export function ShiftScheduler({
     blue3: '',
   });
   const [shifts, setShifts] = useState<Shift[]>([]);
-  const [timezone, setTimezone] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const initializedFromSchedule = useRef(false);
 
   const load = useCallback(async () => {
     const response = await fetch('/api/scout-shifts');
     const result = (await response.json()) as {
       shifts?: Shift[];
-      timezone?: string | null;
       error?: string;
     };
     if (!response.ok) throw new Error(result.error ?? 'Could not load shifts.');
     setShifts(result.shifts ?? []);
-    setTimezone(result.timezone ?? null);
   }, []);
+
+  useEffect(() => {
+    if (initializedFromSchedule.current) return;
+    const firstTime = matches
+      .map((match) => match.predictedAt ?? match.scheduledAt)
+      .filter((time): time is number => time !== null)
+      .sort((a, b) => a - b)[0];
+    if (!firstTime) return;
+    initializedFromSchedule.current = true;
+    const start = new Date(firstTime);
+    start.setMinutes(0, 0, 0);
+    setStartsAt(localInput(start));
+    setEndsAt(localInput(new Date(start.getTime() + 60 * 60_000)));
+  }, [matches]);
 
   useEffect(() => {
     const initial = window.setTimeout(() => {
@@ -81,6 +100,32 @@ export function ShiftScheduler({
     }
     return [...grouped.values()];
   }, [shifts]);
+  const coveredMatches = useMemo(() => {
+    const start = new Date(startsAt).getTime();
+    const end = new Date(endsAt).getTime();
+    return matches.filter((match) => {
+      const time = match.predictedAt ?? match.scheduledAt;
+      return time !== null && time >= start && time < end;
+    });
+  }, [endsAt, matches, startsAt]);
+
+  function setDuration(minutes: number) {
+    const start = new Date(startsAt).getTime();
+    if (!Number.isFinite(start)) return;
+    setEndsAt(localInput(new Date(start + minutes * 60_000)));
+  }
+
+  function continueBlock(block: Shift[]) {
+    const nextAssignments = { ...assignments };
+    for (const station of stations)
+      nextAssignments[station] =
+        block.find((shift) => shift.station === station)?.scoutUserId ?? '';
+    const duration = block[0].endsAt - block[0].startsAt;
+    setAssignments(nextAssignments);
+    setStartsAt(localInput(new Date(block[0].endsAt)));
+    setEndsAt(localInput(new Date(block[0].endsAt + duration)));
+    setMessage('Lineup copied into the next time block.');
+  }
 
   async function createBlock() {
     setMessage('');
@@ -112,6 +157,11 @@ export function ShiftScheduler({
       if (!response.ok)
         throw new Error(result.error ?? 'Could not save shift.');
       setMessage('Shift saved and future match assignments updated.');
+      const start = new Date(startsAt).getTime();
+      const end = new Date(endsAt).getTime();
+      const duration = end - start;
+      setStartsAt(localInput(new Date(end)));
+      setEndsAt(localInput(new Date(end + duration)));
       await load();
       await onChanged();
     } catch (error) {
@@ -146,10 +196,8 @@ export function ShiftScheduler({
   return (
     <Card className="mb-4">
       <CardHeader>
-        <CardTitle>
-          <CalendarClock /> Time-based scout shifts
-        </CardTitle>
-        <Badge variant="outline">{timezone ?? 'Device timezone'}</Badge>
+        <CardTitle>Time-based scout shifts</CardTitle>
+        <Badge variant="outline">{blocks.length} blocks</Badge>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
@@ -176,6 +224,25 @@ export function ShiftScheduler({
               onChange={(event) => setEndsAt(event.target.value)}
             />
           </label>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-muted-foreground">Duration:</span>
+          {[30, 60, 90, 120].map((minutes) => (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setDuration(minutes)}
+              key={minutes}
+            >
+              {minutes < 60 ? `${minutes} min` : `${minutes / 60} hr`}
+            </Button>
+          ))}
+          <Badge variant="secondary">
+            {coveredMatches.length
+              ? `${coveredMatches[0].label}–${coveredMatches.at(-1)?.label} · ${coveredMatches.length} matches`
+              : 'No scheduled matches in this block'}
+          </Badge>
         </div>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {stations.map((station) => (
@@ -210,7 +277,10 @@ export function ShiftScheduler({
             </label>
           ))}
         </div>
-        <Button onClick={() => void createBlock()} disabled={busy}>
+        <Button
+          onClick={() => void createBlock()}
+          disabled={busy || coveredMatches.length === 0}
+        >
           <Plus /> {busy ? 'Saving…' : 'Add shift block'}
         </Button>
         <div className="space-y-2">
@@ -231,15 +301,25 @@ export function ShiftScheduler({
                     minute: '2-digit',
                   })}
                 </strong>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label="Delete shift block"
-                  disabled={busy}
-                  onClick={() => void deleteBlock(block[0].id)}
-                >
-                  <Trash2 />
-                </Button>
+                <div className="flex gap-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => continueBlock(block)}
+                  >
+                    <Copy /> Continue lineup
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label="Delete shift block"
+                    disabled={busy}
+                    onClick={() => void deleteBlock(block[0].id)}
+                  >
+                    <Trash2 />
+                  </Button>
+                </div>
               </div>
               <div className="mt-2 grid grid-cols-2 gap-1 text-sm sm:grid-cols-3 lg:grid-cols-6">
                 {stations.map((station) => {

@@ -55,3 +55,20 @@ void test('excludes no-shows from performance aggregates', () => {
   assert.equal(summary.averageDefense, 0);
   assert.equal(summary.pointStdDev, 0);
 });
+
+void test('does not count defense N/A values against a team', () => {
+  const base = {
+    autoFuel: 0,
+    activeFuel: 0,
+    inactiveFuel: 0,
+    cycles: 0,
+    autoTower: 'None',
+    tower: 'None',
+    path: 'Trench',
+  };
+  const summary = summarizeEntries([
+    { ...base, defenseRating: null },
+    { ...base, defenseRating: 4 },
+  ]);
+  assert.equal(summary.averageDefense, 4);
+});

@@ -11,6 +11,7 @@ const planSchema = z.object({
   endgame: z.string().max(1000),
   notes: z.string().max(2000),
   teamRoles: z.record(z.string(), z.string().max(500)),
+  absentTeams: z.array(z.number().int().positive()).max(6).optional().default([]),
   board: z.object({
     robots: z
       .array(
@@ -59,6 +60,14 @@ export async function GET(request: Request) {
       { error: 'Sign in to view match plans.' },
       { status: 401 },
     );
+  if (
+    user.session.user.id.startsWith('guest:') ||
+    !['owner', 'admin', 'strategy'].includes(user.role)
+  )
+    return Response.json(
+      { error: 'Strategy access is required.' },
+      { status: 403 },
+    );
   const matchId = new URL(request.url).searchParams.get('matchId');
   if (!matchId)
     return Response.json({ error: 'Choose a match.' }, { status: 400 });
@@ -93,7 +102,10 @@ export async function POST(request: Request) {
       { error: 'Sign in to save match plans.' },
       { status: 401 },
     );
-  if (!['owner', 'admin', 'strategy'].includes(user.role))
+  if (
+    user.session.user.id.startsWith('guest:') ||
+    !['owner', 'admin', 'strategy'].includes(user.role)
+  )
     return Response.json(
       {
         error: 'Only strategy, admin, or owner accounts can edit match plans.',

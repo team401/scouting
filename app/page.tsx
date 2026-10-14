@@ -9,18 +9,16 @@ import {
   ClipboardList,
   Cloud,
   CloudOff,
-  Gauge,
+  Handshake,
   KeyRound,
   LayoutDashboard,
   Map,
+  Menu,
   Minus,
-  MonitorSmartphone,
   Moon,
   Plus,
   RefreshCw,
-  Shield,
   Sun,
-  TowerControl,
   Upload,
   UserCog,
   Users,
@@ -62,7 +60,15 @@ import {
   scoutEntryMutationId,
 } from '@/lib/scouting-policy';
 
-type View = 'Home' | 'Scout' | 'Pit' | 'Plan' | 'Teams' | 'Admin' | 'Account';
+type View =
+  | 'Home'
+  | 'Scout'
+  | 'Pit'
+  | 'Plan'
+  | 'Teams'
+  | 'Alliance'
+  | 'Admin'
+  | 'Account';
 
 const nav: {
   label: Exclude<View, 'Account' | 'Admin'>;
@@ -73,6 +79,7 @@ const nav: {
   { label: 'Pit', icon: Wrench },
   { label: 'Plan', icon: Map },
   { label: 'Teams', icon: Users },
+  { label: 'Alliance', icon: Handshake },
 ];
 
 type EventPack = {
@@ -239,6 +246,11 @@ type TeamAnalysis = {
   teamNumber: number;
   epa: number | null;
   opr: number | null;
+  eventRank: number | null;
+  matchesPlayed: number;
+  wins: number;
+  losses: number;
+  ties: number;
   samples: number;
   scheduledMatches: number;
   coverage: number;
@@ -250,6 +262,14 @@ type TeamAnalysis = {
   averageDefense: number;
   pointStdDev: number;
   trends?: TeamTrend[];
+  pit?: {
+    drivetrain: string | null;
+    swerveModule: string | null;
+    motorTypes: string[];
+    weightLbs: number | null;
+    payload: Partial<PitDraft>;
+    photoObjectKey: string | null;
+  } | null;
   entries: {
     id: string;
     matchKey: string;
@@ -271,6 +291,7 @@ type MatchPlan = {
   endgame: string;
   notes: string;
   teamRoles: Record<string, string>;
+  absentTeams: number[];
   board: TacticalBoardData;
 };
 const emptyMatchPlan: MatchPlan = {
@@ -281,6 +302,7 @@ const emptyMatchPlan: MatchPlan = {
   endgame: '',
   notes: '',
   teamRoles: {},
+  absentTeams: [],
   board: { robots: [], strokes: [] },
 };
 
@@ -292,7 +314,16 @@ function planForMatch(
     match.alliances.red,
     match.alliances.blue,
   );
-  const expectedTeams = defaultRobots.map((robot) => robot.team).sort((a, b) => a - b);
+  const scheduledTeams = new Set(defaultRobots.map((robot) => robot.team));
+  const absentTeams = (plan?.absentTeams ?? []).filter((team) =>
+    scheduledTeams.has(team),
+  );
+  const availableRobots = defaultRobots.filter(
+    (robot) => !absentTeams.includes(robot.team),
+  );
+  const expectedTeams = availableRobots
+    .map((robot) => robot.team)
+    .sort((a, b) => a - b);
   const savedTeams = (plan?.board?.robots ?? [])
     .map((robot) => robot.team)
     .sort((a, b) => a - b);
@@ -301,7 +332,7 @@ function planForMatch(
     savedTeams.every((team, index) => team === expectedTeams[index]);
   const robots = savedBoardMatches
     ? (plan?.board?.robots ?? []).map((robot) => {
-        const assignment = defaultRobots.find(
+        const assignment = availableRobots.find(
           (candidate) => candidate.team === robot.team,
         );
         return assignment
@@ -312,12 +343,13 @@ function planForMatch(
             }
           : robot;
       })
-    : defaultRobots;
+    : availableRobots;
 
   return {
     ...emptyMatchPlan,
     ...plan,
     teamRoles: plan?.teamRoles ?? {},
+    absentTeams,
     board: {
       robots,
       strokes: plan?.board?.strokes ?? [],
@@ -391,22 +423,31 @@ function Counter({
 export default function Home() {
   const { data: session, isPending } = authClient.useSession();
   const [activeView, setActiveView] = useState<View>('Home');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [teamsSection, setTeamsSection] = useState<
-    'directory' | 'analysis' | 'picks' | 'review'
-  >('directory');
+    'analysis' | 'picklist' | 'review'
+  >('analysis');
+  const [rankingSort, setRankingSort] = useState<'rank' | 'team'>('rank');
   const [videoMatchesMineOnly, setVideoMatchesMineOnly] = useState(true);
   const navigationDepthRef = useRef(0);
   const selectedMatchKeyRef = useRef('');
   const loadedPlanMatchIdRef = useRef('');
   const [autoFuel, setAutoFuel] = useState(0);
   const [activeFuel, setActiveFuel] = useState(0);
+  const [centerSwipes, setCenterSwipes] = useState(0);
+  const [passedFuel, setPassedFuel] = useState(0);
+  const [scoutingPhase, setScoutingPhase] = useState<
+    'pre' | 'auto' | 'tele' | 'post'
+  >('pre');
   const [autoTower, setAutoTower] = useState('');
   const [autoStartPosition, setAutoStartPosition] = useState('');
   const [tower, setTower] = useState('');
   const [path, setPath] = useState('');
   const [dark, setDark] = useState(false);
   const [_saved, setSaved] = useState(false);
-  const [defenseRating, setDefenseRating] = useState<number | null>(null);
+  const [defenseRating, setDefenseRating] = useState<
+    number | null | undefined
+  >(undefined);
   const [disabled, setDisabled] = useState<boolean | null>(null);
   const [noShow, setNoShow] = useState(false);
   const [penalties, setPenalties] = useState(0);
@@ -454,6 +495,7 @@ export default function Home() {
   const [adminSection, setAdminSection] = useState<'settings' | 'assignments'>(
     'settings',
   );
+  const [assignmentMode, setAssignmentMode] = useState<'time' | 'match'>('time');
   const [scheduleFilter, setScheduleFilter] = useState<
     'all' | 'mine' | 'unassigned'
   >('all');
@@ -521,23 +563,63 @@ export default function Home() {
       ].sort((a, b) => a - b)
     : [];
   const currentPayload: ScoutingPayload = {
-    autoFuel: noShow ? 0 : autoFuel,
-    activeFuel: noShow ? 0 : activeFuel,
+    autoFuel,
+    activeFuel,
+    centerSwipes,
+    passedFuel,
     inactiveFuel: 0,
     cycles: 0,
-    autoTower: noShow ? 'None' : autoTower,
-    autoStartPosition: noShow ? 'None' : autoStartPosition,
-    tower: noShow ? 'None' : tower,
-    path: noShow ? 'None' : path,
-    defenseRating: noShow ? 0 : (defenseRating ?? 0),
-    disabled: noShow ? false : (disabled ?? false),
+    autoTower,
+    autoStartPosition,
+    tower,
+    path,
+    defenseRating,
+    disabled: disabled ?? false,
     noShow,
-    penalties: noShow ? 0 : penalties,
-    shootingRange: noShow ? 'None' : shootingRange,
+    penalties,
+    shootingRange,
     cycleSeconds: 0,
     notes,
   };
-  const estimatedPoints = observedPoints(currentPayload);
+  const estimatedPoints = noShow ? 0 : observedPoints(currentPayload);
+  const scoutingPhases = ['pre', 'auto', 'tele', 'post'] as const;
+
+  function moveToScoutingPhase(
+    target: (typeof scoutingPhases)[number],
+  ) {
+    if (noShow) {
+      if (target === 'auto' || target === 'tele') return;
+      setSaveError('');
+      setScoutingPhase(target);
+      return;
+    }
+
+    const currentIndex = scoutingPhases.indexOf(scoutingPhase);
+    const targetIndex = scoutingPhases.indexOf(target);
+    if (targetIndex <= currentIndex) {
+      setSaveError('');
+      setScoutingPhase(target);
+      return;
+    }
+
+    const incompletePhase = scoutingPhases
+      .slice(currentIndex, targetIndex)
+      .find((phase) => {
+        if (phase === 'pre') return !autoStartPosition;
+        if (phase === 'auto') return !autoTower;
+        return false;
+      });
+    if (incompletePhase === 'pre') {
+      setSaveError('Choose a starting position before continuing.');
+      return;
+    }
+    if (incompletePhase === 'auto') {
+      setSaveError('Choose an autonomous tower result before continuing.');
+      return;
+    }
+    setSaveError('');
+    setScoutingPhase(target);
+  }
   const pitDraftId =
     eventPack && pitTeam ? `pit-${eventPack.event.key}-${pitTeam}` : null;
   const existingPitPhoto = pitTeam
@@ -546,11 +628,17 @@ export default function Home() {
     : null;
   const isAdmin = Boolean(eventPack && canManageAssignments(eventPack.role));
   const canUseStrategy = Boolean(eventPack && canReopenEntries(eventPack.role));
+  const isGuest = Boolean(eventPack?.userId.startsWith('guest:'));
+  const canUsePickLists = Boolean(eventPack && !isGuest);
   const visibleNav = nav.filter(
-    ({ label }) => label !== 'Plan' || canUseStrategy,
+    ({ label }) =>
+      label === 'Teams' ||
+      !['Plan', 'Alliance'].includes(label) ||
+      canUseStrategy,
   );
 
   function navigate(view: View) {
+    setMobileMenuOpen(false);
     if (view === activeView) return;
     navigationDepthRef.current += 1;
     const url = new URL(window.location.href);
@@ -581,6 +669,7 @@ export default function Home() {
       'Pit',
       'Plan',
       'Teams',
+      'Alliance',
       'Admin',
       'Account',
     ];
@@ -645,32 +734,36 @@ export default function Home() {
             : serverEntry?.payload;
         if (payload) {
           const didNotShow = payload.noShow ?? false;
-          setAutoFuel(didNotShow ? 0 : payload.autoFuel);
-          setActiveFuel(didNotShow ? 0 : payload.activeFuel);
-          setAutoTower(didNotShow ? 'None' : (payload.autoTower ?? ''));
+          setAutoFuel(payload.autoFuel);
+          setActiveFuel(payload.activeFuel);
+          setCenterSwipes(payload.centerSwipes ?? 0);
+          setPassedFuel(payload.passedFuel ?? 0);
+          setAutoTower(payload.autoTower ?? '');
           setAutoStartPosition(
-            didNotShow ? 'None' : (payload.autoStartPosition ?? ''),
+            payload.autoStartPosition ?? '',
           );
-          setTower(didNotShow ? 'None' : (payload.tower ?? ''));
-          setPath(didNotShow ? 'None' : (payload.path ?? ''));
+          setTower(payload.tower ?? '');
+          setPath(payload.path ?? '');
           setDefenseRating(
-            didNotShow ? 0 : (payload.defenseRating ?? null),
+            payload.defenseRating === undefined
+              ? undefined
+              : payload.defenseRating,
           );
-          setDisabled(didNotShow ? false : (payload.disabled ?? null));
+          setDisabled(payload.disabled ?? null);
           setNoShow(didNotShow);
-          setPenalties(didNotShow ? 0 : (payload.penalties ?? 0));
-          setShootingRange(
-            didNotShow ? 'None' : (payload.shootingRange ?? ''),
-          );
+          setPenalties(payload.penalties ?? 0);
+          setShootingRange(payload.shootingRange ?? '');
           setNotes(payload.notes ?? '');
         } else {
           setAutoFuel(0);
           setActiveFuel(0);
+          setCenterSwipes(0);
+          setPassedFuel(0);
           setAutoTower('');
           setAutoStartPosition('');
           setTower('');
           setPath('');
-          setDefenseRating(null);
+          setDefenseRating(undefined);
           setDisabled(null);
           setNoShow(false);
           setPenalties(0);
@@ -719,7 +812,7 @@ export default function Home() {
   }, [online, queuedCount, session]);
 
   useEffect(() => {
-    if (activeView !== 'Teams' || !canUseStrategy || !selectedTeam || !online)
+    if (activeView !== 'Teams' || !selectedTeam || !online)
       return;
     fetch(`/api/analysis?team=${selectedTeam}`)
       .then(async (response) => {
@@ -735,8 +828,8 @@ export default function Home() {
 
   useEffect(() => {
     if (
-      !['Plan', 'Teams'].includes(activeView) ||
-      !canUseStrategy ||
+      !['Plan', 'Teams', 'Alliance'].includes(activeView) ||
+      (activeView !== 'Teams' && !canUseStrategy) ||
       !online ||
       !session
     )
@@ -764,9 +857,19 @@ export default function Home() {
   }, [activeView, canUseStrategy, eventPack, isAdmin]);
 
   useEffect(() => {
-    if (!canUseStrategy && teamsSection !== 'directory')
-      setTeamsSection('directory');
-  }, [canUseStrategy, teamsSection]);
+    if (
+      eventPack &&
+      !canUseStrategy &&
+      (activeView === 'Plan' || activeView === 'Alliance')
+    )
+      replaceView('Home');
+  }, [activeView, canUseStrategy, eventPack]);
+
+  useEffect(() => {
+    if (isGuest && teamsSection !== 'analysis') setTeamsSection('analysis');
+    else if (!canUseStrategy && teamsSection === 'review')
+      setTeamsSection('analysis');
+  }, [canUseStrategy, isGuest, teamsSection]);
 
   useEffect(() => {
     if (activeView !== 'Admin' || !isAdmin || !online) return;
@@ -981,6 +1084,7 @@ export default function Home() {
     autoFuel,
     autoStartPosition,
     autoTower,
+    centerSwipes,
     defenseRating,
     disabled,
     draftId,
@@ -988,6 +1092,7 @@ export default function Home() {
     noShow,
     notes,
     path,
+    passedFuel,
     penalties,
     shootingRange,
     tower,
@@ -1072,7 +1177,7 @@ export default function Home() {
           !autoStartPosition && 'autonomous starting position',
           !autoTower && 'autonomous tower',
           !path && 'field movement',
-          defenseRating === null && 'defense effectiveness',
+          defenseRating === undefined && 'whether the robot played defense',
           !shootingRange && 'shooting range',
           !tower && 'endgame tower',
           disabled === null && 'reliability',
@@ -1082,11 +1187,12 @@ export default function Home() {
       return;
     }
     if (
-      [autoFuel, activeFuel, penalties].some(
+      !noShow &&
+      [autoFuel, activeFuel, centerSwipes, passedFuel, penalties].some(
         (value) => !Number.isInteger(value) || value < 0,
       )
     ) {
-      setSaveError('Fuel and penalty counts must be zero or a positive whole number.');
+      setSaveError('All counts must be zero or a positive whole number.');
       return;
     }
     setSaveError('');
@@ -1111,7 +1217,23 @@ export default function Home() {
           seasonYear: eventPack.event.year,
           schemaVersion: 1,
           reviewSource: videoReview ? 'video_review' : 'live',
-          ...currentPayload,
+          ...(noShow
+            ? {
+                ...currentPayload,
+                autoFuel: 0,
+                activeFuel: 0,
+                centerSwipes: 0,
+                passedFuel: 0,
+                autoTower: 'None',
+                autoStartPosition: 'None',
+                tower: 'None',
+                path: 'None',
+                defenseRating: null,
+                disabled: false,
+                penalties: 0,
+                shootingRange: 'None',
+              }
+            : currentPayload),
         },
       };
       await queueMutation(mutation);
@@ -1305,6 +1427,7 @@ export default function Home() {
     setSubmissionStatus('draft');
     setSubmittedMatchMutation(null);
     setVideoReview(null);
+    setScoutingPhase('pre');
     navigate('Scout');
   }
 
@@ -1686,6 +1809,9 @@ export default function Home() {
         }),
       )
     : [];
+  const selectedStrategyTeam = strategyTeams.find(
+    (team) => team.teamNumber === selectedTeam,
+  );
   const totalSlots = (eventPack?.matches.length ?? 0) * 6;
   const currentMatchYoutubeVideo = currentMatch?.videos?.find(
     (video) => video.type === 'youtube',
@@ -1759,7 +1885,7 @@ export default function Home() {
           <span>Account</span>
         </button>
       </aside>
-      <section className="h-dvh min-w-0 flex-1 overflow-y-auto">
+      <section className="app-content h-dvh min-w-0 flex-1 overflow-y-auto">
         <header className="topbar">
           <div className="flex items-center gap-2">
             <h1>
@@ -1773,7 +1899,9 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="status-badge">
               {online ? <Cloud /> : <CloudOff />}
-              {online ? 'Online' : 'Offline ready'}
+              <span className="status-text">
+                {online ? 'Online' : 'Offline ready'}
+              </span>
             </Badge>
             {!isPending &&
               (session ? (
@@ -1831,9 +1959,7 @@ export default function Home() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>
-                  <CalendarDays /> My scouting schedule
-                </CardTitle>
+                <CardTitle>My scouting schedule</CardTitle>
                 <Badge variant="outline">
                   {myAssignments.length} match
                   {myAssignments.length === 1 ? '' : 'es'}
@@ -1899,9 +2025,7 @@ export default function Home() {
             {reopenedEntries.length > 0 && (
               <Card className="border-amber-400">
                 <CardHeader>
-                  <CardTitle>
-                    <RefreshCw /> Corrections requested
-                  </CardTitle>
+                  <CardTitle>Corrections requested</CardTitle>
                   <Badge variant="destructive">{reopenedEntries.length}</Badge>
                 </CardHeader>
                 <CardContent className="space-y-2">
@@ -1989,16 +2113,13 @@ export default function Home() {
                           (item) => item.key === event.target.value,
                         );
                         if (!match) return;
-                        const assignment = eventPack?.assignments.find(
-                          (item) =>
-                            item.matchId === match.id &&
-                            item.scoutUserId === eventPack.userId,
-                        );
-                        selectAssignment(
-                          match,
-                          assignment?.teamNumber ?? match.alliances.red[0],
-                          assignment?.station ?? 'red1',
-                        );
+                        const station = selectedStation || 'red1';
+                        const alliance = station.startsWith('blue')
+                          ? match.alliances.blue
+                          : match.alliances.red;
+                        const stationIndex = Number(station.at(-1)) - 1;
+                        const team = alliance[stationIndex];
+                        if (team) selectAssignment(match, team, station);
                       }}
                     >
                       {eventPack?.matches.map((match) => (
@@ -2044,10 +2165,22 @@ export default function Home() {
                   </label>
                 </CardContent>
               </Card>
-              <Card className="match-card">
+              <Card
+                className={
+                  selectedStation.startsWith('blue')
+                    ? 'match-card match-card-blue'
+                    : 'match-card'
+                }
+              >
                 <CardContent className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <span className="station-dot" />
+                    <span
+                      className={
+                        selectedStation.startsWith('blue')
+                          ? 'station-dot station-dot-blue'
+                          : 'station-dot'
+                      }
+                    />
                     <div>
                       <p className="eyebrow">
                         {selectedStation
@@ -2076,90 +2209,172 @@ export default function Home() {
                   </div>
                 </CardContent>
               </Card>
-              <Card>
-                <CardHeader className="border-b">
-                  <CardTitle>Autonomous</CardTitle>
-                </CardHeader>
-                <CardContent className="divide-y divide-border p-0">
-                  <div className="space-y-2 px-4 py-3">
-                    <div>
-                      <strong>Starting position</strong>
-                      <p className="text-xs text-muted-foreground">
-                        Left and right are viewed from the driver station.
+              <div className="grid grid-cols-4 gap-1 rounded-xl border bg-card p-1">
+                {([
+                  ['pre', 'Pre-match'],
+                  ['auto', 'Auto'],
+                  ['tele', 'Teleop'],
+                  ['post', 'Post-match'],
+                ] as const).map(([phase, label]) => (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={scoutingPhase === phase ? 'default' : 'ghost'}
+                    aria-current={scoutingPhase === phase ? 'step' : undefined}
+                    disabled={noShow && (phase === 'auto' || phase === 'tele')}
+                    onClick={() => moveToScoutingPhase(phase)}
+                    className="min-w-0 px-1 text-xs sm:text-sm"
+                    key={phase}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+
+              {scoutingPhase === 'pre' && (
+                <Card>
+                  <CardHeader className="border-b">
+                    <CardTitle>Pre-match</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-5 pt-4">
+                    <div className="space-y-2">
+                      <div>
+                        <strong>Starting position</strong>
+                        <p className="text-xs text-muted-foreground">
+                          Left and right are viewed from the driver station.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                        {[
+                          'Left trench',
+                          'Left bump',
+                          'Center',
+                          'Right bump',
+                          'Right trench',
+                        ].map((position) => (
+                          <button
+                            type="button"
+                            className={
+                              autoStartPosition === position
+                                ? 'choice selected min-h-12 px-2 text-center text-sm'
+                                : 'choice min-h-12 px-2 text-center text-sm'
+                            }
+                            aria-pressed={autoStartPosition === position}
+                            onClick={() => setAutoStartPosition(position)}
+                            key={position}
+                          >
+                            {position}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className={noShow ? 'choice selected w-full' : 'choice w-full'}
+                      onClick={() => {
+                        const nextNoShow = !noShow;
+                        setNoShow(nextNoShow);
+                        setSaveError('');
+                        if (nextNoShow) setScoutingPhase('post');
+                      }}
+                    >
+                      {noShow && <Check />} No-show
+                    </button>
+                    {noShow && (
+                      <p className="text-sm text-muted-foreground">
+                        This report will submit as a no-show. Existing observations
+                        are preserved if you turn this off.
                       </p>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {scoutingPhase === 'auto' && (
+                <Card>
+                  <CardHeader className="border-b">
+                    <CardTitle>Autonomous</CardTitle>
+                  </CardHeader>
+                  <CardContent className="divide-y divide-border p-0">
+                    <Counter
+                      label="Fuel scored"
+                      hint="Use +5 for a burst, then adjust or type the total"
+                      value={autoFuel}
+                      onChange={setAutoFuel}
+                      quickAdds={[5]}
+                    />
+                    <Counter
+                      label="Center swipes"
+                      hint="Count completed center-line swipe routines"
+                      value={centerSwipes}
+                      onChange={setCenterSwipes}
+                    />
+                    <div className="flex items-center justify-between gap-3 px-4 py-3">
+                      <strong>Auto tower</strong>
+                      <div className="two-choices">
+                        {['None', 'Level 1'].map((item) => (
+                          <button
+                            type="button"
+                            onClick={() => setAutoTower(item)}
+                            key={item}
+                            className={
+                              autoTower === item
+                                ? 'choice selected h-9 min-h-0 px-3 text-sm'
+                                : 'choice h-9 min-h-0 px-3 text-sm'
+                            }
+                          >
+                            {autoTower === item && <Check />}
+                            {item}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                      {[
-                        'Left trench',
-                        'Left bump',
-                        'Center',
-                        'Right bump',
-                        'Right trench',
-                      ].map((position) => (
-                        <button
-                          type="button"
-                          className={
-                            autoStartPosition === position
-                              ? 'choice selected min-h-12 px-2 text-center text-sm'
-                              : 'choice min-h-12 px-2 text-center text-sm'
-                          }
-                          aria-pressed={autoStartPosition === position}
-                          onClick={() => setAutoStartPosition(position)}
-                          key={position}
-                        >
-                          {position}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <Counter
-                    label="Fuel scored"
-                    hint="Use +5 for a burst, then adjust or type the total"
-                    value={autoFuel}
-                    onChange={setAutoFuel}
-                    quickAdds={[5]}
-                  />
-                  <div className="flex items-center justify-between gap-3 px-4 py-2">
-                    <strong>Auto tower</strong>
-                    <div className="two-choices">
-                      {['None', 'Level 1'].map((item) => (
-                        <button
-                          type="button"
-                          onClick={() => setAutoTower(item)}
-                          key={item}
-                          className={
-                            autoTower === item
-                              ? 'choice selected h-9 min-h-0 px-3 text-sm'
-                              : 'choice h-9 min-h-0 px-3 text-sm'
-                          }
-                        >
-                          {autoTower === item && <Check />}
-                          {item}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="border-b">
-                  <CardTitle>Teleoperated fuel</CardTitle>
-                </CardHeader>
-                <CardContent className="divide-y divide-border p-0">
-                  <Counter
-                    label="Fuel scored"
-                    hint="Add observed bursts with +5 or +10; fine-tune anytime"
-                    value={activeFuel}
-                    onChange={setActiveFuel}
-                    quickAdds={[5, 10]}
-                  />
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
+
+              {scoutingPhase === 'tele' && (
+                <Card>
+                  <CardHeader className="border-b">
+                    <CardTitle>Teleoperated</CardTitle>
+                  </CardHeader>
+                  <CardContent className="divide-y divide-border p-0">
+                    <Counter
+                      label="Fuel scored"
+                      hint="Add observed bursts with +5 or +10; fine-tune anytime"
+                      value={activeFuel}
+                      onChange={setActiveFuel}
+                      quickAdds={[5, 10]}
+                    />
+                    <Counter
+                      label="Fuel passed"
+                      hint="Estimate FUEL deliberately transferred to an alliance partner."
+                      value={passedFuel}
+                      onChange={setPassedFuel}
+                      quickAdds={[5]}
+                    />
+                  </CardContent>
+                </Card>
+              )}
+
+              {scoutingPhase === 'post' && <>
+              {noShow ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>No-show report</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <p>This report is ready to submit as a no-show.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Match observations will be submitted as zero. Return to
+                      pre-match if the robot is on the field.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : <>
               <Card>
                 <CardHeader>
-                  <CardTitle>
-                    <Gauge /> Field movement
-                  </CardTitle>
+                  <CardTitle>Field movement</CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-3 gap-2">
                   {['Trench', 'Bump', 'Both'].map((item) => (
@@ -2176,11 +2391,11 @@ export default function Home() {
               </Card>
                 <Card>
                   <CardHeader>
-                    <CardTitle><Shield /> Defense effectiveness</CardTitle>
+                    <CardTitle>Played defense</CardTitle>
                   </CardHeader>
                   <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                     {[
-                      { value: 0, label: 'None' },
+                      { value: null, label: 'N/A' },
                       { value: 1, label: 'Ineffective' },
                       { value: 2, label: 'Some impact' },
                       { value: 3, label: 'Effective' },
@@ -2195,7 +2410,7 @@ export default function Home() {
                             ? 'choice selected min-h-16 flex-col gap-1 px-2 text-center text-sm'
                             : 'choice min-h-16 flex-col gap-1 px-2 text-center text-sm'
                         }
-                        key={value}
+                        key={label}
                       >
                         <strong className="text-lg">{value}</strong>
                         <span>{label}</span>
@@ -2232,15 +2447,12 @@ export default function Home() {
                     hint="Count referee-called penalties attributable to this robot; do not calculate penalty points."
                     value={penalties}
                     onChange={setPenalties}
-                    quickAdds={[1]}
                   />
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="border-b">
-                  <CardTitle>
-                      <TowerControl /> Endgame tower
-                  </CardTitle>
+                  <CardTitle>Endgame tower</CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {['None', 'Level 1', 'Level 2', 'Level 3'].map((item) => (
@@ -2260,8 +2472,7 @@ export default function Home() {
                   <CardTitle>Reliability and notes</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div>
+                  <div>
                       <p className="mb-2 font-semibold">Robot reliability</p>
                       <div className="grid grid-cols-2 gap-2">
                         {[
@@ -2283,36 +2494,6 @@ export default function Home() {
                           </button>
                         ))}
                       </div>
-                    </div>
-                    <button
-                      type="button"
-                      className={noShow ? 'choice selected' : 'choice'}
-                      onClick={() => {
-                        const nextNoShow = !noShow;
-                        setNoShow(nextNoShow);
-                        if (nextNoShow) {
-                          setAutoFuel(0);
-                          setActiveFuel(0);
-                          setAutoTower('None');
-                          setTower('None');
-                          setPath('None');
-                          setDefenseRating(0);
-                          setDisabled(false);
-                          setPenalties(0);
-                          setShootingRange('None');
-                        } else {
-                          setAutoStartPosition('');
-                          setAutoTower('');
-                          setTower('');
-                          setPath('');
-                          setDefenseRating(null);
-                          setDisabled(null);
-                          setShootingRange('');
-                        }
-                      }}
-                    >
-                      {noShow && <Check />}No-show
-                    </button>
                   </div>
                   <textarea
                     className="min-h-24 w-full rounded-lg border bg-transparent p-3 text-base"
@@ -2323,12 +2504,52 @@ export default function Home() {
                   />
                 </CardContent>
               </Card>
+              </>}
+              </>}
+
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={scoutingPhase === 'pre'}
+                  onClick={() =>
+                    moveToScoutingPhase(
+                      scoutingPhase === 'post'
+                        ? noShow
+                          ? 'pre'
+                          : 'tele'
+                        : scoutingPhase === 'tele'
+                          ? 'auto'
+                          : 'pre',
+                    )}
+                >
+                  Previous
+                </Button>
+                {scoutingPhase !== 'post' ? (
+                  <Button
+                    type="button"
+                    onClick={() =>
+                      moveToScoutingPhase(
+                        scoutingPhase === 'pre'
+                          ? 'auto'
+                          : scoutingPhase === 'auto'
+                            ? 'tele'
+                            : 'post',
+                      )
+                    }
+                  >
+                    Next <ChevronRight />
+                  </Button>
+                ) : (
+                  <span />
+                )}
+              </div>
               {saveError && (
                 <p role="alert" className="auth-error">
                   {saveError}
                 </p>
               )}
-              <Button
+              {scoutingPhase === 'post' && <Button
                 className="h-12 w-full text-base"
                 disabled={!draftReady || submissionStatus === 'synchronized'}
                 onClick={submitMatch}
@@ -2351,7 +2572,7 @@ export default function Home() {
                 ) : (
                   <>Opening offline storage…</>
                 )}
-              </Button>
+              </Button>}
               {(submissionStatus === 'queued' ||
                 submissionStatus === 'synchronized') && (
                 <>
@@ -2381,8 +2602,41 @@ export default function Home() {
           </div>
         )}
         {activeView === 'Pit' && (
-          <div className="grid gap-4 p-4 sm:p-6 lg:grid-cols-[18rem_1fr]">
-            <Card className="h-full min-h-0">
+          <div className="pit-layout grid gap-4 p-4 sm:p-6 lg:grid-cols-[18rem_1fr]">
+            <Card className="pit-mobile-picker">
+              <CardContent className="p-3">
+                <label className="grid gap-1 text-sm font-semibold">
+                  Team to pit scout
+                  <select
+                    className="h-11 w-full rounded-md border bg-background px-3 text-foreground"
+                    value={pitTeam ?? ''}
+                    onChange={(event) =>
+                      setPitTeam(
+                        event.target.value ? Number(event.target.value) : null,
+                      )
+                    }
+                  >
+                    <option value="">Choose a team</option>
+                    {eventTeams.map((team) => {
+                      const complete = eventPack?.pitEntries.some(
+                        (entry) => entry.teamNumber === team,
+                      );
+                      return (
+                        <option value={team} key={team}>
+                          Team {team} — {complete ? 'Scouted' : 'Needs scouting'}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+                {pitTeam && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Team {pitTeam} selected · changes save on this device
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+            <Card className="pit-queue-card h-full min-h-0">
               <CardHeader>
                 <CardTitle>Pit queue</CardTitle>
                 <Badge variant="outline">
@@ -2580,7 +2834,7 @@ export default function Home() {
                     <div className="space-y-3 rounded-lg border p-3">
                       <div>
                         <p className="mb-2 font-semibold">Field access</p>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                           {['Trench', 'Bump', 'Both'].map((item) => (
                             <button
                               type="button"
@@ -2602,7 +2856,7 @@ export default function Home() {
                       </div>
                       <div>
                         <p className="mb-2 font-semibold">Preferred route</p>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                           {['Trench', 'Bump', 'No preference'].map((item) => (
                             <button
                               type="button"
@@ -2680,7 +2934,7 @@ export default function Home() {
                       </div>
                       <div>
                         <p className="mb-2 text-sm">Swipe routine</p>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                           {['None', 'Single swipe', 'Double swipe'].map(
                             (item) => (
                               <button
@@ -2861,10 +3115,17 @@ export default function Home() {
                       key={team}
                     >
                       <div className="flex items-center justify-between">
-                        <strong>
-                          Team {team}
-                          {name ? ` - ${name}` : ''}
-                        </strong>
+                        <div>
+                          <strong>
+                            Team {team}
+                            {name ? ` - ${name}` : ''}
+                          </strong>
+                          {matchPlan.absentTeams.includes(team) && (
+                            <Badge className="ml-2" variant="destructive">
+                              Not playing
+                            </Badge>
+                          )}
+                        </div>
                         <span
                           aria-label={`${alliance} alliance`}
                           className={
@@ -2874,6 +3135,42 @@ export default function Home() {
                           }
                         />
                       </div>
+                      {planCanEdit && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="mt-2"
+                          onClick={() => {
+                            const isAbsent = matchPlan.absentTeams.includes(team);
+                            const absentTeams = isAbsent
+                              ? matchPlan.absentTeams.filter(
+                                  (item) => item !== team,
+                                )
+                              : [...matchPlan.absentTeams, team];
+                            const robots = isAbsent
+                              ? [
+                                  ...matchPlan.board.robots,
+                                  ...initialRobotMarkers(
+                                    currentMatch?.alliances.red ?? [],
+                                    currentMatch?.alliances.blue ?? [],
+                                  ).filter((robot) => robot.team === team),
+                                ]
+                              : matchPlan.board.robots.filter(
+                                  (robot) => robot.team !== team,
+                                );
+                            setMatchPlan({
+                              ...matchPlan,
+                              absentTeams,
+                              board: { ...matchPlan.board, robots },
+                            });
+                          }}
+                        >
+                          {matchPlan.absentTeams.includes(team)
+                            ? 'Return robot to field'
+                            : 'Robot not playing'}
+                        </Button>
+                      )}
                       <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                         <span>
                           <strong>{stats?.epa?.toFixed(1) ?? '—'}</strong>
@@ -3191,7 +3488,7 @@ export default function Home() {
           </div>
         )}
         {activeView === 'Admin' && isAdmin && (
-          <div className="flex gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
+          <div className="section-tabs flex gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
             <Button
               variant={adminSection === 'settings' ? 'default' : 'outline'}
               onClick={() => setAdminSection('settings')}
@@ -3210,11 +3507,36 @@ export default function Home() {
           isAdmin &&
           adminSection === 'assignments' && (
             <div className="p-4 sm:p-6">
-              <ShiftScheduler
-                members={eventPack?.members ?? []}
-                onChanged={() => loadEventPack(false, true)}
-              />
+              <div className="mb-4 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant={assignmentMode === 'time' ? 'default' : 'outline'}
+                  onClick={() => setAssignmentMode('time')}
+                >
+                  <CalendarDays /> Time blocks
+                </Button>
+                <Button
+                  type="button"
+                  variant={assignmentMode === 'match' ? 'default' : 'outline'}
+                  onClick={() => setAssignmentMode('match')}
+                >
+                  Individual matches
+                </Button>
+              </div>
+              {assignmentMode === 'time' && (
+                <ShiftScheduler
+                  members={eventPack?.members ?? []}
+                  matches={(eventPack?.matches ?? []).map((match) => ({
+                    key: match.key,
+                    label: matchLabel(match),
+                    scheduledAt: match.scheduledAt,
+                    predictedAt: match.predictedAt,
+                  }))}
+                  onChanged={() => loadEventPack(false, true)}
+                />
+              )}
               <ScoutingOperations mode="coverage" />
+              {assignmentMode === 'match' && (
               <Card>
                 <CardHeader>
                   <CardTitle>
@@ -3338,16 +3660,20 @@ export default function Home() {
                   )}
                 </CardContent>
               </Card>
+              )}
             </div>
           )}
-        {activeView === 'Teams' && canUseStrategy && (
-          <div className="flex flex-wrap gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
+        {activeView === 'Teams' && (
+          <div className="section-tabs flex gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
             {(
               [
-                ['directory', 'Directory'],
                 ['analysis', 'Analysis'],
-                ['picks', 'Pick list'],
-                ['review', 'Data review'],
+                ...(canUsePickLists
+                  ? ([['picklist', 'My pick list']] as const)
+                  : []),
+                ...(canUseStrategy
+                  ? ([['review', 'Data review']] as const)
+                  : []),
               ] as const
             ).map(([section, label]) => (
               <Button
@@ -3361,48 +3687,21 @@ export default function Home() {
             ))}
           </div>
         )}
-        {activeView === 'Teams' && teamsSection === 'directory' && (
-          <div className="p-4 sm:p-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  Teams at {eventPack?.event.name ?? 'this event'}
-                </CardTitle>
-                <Badge variant="outline">{eventTeams.length} teams</Badge>
-              </CardHeader>
-              <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {eventTeams.map((team) => (
-                  <button
-                    onClick={() => {
-                      setSelectedTeam(team);
-                      if (canUseStrategy) setTeamsSection('analysis');
-                      else {
-                        setPitTeam(team);
-                        navigate('Pit');
-                      }
-                    }}
-                    className="schedule-row w-full text-left"
-                    key={team}
-                  >
-                    <strong>Team {team}</strong>
-                    <span>
-                      {
-                        eventPack?.matches.filter((match) =>
-                          [
-                            ...match.alliances.red,
-                            ...match.alliances.blue,
-                          ].includes(team),
-                        ).length
-                      }{' '}
-                      matches
-                    </span>
-                    <ChevronRight />
-                  </button>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        {activeView === 'Teams' &&
+          canUsePickLists &&
+          teamsSection === 'picklist' && (
+            <div className="p-4 sm:p-6">
+              {eventPack && (
+                <PickListWorkspace
+                  teams={strategyTeams}
+                  eventKey={eventPack.event.key}
+                  organizationTeamNumber={organizationTeamNumber}
+                  userId={eventPack.userId}
+                  initialMode="personal"
+                />
+              )}
+            </div>
+          )}
         {activeView === 'Teams' &&
           canUseStrategy &&
           teamsSection === 'review' && (
@@ -3466,21 +3765,20 @@ export default function Home() {
               />
             </div>
           )}
+        {activeView === 'Alliance' && canUseStrategy && (
+          <div className="p-2 sm:p-4">
+            {eventPack && (
+              <PickListWorkspace
+                teams={strategyTeams}
+                eventKey={eventPack.event.key}
+                organizationTeamNumber={organizationTeamNumber}
+                userId={eventPack.userId}
+                initialMode="selection"
+              />
+            )}
+          </div>
+        )}
         {activeView === 'Teams' &&
-          canUseStrategy &&
-          teamsSection === 'picks' && (
-            <div className="grid gap-4 p-4 sm:p-6">
-              {eventPack && (
-                <PickListWorkspace
-                  teams={strategyTeams}
-                  eventKey={eventPack.event.key}
-                  organizationTeamNumber={organizationTeamNumber}
-                />
-              )}
-            </div>
-          )}
-        {activeView === 'Teams' &&
-          canUseStrategy &&
           teamsSection === 'analysis' && (
             <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
               <TeamComparison
@@ -3495,10 +3793,24 @@ export default function Home() {
               <Card className="sm:col-span-2">
                 <CardHeader>
                   <CardTitle>Event ranking workspace</CardTitle>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Badge variant="outline">
                       {strategyTeams.length} teams
                     </Badge>
+                    <Button
+                      size="sm"
+                      variant={rankingSort === 'rank' ? 'default' : 'outline'}
+                      onClick={() => setRankingSort('rank')}
+                    >
+                      Event rank
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={rankingSort === 'team' ? 'default' : 'outline'}
+                      onClick={() => setRankingSort('team')}
+                    >
+                      Team number
+                    </Button>
                     {eventPack && canReopenEntries(eventPack.role) && (
                       <Button
                         nativeButton={false}
@@ -3514,13 +3826,19 @@ export default function Home() {
                 </CardHeader>
                 <CardContent className="max-h-96 overflow-auto">
                   <div className="strategy-table">
+                    <strong>Rank</strong>
                     <strong>Team</strong>
                     <strong>Samples</strong>
                     <strong>Median pts</strong>
-                    <strong>Fuel/cycle</strong>
                     <strong>Coverage</strong>
                     {[...strategyTeams]
-                      .sort((a, b) => b.medianPoints - a.medianPoints)
+                      .sort((a, b) => {
+                        if (rankingSort === 'team')
+                          return a.teamNumber - b.teamNumber;
+                        if (a.eventRank === null) return 1;
+                        if (b.eventRank === null) return -1;
+                        return a.eventRank - b.eventRank;
+                      })
                       .map((team) => (
                         <button
                           key={team.teamNumber}
@@ -3529,10 +3847,10 @@ export default function Home() {
                             selectedTeam === team.teamNumber ? 'selected' : ''
                           }
                         >
+                          <span>{team.eventRank ?? '—'}</span>
                           <span>{team.teamNumber}</span>
                           <span>{team.samples}</span>
                           <span>{team.medianPoints.toFixed(1)}</span>
-                          <span>{team.medianFuelPerCycle.toFixed(1)}</span>
                           <span>{Math.round(team.coverage * 100)}%</span>
                         </button>
                       ))}
@@ -3583,6 +3901,37 @@ export default function Home() {
               </Card>
               <Card>
                 <CardHeader>
+                  <CardTitle>TBA and external ratings</CardTitle>
+                </CardHeader>
+                <CardContent className="mini-stats">
+                  <span>
+                    <strong>{selectedStrategyTeam?.eventRank ?? '—'}</strong>{' '}
+                    event rank
+                  </span>
+                  <span>
+                    <strong>
+                      {selectedStrategyTeam
+                        ? `${selectedStrategyTeam.wins}-${selectedStrategyTeam.losses}-${selectedStrategyTeam.ties}`
+                        : '—'}
+                    </strong>{' '}
+                    TBA record
+                  </span>
+                  <span>
+                    <strong>
+                      {selectedStrategyTeam?.opr?.toFixed(1) ?? '—'}
+                    </strong>{' '}
+                    TBA OPR
+                  </span>
+                  <span>
+                    <strong>
+                      {selectedStrategyTeam?.epa?.toFixed(1) ?? '—'}
+                    </strong>{' '}
+                    Statbotics EPA
+                  </span>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
                   <CardTitle>Reliability and coverage</CardTitle>
                 </CardHeader>
                 <CardContent className="mini-stats">
@@ -3612,6 +3961,70 @@ export default function Home() {
               </Card>
               <Card className="sm:col-span-2">
                 <CardHeader>
+                  <CardTitle>Pit scouting</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {analysis?.pit ? (
+                    <div className="mini-stats">
+                      <span>
+                        <strong>{analysis.pit.drivetrain ?? 'Unknown'}</strong>{' '}
+                        drivetrain
+                      </span>
+                      <span>
+                        <strong>
+                          {analysis.pit.weightLbs
+                            ? `${analysis.pit.weightLbs} lb`
+                            : 'Unknown'}
+                        </strong>{' '}
+                        robot weight
+                      </span>
+                      <span>
+                        <strong>
+                          {analysis.pit.payload.shooterMount ?? 'Unknown'}
+                        </strong>{' '}
+                        shooter mount
+                      </span>
+                      <span>
+                        <strong>
+                          {analysis.pit.payload.shooterBarrels ?? 'Unknown'}
+                        </strong>{' '}
+                        shooter barrels
+                      </span>
+                      <span>
+                        <strong>
+                          {analysis.pit.payload.fieldAccess ?? 'Unknown'}
+                        </strong>{' '}
+                        field access
+                      </span>
+                      <span>
+                        <strong>
+                          {analysis.pit.payload.climbCapability ?? 'Unknown'}
+                        </strong>{' '}
+                        climb capability
+                      </span>
+                      <span>
+                        <strong>
+                          {analysis.pit.payload.autonomousStart?.join(', ') ??
+                            'Unknown'}
+                        </strong>{' '}
+                        autonomous starts
+                      </span>
+                      <span>
+                        <strong>
+                          {analysis.pit.payload.adjustableHood ? 'Yes' : 'No'}
+                        </strong>{' '}
+                        adjustable hood
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No pit report has been submitted for this team.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+              <Card className="sm:col-span-2">
+                <CardHeader>
                   <CardTitle>
                     {selectedTeam
                       ? `Team ${selectedTeam} trends`
@@ -3620,6 +4033,10 @@ export default function Home() {
                   <Badge variant="outline">Match by match</Badge>
                 </CardHeader>
                 <CardContent>
+                  <p className="mb-3 text-sm text-muted-foreground">
+                    Match-by-match observed points, autonomous FUEL,
+                    teleoperated FUEL, and defense rating (0–4).
+                  </p>
                   <TeamTrendChart trends={analysis?.trends ?? []} />
                 </CardContent>
               </Card>
@@ -3827,9 +4244,7 @@ export default function Home() {
           <div className="grid gap-4 p-4 sm:p-6">
             <Card>
               <CardHeader>
-                <CardTitle>
-                  <KeyRound /> Change password
-                </CardTitle>
+                <CardTitle>Change password</CardTitle>
               </CardHeader>
               <CardContent>
                 <form className="grid max-w-lg gap-3" onSubmit={changePassword}>
@@ -3885,12 +4300,10 @@ export default function Home() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>
-                  <MonitorSmartphone /> Signed-in devices
-                </CardTitle>
+                <CardTitle>Signed-in devices</CardTitle>
                 <Badge variant="outline">{accountSessions.length}</Badge>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="account-sessions space-y-2">
                 {accountSessions.map((item) => (
                   <div className="schedule-row" key={item.id}>
                     <strong>
@@ -3937,8 +4350,36 @@ export default function Home() {
           </div>
         )}
       </section>
+      {mobileMenuOpen && (
+        <>
+        <button
+          type="button"
+          className="mobile-more-backdrop"
+          aria-label="Close more navigation"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+        <div className="mobile-more-menu" role="dialog" aria-label="More navigation">
+          {visibleNav
+            .filter(({ label }) => !['Home', 'Scout', 'Pit', 'Teams'].includes(label))
+            .map(({ label, icon: Icon }) => (
+              <button type="button" onClick={() => navigate(label)} key={label}>
+                <Icon />
+                <span>{label}</span>
+              </button>
+            ))}
+          {isAdmin && (
+            <button type="button" onClick={() => navigate('Admin')}>
+              <UserCog />
+              <span>Admin</span>
+            </button>
+          )}
+        </div>
+        </>
+      )}
       <nav aria-label="Mobile navigation" className="mobile-nav">
-        {visibleNav.map(({ label, icon: Icon }) => (
+        {visibleNav
+          .filter(({ label }) => ['Home', 'Scout', 'Pit', 'Teams'].includes(label))
+          .map(({ label, icon: Icon }) => (
           <button
             type="button"
             aria-current={activeView === label ? 'page' : undefined}
@@ -3950,16 +4391,19 @@ export default function Home() {
             <span>{label}</span>
           </button>
         ))}
-        {isAdmin && (
-          <button
-            type="button"
-            onClick={() => navigate('Admin')}
-            className={activeView === 'Admin' ? 'active' : ''}
-          >
-            <UserCog />
-            <span>Admin</span>
-          </button>
-        )}
+        <button
+          type="button"
+          aria-expanded={mobileMenuOpen}
+          onClick={() => setMobileMenuOpen((open) => !open)}
+          className={
+            mobileMenuOpen || ['Plan', 'Alliance', 'Admin'].includes(activeView)
+              ? 'active'
+              : ''
+          }
+        >
+          <Menu />
+          <span>More</span>
+        </button>
       </nav>
     </main>
   );

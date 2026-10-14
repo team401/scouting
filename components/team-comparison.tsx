@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { GitCompareArrows, Plus, X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import {
   CartesianGrid,
   Legend,
@@ -169,9 +169,7 @@ export function TeamComparison({
     <Card className="sm:col-span-2">
       <CardHeader>
         <div>
-          <CardTitle className="flex items-center gap-2">
-            <GitCompareArrows /> Team comparison
-          </CardTitle>
+          <CardTitle>Team comparison</CardTitle>
           <p className="text-sm text-muted-foreground">
             Compare scouting output, external ratings, reliability, and trends.
           </p>
@@ -275,7 +273,7 @@ export function TeamComparison({
         {message && <p className="text-sm text-destructive">{message}</p>}
         {selectedTeams.length > 0 ? (
           <>
-            <div className="overflow-x-auto">
+            <div className="team-comparison-table overflow-x-auto">
               <table className="w-full min-w-[900px] text-sm">
                 <thead>
                   <tr className="border-b text-left">
@@ -319,6 +317,21 @@ export function TeamComparison({
                   ))}
                 </tbody>
               </table>
+            </div>
+            <div className="team-comparison-cards">
+              {selectedTeams.map((team) => (
+                <div className="rounded-lg border p-3" key={team.teamNumber}>
+                  <strong className="text-lg">Team {team.teamNumber}</strong>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                    <span><strong>{formatNumber(team.epa)}</strong><small className="block text-muted-foreground">EPA</small></span>
+                    <span><strong>{formatNumber(team.opr)}</strong><small className="block text-muted-foreground">OPR</small></span>
+                    <span><strong>{team.medianPoints.toFixed(1)}</strong><small className="block text-muted-foreground">Median points</small></span>
+                    <span><strong>{team.averageDefense.toFixed(1)}</strong><small className="block text-muted-foreground">Defense</small></span>
+                    <span><strong>{Math.round(team.disabledRate * 100)}%</strong><small className="block text-muted-foreground">Disabled</small></span>
+                    <span><strong>{Math.round(team.coverage * 100)}%</strong><small className="block text-muted-foreground">Coverage ({team.samples})</small></span>
+                  </div>
+                </div>
+              ))}
             </div>
             <div>
               <h3 className="mb-2 font-semibold">Observed points by match</h3>

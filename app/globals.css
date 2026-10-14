@@ -192,6 +192,9 @@ select option {
 .match-card {
   border-left: 4px solid oklch(0.61 0.23 25);
 }
+.match-card-blue {
+  border-left-color: oklch(0.55 0.22 255);
+}
 .match-card > [data-slot='card-content'] {
   padding: 18px;
 }
@@ -202,6 +205,10 @@ select option {
   border-radius: 999px;
   background: oklch(0.61 0.23 25);
   box-shadow: 0 0 0 5px oklch(0.61 0.23 25/0.13);
+}
+.station-dot-blue {
+  background: oklch(0.55 0.22 255);
+  box-shadow: 0 0 0 5px oklch(0.55 0.22 255 / 0.13);
 }
 [data-slot='card-header'] {
   align-items: center;
@@ -342,6 +349,19 @@ select option {
 }
 .mobile-nav {
   display: none;
+}
+.pit-mobile-picker,
+.mobile-more-menu,
+.mobile-more-backdrop,
+.team-comparison-cards {
+  display: none;
+}
+.pick-list-mobile-editor {
+  display: none;
+}
+.tactical-board-viewport {
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
 }
 .choice-section {
   display: flex;
@@ -490,12 +510,16 @@ select option {
 }
 .strategy-table {
   display: grid;
-  grid-template-columns: minmax(64px, 1fr) repeat(4, minmax(76px, 1fr));
+  grid-template-columns: minmax(56px, 0.7fr) minmax(64px, 1fr) repeat(3, minmax(76px, 1fr));
   min-width: 500px;
   align-items: center;
 }
 .strategy-table > strong {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   padding: 8px;
+  background: var(--card);
   color: var(--muted-foreground);
   font-size: 11px;
   text-transform: uppercase;
@@ -551,34 +575,184 @@ select option {
     inset: auto 0 0;
     z-index: 10;
     display: flex;
-    overflow-x: auto;
-    border-top: 1px solid #65152f;
-    background: #861f41;
+    padding-bottom: env(safe-area-inset-bottom);
+    border-top: 1px solid var(--border);
+    background: color-mix(in oklch, var(--card) 94%, transparent);
+    color: var(--card-foreground);
     backdrop-filter: blur(12px);
   }
   .mobile-nav button {
-    min-width: 72px;
-    min-height: 64px;
+    min-width: 0;
+    min-height: 56px;
     flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 3px;
-    color: #efcbd7;
+    color: var(--muted-foreground);
     font-size: 10px;
   }
   .mobile-nav svg {
     width: 19px;
   }
   .mobile-nav .active {
-    color: white;
-    background: rgb(255 255 255 / 14%);
+    color: var(--primary);
+    background: color-mix(in oklch, var(--primary) 10%, transparent);
+  }
+  .mobile-more-menu {
+    position: fixed;
+    right: 10px;
+    bottom: calc(62px + env(safe-area-inset-bottom));
+    z-index: 20;
+    display: grid;
+    min-width: 190px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--card);
+    padding: 6px;
+    color: var(--card-foreground);
+    box-shadow: 0 16px 40px rgb(0 0 0 / 24%);
+  }
+  .mobile-more-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 19;
+    display: block;
+    cursor: default;
+    background: rgb(0 0 0 / 18%);
+  }
+  .mobile-more-menu button {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    gap: 10px;
+    border-radius: 9px;
+    padding: 0 12px;
+    text-align: left;
+  }
+  .mobile-more-menu button:hover {
+    background: var(--accent);
+  }
+  .mobile-more-menu svg {
+    width: 18px;
+  }
+  .app-content {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom));
+  }
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+    min-height: 52px;
+  }
+  .topbar h1 {
+    max-width: 9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .section-tabs {
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+  .section-tabs > button {
+    flex: none;
+  }
+  .tactical-board-tools {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .tactical-board-tools > * {
+    flex: none;
+  }
+  .tactical-board-viewport svg {
+    width: 720px;
+    max-width: none;
+  }
+  .team-comparison-table {
+    display: none;
+  }
+  .team-comparison-cards {
+    display: grid;
+    gap: 8px;
+  }
+  .pick-list-desktop-editor {
+    display: none;
+  }
+  .pick-list-mobile-editor {
+    display: block;
+  }
+  .pick-list-controls {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .pick-list-controls > * {
+    flex: none;
+  }
+  .alliance-selection-layout {
+    min-height: 0;
+  }
+  .selection-team-pool {
+    max-height: 42vh;
+  }
+  .member-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .member-row select,
+  .member-row [data-slot='button'] {
+    width: 100%;
+  }
+  .schedule-row > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .account-sessions .schedule-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-block: 8px;
+  }
+  .account-sessions .schedule-row > strong {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .account-sessions .schedule-row > span {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    font-size: 0.8rem;
+    color: var(--muted-foreground);
+  }
+  .account-sessions .schedule-row > [data-slot='button'] {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  [data-slot='card-header'] {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .pit-layout {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 10px;
+  }
+  .pit-queue-card {
+    display: none;
+  }
+  .pit-mobile-picker {
+    position: sticky;
+    top: 8px;
+    z-index: 5;
+    display: block;
   }
   .status-badge {
-    max-width: 34px;
-    overflow: hidden;
+    width: 36px;
     padding-inline: 8px;
+  }
+  .status-badge .status-text {
+    display: none;
   }
   .topbar {
     min-height: 56px;
