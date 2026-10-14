@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ConfirmActionDialog } from '@/components/confirm-action-dialog';
 
 type GuestPass = {
   id: string;
@@ -26,6 +27,10 @@ export function GuestPassManager() {
   const [newCode, setNewCode] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{
+    pass: GuestPass;
+    action: 'revoke' | 'remove';
+  } | null>(null);
 
   const load = useCallback(async () => {
     const response = await fetch('/api/guest-passes', { cache: 'no-store' });
@@ -54,12 +59,13 @@ export function GuestPassManager() {
     }
     setNewCode(body.code);
     setName('');
-    setMessage('Guest pass created. Copy it now; it is not stored in readable form.');
+    setMessage(
+      'Guest pass created. Copy it now; it is not stored in readable form.',
+    );
     await load();
   }
 
   async function revokePass(pass: GuestPass) {
-    if (!window.confirm(`Revoke guest access for ${pass.name}?`)) return;
     const response = await fetch('/api/guest-passes', {
       method: 'DELETE',
       headers: { 'content-type': 'application/json' },
@@ -72,10 +78,10 @@ export function GuestPassManager() {
         : (body.error ?? 'Could not revoke the guest pass.'),
     );
     if (response.ok) await load();
+    return response.ok;
   }
 
   async function removePass(pass: GuestPass) {
-    if (!window.confirm(`Remove ${pass.name} from the guest list?`)) return;
     const response = await fetch('/api/guest-passes', {
       method: 'DELETE',
       headers: { 'content-type': 'application/json' },
@@ -88,6 +94,7 @@ export function GuestPassManager() {
         : (body.error ?? 'Could not remove the guest pass.'),
     );
     if (response.ok) await load();
+    return response.ok;
   }
 
   return (
@@ -127,7 +134,10 @@ export function GuestPassManager() {
               <option value={168}>7 days</option>
             </select>
           </div>
-          <Button disabled={busy || name.trim().length < 2} onClick={createPass}>
+          <Button
+            disabled={busy || name.trim().length < 2}
+            onClick={createPass}
+          >
             {busy ? <LoaderCircle className="animate-spin" /> : <UserPlus />}
             Create pass
           </Button>
@@ -175,7 +185,11 @@ export function GuestPassManager() {
                         : 'Active'}
                 </Badge>
                 {active && (
-                  <Button variant="outline" size="sm" onClick={() => revokePass(pass)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPendingAction({ pass, action: 'revoke' })}
+                  >
                     Revoke
                   </Button>
                 )}
@@ -183,7 +197,7 @@ export function GuestPassManager() {
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => removePass(pass)}
+                    onClick={() => setPendingAction({ pass, action: 'remove' })}
                   >
                     Remove
                   </Button>
@@ -192,11 +206,39 @@ export function GuestPassManager() {
             );
           })}
           {!passes.length && (
-            <p className="text-sm text-muted-foreground">No guest passes yet.</p>
+            <p className="text-sm text-muted-foreground">
+              No guest passes yet.
+            </p>
           )}
         </div>
         {message && <p className="text-sm text-muted-foreground">{message}</p>}
       </CardContent>
+      <ConfirmActionDialog
+        open={pendingAction !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingAction(null);
+        }}
+        title={
+          pendingAction?.action === 'revoke'
+            ? `Revoke access for ${pendingAction.pass.name}?`
+            : `Remove ${pendingAction?.pass.name ?? 'this guest pass'}?`
+        }
+        description={
+          pendingAction?.action === 'revoke'
+            ? 'Everyone using this team code will be signed out. Historical scouting data will be kept.'
+            : 'This removes the pass from the guest list. Historical scouting data will be kept.'
+        }
+        confirmLabel={
+          pendingAction?.action === 'revoke' ? 'Revoke access' : 'Remove pass'
+        }
+        destructive
+        onConfirm={() => {
+          if (!pendingAction) return false;
+          return pendingAction.action === 'revoke'
+            ? revokePass(pendingAction.pass)
+            : removePass(pendingAction.pass);
+        }}
+      />
     </Card>
   );
 }

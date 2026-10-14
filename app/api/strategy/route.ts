@@ -2,6 +2,7 @@ import { env } from 'cloudflare:workers';
 import { auth } from '@/lib/auth';
 import { summarizeEntries, type ScoutingPayload } from '@/lib/scouting-metrics';
 import { teamNumberFromTbaKey } from '@/lib/scouting-policy';
+import { getMatch13EventTeams } from '@/lib/match13';
 
 type TbaOprs = { oprs?: Record<string, number> };
 type TbaRankings = {
@@ -12,12 +13,6 @@ type TbaRankings = {
     record?: { wins?: number; losses?: number; ties?: number };
   }>;
 };
-type StatboticsTeamEvent = {
-  team?: number;
-  epa_end?: number;
-  epa?: { total_points?: { mean?: number } };
-};
-
 function finiteNumber(value: unknown) {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
@@ -49,6 +44,15 @@ export async function GET(request: Request) {
   )
     .bind(membership.organization_id)
     .all<{ alliances: string }>();
+  const registeredTeams = await env.DB.prepare(
+    `SELECT event_teams.team_number AS teamNumber
+     FROM event_teams
+     JOIN events ON events.id = event_teams.event_id
+     WHERE event_teams.organization_id = ? AND events.is_current = 1
+     ORDER BY event_teams.team_number`,
+  )
+    .bind(membership.organization_id)
+    .all<{ teamNumber: number }>();
   const scheduled = new Map<number, number>();
   for (const row of matches.results) {
     const alliances = JSON.parse(row.alliances) as {
@@ -85,36 +89,35 @@ export async function GET(request: Request) {
       ties: number;
     }
   >();
-  const epas = new Map<number, number>();
+  const xps = new Map<number, number>();
   if (event) {
-    const [tbaResult, rankingsResult, statboticsResult] =
-      await Promise.allSettled([
-      env.TBA_AUTH_KEY
-        ? fetch(
-            `https://www.thebluealliance.com/api/v3/event/${encodeURIComponent(event.eventKey)}/oprs`,
-            {
-              headers: {
-                'X-TBA-Auth-Key': env.TBA_AUTH_KEY,
-                'User-Agent': 'Team401-Scouting/1.0',
+    const [tbaResult, rankingsResult, match13Result] = await Promise.allSettled(
+      [
+        env.TBA_AUTH_KEY
+          ? fetch(
+              `https://www.thebluealliance.com/api/v3/event/${encodeURIComponent(event.eventKey)}/oprs`,
+              {
+                headers: {
+                  'X-TBA-Auth-Key': env.TBA_AUTH_KEY,
+                  'User-Agent': 'Team401-Scouting/1.0',
+                },
               },
-            },
-          )
-        : Promise.reject(new Error('TBA is not configured.')),
-      env.TBA_AUTH_KEY
-        ? fetch(
-            `https://www.thebluealliance.com/api/v3/event/${encodeURIComponent(event.eventKey)}/rankings`,
-            {
-              headers: {
-                'X-TBA-Auth-Key': env.TBA_AUTH_KEY,
-                'User-Agent': 'Team401-Scouting/1.0',
+            )
+          : Promise.reject(new Error('TBA is not configured.')),
+        env.TBA_AUTH_KEY
+          ? fetch(
+              `https://www.thebluealliance.com/api/v3/event/${encodeURIComponent(event.eventKey)}/rankings`,
+              {
+                headers: {
+                  'X-TBA-Auth-Key': env.TBA_AUTH_KEY,
+                  'User-Agent': 'Team401-Scouting/1.0',
+                },
               },
-            },
-          )
-        : Promise.reject(new Error('TBA is not configured.')),
-      fetch(
-        `https://api.statbotics.io/v3/team_events?event=${encodeURIComponent(event.eventKey)}&limit=1000`,
-      ),
-    ]);
+            )
+          : Promise.reject(new Error('TBA is not configured.')),
+        getMatch13EventTeams(env.DB, event.eventKey, env.MATCH13_API_KEY),
+      ],
+    );
     if (tbaResult.status === 'fulfilled' && tbaResult.value.ok) {
       const data = (await tbaResult.value.json()) as TbaOprs;
       oprs = data.oprs ?? {};
@@ -133,24 +136,25 @@ export async function GET(request: Request) {
         });
       }
     }
-    if (statboticsResult.status === 'fulfilled' && statboticsResult.value.ok) {
-      const data =
-        (await statboticsResult.value.json()) as StatboticsTeamEvent[];
-      for (const row of data) {
-        const epa =
-          finiteNumber(row.epa?.total_points?.mean) ??
-          finiteNumber(row.epa_end);
-        if (row.team && epa !== null) epas.set(row.team, epa);
+    if (match13Result.status === 'fulfilled' && match13Result.value) {
+      for (const row of match13Result.value.teams ?? []) {
+        const xp = finiteNumber(row.xpEnd) ?? finiteNumber(row.xpMean);
+        if (row.teamNumber && xp !== null) xps.set(row.teamNumber, xp);
       }
     }
   }
-  const teams = [...scheduled.keys()]
+  const teamNumbers = new Set([
+    ...registeredTeams.results.map((team) => team.teamNumber),
+    ...scheduled.keys(),
+    ...grouped.keys(),
+  ]);
+  const teams = [...teamNumbers]
     .sort((a, b) => a - b)
     .map((teamNumber) => {
       const summary = summarizeEntries(grouped.get(teamNumber) ?? []);
       return {
         teamNumber,
-        epa: epas.get(teamNumber) ?? null,
+        xp: xps.get(teamNumber) ?? null,
         opr: finiteNumber(oprs[`frc${teamNumber}`]),
         eventRank: rankings.get(teamNumber)?.eventRank ?? null,
         matchesPlayed: rankings.get(teamNumber)?.matchesPlayed ?? 0,

@@ -30,7 +30,7 @@ import {
 type TeamMetric = {
   teamNumber: number;
   medianPoints: number;
-  epa: number | null;
+  xp: number | null;
   opr: number | null;
 };
 type PickListsResponse = {
@@ -55,7 +55,7 @@ function seededList(
   return {
     entries: [...teams]
       .filter((team) => team.teamNumber !== organizationTeamNumber)
-      .sort((a, b) => (b.epa ?? b.medianPoints) - (a.epa ?? a.medianPoints))
+      .sort((a, b) => (b.xp ?? b.medianPoints) - (a.xp ?? a.medianPoints))
       .map((team) => ({
         teamNumber: team.teamNumber,
         note: '',
@@ -235,16 +235,26 @@ export function PickListWorkspace({
     if (!hydrated || personal.entries.length === 0) return;
     const serialized = JSON.stringify(personal);
     if (serialized === lastSavedPersonal.current) return;
-    const timeout = window.setTimeout(() => void save('personal', personal), 800);
+    const timeout = window.setTimeout(
+      () => void save('personal', personal),
+      800,
+    );
     return () => window.clearTimeout(timeout);
   }, [hydrated, personal]);
 
   useEffect(() => {
-    if (!hydrated || !response?.canEditOfficial || official.entries.length === 0)
+    if (
+      !hydrated ||
+      !response?.canEditOfficial ||
+      official.entries.length === 0
+    )
       return;
     const serialized = JSON.stringify(official);
     if (serialized === lastSavedOfficial.current) return;
-    const timeout = window.setTimeout(() => void save('official', official), 800);
+    const timeout = window.setTimeout(
+      () => void save('official', official),
+      800,
+    );
     return () => window.clearTimeout(timeout);
   }, [hydrated, official, response?.canEditOfficial]);
 
@@ -306,7 +316,7 @@ export function PickListWorkspace({
       'rank',
       'team_number',
       'tier',
-      'epa',
+      'xp',
       'opr',
       'selected_by_alliance',
       'notes',
@@ -322,7 +332,7 @@ export function PickListWorkspace({
         index + 1,
         entry.teamNumber,
         entry.tier,
-        team?.epa,
+        team?.xp,
         team?.opr,
         selection?.allianceNumber,
         entry.note,
@@ -353,8 +363,8 @@ export function PickListWorkspace({
             {standaloneSelection
               ? 'Run the live draft using the team pick list and event rankings.'
               : response?.canEditOfficial
-              ? 'Build your own list, review scout lists, and maintain the team list used for alliance selection.'
-              : 'Rank teams and keep notes on your own pick list.'}
+                ? 'Build your own list, review scout lists, and maintain the team list used for alliance selection.'
+                : 'Rank teams and keep notes on your own pick list.'}
           </p>
         </div>
         {response?.canEditOfficial && !standaloneSelection && (
@@ -363,52 +373,56 @@ export function PickListWorkspace({
       </CardHeader>
       <CardContent className="space-y-4">
         {!standaloneSelection && (
-        <div className="pick-list-controls flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            variant={mode === 'personal' ? 'default' : 'outline'}
-            onClick={() => setMode('personal')}
-          >
-            <UserRoundCheck /> My pick list
-          </Button>
-          {response?.canEditOfficial && (
-            <>
-              <Button
-                size="sm"
-                variant={mode === 'review' ? 'default' : 'outline'}
-                onClick={() => {
-                  setReviewOwnerId(
-                    reviewOwnerId || response.ballots?.[0]?.ownerUserId || '',
-                  );
-                  setMode('review');
-                }}
-              >
-                <Eye /> Review scout lists
-              </Button>
-              <Button
-                size="sm"
-                variant={mode === 'official' ? 'default' : 'outline'}
-                onClick={() => setMode('official')}
-              >
-                <Users /> Team pick list
-              </Button>
-            </>
-          )}
-          {mode !== 'personal' && official.entries.length > 0 && (
-            <>
-              <Button size="sm" variant="outline" onClick={exportOfficialList}>
-                <Download /> Export CSV
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => window.print()}
-              >
-                <Printer /> Print
-              </Button>
-            </>
-          )}
-        </div>
+          <div className="pick-list-controls flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant={mode === 'personal' ? 'default' : 'outline'}
+              onClick={() => setMode('personal')}
+            >
+              <UserRoundCheck /> My pick list
+            </Button>
+            {response?.canEditOfficial && (
+              <>
+                <Button
+                  size="sm"
+                  variant={mode === 'review' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setReviewOwnerId(
+                      reviewOwnerId || response.ballots?.[0]?.ownerUserId || '',
+                    );
+                    setMode('review');
+                  }}
+                >
+                  <Eye /> Review scout lists
+                </Button>
+                <Button
+                  size="sm"
+                  variant={mode === 'official' ? 'default' : 'outline'}
+                  onClick={() => setMode('official')}
+                >
+                  <Users /> Team pick list
+                </Button>
+              </>
+            )}
+            {mode !== 'personal' && official.entries.length > 0 && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={exportOfficialList}
+                >
+                  <Download /> Export CSV
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => window.print()}
+                >
+                  <Printer /> Print
+                </Button>
+              </>
+            )}
+          </div>
         )}
 
         {mode === 'review' && (
@@ -451,83 +465,89 @@ export function PickListWorkspace({
                 No scouts have saved a personal pick list for this event yet.
               </div>
             )}
-            {reviewedBallot && <>
-            <div className="pick-list-desktop-editor overflow-x-auto rounded-lg border">
-              <div className="min-w-[620px] divide-y">
-                {reviewedBallot.data.entries.map((entry, index) => {
-                    const team = metrics.get(entry.teamNumber);
-                    const isDoNotPick =
-                      entry.tier === 'do-not-pick';
-                    return (
-                      <div
-                        className={
-                          isDoNotPick
-                            ? 'grid grid-cols-[54px_90px_90px_90px_120px_1fr] items-center gap-2 bg-destructive/10 p-3 text-destructive'
-                            : 'grid grid-cols-[54px_90px_90px_90px_120px_1fr] items-center gap-2 p-3'
-                        }
-                        key={entry.teamNumber}
-                      >
-                        <strong>#{index + 1}</strong>
-                        <strong>{entry.teamNumber}</strong>
-                        <span className="text-sm">
-                          EPA {team?.epa?.toFixed(1) ?? '—'}
-                        </span>
-                        <span className="text-sm">
-                          OPR {team?.opr?.toFixed(1) ?? '—'}
-                        </span>
-                        <Badge variant={isDoNotPick ? 'destructive' : 'outline'}>
-                          {entry.tier === 'first'
+            {reviewedBallot && (
+              <>
+                <div className="pick-list-desktop-editor overflow-x-auto rounded-lg border">
+                  <div className="min-w-[620px] divide-y">
+                    {reviewedBallot.data.entries.map((entry, index) => {
+                      const team = metrics.get(entry.teamNumber);
+                      const isDoNotPick = entry.tier === 'do-not-pick';
+                      return (
+                        <div
+                          className={
+                            isDoNotPick
+                              ? 'grid grid-cols-[54px_90px_90px_90px_120px_1fr] items-center gap-2 bg-destructive/10 p-3 text-destructive'
+                              : 'grid grid-cols-[54px_90px_90px_90px_120px_1fr] items-center gap-2 p-3'
+                          }
+                          key={entry.teamNumber}
+                        >
+                          <strong>#{index + 1}</strong>
+                          <strong>{entry.teamNumber}</strong>
+                          <span className="text-sm">
+                            xP {team?.xp?.toFixed(1) ?? '—'}
+                          </span>
+                          <span className="text-sm">
+                            OPR {team?.opr?.toFixed(1) ?? '—'}
+                          </span>
+                          <Badge
+                            variant={isDoNotPick ? 'destructive' : 'outline'}
+                          >
+                            {entry.tier === 'first'
                               ? 'First pick'
                               : entry.tier === 'second'
                                 ? 'Second pick'
                                 : 'Do not pick'}
-                        </Badge>
-                        <span className="text-sm text-muted-foreground">
+                          </Badge>
+                          <span className="text-sm text-muted-foreground">
+                            {entry.note || 'No notes'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="pick-list-mobile-editor space-y-2">
+                  {reviewedBallot.data.entries.map((entry, index) => {
+                    const team = metrics.get(entry.teamNumber);
+                    const isDoNotPick = entry.tier === 'do-not-pick';
+                    return (
+                      <div
+                        className={
+                          isDoNotPick
+                            ? 'rounded-lg border border-destructive/40 bg-destructive/10 p-3'
+                            : 'rounded-lg border p-3'
+                        }
+                        key={entry.teamNumber}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <strong>
+                              #{index + 1} · Team {entry.teamNumber}
+                            </strong>
+                            <p className="text-xs text-muted-foreground">
+                              xP {team?.xp?.toFixed(1) ?? '—'} · OPR{' '}
+                              {team?.opr?.toFixed(1) ?? '—'}
+                            </p>
+                          </div>
+                          <Badge
+                            variant={isDoNotPick ? 'destructive' : 'outline'}
+                          >
+                            {isDoNotPick
+                              ? 'Do not pick'
+                              : entry.tier === 'first'
+                                ? 'First pick'
+                                : 'Second pick'}
+                          </Badge>
+                        </div>
+                        <p className="mt-2 text-sm text-muted-foreground">
                           {entry.note || 'No notes'}
-                        </span>
+                        </p>
                       </div>
                     );
                   })}
-              </div>
-            </div>
-            <div className="pick-list-mobile-editor space-y-2">
-              {reviewedBallot.data.entries.map((entry, index) => {
-                const team = metrics.get(entry.teamNumber);
-                const isDoNotPick =
-                  entry.tier === 'do-not-pick';
-                return (
-                  <div
-                    className={
-                      isDoNotPick
-                        ? 'rounded-lg border border-destructive/40 bg-destructive/10 p-3'
-                        : 'rounded-lg border p-3'
-                    }
-                    key={entry.teamNumber}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <strong>#{index + 1} · Team {entry.teamNumber}</strong>
-                        <p className="text-xs text-muted-foreground">
-                          EPA {team?.epa?.toFixed(1) ?? '—'} · OPR{' '}
-                          {team?.opr?.toFixed(1) ?? '—'}
-                        </p>
-                      </div>
-                      <Badge variant={isDoNotPick ? 'destructive' : 'outline'}>
-                        {isDoNotPick
-                          ? 'Do not pick'
-                          : entry.tier === 'first'
-                            ? 'First pick'
-                            : 'Second pick'}
-                      </Badge>
-                    </div>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {entry.note || 'No notes'}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-            </>}
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -570,8 +590,7 @@ export function PickListWorkspace({
               <div className="min-w-[760px] divide-y">
                 {list.entries.map((entry, index) => {
                   const team = metrics.get(entry.teamNumber);
-                  const isDoNotPick =
-                    entry.tier === 'do-not-pick';
+                  const isDoNotPick = entry.tier === 'do-not-pick';
                   const consensus = response?.consensus.find(
                     (item) => item.teamNumber === entry.teamNumber,
                   );
@@ -605,7 +624,7 @@ export function PickListWorkspace({
                       <strong>#{index + 1}</strong>
                       <strong>{entry.teamNumber}</strong>
                       <span className="text-sm">
-                        EPA {team?.epa?.toFixed(1) ?? '—'}
+                        xP {team?.xp?.toFixed(1) ?? '—'}
                       </span>
                       <span className="text-sm">
                         OPR {team?.opr?.toFixed(1) ?? '—'}
@@ -720,15 +739,15 @@ export function PickListWorkspace({
                   : [...teams]
                       .sort(
                         (a, b) =>
-                          (b.epa ?? b.medianPoints) -
-                          (a.epa ?? a.medianPoints),
+                          (b.xp ?? b.medianPoints) - (a.xp ?? a.medianPoints),
                       )
                       .map((team, rank) => ({
                         teamNumber: team.teamNumber,
                         rank,
                         note: '',
                         blocked: false,
-                      })))
+                      }))
+                )
                   .filter(
                     (team) =>
                       !official.selections.some(
@@ -760,8 +779,8 @@ export function PickListWorkspace({
                       <div className="min-w-0">
                         <strong>{team.teamNumber}</strong>
                         <small className="block truncate text-muted-foreground">
-                          EPA{' '}
-                          {metrics.get(team.teamNumber)?.epa?.toFixed(1) ?? '—'}
+                          xP{' '}
+                          {metrics.get(team.teamNumber)?.xp?.toFixed(1) ?? '—'}
                           {' · '}OPR{' '}
                           {metrics.get(team.teamNumber)?.opr?.toFixed(1) ?? '—'}
                         </small>
@@ -841,12 +860,11 @@ export function PickListWorkspace({
                                     if (selection)
                                       setOfficial({
                                         ...official,
-                                        selections:
-                                          official.selections.filter(
-                                            (item) =>
-                                              item.teamNumber !==
-                                              selection.teamNumber,
-                                          ),
+                                        selections: official.selections.filter(
+                                          (item) =>
+                                            item.teamNumber !==
+                                            selection.teamNumber,
+                                        ),
                                       });
                                   }}
                                   title={
