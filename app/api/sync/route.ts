@@ -14,8 +14,10 @@ const scoutPayloadSchema = z.object({
   activeFuel: z.number().int().nonnegative(),
   centerSwipes: z.number().int().nonnegative().default(0),
   passedFuel: z.number().int().nonnegative().default(0),
-  inactiveFuel: z.number().int().nonnegative(),
-  cycles: z.number().int().nonnegative(),
+  autoDepot: z.boolean().default(false),
+  autoOutpost: z.boolean().default(false),
+  autoPenalties: z.number().int().nonnegative().default(0),
+  teleopPenalties: z.number().int().nonnegative().default(0),
   autoTower: z.string(),
   autoStartPosition: z
     .enum(['Left trench', 'Left bump', 'Center', 'Right bump', 'Right trench'])
@@ -29,7 +31,6 @@ const scoutPayloadSchema = z.object({
   noShow: z.boolean().optional(),
   penalties: z.number().int().nonnegative().optional(),
   shootingRange: z.string().optional(),
-  cycleSeconds: z.number().nonnegative().optional(),
   notes: z.string().max(1000).optional(),
   reviewSource: z.enum(['live', 'video_review']).optional(),
 });
@@ -44,49 +45,28 @@ const pitPayloadSchema = z.object({
   shooterMount: z.enum(['Fixed', 'Turreted']).default('Fixed'),
   shooterBarrels: z.enum(['1', '2', '3', 'Drum']).default('1'),
   adjustableHood: z.boolean().default(false),
-  shooterType: z.string().min(1).max(80).optional(),
   autonomousStart: z
-    .union([
-      z
-        .array(
-          z.enum([
-            'Left trench',
-            'Left bump',
-            'Center',
-            'Right bump',
-            'Right trench',
-            'Unknown',
-            'Left',
-            'Middle',
-            'Right',
-          ]),
-        )
-        .min(1)
-        .max(9),
-      z
-        .enum([
-          'Left trench',
-          'Left bump',
-          'Center',
-          'Right bump',
-          'Right trench',
-          'Unknown',
-          'Left',
-          'Middle',
-          'Right',
-        ])
-        .transform((value) => [value]),
-    ])
+    .array(
+      z.enum([
+        'Left trench',
+        'Left bump',
+        'Center',
+        'Right bump',
+        'Right trench',
+        'Unknown',
+      ]),
+    )
+    .min(1)
+    .max(6)
     .default(['Unknown']),
   autonomousSwipe: z
-    .union([
-      z.array(z.enum(['None', 'Single swipe', 'Double swipe'])).min(1).max(3),
-      z.enum(['None', 'Single swipe', 'Double swipe']).transform((value) => [value]),
-    ])
+    .array(z.enum(['None', 'Single swipe', 'Double swipe']))
+    .min(1)
+    .max(3)
     .default(['None']),
   autonomousDepot: z.boolean().default(false),
   autonomousNotes: z.string().max(500).default(''),
-  autonomousCapabilities: z.string().max(500).optional(), notes: z.string().max(2000),
+  notes: z.string().max(2000),
 });
 
 const mutationBase = {
@@ -131,15 +111,15 @@ export async function POST(request: Request) {
       const now = Date.now();
       const payload = mutation.payload;
       await env.DB.prepare(`INSERT INTO pit_entries
-        (id, organization_id, event_id, team_number, scout_user_id, season_year, drivetrain, swerve_module, motor_types, weight_lbs, dimensions, payload, photo_object_key, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
+        (id, organization_id, event_id, team_number, scout_user_id, season_year, drivetrain, swerve_module, motor_types, weight_lbs, payload, photo_object_key, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
         ON CONFLICT (organization_id, event_id, team_number) DO UPDATE SET
           scout_user_id = excluded.scout_user_id, drivetrain = excluded.drivetrain, swerve_module = excluded.swerve_module,
-          motor_types = excluded.motor_types, weight_lbs = excluded.weight_lbs, dimensions = excluded.dimensions,
+          motor_types = excluded.motor_types, weight_lbs = excluded.weight_lbs,
           payload = excluded.payload, updated_at = excluded.updated_at`)
         .bind(mutation.id, mutation.organizationId, event.id, payload.teamNumber, session.user.id, payload.seasonYear,
           payload.drivetrain, payload.swerveModule || null, JSON.stringify(payload.motorTypes), payload.weightLbs || null,
-          null, JSON.stringify(payload), now, now).run();
+          JSON.stringify(payload), now, now).run();
       accepted.push(mutation.id);
       continue;
     }

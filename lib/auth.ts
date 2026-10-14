@@ -1,7 +1,6 @@
 import { getSessionFromHeaders } from '@/lib/scouting-session';
 
-// Compatibility facade for existing route handlers. Firebase authenticates
-// the Ops account; this reads the corresponding scouting application session.
+// Shared route-handler accessor for the scouting session created from Ops authentication.
 export const auth = {
   api: {
     getSession: ({ headers }: { headers: Headers }) =>

@@ -9,6 +9,7 @@ import {
   ClipboardList,
   Cloud,
   CloudOff,
+  Film,
   Handshake,
   KeyRound,
   LayoutDashboard,
@@ -17,6 +18,7 @@ import {
   Minus,
   Moon,
   Plus,
+  QrCode,
   RefreshCw,
   Sun,
   Upload,
@@ -65,8 +67,10 @@ type View =
   | 'Scout'
   | 'Pit'
   | 'Plan'
-  | 'Teams'
+  | 'Data'
+  | 'Video'
   | 'Alliance'
+  | 'Offline transfer'
   | 'Admin'
   | 'Account';
 
@@ -78,8 +82,10 @@ const nav: {
   { label: 'Scout', icon: ClipboardList },
   { label: 'Pit', icon: Wrench },
   { label: 'Plan', icon: Map },
-  { label: 'Teams', icon: Users },
+  { label: 'Data', icon: Users },
+  { label: 'Video', icon: Film },
   { label: 'Alliance', icon: Handshake },
+  { label: 'Offline transfer', icon: QrCode },
 ];
 
 type EventPack = {
@@ -146,11 +152,12 @@ type PitDraft = {
 };
 type PitEntry = {
   teamNumber: number;
+  scoutUserId: string;
+  scoutName: string;
   drivetrain: string | null;
   swerveModule: string | null;
   motorTypes: string[];
   weightLbs: number | null;
-  dimensions: { width?: number; length?: number; height?: number } | null;
   payload: Partial<PitDraft>;
   photoObjectKey: string | null;
   updatedAt: number;
@@ -181,7 +188,7 @@ function normalizeSelections(value: unknown, fallback: string): string[] {
     );
     return selections.length > 0 ? selections : [fallback];
   }
-  return typeof value === 'string' && value.length > 0 ? [value] : [fallback];
+  return [fallback];
 }
 
 function toggleSelection(
@@ -197,12 +204,8 @@ function toggleSelection(
   return next.length > 0 ? next : [emptyValue];
 }
 
-function shooterSummary(
-  payload: Partial<PitDraft> & { shooterType?: string },
-) {
-  const mount =
-    payload.shooterMount ??
-    (payload.shooterType === 'Turreted' ? 'Turreted' : 'Fixed');
+function shooterSummary(payload: Partial<PitDraft>) {
+  const mount = payload.shooterMount ?? '—';
   const barrels = payload.shooterBarrels ?? '—';
   const hood = payload.adjustableHood ? 'adjustable hood' : 'fixed hood';
   const barrelDescription =
@@ -240,6 +243,17 @@ function matchLabel(match: EventMatch) {
   return `${prefix[match.compLevel] ?? match.compLevel.toUpperCase()}${match.matchNumber}`;
 }
 
+function matchHeaderLabel(match: EventMatch) {
+  const prefix: Record<string, string> = {
+    qm: 'Quals',
+    ef: 'Eighthfinal',
+    qf: 'Quarterfinal',
+    sf: 'Semifinal',
+    f: 'Final',
+  };
+  return `${prefix[match.compLevel] ?? match.compLevel.toUpperCase()} ${match.matchNumber}`;
+}
+
 type MatchDraft = ScoutingPayload;
 
 type TeamAnalysis = {
@@ -256,7 +270,6 @@ type TeamAnalysis = {
   coverage: number;
   medianPoints: number;
   medianActiveFuel: number;
-  medianFuelPerCycle: number;
   towerSuccessRate: number;
   disabledRate: number;
   averageDefense: number;
@@ -284,30 +297,20 @@ type TbaEventChoice = {
   location: string;
 };
 type MatchPlan = {
-  objective: string;
-  autonomous: string;
-  offense: string;
-  defense: string;
-  endgame: string;
   notes: string;
-  teamRoles: Record<string, string>;
   absentTeams: number[];
   board: TacticalBoardData;
+  autoBoard: TacticalBoardData;
 };
 const emptyMatchPlan: MatchPlan = {
-  objective: '',
-  autonomous: '',
-  offense: '',
-  defense: '',
-  endgame: '',
   notes: '',
-  teamRoles: {},
   absentTeams: [],
   board: { robots: [], strokes: [] },
+  autoBoard: { robots: [], strokes: [] },
 };
 
 function planForMatch(
-  plan: Partial<MatchPlan> | null | undefined,
+  plan: MatchPlan | null | undefined,
   match: EventMatch,
 ): MatchPlan {
   const defaultRobots = initialRobotMarkers(
@@ -344,28 +347,43 @@ function planForMatch(
           : robot;
       })
     : availableRobots;
+  const savedAutoTeams = (plan?.autoBoard?.robots ?? [])
+    .map((robot) => robot.team)
+    .sort((a, b) => a - b);
+  const savedAutoBoardMatches =
+    savedAutoTeams.length === expectedTeams.length &&
+    savedAutoTeams.every((team, index) => team === expectedTeams[index]);
+  const autoRobots = savedAutoBoardMatches
+    ? (plan?.autoBoard?.robots ?? []).map((robot) => {
+        const assignment = availableRobots.find(
+          (candidate) => candidate.team === robot.team,
+        );
+        return assignment ? { ...robot, alliance: assignment.alliance, station: assignment.station } : robot;
+      })
+    : availableRobots;
 
   return {
     ...emptyMatchPlan,
     ...plan,
-    teamRoles: plan?.teamRoles ?? {},
     absentTeams,
     board: {
       robots,
       strokes: plan?.board?.strokes ?? [],
+    },
+    autoBoard: {
+      robots: autoRobots,
+      strokes: plan?.autoBoard?.strokes ?? [],
     },
   };
 }
 
 function Counter({
   label,
-  hint,
   value,
   onChange,
   quickAdds = [],
 }: {
   label: string;
-  hint: string;
   value: number;
   onChange: (value: number) => void;
   quickAdds?: number[];
@@ -374,7 +392,6 @@ function Counter({
     <div className="counter-row">
       <div>
         <p className="font-semibold">{label}</p>
-        <p className="text-xs text-muted-foreground">{hint}</p>
       </div>
       <div className="counter-controls">
         {quickAdds.map((amount) => (
@@ -428,7 +445,6 @@ export default function Home() {
     'analysis' | 'picklist' | 'review'
   >('analysis');
   const [rankingSort, setRankingSort] = useState<'rank' | 'team'>('rank');
-  const [videoMatchesMineOnly, setVideoMatchesMineOnly] = useState(true);
   const navigationDepthRef = useRef(0);
   const selectedMatchKeyRef = useRef('');
   const loadedPlanMatchIdRef = useRef('');
@@ -436,10 +452,14 @@ export default function Home() {
   const [activeFuel, setActiveFuel] = useState(0);
   const [centerSwipes, setCenterSwipes] = useState(0);
   const [passedFuel, setPassedFuel] = useState(0);
+  const [autoDepot, setAutoDepot] = useState(false);
+  const [autoOutpost, setAutoOutpost] = useState(false);
+  const [autoPenalties, setAutoPenalties] = useState(0);
+  const [teleopPenalties, setTeleopPenalties] = useState(0);
   const [scoutingPhase, setScoutingPhase] = useState<
     'pre' | 'auto' | 'tele' | 'post'
   >('pre');
-  const [autoTower, setAutoTower] = useState('');
+  const [autoTower, setAutoTower] = useState('None');
   const [autoStartPosition, setAutoStartPosition] = useState('');
   const [tower, setTower] = useState('');
   const [path, setPath] = useState('');
@@ -450,7 +470,6 @@ export default function Home() {
   >(undefined);
   const [disabled, setDisabled] = useState<boolean | null>(null);
   const [noShow, setNoShow] = useState(false);
-  const [penalties, setPenalties] = useState(0);
   const [shootingRange, setShootingRange] = useState('');
   const [notes, setNotes] = useState('');
   const [draftReady, setDraftReady] = useState(false);
@@ -469,6 +488,7 @@ export default function Home() {
   const [packLoading, setPackLoading] = useState(false);
   const [packError, setPackError] = useState('');
   const [selectedMatchKey, setSelectedMatchKey] = useState('');
+  const [selectedVideoMatchKey, setSelectedVideoMatchKey] = useState('');
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
   const [selectedStation, setSelectedStation] = useState('');
   const [analysis, setAnalysis] = useState<TeamAnalysis | null>(null);
@@ -513,6 +533,9 @@ export default function Home() {
   const [planAuthor, setPlanAuthor] = useState('');
   const [planUpdatedAt, setPlanUpdatedAt] = useState<number | null>(null);
   const [planStats, setPlanStats] = useState<TeamAnalysis[]>([]);
+  const [planSection, setPlanSection] = useState<
+    'auto' | 'teleop' | 'metrics'
+  >('auto');
   const organizationTeamNumber = eventPack?.organizationTeamNumber ?? 401;
   const planningMatches =
     eventPack?.matches.filter((match) =>
@@ -520,14 +543,12 @@ export default function Home() {
         organizationTeamNumber,
       ),
     ) ?? [];
-  const videoMatches = videoMatchesMineOnly
-    ? planningMatches
-    : (eventPack?.matches ?? []);
+  const videoMatches = planningMatches;
   const currentMatch = eventPack?.matches.find(
     (match) => match.key === selectedMatchKey,
   );
   const selectedVideoMatch = videoMatches.find(
-    (match) => match.key === selectedMatchKey,
+    (match) => match.key === selectedVideoMatchKey,
   );
   const draftId =
     eventPack && currentMatch && selectedTeam
@@ -567,8 +588,10 @@ export default function Home() {
     activeFuel,
     centerSwipes,
     passedFuel,
-    inactiveFuel: 0,
-    cycles: 0,
+    autoDepot,
+    autoOutpost,
+    autoPenalties,
+    teleopPenalties,
     autoTower,
     autoStartPosition,
     tower,
@@ -576,9 +599,8 @@ export default function Home() {
     defenseRating,
     disabled: disabled ?? false,
     noShow,
-    penalties,
+    penalties: autoPenalties + teleopPenalties,
     shootingRange,
-    cycleSeconds: 0,
     notes,
   };
   const estimatedPoints = noShow ? 0 : observedPoints(currentPayload);
@@ -606,15 +628,10 @@ export default function Home() {
       .slice(currentIndex, targetIndex)
       .find((phase) => {
         if (phase === 'pre') return !autoStartPosition;
-        if (phase === 'auto') return !autoTower;
         return false;
       });
     if (incompletePhase === 'pre') {
       setSaveError('Choose a starting position before continuing.');
-      return;
-    }
-    if (incompletePhase === 'auto') {
-      setSaveError('Choose an autonomous tower result before continuing.');
       return;
     }
     setSaveError('');
@@ -632,9 +649,9 @@ export default function Home() {
   const canUsePickLists = Boolean(eventPack && !isGuest);
   const visibleNav = nav.filter(
     ({ label }) =>
-      label === 'Teams' ||
-      !['Plan', 'Alliance'].includes(label) ||
-      canUseStrategy,
+      label === 'Data' ||
+      (label === 'Video' ? !isGuest :
+        !['Plan', 'Alliance'].includes(label) || canUseStrategy),
   );
 
   function navigate(view: View) {
@@ -668,8 +685,10 @@ export default function Home() {
       'Scout',
       'Pit',
       'Plan',
-      'Teams',
+      'Data',
+      'Video',
       'Alliance',
+      'Offline transfer',
       'Admin',
       'Account',
     ];
@@ -738,7 +757,13 @@ export default function Home() {
           setActiveFuel(payload.activeFuel);
           setCenterSwipes(payload.centerSwipes ?? 0);
           setPassedFuel(payload.passedFuel ?? 0);
-          setAutoTower(payload.autoTower ?? '');
+          setAutoDepot(payload.autoDepot ?? false);
+          setAutoOutpost(payload.autoOutpost ?? false);
+          setAutoPenalties(payload.autoPenalties ?? 0);
+          setTeleopPenalties(
+            payload.teleopPenalties ?? payload.penalties ?? 0,
+          );
+          setAutoTower(payload.autoTower ?? 'None');
           setAutoStartPosition(
             payload.autoStartPosition ?? '',
           );
@@ -751,7 +776,6 @@ export default function Home() {
           );
           setDisabled(payload.disabled ?? null);
           setNoShow(didNotShow);
-          setPenalties(payload.penalties ?? 0);
           setShootingRange(payload.shootingRange ?? '');
           setNotes(payload.notes ?? '');
         } else {
@@ -759,14 +783,17 @@ export default function Home() {
           setActiveFuel(0);
           setCenterSwipes(0);
           setPassedFuel(0);
-          setAutoTower('');
+          setAutoDepot(false);
+          setAutoOutpost(false);
+          setAutoPenalties(0);
+          setTeleopPenalties(0);
+          setAutoTower('None');
           setAutoStartPosition('');
           setTower('');
           setPath('');
           setDefenseRating(undefined);
           setDisabled(null);
           setNoShow(false);
-          setPenalties(0);
           setShootingRange('');
           setNotes('');
         }
@@ -812,7 +839,7 @@ export default function Home() {
   }, [online, queuedCount, session]);
 
   useEffect(() => {
-    if (activeView !== 'Teams' || !selectedTeam || !online)
+    if (activeView !== 'Data' || !selectedTeam || !online)
       return;
     fetch(`/api/analysis?team=${selectedTeam}`)
       .then(async (response) => {
@@ -828,8 +855,8 @@ export default function Home() {
 
   useEffect(() => {
     if (
-      !['Plan', 'Teams', 'Alliance'].includes(activeView) ||
-      (activeView !== 'Teams' && !canUseStrategy) ||
+      !['Plan', 'Data', 'Alliance'].includes(activeView) ||
+      (activeView !== 'Data' && !canUseStrategy) ||
       !online ||
       !session
     )
@@ -851,10 +878,11 @@ export default function Home() {
     if (!eventPack) return;
     if (
       (activeView === 'Admin' && !isAdmin) ||
-      (activeView === 'Plan' && !canUseStrategy)
+      (activeView === 'Plan' && !canUseStrategy) ||
+      (activeView === 'Video' && isGuest)
     )
       replaceView('Home');
-  }, [activeView, canUseStrategy, eventPack, isAdmin]);
+  }, [activeView, canUseStrategy, eventPack, isAdmin, isGuest]);
 
   useEffect(() => {
     if (
@@ -924,11 +952,11 @@ export default function Home() {
   }, [activeView, planningMatches, selectedMatchKey]);
 
   useEffect(() => {
-    if (activeView !== 'Teams' || teamsSection !== 'review') return;
+    if (activeView !== 'Video') return;
     if (videoMatches.length === 0) return;
-    if (!videoMatches.some((match) => match.key === selectedMatchKey))
-      setSelectedMatchKey(videoMatches[0].key);
-  }, [activeView, selectedMatchKey, teamsSection, videoMatches]);
+    if (!videoMatches.some((match) => match.key === selectedVideoMatchKey))
+      setSelectedVideoMatchKey(videoMatches[0].key);
+  }, [activeView, selectedVideoMatchKey, videoMatches]);
 
   useEffect(() => {
     if (activeView !== 'Plan' || !currentMatch || !session) return;
@@ -1081,7 +1109,10 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, [
     activeFuel,
+    autoDepot,
     autoFuel,
+    autoOutpost,
+    autoPenalties,
     autoStartPosition,
     autoTower,
     centerSwipes,
@@ -1093,8 +1124,8 @@ export default function Home() {
     notes,
     path,
     passedFuel,
-    penalties,
     shootingRange,
+    teleopPenalties,
     tower,
   ]);
 
@@ -1122,18 +1153,13 @@ export default function Home() {
             }
           : emptyPitDraft;
         const savedDraft = draft?.payload ?? serverDraft;
-        const legacyShooterType = (
-          savedDraft as Partial<PitDraft> & { shooterType?: string }
-        ).shooterType;
         const loadedDraft = {
           ...emptyPitDraft,
           ...savedDraft,
         };
         setPitDraft({
           ...loadedDraft,
-          shooterMount:
-            (savedDraft as Partial<PitDraft>).shooterMount ??
-            (legacyShooterType === 'Turreted' ? 'Turreted' : 'Fixed'),
+          shooterMount: (savedDraft as Partial<PitDraft>).shooterMount ?? 'Fixed',
           autonomousStart: normalizeSelections(
             loadedDraft.autonomousStart,
             'Unknown',
@@ -1175,7 +1201,6 @@ export default function Home() {
       ? []
       : [
           !autoStartPosition && 'autonomous starting position',
-          !autoTower && 'autonomous tower',
           !path && 'field movement',
           defenseRating === undefined && 'whether the robot played defense',
           !shootingRange && 'shooting range',
@@ -1188,7 +1213,14 @@ export default function Home() {
     }
     if (
       !noShow &&
-      [autoFuel, activeFuel, centerSwipes, passedFuel, penalties].some(
+      [
+        autoFuel,
+        activeFuel,
+        centerSwipes,
+        passedFuel,
+        autoPenalties,
+        teleopPenalties,
+      ].some(
         (value) => !Number.isInteger(value) || value < 0,
       )
     ) {
@@ -1224,6 +1256,10 @@ export default function Home() {
                 activeFuel: 0,
                 centerSwipes: 0,
                 passedFuel: 0,
+                autoDepot: false,
+                autoOutpost: false,
+                autoPenalties: 0,
+                teleopPenalties: 0,
                 autoTower: 'None',
                 autoStartPosition: 'None',
                 tower: 'None',
@@ -1887,16 +1923,16 @@ export default function Home() {
       </aside>
       <section className="app-content h-dvh min-w-0 flex-1 overflow-y-auto">
         <header className="topbar">
-          <div className="flex items-center gap-2">
-            <h1>
+          <div className="flex min-w-0 items-center gap-2">
+            <h1 className={activeView === 'Scout' ? 'scout-heading' : undefined}>
               {activeView === 'Scout'
                 ? currentMatch
-                  ? matchLabel(currentMatch)
+                  ? `${matchHeaderLabel(currentMatch)}${selectedTeam ? ` · Team ${selectedTeam}` : ''}${selectedStation ? ` · ${selectedStation.replace('red', 'Red ').replace('blue', 'Blue ')}` : ''}`
                   : 'Choose an assignment'
                 : activeView}
             </h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="desktop-header-actions flex items-center gap-2">
             <Badge variant="outline" className="status-badge">
               {online ? <Cloud /> : <CloudOff />}
               <span className="status-text">
@@ -1926,6 +1962,17 @@ export default function Home() {
               {dark ? <Sun /> : <Moon />}
             </Button>
           </div>
+          <Button
+            type="button"
+            className="mobile-header-menu-button"
+            size="icon"
+            variant="ghost"
+            aria-label="Open navigation menu"
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((open) => !open)}
+          >
+            <Menu />
+          </Button>
         </header>
         {activeView === 'Home' && (
           <div className="mx-auto grid w-full max-w-3xl gap-4 p-4 sm:p-6">
@@ -2060,8 +2107,8 @@ export default function Home() {
           <div
             className={
               videoReview
-                ? 'mx-auto grid w-full max-w-7xl items-start gap-4 p-4 pb-28 sm:p-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(26rem,.95fr)]'
-                : 'mx-auto w-full max-w-3xl p-4 pb-28 sm:p-6'
+                ? 'mx-auto grid w-full max-w-7xl items-start gap-4 p-4 sm:p-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(26rem,.95fr)]'
+                : 'mx-auto w-full max-w-3xl p-4 sm:p-6'
             }
           >
             {videoReview && (
@@ -2100,13 +2147,13 @@ export default function Home() {
                 </CardContent>
               </Card>
             )}
-            <div className="min-w-0 space-y-4">
+            <div className="scout-form min-w-0 space-y-4">
               <Card>
-                <CardContent className="grid gap-3 p-4 sm:grid-cols-2">
-                  <label className="grid gap-1 text-sm font-medium">
-                    Match
+                <CardContent className="scout-assignment-selectors grid gap-3 p-4 sm:grid-cols-2">
+                  <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-sm font-medium">
+                    <span>Match</span>
                     <select
-                      className="h-10 rounded-md border bg-background px-3 text-foreground"
+                      className="h-10 min-w-0 rounded-md border bg-background px-3 text-foreground"
                       value={selectedMatchKey}
                       onChange={(event) => {
                         const match = eventPack?.matches.find(
@@ -2129,10 +2176,10 @@ export default function Home() {
                       ))}
                     </select>
                   </label>
-                  <label className="grid gap-1 text-sm font-medium">
-                    Team and station
+                  <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-sm font-medium">
+                    <span>Station</span>
                     <select
-                      className="h-10 rounded-md border bg-background px-3 text-foreground"
+                      className="h-10 min-w-0 rounded-md border bg-background px-3 text-foreground"
                       value={selectedStation}
                       onChange={(event) => {
                         if (!currentMatch) return;
@@ -2163,50 +2210,6 @@ export default function Home() {
                         ))}
                     </select>
                   </label>
-                </CardContent>
-              </Card>
-              <Card
-                className={
-                  selectedStation.startsWith('blue')
-                    ? 'match-card match-card-blue'
-                    : 'match-card'
-                }
-              >
-                <CardContent className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={
-                        selectedStation.startsWith('blue')
-                          ? 'station-dot station-dot-blue'
-                          : 'station-dot'
-                      }
-                    />
-                    <div>
-                      <p className="eyebrow">
-                        {selectedStation
-                          ? `${selectedStation.replace(/(red|blue)/, '$1 ')} · Selected assignment`
-                          : 'No assignment selected'}
-                      </p>
-                      <p className="text-2xl font-bold">
-                        {selectedTeam
-                          ? `Team ${selectedTeam}`
-                          : 'Open the schedule'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground">
-                        {eventPack?.event.year ?? 2026} Rebuilt
-                    </p>
-                    <p className="font-mono text-lg font-bold text-primary">
-                      {currentMatch?.predictedAt
-                        ? new Date(currentMatch.predictedAt).toLocaleTimeString(
-                            [],
-                            { hour: 'numeric', minute: '2-digit' },
-                          )
-                        : '—'}
-                    </p>
-                  </div>
                 </CardContent>
               </Card>
               <div className="grid grid-cols-4 gap-1 rounded-xl border bg-card p-1">
@@ -2240,9 +2243,6 @@ export default function Home() {
                     <div className="space-y-2">
                       <div>
                         <strong>Starting position</strong>
-                        <p className="text-xs text-muted-foreground">
-                          Left and right are viewed from the driver station.
-                        </p>
                       </div>
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                         {[
@@ -2280,12 +2280,6 @@ export default function Home() {
                     >
                       {noShow && <Check />} No-show
                     </button>
-                    {noShow && (
-                      <p className="text-sm text-muted-foreground">
-                        This report will submit as a no-show. Existing observations
-                        are preserved if you turn this off.
-                      </p>
-                    )}
                   </CardContent>
                 </Card>
               )}
@@ -2298,16 +2292,37 @@ export default function Home() {
                   <CardContent className="divide-y divide-border p-0">
                     <Counter
                       label="Fuel scored"
-                      hint="Use +5 for a burst, then adjust or type the total"
                       value={autoFuel}
                       onChange={setAutoFuel}
                       quickAdds={[5]}
                     />
                     <Counter
                       label="Center swipes"
-                      hint="Count completed center-line swipe routines"
                       value={centerSwipes}
                       onChange={setCenterSwipes}
+                    />
+                    <div className="grid grid-cols-2 gap-2 px-4 py-3">
+                      <button
+                        type="button"
+                        className={autoDepot ? 'choice selected' : 'choice'}
+                        aria-pressed={autoDepot}
+                        onClick={() => setAutoDepot(!autoDepot)}
+                      >
+                        {autoDepot && <Check />} Depot
+                      </button>
+                      <button
+                        type="button"
+                        className={autoOutpost ? 'choice selected' : 'choice'}
+                        aria-pressed={autoOutpost}
+                        onClick={() => setAutoOutpost(!autoOutpost)}
+                      >
+                        {autoOutpost && <Check />} Outpost
+                      </button>
+                    </div>
+                    <Counter
+                      label="Penalties"
+                      value={autoPenalties}
+                      onChange={setAutoPenalties}
                     />
                     <div className="flex items-center justify-between gap-3 px-4 py-3">
                       <strong>Auto tower</strong>
@@ -2341,17 +2356,20 @@ export default function Home() {
                   <CardContent className="divide-y divide-border p-0">
                     <Counter
                       label="Fuel scored"
-                      hint="Add observed bursts with +5 or +10; fine-tune anytime"
                       value={activeFuel}
                       onChange={setActiveFuel}
                       quickAdds={[5, 10]}
                     />
                     <Counter
                       label="Fuel passed"
-                      hint="Estimate FUEL deliberately transferred to an alliance partner."
                       value={passedFuel}
                       onChange={setPassedFuel}
                       quickAdds={[5]}
+                    />
+                    <Counter
+                      label="Penalties"
+                      value={teleopPenalties}
+                      onChange={setTeleopPenalties}
                     />
                   </CardContent>
                 </Card>
@@ -2364,11 +2382,7 @@ export default function Home() {
                     <CardTitle>No-show report</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    <p>This report is ready to submit as a no-show.</p>
-                    <p className="text-sm text-muted-foreground">
-                      Match observations will be submitted as zero. Return to
-                      pre-match if the robot is on the field.
-                    </p>
+                    <p>This report will submit with match observations set to zero.</p>
                   </CardContent>
                 </Card>
               ) : <>
@@ -2442,12 +2456,6 @@ export default function Home() {
                       ))}
                     </div>
                   </div>
-                  <Counter
-                    label="Number of penalties"
-                    hint="Count referee-called penalties attributable to this robot; do not calculate penalty points."
-                    value={penalties}
-                    onChange={setPenalties}
-                  />
                 </CardContent>
               </Card>
               <Card>
@@ -2618,12 +2626,16 @@ export default function Home() {
                   >
                     <option value="">Choose a team</option>
                     {eventTeams.map((team) => {
-                      const complete = eventPack?.pitEntries.some(
+                      const entry = eventPack?.pitEntries.find(
                         (entry) => entry.teamNumber === team,
                       );
                       return (
                         <option value={team} key={team}>
-                          Team {team} — {complete ? 'Scouted' : 'Needs scouting'}
+                          Team {team}
+                          {eventPack?.teams.find((item) => item.teamNumber === team)?.name
+                            ? ` — ${eventPack.teams.find((item) => item.teamNumber === team)?.name}`
+                            : ''}
+                          {' — '}{entry ? `Scouted by ${entry.scoutName}` : 'Needs scouting'}
                         </option>
                       );
                     })}
@@ -2646,9 +2658,10 @@ export default function Home() {
               </CardHeader>
               <CardContent className="min-h-0 flex-1 space-y-1 overflow-auto">
                 {eventTeams.map((team) => {
-                  const complete = eventPack?.pitEntries.some(
+                  const entry = eventPack?.pitEntries.find(
                     (entry) => entry.teamNumber === team,
                   );
+                  const complete = Boolean(entry);
                   return (
                     <button
                       type="button"
@@ -2658,9 +2671,16 @@ export default function Home() {
                       onClick={() => setPitTeam(team)}
                       key={team}
                     >
-                      <strong>Team {team}</strong>
+                      <strong>
+                        Team {team}
+                        {eventPack?.teams.find((item) => item.teamNumber === team)?.name
+                          ? ` — ${eventPack.teams.find((item) => item.teamNumber === team)?.name}`
+                          : ''}
+                      </strong>
                       <span className="pit-queue-status">
-                        {complete ? 'Scouted' : 'Needs scouting'}
+                        {entry
+                          ? `Scouted by ${entry.scoutName} · ${new Date(entry.updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
+                          : 'Needs scouting'}
                       </span>
                       {complete ? <Check /> : <ChevronRight />}
                     </button>
@@ -2676,9 +2696,26 @@ export default function Home() {
             <Card>
               <CardHeader>
                 <CardTitle>
-                  {pitTeam ? `Team ${pitTeam} robot` : 'Choose a team'}
+                  {pitTeam
+                    ? `Team ${pitTeam}${eventPack?.teams.find((item) => item.teamNumber === pitTeam)?.name ? ` — ${eventPack.teams.find((item) => item.teamNumber === pitTeam)?.name}` : ''} robot`
+                    : 'Choose a team'}
                 </CardTitle>
                 {pitTeam && <Badge variant="outline">Auto-saved offline</Badge>}
+                {pitTeam && eventPack?.pitEntries.find((entry) => entry.teamNumber === pitTeam) && (
+                  <p className="text-sm text-muted-foreground">
+                    Scouted by{' '}
+                    {eventPack.pitEntries.find((entry) => entry.teamNumber === pitTeam)?.scoutName}{' '}
+                    ·{' '}
+                    {new Date(
+                      eventPack.pitEntries.find((entry) => entry.teamNumber === pitTeam)!.updatedAt,
+                    ).toLocaleString([], {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                )}
               </CardHeader>
               <CardContent className="space-y-4">
                 {pitTeam && (
@@ -3091,19 +3128,78 @@ export default function Home() {
                   ))}
                 </select>
                 </div>
+                <div className="grid grid-cols-3 gap-1 rounded-lg border p-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={planSection === 'auto' ? 'default' : 'ghost'}
+                    onClick={() => setPlanSection('auto')}
+                  >
+                    Auto Plan
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={planSection === 'teleop' ? 'default' : 'ghost'}
+                    onClick={() => setPlanSection('teleop')}
+                  >
+                    Tele Plan
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={planSection === 'metrics' ? 'default' : 'ghost'}
+                    onClick={() => setPlanSection('metrics')}
+                  >
+                    Team metrics
+                  </Button>
+                </div>
                 {eventPack && planningMatches.length === 0 && (
                   <p className="text-sm text-muted-foreground">
                     Team {organizationTeamNumber} is not scheduled for any
                     matches in this event pack.
                   </p>
                 )}
+                {planSection !== 'metrics' && <>
                 <div className="border-t pt-4">
                   <TacticalBoard
-                    value={matchPlan.board}
+                    value={
+                      planSection === 'auto'
+                        ? matchPlan.autoBoard
+                        : matchPlan.board
+                    }
                     readOnly={!planCanEdit}
-                    onChange={(board) => setMatchPlan({ ...matchPlan, board })}
+                    onChange={(board) =>
+                      setMatchPlan(
+                        planSection === 'auto'
+                          ? { ...matchPlan, autoBoard: board }
+                          : { ...matchPlan, board },
+                      )
+                    }
                   />
                 </div>
+                <div className="space-y-3 border-t pt-4">
+                  <textarea
+                    aria-label="Match plan notes"
+                    className="min-h-20 w-full rounded-md border bg-transparent p-3"
+                    disabled={!planCanEdit}
+                    value={matchPlan.notes}
+                    onChange={(event) =>
+                      setMatchPlan({ ...matchPlan, notes: event.target.value })
+                    }
+                    placeholder="Only details that are not clear from the field drawing"
+                  />
+                  {(planMessage || planAuthor || planCanEdit) && (
+                    <p className="text-sm text-muted-foreground" role="status">
+                      {planMessage ||
+                        (planAuthor && planUpdatedAt
+                          ? `Saved automatically by ${planAuthor} · ${new Date(planUpdatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
+                          : 'Changes save automatically.')}
+                    </p>
+                  )}
+                </div>
+                </>}
+                {planSection === 'metrics' && (
                 <div className="grid gap-3 border-t pt-4 sm:grid-cols-2 xl:grid-cols-3">
                   {planTeams.map(({ team, alliance, stats, pit, name }) => (
                     <div
@@ -3148,21 +3244,31 @@ export default function Home() {
                                   (item) => item !== team,
                                 )
                               : [...matchPlan.absentTeams, team];
+                            const defaultMarkers = initialRobotMarkers(
+                              currentMatch?.alliances.red ?? [],
+                              currentMatch?.alliances.blue ?? [],
+                            );
                             const robots = isAbsent
                               ? [
                                   ...matchPlan.board.robots,
-                                  ...initialRobotMarkers(
-                                    currentMatch?.alliances.red ?? [],
-                                    currentMatch?.alliances.blue ?? [],
-                                  ).filter((robot) => robot.team === team),
+                                  ...defaultMarkers.filter((robot) => robot.team === team),
                                 ]
                               : matchPlan.board.robots.filter(
+                                  (robot) => robot.team !== team,
+                                );
+                            const autoRobots = isAbsent
+                              ? [
+                                  ...matchPlan.autoBoard.robots,
+                                  ...defaultMarkers.filter((robot) => robot.team === team),
+                                ]
+                              : matchPlan.autoBoard.robots.filter(
                                   (robot) => robot.team !== team,
                                 );
                             setMatchPlan({
                               ...matchPlan,
                               absentTeams,
                               board: { ...matchPlan.board, robots },
+                              autoBoard: { ...matchPlan.autoBoard, robots: autoRobots },
                             });
                           }}
                         >
@@ -3190,14 +3296,6 @@ export default function Home() {
                           </strong>
                           <small className="block text-muted-foreground">
                             median pts
-                          </small>
-                        </span>
-                        <span>
-                          <strong>
-                            {stats?.medianFuelPerCycle.toFixed(1) ?? '—'}
-                          </strong>
-                          <small className="block text-muted-foreground">
-                            fuel/cycle
                           </small>
                         </span>
                         <span>
@@ -3233,11 +3331,7 @@ export default function Home() {
                             </span>
                             <span>
                               Shooter{' '}
-                              {shooterSummary(
-                                pit.payload as Partial<PitDraft> & {
-                                  shooterType?: string;
-                                },
-                              )}
+                              {shooterSummary(pit.payload)}
                             </span>
                             <span className="col-span-2 line-clamp-2">
                               Auto:{' '}
@@ -3276,7 +3370,7 @@ export default function Home() {
                         onClick={() => {
                           setSelectedTeam(team);
                           setTeamsSection('analysis');
-                          navigate('Teams');
+                          navigate('Data');
                         }}
                       >
                         View team {team}
@@ -3285,204 +3379,7 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
-                <div className="space-y-3 border-t pt-4">
-                  <textarea
-                    aria-label="Match plan notes"
-                    className="min-h-20 w-full rounded-md border bg-transparent p-3"
-                    disabled={!planCanEdit}
-                    value={matchPlan.notes}
-                    onChange={(event) =>
-                      setMatchPlan({ ...matchPlan, notes: event.target.value })
-                    }
-                    placeholder="Only details that are not clear from the field drawing"
-                  />
-                  {(planMessage || planAuthor || planCanEdit) && (
-                    <p className="text-sm text-muted-foreground" role="status">
-                      {planMessage ||
-                        (planAuthor && planUpdatedAt
-                          ? `Saved automatically by ${planAuthor} · ${new Date(planUpdatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
-                          : 'Changes save automatically.')}
-                    </p>
-                  )}
-                </div>
-              {planCanEdit && currentMatch?.id === '__legacy-plan__' && (
-                <>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Alliance objective</CardTitle>
-                      <Badge variant="outline">
-                        {planCanEdit ? 'Editable' : 'Read only'}
-                      </Badge>
-                    </CardHeader>
-                    <CardContent>
-                      <textarea
-                        aria-label="Alliance objective"
-                        className="min-h-20 w-full rounded-md border bg-transparent p-3"
-                        disabled={!planCanEdit}
-                        value={matchPlan.objective}
-                        onChange={(event) =>
-                          setMatchPlan({
-                            ...matchPlan,
-                            objective: event.target.value,
-                          })
-                        }
-                        placeholder="What must this alliance accomplish to win?"
-                      />
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Team responsibilities</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      {currentMatch &&
-                        [
-                          ...(currentMatch?.alliances.red ?? []).map(
-                            (team, index) => ({
-                              team,
-                              station: `R${index + 1}`,
-                            }),
-                          ),
-                          ...(currentMatch?.alliances.blue ?? []).map(
-                            (team, index) => ({
-                              team,
-                              station: `B${index + 1}`,
-                            }),
-                          ),
-                        ].map(({ team, station }) => (
-                          <label className="grid gap-1 text-sm" key={team}>
-                            <span>
-                              <strong>{station}</strong> · Team {team}
-                            </span>
-                            <textarea
-                              className="min-h-20 rounded-md border bg-transparent p-2"
-                              disabled={!planCanEdit}
-                              value={matchPlan.teamRoles[String(team)] ?? ''}
-                              onChange={(event) =>
-                                setMatchPlan({
-                                  ...matchPlan,
-                                  teamRoles: {
-                                    ...matchPlan.teamRoles,
-                                    [team]: event.target.value,
-                                  },
-                                })
-                              }
-                              placeholder="Starting position and role"
-                            />
-                          </label>
-                        ))}
-                    </CardContent>
-                  </Card>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Autonomous</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <textarea
-                          aria-label="Autonomous plan"
-                          className="min-h-28 w-full rounded-md border bg-transparent p-3"
-                          disabled={!planCanEdit}
-                          value={matchPlan.autonomous}
-                          onChange={(event) =>
-                            setMatchPlan({
-                              ...matchPlan,
-                              autonomous: event.target.value,
-                            })
-                          }
-                        />
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Offense</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <textarea
-                          aria-label="Offense plan"
-                          className="min-h-28 w-full rounded-md border bg-transparent p-3"
-                          disabled={!planCanEdit}
-                          value={matchPlan.offense}
-                          onChange={(event) =>
-                            setMatchPlan({
-                              ...matchPlan,
-                              offense: event.target.value,
-                            })
-                          }
-                        />
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Defense</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <textarea
-                          aria-label="Defense plan"
-                          className="min-h-28 w-full rounded-md border bg-transparent p-3"
-                          disabled={!planCanEdit}
-                          value={matchPlan.defense}
-                          onChange={(event) =>
-                            setMatchPlan({
-                              ...matchPlan,
-                              defense: event.target.value,
-                            })
-                          }
-                        />
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Endgame</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <textarea
-                          aria-label="Endgame plan"
-                          className="min-h-28 w-full rounded-md border bg-transparent p-3"
-                          disabled={!planCanEdit}
-                          value={matchPlan.endgame}
-                          onChange={(event) =>
-                            setMatchPlan({
-                              ...matchPlan,
-                              endgame: event.target.value,
-                            })
-                          }
-                        />
-                      </CardContent>
-                    </Card>
-                  </div>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Drive team notes</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <textarea
-                        aria-label="Drive team notes"
-                        className="min-h-28 w-full rounded-md border bg-transparent p-3"
-                        disabled={!planCanEdit}
-                        value={matchPlan.notes}
-                        onChange={(event) =>
-                          setMatchPlan({
-                            ...matchPlan,
-                            notes: event.target.value,
-                          })
-                        }
-                      />
-                      {(planMessage || planAuthor || planCanEdit) && (
-                        <p
-                          className="text-sm text-muted-foreground"
-                          role="status"
-                        >
-                          {planMessage ||
-                            (planAuthor && planUpdatedAt
-                              ? `Saved automatically by ${planAuthor} · ${new Date(planUpdatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
-                              : 'Changes save automatically.')}
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
-                </>
-              )}
+                )}
               </CardContent>
             </Card>
           </div>
@@ -3663,16 +3560,16 @@ export default function Home() {
               )}
             </div>
           )}
-        {activeView === 'Teams' && (
+        {activeView === 'Data' && (
           <div className="section-tabs flex gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
             {(
               [
                 ['analysis', 'Analysis'],
                 ...(canUsePickLists
-                  ? ([['picklist', 'My pick list']] as const)
+                  ? ([['picklist', 'Pick lists']] as const)
                   : []),
                 ...(canUseStrategy
-                  ? ([['review', 'Data review']] as const)
+                  ? ([['review', 'Scouting review']] as const)
                   : []),
               ] as const
             ).map(([section, label]) => (
@@ -3687,7 +3584,7 @@ export default function Home() {
             ))}
           </div>
         )}
-        {activeView === 'Teams' &&
+        {activeView === 'Data' &&
           canUsePickLists &&
           teamsSection === 'picklist' && (
             <div className="p-4 sm:p-6">
@@ -3702,69 +3599,55 @@ export default function Home() {
               )}
             </div>
           )}
-        {activeView === 'Teams' &&
+        {activeView === 'Data' &&
           canUseStrategy &&
           teamsSection === 'review' && (
             <div className="grid gap-4 p-4 sm:p-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Match videos</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={videoMatchesMineOnly ? 'default' : 'outline'}
-                      onClick={() => setVideoMatchesMineOnly(true)}
-                    >
-                      Team {organizationTeamNumber} matches
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={!videoMatchesMineOnly ? 'default' : 'outline'}
-                      onClick={() => setVideoMatchesMineOnly(false)}
-                    >
-                      All matches
-                    </Button>
-                  </div>
-                  <select
-                    aria-label="Match video to manage"
-                    className="h-11 w-full rounded-md border bg-transparent px-3"
-                    value={selectedMatchKey}
-                    disabled={videoMatches.length === 0}
-                    onChange={(event) => setSelectedMatchKey(event.target.value)}
-                  >
-                    {videoMatches.map((match) => (
-                      <option value={match.key} key={match.key}>
-                        {matchLabel(match)} · {match.alliances.red.join(', ')} vs{' '}
-                        {match.alliances.blue.join(', ')}
-                      </option>
-                    ))}
-                  </select>
-                  {eventPack && videoMatches.length === 0 && (
-                    <p className="text-sm text-muted-foreground">
-                      Team {organizationTeamNumber} is not scheduled for this
-                      event.
-                    </p>
-                  )}
-                  <MatchVideoLibrary
-                    matchId={selectedVideoMatch?.id ?? null}
-                    matchLabel={
-                      selectedVideoMatch
-                        ? matchLabel(selectedVideoMatch)
-                        : 'this match'
-                    }
-                  />
-                </CardContent>
-              </Card>
               <ScoutingOperations
                 mode="review"
                 onVideoReview={startVideoReview}
               />
             </div>
           )}
+        {activeView === 'Video' && (
+          <div className="mx-auto grid w-full max-w-5xl gap-4 p-4 sm:p-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Choose a match</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <select
+                  aria-label="Match video to record, upload, or review"
+                  className="h-11 w-full rounded-md border bg-background px-3 text-foreground"
+                  value={selectedVideoMatchKey}
+                  disabled={videoMatches.length === 0}
+                  onChange={(event) =>
+                    setSelectedVideoMatchKey(event.target.value)
+                  }
+                >
+                  {videoMatches.map((match) => (
+                    <option value={match.key} key={match.key}>
+                      {matchLabel(match)} · {match.alliances.red.join(', ')} vs{' '}
+                      {match.alliances.blue.join(', ')}
+                    </option>
+                  ))}
+                </select>
+                {eventPack && videoMatches.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Team {organizationTeamNumber} is not scheduled for this
+                    event.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+            <MatchVideoLibrary
+              matchId={selectedVideoMatch?.id ?? null}
+              matchLabel={
+                selectedVideoMatch ? matchLabel(selectedVideoMatch) : 'this match'
+              }
+            />
+          </div>
+        )}
         {activeView === 'Alliance' && canUseStrategy && (
           <div className="p-2 sm:p-4">
             {eventPack && (
@@ -3778,7 +3661,7 @@ export default function Home() {
             )}
           </div>
         )}
-        {activeView === 'Teams' &&
+        {activeView === 'Data' &&
           teamsSection === 'analysis' && (
             <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
               <TeamComparison
@@ -3848,7 +3731,14 @@ export default function Home() {
                           }
                         >
                           <span>{team.eventRank ?? '—'}</span>
-                          <span>{team.teamNumber}</span>
+                          <span>
+                            {team.teamNumber}
+                            {eventPack?.teams.find(
+                              (item) => item.teamNumber === team.teamNumber,
+                            )?.name
+                              ? ` — ${eventPack.teams.find((item) => item.teamNumber === team.teamNumber)?.name}`
+                              : ''}
+                          </span>
                           <span>{team.samples}</span>
                           <span>{team.medianPoints.toFixed(1)}</span>
                           <span>{Math.round(team.coverage * 100)}%</span>
@@ -3861,7 +3751,7 @@ export default function Home() {
                 <CardHeader>
                   <CardTitle>
                     {selectedTeam
-                      ? `Team ${selectedTeam} summary`
+                      ? `Team ${selectedTeam}${eventPack?.teams.find((item) => item.teamNumber === selectedTeam)?.name ? ` — ${eventPack.teams.find((item) => item.teamNumber === selectedTeam)?.name}` : ''} summary`
                       : 'Select a team above'}
                   </CardTitle>
                   <Badge variant="outline">
@@ -3877,12 +3767,6 @@ export default function Home() {
                     <span>
                       <strong>{analysis?.medianActiveFuel ?? 0}</strong> median
                       active FUEL
-                    </span>
-                    <span>
-                      <strong>
-                        {analysis?.medianFuelPerCycle.toFixed(1) ?? '0.0'}
-                      </strong>{' '}
-                      FUEL / cycle
                     </span>
                     <span>
                       <strong>
@@ -4335,18 +4219,29 @@ export default function Home() {
                 )}
               </CardContent>
             </Card>
-            <details className="rounded-xl border bg-card p-4 text-card-foreground">
-              <summary className="cursor-pointer font-semibold">
-                Offline QR relay
-              </summary>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Scan another scout&apos;s completed match only when their device
-                cannot upload it directly.
-              </p>
-              <div className="mt-4">
-                <QrRelay online={online} />
-              </div>
-            </details>
+          </div>
+        )}
+        {activeView === 'Offline transfer' && (
+          <div className="mx-auto grid w-full max-w-3xl gap-4 p-4 sm:p-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Receive scouting data</CardTitle>
+                <Badge variant={online ? 'outline' : 'destructive'}>
+                  {online ? 'Ready to receive' : 'Internet required'}
+                </Badge>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  Use this when another scout completed a match without internet.
+                  Scan the QR code on their review screen to upload that match.
+                </p>
+                <p>
+                  This device has {queuedCount} local submission
+                  {queuedCount === 1 ? '' : 's'} waiting to synchronize.
+                </p>
+              </CardContent>
+            </Card>
+            <QrRelay online={online} />
           </div>
         )}
       </section>
@@ -4358,53 +4253,59 @@ export default function Home() {
           aria-label="Close more navigation"
           onClick={() => setMobileMenuOpen(false)}
         />
-        <div className="mobile-more-menu" role="dialog" aria-label="More navigation">
-          {visibleNav
-            .filter(({ label }) => !['Home', 'Scout', 'Pit', 'Teams'].includes(label))
-            .map(({ label, icon: Icon }) => (
-              <button type="button" onClick={() => navigate(label)} key={label}>
+        <div className="mobile-more-menu" role="dialog" aria-label="Navigation and account menu">
+          <div className="mobile-menu-account">
+            <CircleUserRound />
+            <div>
+              <strong>{session.user.name}</strong>
+              <span>{online ? 'Online' : 'Offline ready'}</span>
+            </div>
+          </div>
+          <div className="mobile-menu-links">
+          {visibleNav.map(({ label, icon: Icon }) => (
+              <button
+                type="button"
+                aria-current={activeView === label ? 'page' : undefined}
+                onClick={() => navigate(label)}
+                key={label}
+              >
                 <Icon />
                 <span>{label}</span>
               </button>
             ))}
           {isAdmin && (
-            <button type="button" onClick={() => navigate('Admin')}>
+            <button
+              type="button"
+              aria-current={activeView === 'Admin' ? 'page' : undefined}
+              onClick={() => navigate('Admin')}
+            >
               <UserCog />
               <span>Admin</span>
             </button>
           )}
+          <button
+            type="button"
+            aria-current={activeView === 'Account' ? 'page' : undefined}
+            onClick={() => navigate('Account')}
+          >
+            <CircleUserRound />
+            <span>Account</span>
+          </button>
+          </div>
+          <button
+            type="button"
+            className="mobile-theme-toggle"
+            onClick={() => {
+              toggleTheme();
+              setMobileMenuOpen(false);
+            }}
+          >
+            {dark ? <Sun /> : <Moon />}
+            <span>{dark ? 'Use light mode' : 'Use dark mode'}</span>
+          </button>
         </div>
         </>
       )}
-      <nav aria-label="Mobile navigation" className="mobile-nav">
-        {visibleNav
-          .filter(({ label }) => ['Home', 'Scout', 'Pit', 'Teams'].includes(label))
-          .map(({ label, icon: Icon }) => (
-          <button
-            type="button"
-            aria-current={activeView === label ? 'page' : undefined}
-            onClick={() => navigate(label)}
-            className={activeView === label ? 'active' : ''}
-            key={label}
-          >
-            <Icon />
-            <span>{label}</span>
-          </button>
-        ))}
-        <button
-          type="button"
-          aria-expanded={mobileMenuOpen}
-          onClick={() => setMobileMenuOpen((open) => !open)}
-          className={
-            mobileMenuOpen || ['Plan', 'Alliance', 'Admin'].includes(activeView)
-              ? 'active'
-              : ''
-          }
-        >
-          <Menu />
-          <span>More</span>
-        </button>
-      </nav>
     </main>
   );
 }
