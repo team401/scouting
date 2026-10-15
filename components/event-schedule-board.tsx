@@ -695,6 +695,12 @@ export function EventScheduleBoard({
     setMessage('Event day removed. Existing assignments were preserved.');
   }
 
+  // Update day is needed only when the displayed hours differ from the saved window.
+  const savedDay = scheduleDays.find((day) => day.date === date);
+  const hoursChanged =
+    savedDay !== undefined &&
+    (savedDay.startHour !== startHour || savedDay.endHour !== endHour);
+
   return (
     <Card className="mb-4 overflow-hidden">
       <CardContent className="space-y-3 px-0 sm:px-0">
@@ -768,12 +774,17 @@ export function EventScheduleBoard({
             </div>
           )}
           <div className="ml-auto flex shrink-0 gap-2">
-            <Button type="button" onClick={() => void saveScheduleDay()}>
-              {scheduleDays.some((day) => day.date === date)
-                ? 'Update day'
-                : 'Add day'}
-            </Button>
-            {scheduleDays.some((day) => day.date === date) && (
+            {!savedDay && (
+              <Button type="button" onClick={() => void saveScheduleDay()}>
+                Add day
+              </Button>
+            )}
+            {hoursChanged && (
+              <Button type="button" onClick={() => void saveScheduleDay()}>
+                Update day
+              </Button>
+            )}
+            {savedDay && (
               <Button
                 type="button"
                 variant="outline"

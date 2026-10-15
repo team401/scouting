@@ -4,12 +4,12 @@ Branch is local only. Nothing has been pushed.
 
 ## Commits (oldest first)
 
-| Commit | Purpose |
-| --- | --- |
+| Commit    | Purpose                                                                                                                                                                                                                                                   |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `3a9af5c` | Baseline snapshot of the uncommitted event schedule, attendee, and migration work from the local checkout. CRLF normalized to LF (HEAD has no CRLF files; content diff unchanged). Committed separately so the commits below are reviewable on their own. |
-| `2cf558f` | Event schedule grid: opaque sticky columns, header cleanup, paste/blur save, arrow-key navigation, click-out clipboard fix. |
-| `be3b748` | Event picker moved to Event Assignments; "Current event" title removed; Event label inline; Live station coverage card removed from that tab. |
-| `bd35b31` | Fix for `GET /api/event-attendees` 500 / "Unexpected end of JSON input". |
+| `2cf558f` | Event schedule grid: opaque sticky columns, header cleanup, paste/blur save, arrow-key navigation, click-out clipboard fix.                                                                                                                               |
+| `be3b748` | Event picker moved to Event Assignments; "Current event" title removed; Event label inline; Live station coverage card removed from that tab.                                                                                                             |
+| `bd35b31` | Fix for `GET /api/event-attendees` 500 / "Unexpected end of JSON input".                                                                                                                                                                                  |
 
 To review only this work: `git diff 3a9af5c..HEAD`.
 
@@ -39,7 +39,7 @@ To review only this work: `git diff 3a9af5c..HEAD`.
 
 ## Update day: when to click it
 
-- The button reads **Add day** when the selected date is not yet a schedule day, and **Update day** when it already is.
+- The button reads **Add day** when the selected date is not yet a schedule day. For a saved day it appears as **Update day** only when the First/Last displayed hours differ from the saved window; otherwise it is hidden.
 - It saves only the date's **First/Last displayed hour** window. It does not change any assignment; assignments are stored by absolute timestamps.
 - Click it after changing the start or end hour for a day you have already added (for example, to extend a day to 9 pm). Until you click it, the grid shows the new window but nothing is saved.
 - Clicking a different day tab discards unsaved hour changes. Remove day removes the day from the list and keeps existing assignments.
@@ -56,11 +56,13 @@ To review only this work: `git diff 3a9af5c..HEAD`.
 ## Video compression analysis (no code changed)
 
 Current state (`components/match-video-library.tsx`, `app/api/match-videos/route.ts`):
+
 - Recording uses `MediaRecorder` at 2.5 Mbps video and 64 kbps audio, about 19 MB per minute, or about 37 MB for a two-minute clip.
 - Uploads are chunked multipart to R2 with a 2 GB cap, and downloads support HTTP range requests.
 - Files chosen from the camera app upload as-is, with no compression.
 
 Options (from web research; sources in the summary reply):
+
 1. **Lower the record bitrate or resolution** (cheapest). Recording at 720p and about 1.5 Mbps is roughly 11 MB per minute and is enough to identify robots on a tablet. The trade-off is detail for later analysis.
 2. **Client transcode before upload** using WebCodecs plus Mediabunny. It is fast when the browser supports the needed codecs. Probe with `VideoEncoder.isConfigSupported()`, show progress, and fall back to the original file. Safari support varies by iOS version, and mobile performance depends on the device. Test on representative phones.
 3. **Server-side transcode** is the reliable choice for consistent output. Cloudflare Media Transformations is limited to 60-second outputs. Cloudflare Stream handles full-length encodes, billed by stored and delivered minutes.
