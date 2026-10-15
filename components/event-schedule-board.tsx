@@ -3,6 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  activeCoverageTargets,
+  coverageCount,
+  roleEnabled,
+  summarizeShifts,
+  type EventControls,
+} from '@/lib/event-coverage';
 import { eventRoles, type EventRole } from '@/lib/event-roles';
 
 const stations = ['red1', 'red2', 'red3', 'blue1', 'blue2', 'blue3'] as const;
@@ -93,7 +100,9 @@ function displayStation(station: Station) {
   return `${station.startsWith('red') ? 'Red' : 'Blue'} ${station.at(-1)}`;
 }
 
-const scheduleOptions = [
+type ScheduleOption = { label: string; value: string };
+
+const allScheduleOptions: ScheduleOption[] = [
   ...stations.map((station) => ({
     label: displayStation(station),
     value: `station:${station}`,
@@ -101,10 +110,24 @@ const scheduleOptions = [
   ...eventRoles.map(([role]) => ({ label: role, value: `role:${role}` })),
 ];
 
-function scheduleValue(label: string) {
-  return scheduleOptions.find(
+// Only stations and roles the event has turned on are offered anywhere.
+function scheduleOptionsFor(controls: EventControls): ScheduleOption[] {
+  return allScheduleOptions.filter((option) =>
+    option.value.startsWith('station:')
+      ? controls.scoutingEnabled
+      : roleEnabled(option.label, controls),
+  );
+}
+
+function scheduleValue(label: string, options: ScheduleOption[]) {
+  return options.find(
     (option) => option.label.toLowerCase() === label.trim().toLowerCase(),
   )?.value;
+}
+
+function isGuestMember(member: Member) {
+  // Guests sign in with a guest pass; their user IDs carry the guest: prefix.
+  return member.id.startsWith('guest:');
 }
 
 function canSchedule(member: Member) {
@@ -143,10 +166,10 @@ function assignmentClass(label: string) {
   return 'bg-primary/15 text-foreground';
 }
 
-function matchingOptions(query: string) {
+function matchingOptions(query: string, options: ScheduleOption[]) {
   const normalized = query.trim().toLowerCase();
-  if (!normalized) return scheduleOptions;
-  return scheduleOptions
+  if (!normalized) return options;
+  return options
     .filter((option) => option.label.toLowerCase().includes(normalized))
     .sort((a, b) => {
       const aStarts = a.label.toLowerCase().startsWith(normalized) ? 0 : 1;
@@ -163,6 +186,8 @@ function ScheduleRoleInput({
   label,
   busy,
   ariaLabel,
+  choices,
+  widthChars,
   onCommit,
   onRangePaste,
   onInvalid,
@@ -173,6 +198,8 @@ function ScheduleRoleInput({
   label: string;
   busy: boolean;
   ariaLabel: string;
+  choices: ScheduleOption[];
+  widthChars: number;
   onCommit: (value: string) => void;
   onRangePaste: (text: string) => void;
   onInvalid: (text: string) => void;
@@ -187,7 +214,7 @@ function ScheduleRoleInput({
   // overwrites its value, and clicking out saves only intentional edits.
   const editedRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const options = matchingOptions(query);
+  const options = matchingOptions(query, choices);
 
   useEffect(() => {
     if (!open) setQuery(label);
@@ -195,7 +222,7 @@ function ScheduleRoleInput({
 
   function choose(optionLabel: string) {
     editedRef.current = false;
-    const value = optionLabel ? scheduleValue(optionLabel) : '';
+    const value = optionLabel ? scheduleValue(optionLabel, choices) : '';
     if (optionLabel && !value) return;
     setQuery(optionLabel);
     setOpen(false);
@@ -207,7 +234,7 @@ function ScheduleRoleInput({
   function commitTyped(allowSuggestion: boolean) {
     const typed = query.trim();
     if (!typed) return choose('');
-    const exact = scheduleOptions.find(
+    const exact = choices.find(
       (option) => option.label.toLowerCase() === typed.toLowerCase(),
     );
     const target =
@@ -217,7 +244,7 @@ function ScheduleRoleInput({
   }
 
   return (
-    <div className="relative h-9 min-w-28">
+    <div className="relative h-9">
       <input
         ref={inputRef}
         aria-label={ariaLabel}
@@ -225,6 +252,7 @@ function ScheduleRoleInput({
         className={`h-9 w-full rounded-md border px-1 text-center text-xs font-medium ${label && !open ? assignmentClass(label) : 'bg-background text-foreground'}`}
         disabled={busy}
         data-schedule-cell={cellId}
+        style={{ width: `calc(${widthChars}ch + 0.5rem)` }}
         value={busy ? 'Saving…' : query}
         onChange={(event) => {
           editedRef.current = true;
@@ -362,6 +390,56 @@ export function EventScheduleBoard({
   const [attendeeIds, setAttendeeIds] = useState<Set<string>>(new Set());
   const [attendanceLoaded, setAttendanceLoaded] = useState(false);
   const attendanceDirtyRef = useRef(false);
+  const [controls, setControls] = useState<EventControls>({
+    scoutingEnabled: true,
+    outreachEnabled: true,
+  });
+
+  useEffect(() => {
+    void fetch('/api/event-controls')
+      .then(async (response) => {
+        const body = await readBody<
+          Partial<EventControls> & { error?: string }
+        >(response);
+        if (!response.ok)
+          throw new Error(body.error ?? 'Could not load event controls.');
+        setControls({
+          scoutingEnabled: body.scoutingEnabled ?? true,
+          outreachEnabled: body.outreachEnabled ?? true,
+        });
+      })
+      .catch((error: unknown) =>
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : 'Could not load event controls.',
+        ),
+      );
+  }, []);
+
+  async function changeControls(next: EventControls) {
+    const previous = controls;
+    setControls(next);
+    setMessage('');
+    try {
+      const response = await fetch('/api/event-controls', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(next),
+      });
+      if (!response.ok) {
+        const body = await readBody<{ error?: string }>(response);
+        throw new Error(body.error ?? 'Could not save event controls.');
+      }
+    } catch (error) {
+      setControls(previous);
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : 'Could not save event controls.',
+      );
+    }
+  }
 
   const load = useCallback(async () => {
     const [rolesResponse, shiftsResponse, attendanceResponse, daysResponse] =
@@ -464,7 +542,11 @@ export function EventScheduleBoard({
     () =>
       members
         .filter((member) => canSchedule(member) && attendeeIds.has(member.id))
-        .sort((a, b) => a.name.localeCompare(b.name)),
+        .sort(
+          (a, b) =>
+            Number(isGuestMember(a)) - Number(isGuestMember(b)) ||
+            a.name.localeCompare(b.name),
+        ),
     [attendeeIds, members],
   );
   const hours = useMemo(
@@ -477,13 +559,50 @@ export function EventScheduleBoard({
   );
   const dayStart = slotTime(date, 0);
   const dayEnd = slotTime(date, 24);
-  const counts = useMemo(() => {
-    const result = new Map<string, number>();
+  const shiftCounts = useMemo(() => {
+    const byUser = new Map<string, ScheduleItem[]>();
     for (const item of items)
       if (item.startsAt < dayEnd && item.endsAt > dayStart)
-        result.set(item.userId, (result.get(item.userId) ?? 0) + 1);
-    return result;
+        byUser.set(item.userId, [...(byUser.get(item.userId) ?? []), item]);
+    return new Map(
+      [...byUser].map(([userId, list]) => [userId, summarizeShifts(list)]),
+    );
   }, [dayEnd, dayStart, items]);
+  const emptyShifts = { scouting: 0, pit: 0, total: 0 };
+  const choices = useMemo(() => scheduleOptionsFor(controls), [controls]);
+  const choiceChars = Math.max(
+    1,
+    ...choices.map((option) => option.label.length),
+  );
+  const nameChars = Math.max(
+    0,
+    ...activeMembers.map(
+      (member) => member.name.length + (isGuestMember(member) ? 8 : 0),
+    ),
+  );
+  const coverageTargets = useMemo(
+    () => activeCoverageTargets(controls),
+    [controls],
+  );
+  // Items covering each displayed hour; drives the coverage footer.
+  const hourItems = useMemo(
+    () =>
+      hours.map((hour) => {
+        const startsAt = slotTime(date, hour);
+        return items.filter(
+          (item) => item.startsAt <= startsAt && item.endsAt > startsAt,
+        );
+      }),
+    [date, hours, items],
+  );
+  const coverageGrid = useMemo(
+    () =>
+      coverageTargets.map((target) => ({
+        target,
+        counts: hourItems.map((list) => coverageCount(target, list)),
+      })),
+    [coverageTargets, hourItems],
+  );
 
   async function changeCell(member: Member, hour: number, value: string) {
     const startsAt = slotTime(date, hour);
@@ -605,7 +724,7 @@ export function EventScheduleBoard({
         const hour = hours[startColumn + columnOffset];
         if (hour === undefined) break;
         const label = rows[rowOffset][columnOffset].trim();
-        const value = label ? scheduleValue(label) : '';
+        const value = label ? scheduleValue(label, choices) : '';
         if (label && !value) {
           setMessage(invalidRoleMessage(label));
           return;
@@ -704,6 +823,35 @@ export function EventScheduleBoard({
   return (
     <Card className="mb-4 overflow-hidden">
       <CardContent className="space-y-3 px-0 sm:px-0">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-3 text-sm">
+          <span className="font-semibold">Event controls</span>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={controls.scoutingEnabled}
+              onChange={(event) =>
+                void changeControls({
+                  ...controls,
+                  scoutingEnabled: event.target.checked,
+                })
+              }
+            />
+            Scouting
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={controls.outreachEnabled}
+              onChange={(event) =>
+                void changeControls({
+                  ...controls,
+                  outreachEnabled: event.target.checked,
+                })
+              }
+            />
+            Outreach
+          </label>
+        </div>
         <div className="grid gap-2 px-3 sm:grid-cols-3">
           <input
             aria-label="Schedule date"
@@ -878,12 +1026,15 @@ export function EventScheduleBoard({
           <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
             <thead className="sticky top-0 z-30 bg-muted">
               <tr>
-                <th className="sticky left-0 z-40 min-w-40 border-r border-b bg-muted px-3 py-2 text-left">
+                <th
+                  className="sticky left-0 z-40 whitespace-nowrap border-r border-b bg-muted px-3 py-2 text-left"
+                  style={{ width: `calc(${nameChars}ch + 1.5rem)` }}
+                >
                   Person
                 </th>
                 {hours.map((hour) => (
                   <th
-                    className="min-w-28 border-r border-b px-2 py-2 text-center"
+                    className="border-r border-b px-1 py-2 text-center"
                     key={hour}
                   >
                     {new Date(2000, 0, 1, hour).toLocaleTimeString([], {
@@ -896,8 +1047,14 @@ export function EventScheduleBoard({
                     )}
                   </th>
                 ))}
-                <th className="sticky right-0 z-40 min-w-20 border-b border-l bg-muted px-2 py-2 text-center">
-                  Assigned
+                <th className="w-px border-b px-2 py-2 text-center">
+                  Assigned scouting shifts
+                </th>
+                <th className="w-px border-b px-2 py-2 text-center">
+                  Assigned pit shifts
+                </th>
+                <th className="sticky right-0 z-40 w-px border-b border-l bg-muted px-2 py-2 text-center">
+                  Total roles
                 </th>
               </tr>
             </thead>
@@ -911,8 +1068,13 @@ export function EventScheduleBoard({
                   }
                   key={member.id}
                 >
-                  <th className="sticky left-0 z-20 border-r border-b bg-inherit px-3 py-2 text-left font-medium">
+                  <th className="sticky left-0 z-20 whitespace-nowrap border-r border-b bg-inherit px-3 py-2 text-left font-medium">
                     {member.name}
+                    {isGuestMember(member) && (
+                      <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal">
+                        Guest
+                      </span>
+                    )}
                   </th>
                   {hours.map((hour, columnIndex) => {
                     const startsAt = slotTime(date, hour);
@@ -928,6 +1090,8 @@ export function EventScheduleBoard({
                         <ScheduleRoleInput
                           ariaLabel={`${member.name}, ${new Date(2000, 0, 1, hour).toLocaleTimeString([], { hour: 'numeric' })}`}
                           busy={busyCell === key}
+                          choices={choices}
+                          widthChars={choiceChars}
                           cellId={`${columnIndex}:${rowIndex}`}
                           label={item?.label ?? ''}
                           onAdvance={() => focusCell(rowIndex + 1, columnIndex)}
@@ -950,12 +1114,50 @@ export function EventScheduleBoard({
                       </td>
                     );
                   })}
-                  <td className="sticky right-0 z-20 border-b border-l bg-inherit px-2 py-2 text-center font-semibold">
-                    {counts.get(member.id) ?? 0}
+                  <td className="w-px border-b px-2 py-2 text-center">
+                    {(shiftCounts.get(member.id) ?? emptyShifts).scouting}
+                  </td>
+                  <td className="w-px border-b px-2 py-2 text-center">
+                    {(shiftCounts.get(member.id) ?? emptyShifts).pit}
+                  </td>
+                  <td className="sticky right-0 z-20 w-px border-b border-l bg-inherit px-2 py-2 text-center font-semibold">
+                    {(shiftCounts.get(member.id) ?? emptyShifts).total}
                   </td>
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr className="border-t-2">
+                <td
+                  colSpan={hours.length + 4}
+                  className="bg-muted px-3 py-1 text-left text-xs font-semibold text-muted-foreground"
+                >
+                  Coverage per hour · amber means more people are needed; this
+                  is not an error
+                </td>
+              </tr>
+              {coverageGrid.map(({ target, counts: perHour }) => (
+                <tr key={target.label}>
+                  <th className="sticky left-0 z-20 whitespace-nowrap border-r border-b bg-background px-3 py-1 text-left text-xs font-medium">
+                    {target.label}
+                  </th>
+                  {perHour.map((have, index) => (
+                    <td
+                      className={`border-r border-b px-1 py-1 text-center text-xs ${
+                        have >= target.need
+                          ? 'text-emerald-700 dark:text-emerald-400'
+                          : 'bg-amber-100 text-amber-900 dark:bg-amber-900/60 dark:text-amber-100'
+                      }`}
+                      key={hours[index]}
+                      title={`${have} of ${target.need} ${target.label.toLowerCase()}`}
+                    >
+                      {have}/{target.need}
+                    </td>
+                  ))}
+                  <td colSpan={3} className="border-b" />
+                </tr>
+              ))}
+            </tfoot>
           </table>
         </div>
         {message && (
