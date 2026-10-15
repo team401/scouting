@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { eventRoles, type EventRole } from '@/lib/event-roles';
 
 const stations = ['red1', 'red2', 'red3', 'blue1', 'blue2', 'blue3'] as const;
@@ -141,12 +141,18 @@ function matchingOptions(query: string) {
     });
 }
 
+function invalidRoleMessage(text: string) {
+  return `“${text}” is not a recognized role or station.`;
+}
+
 function ScheduleRoleInput({
   label,
   busy,
   ariaLabel,
   onCommit,
   onRangePaste,
+  onInvalid,
+  onNavigate,
   cellId,
   onAdvance,
 }: {
@@ -155,12 +161,17 @@ function ScheduleRoleInput({
   ariaLabel: string;
   onCommit: (value: string) => void;
   onRangePaste: (text: string) => void;
+  onInvalid: (text: string) => void;
+  onNavigate: (rowDelta: number, columnDelta: number) => void;
   cellId: string;
   onAdvance: () => void;
 }) {
   const [query, setQuery] = useState(label);
   const [open, setOpen] = useState(false);
   const [dropUp, setDropUp] = useState(false);
+  // Set only when the user types or pastes into this cell. Focusing a cell never
+  // overwrites its value, and clicking out saves only intentional edits.
+  const editedRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const options = matchingOptions(query);
 
@@ -169,11 +180,26 @@ function ScheduleRoleInput({
   }, [label, open]);
 
   function choose(optionLabel: string) {
+    editedRef.current = false;
     const value = optionLabel ? scheduleValue(optionLabel) : '';
     if (optionLabel && !value) return;
     setQuery(optionLabel);
     setOpen(false);
     if (optionLabel !== label) onCommit(value ?? '');
+  }
+
+  // Blur accepts only an exact role/station name. Enter also accepts the first
+  // suggestion. Anything else is rejected and the cell reverts.
+  function commitTyped(allowSuggestion: boolean) {
+    const typed = query.trim();
+    if (!typed) return choose('');
+    const exact = scheduleOptions.find(
+      (option) => option.label.toLowerCase() === typed.toLowerCase(),
+    );
+    const target =
+      exact?.label ?? (allowSuggestion ? options[0]?.label : undefined);
+    if (target) choose(target);
+    else onInvalid(typed);
   }
 
   return (
@@ -187,6 +213,7 @@ function ScheduleRoleInput({
         data-schedule-cell={cellId}
         value={busy ? 'Saving…' : query}
         onChange={(event) => {
+          editedRef.current = true;
           setQuery(event.target.value);
           setOpen(true);
         }}
@@ -206,12 +233,13 @@ function ScheduleRoleInput({
             const above = inputRect.top - visibleTop;
             setDropUp(below < 260 && above > below);
           }
-          if (label && navigator.clipboard)
-            void navigator.clipboard.writeText(label).catch(() => undefined);
+          editedRef.current = false;
           setQuery('');
           setOpen(true);
         }}
         onBlur={() => {
+          if (editedRef.current) commitTyped(false);
+          editedRef.current = false;
           window.setTimeout(() => {
             setOpen(false);
             setQuery(label);
@@ -220,13 +248,38 @@ function ScheduleRoleInput({
         onKeyDown={(event) => {
           if (event.key === 'Enter') {
             event.preventDefault();
-            choose(query.trim() ? (options[0]?.label ?? '') : '');
+            if (editedRef.current) commitTyped(true);
+            editedRef.current = false;
             event.currentTarget.blur();
             window.setTimeout(onAdvance, 0);
           } else if (event.key === 'Escape') {
+            editedRef.current = false;
             setQuery(label);
             setOpen(false);
             event.currentTarget.blur();
+          } else if (
+            !event.altKey &&
+            !event.ctrlKey &&
+            !event.metaKey &&
+            !event.shiftKey
+          ) {
+            const { selectionStart, selectionEnd } = event.currentTarget;
+            const atStart = selectionStart === 0 && selectionEnd === 0;
+            const atEnd =
+              selectionStart === query.length && selectionEnd === query.length;
+            if (event.key === 'ArrowUp') {
+              event.preventDefault();
+              onNavigate(-1, 0);
+            } else if (event.key === 'ArrowDown') {
+              event.preventDefault();
+              onNavigate(1, 0);
+            } else if (event.key === 'ArrowLeft' && atStart) {
+              event.preventDefault();
+              onNavigate(0, -1);
+            } else if (event.key === 'ArrowRight' && atEnd) {
+              event.preventDefault();
+              onNavigate(0, 1);
+            }
           }
         }}
         onCopy={(event) => {
@@ -537,12 +590,27 @@ export function EventScheduleBoard({
         const label = rows[rowOffset][columnOffset].trim();
         const value = label ? scheduleValue(label) : '';
         if (label && !value) {
-          setMessage(`“${label}” is not a recognized role or station.`);
+          setMessage(invalidRoleMessage(label));
           return;
         }
         await changeCell(member, hour, value ?? '');
       }
     }
+  }
+
+  function focusCell(rowIndex: number, columnIndex: number) {
+    if (
+      rowIndex < 0 ||
+      columnIndex < 0 ||
+      rowIndex >= activeMembers.length ||
+      columnIndex >= hours.length
+    )
+      return;
+    document
+      .querySelector<HTMLInputElement>(
+        `[data-schedule-cell="${columnIndex}:${rowIndex}"]`,
+      )
+      ?.focus();
   }
 
   async function saveAttendance() {
@@ -612,35 +680,7 @@ export function EventScheduleBoard({
 
   return (
     <Card className="mb-4 overflow-hidden">
-      <CardHeader>
-        <CardTitle>Event schedule</CardTitle>
-      </CardHeader>
       <CardContent className="space-y-3 px-0 sm:px-0">
-        {scheduleDays.length > 0 && (
-          <div
-            className="flex gap-2 overflow-x-auto px-3 pb-1"
-            aria-label="Event days"
-          >
-            {scheduleDays.map((day, index) => (
-              <Button
-                type="button"
-                variant={date === day.date ? 'default' : 'outline'}
-                className="shrink-0"
-                onClick={() => selectScheduleDay(day)}
-                key={day.date}
-              >
-                <span className="sm:hidden">Day {index + 1}</span>
-                <span className="hidden sm:inline">
-                  {new Date(`${day.date}T12:00:00`).toLocaleDateString([], {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                  })}
-                </span>
-              </Button>
-            ))}
-          </div>
-        )}
         <div className="grid gap-2 px-3 sm:grid-cols-3">
           <input
             aria-label="Schedule date"
@@ -684,21 +724,48 @@ export function EventScheduleBoard({
             ))}
           </select>
         </div>
-        <div className="flex flex-wrap gap-2 px-3">
-          <Button type="button" onClick={() => void saveScheduleDay()}>
-            {scheduleDays.some((day) => day.date === date)
-              ? 'Update day'
-              : 'Add day'}
-          </Button>
-          {scheduleDays.some((day) => day.date === date) && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void removeScheduleDay(date)}
+        <div className="flex items-center gap-2 px-3">
+          {scheduleDays.length > 0 && (
+            <div
+              className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1"
+              aria-label="Event days"
             >
-              Remove day
-            </Button>
+              {scheduleDays.map((day, index) => (
+                <Button
+                  type="button"
+                  variant={date === day.date ? 'default' : 'outline'}
+                  className="shrink-0"
+                  onClick={() => selectScheduleDay(day)}
+                  key={day.date}
+                >
+                  <span className="sm:hidden">Day {index + 1}</span>
+                  <span className="hidden sm:inline">
+                    {new Date(`${day.date}T12:00:00`).toLocaleDateString([], {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </span>
+                </Button>
+              ))}
+            </div>
           )}
+          <div className="ml-auto flex shrink-0 gap-2">
+            <Button type="button" onClick={() => void saveScheduleDay()}>
+              {scheduleDays.some((day) => day.date === date)
+                ? 'Update day'
+                : 'Add day'}
+            </Button>
+            {scheduleDays.some((day) => day.date === date) && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void removeScheduleDay(date)}
+              >
+                Remove day
+              </Button>
+            )}
+          </div>
         </div>
         {!scheduleDays.length && (
           <p className="px-3 text-sm text-muted-foreground">
@@ -771,7 +838,9 @@ export function EventScheduleBoard({
           </Button>
         </details>
         <p className="px-3 text-sm text-muted-foreground">
-          Type or choose a role in each time slot. Clear a cell to unassign it.
+          Type, paste, or choose a role in each time slot; a change saves when
+          you click out of the cell. Clear a cell to unassign it. Arrow keys
+          move between cells, Enter saves and moves down, and Escape cancels.
           You can copy and paste single cells or rectangular spreadsheet ranges.
         </p>
         <div
@@ -807,7 +876,11 @@ export function EventScheduleBoard({
             <tbody>
               {activeMembers.map((member, rowIndex) => (
                 <tr
-                  className={rowIndex % 2 ? 'bg-muted/20' : 'bg-background'}
+                  className={
+                    rowIndex % 2
+                      ? 'bg-[color-mix(in_srgb,var(--muted)_20%,var(--background))]'
+                      : 'bg-background'
+                  }
                   key={member.id}
                 >
                   <th className="sticky left-0 z-20 border-r border-b bg-inherit px-3 py-2 text-left font-medium">
@@ -829,15 +902,18 @@ export function EventScheduleBoard({
                           busy={busyCell === key}
                           cellId={`${columnIndex}:${rowIndex}`}
                           label={item?.label ?? ''}
-                          onAdvance={() => {
-                            const next =
-                              document.querySelector<HTMLInputElement>(
-                                `[data-schedule-cell="${columnIndex}:${rowIndex + 1}"]`,
-                              );
-                            next?.focus();
-                          }}
+                          onAdvance={() => focusCell(rowIndex + 1, columnIndex)}
                           onCommit={(value) =>
                             void changeCell(member, hour, value)
+                          }
+                          onInvalid={(text) =>
+                            setMessage(invalidRoleMessage(text))
+                          }
+                          onNavigate={(rowDelta, columnDelta) =>
+                            focusCell(
+                              rowIndex + rowDelta,
+                              columnIndex + columnDelta,
+                            )
                           }
                           onRangePaste={(text) =>
                             void pasteCells(rowIndex, columnIndex, text)
