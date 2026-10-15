@@ -539,6 +539,11 @@ export default function Home() {
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
   const [selectedStation, setSelectedStation] = useState('');
   const [analysis, setAnalysis] = useState<TeamAnalysis | null>(null);
+  const [previewMember, setPreviewMember] = useState<{
+    id: string;
+    name: string;
+    role: string;
+  } | null>(null);
   const [strategyTeams, setStrategyTeams] = useState<TeamAnalysis[]>([]);
   const [strategyLoading, setStrategyLoading] = useState(false);
   const [adminMessage, setAdminMessage] = useState('');
@@ -695,9 +700,21 @@ export default function Home() {
     ? eventPack?.pitEntries.find((entry) => entry.teamNumber === pitTeam)
         ?.photoObjectKey
     : null;
-  const isAdmin = Boolean(eventPack && canManageAssignments(eventPack.role));
-  const canUseStrategy = Boolean(eventPack && canReopenEntries(eventPack.role));
-  const isGuest = Boolean(eventPack?.userId.startsWith('guest:'));
+  // An admin can preview the app as a team member. Only the UI changes; the
+  // server still checks every request against the admin's own role.
+  const realIsAdmin = Boolean(
+    eventPack && canManageAssignments(eventPack.role),
+  );
+  const activePreview = realIsAdmin ? previewMember : null;
+  const effectiveRole = activePreview
+    ? activePreview.role
+    : (eventPack?.role ?? '');
+  const effectiveUserId = activePreview
+    ? activePreview.id
+    : (eventPack?.userId ?? '');
+  const isAdmin = Boolean(eventPack && canManageAssignments(effectiveRole));
+  const canUseStrategy = Boolean(eventPack && canReopenEntries(effectiveRole));
+  const isGuest = effectiveUserId.startsWith('guest:');
   const canUsePickLists = Boolean(eventPack && !isGuest);
   const visibleNav = nav.filter(
     ({ label }) =>
@@ -1824,7 +1841,7 @@ export default function Home() {
       }))
       .filter(
         (item) =>
-          item.assignment.scoutUserId === eventPack.userId &&
+          item.assignment.scoutUserId === effectiveUserId &&
           item.match &&
           !item.match.result?.actualTime,
       )
@@ -1959,6 +1976,36 @@ export default function Home() {
             </h1>
           </div>
           <div className="desktop-header-actions flex items-center gap-2">
+            {realIsAdmin && (
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                Preview as
+                <select
+                  className="h-8 max-w-44 rounded-md border bg-background px-2 text-xs text-foreground"
+                  value={previewMember?.id ?? ''}
+                  onChange={(event) => {
+                    const member = eventPack?.members.find(
+                      (item) => item.id === event.target.value,
+                    );
+                    setPreviewMember(
+                      member
+                        ? {
+                            id: member.id,
+                            name: member.name,
+                            role: member.role,
+                          }
+                        : null,
+                    );
+                  }}
+                >
+                  <option value="">Myself</option>
+                  {eventPack?.members.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.name} ({member.role})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <Badge variant="outline" className="status-badge">
               {online ? <Cloud /> : <CloudOff />}
               <span className="status-text">
@@ -2030,8 +2077,9 @@ export default function Home() {
               </CardContent>
             </Card>
             <PersonalEventSchedule
-              name={session.user.name}
+              name={activePreview?.name ?? session.user.name}
               scoutShifts={eventPack?.scoutShifts ?? []}
+              previewUserId={activePreview?.id}
             />
             {canUsePickLists && (
               <Card className="border-primary/30 bg-primary/5">
@@ -3715,7 +3763,7 @@ export default function Home() {
                   >
                     Team number
                   </Button>
-                  {eventPack && canReopenEntries(eventPack.role) && (
+                  {eventPack && canReopenEntries(effectiveRole) && (
                     <Button
                       nativeButton={false}
                       size="sm"
@@ -3976,7 +4024,7 @@ export default function Home() {
                       {entry.reopened ? ' · reopened' : ''}
                     </span>
                     {eventPack &&
-                    canReopenEntries(eventPack.role) &&
+                    canReopenEntries(effectiveRole) &&
                     !entry.reopened ? (
                       <Button
                         size="sm"

@@ -201,19 +201,25 @@ export function EventRoleScheduler({
   );
 }
 
+type ScoutShift = {
+  id: string;
+  station: string;
+  startsAt: number;
+  endsAt: number;
+};
+
 export function PersonalEventSchedule({
   name,
   scoutShifts,
+  previewUserId,
 }: {
   name: string;
-  scoutShifts: Array<{
-    id: string;
-    station: string;
-    startsAt: number;
-    endsAt: number;
-  }>;
+  scoutShifts: ScoutShift[];
+  // Set by an admin previewing the app as a member: shows that member's schedule.
+  previewUserId?: string;
 }) {
   const [items, setItems] = useState<Assignment[]>([]);
+  const [previewShifts, setPreviewShifts] = useState<ScoutShift[]>([]);
   const [permission, setPermission] = useState<
     NotificationPermission | 'unsupported'
   >(() =>
@@ -223,15 +229,41 @@ export function PersonalEventSchedule({
   );
 
   useEffect(() => {
+    if (previewUserId) {
+      void Promise.all([
+        fetch('/api/event-schedule?all=1'),
+        fetch('/api/scout-shifts'),
+      ]).then(async ([rolesResponse, shiftsResponse]) => {
+        if (!rolesResponse.ok || !shiftsResponse.ok) return;
+        const rolesBody = (await rolesResponse.json()) as {
+          assignments?: Assignment[];
+        };
+        const shiftsBody = (await shiftsResponse.json()) as {
+          shifts?: Array<ScoutShift & { scoutUserId: string }>;
+        };
+        setItems(
+          (rolesBody.assignments ?? []).filter(
+            (item) => item.userId === previewUserId,
+          ),
+        );
+        setPreviewShifts(
+          (shiftsBody.shifts ?? []).filter(
+            (shift) => shift.scoutUserId === previewUserId,
+          ),
+        );
+      });
+      return;
+    }
     void fetch('/api/event-schedule').then(async (response) => {
       if (!response.ok) return;
       const body = (await response.json()) as { assignments?: Assignment[] };
       setItems(body.assignments ?? []);
     });
-  }, []);
+  }, [previewUserId]);
 
   useEffect(() => {
-    if (permission !== 'granted') return;
+    // Reminders are for the signed-in user, not for a previewed member.
+    if (permission !== 'granted' || previewUserId) return;
     const notify = () => {
       const now = Date.now();
       const upcoming = [
@@ -267,7 +299,9 @@ export function PersonalEventSchedule({
     notify();
     const timer = window.setInterval(notify, 30_000);
     return () => window.clearInterval(timer);
-  }, [items, permission, scoutShifts]);
+  }, [items, permission, previewUserId, scoutShifts]);
+
+  const shifts = previewUserId ? previewShifts : scoutShifts;
 
   const scheduleDays = useMemo(() => {
     const combined = [
@@ -277,7 +311,7 @@ export function PersonalEventSchedule({
         startsAt: item.startsAt,
         endsAt: item.endsAt,
       })),
-      ...scoutShifts.map((shift) => ({
+      ...shifts.map((shift) => ({
         id: shift.id,
         label: `${shift.station.toUpperCase()} · Scouting`,
         startsAt: shift.startsAt,
@@ -294,7 +328,7 @@ export function PersonalEventSchedule({
       grouped.set(key, [...(grouped.get(key) ?? []), item]);
     }
     return [...grouped.entries()];
-  }, [items, scoutShifts]);
+  }, [items, shifts]);
 
   return (
     <Card>
