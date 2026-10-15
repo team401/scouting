@@ -68,12 +68,17 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   const event = await env.DB.prepare(
-    'SELECT id FROM events WHERE organization_id = ? AND is_current = 1 LIMIT 1',
+    'SELECT id, scouting_enabled AS scoutingEnabled FROM events WHERE organization_id = ? AND is_current = 1 LIMIT 1',
   )
     .bind(actor.membership.organizationId)
-    .first<{ id: string }>();
+    .first<{ id: string; scoutingEnabled: number }>();
   if (!event)
     return Response.json({ error: 'Load an event first.' }, { status: 409 });
+  if (!event.scoutingEnabled)
+    return Response.json(
+      { error: 'Scouting is turned off for this event.' },
+      { status: 400 },
+    );
   const memberRows = await env.DB.prepare(
     'SELECT user_id AS userId FROM memberships WHERE organization_id = ? AND disabled = 0',
   )

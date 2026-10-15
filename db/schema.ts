@@ -239,6 +239,12 @@ export const events = sqliteTable(
     startDate: text('start_date'),
     endDate: text('end_date'),
     eventType: integer('event_type'),
+    scoutingEnabled: integer('scouting_enabled', { mode: 'boolean' })
+      .notNull()
+      .default(true),
+    outreachEnabled: integer('outreach_enabled', { mode: 'boolean' })
+      .notNull()
+      .default(true),
     ...timestamps,
   },
   (table) => [

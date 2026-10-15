@@ -1,6 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
+import { roleEnabled } from '@/lib/event-coverage';
 import { eventRoleNames } from '@/lib/event-roles';
 import { canManageAssignments } from '@/lib/scouting-policy';
 
@@ -86,9 +87,19 @@ export async function POST(request: Request) {
     'SELECT id FROM events WHERE organization_id = ? AND is_current = 1 LIMIT 1',
   )
     .bind(identity.membership.organizationId)
-    .first<{ id: string }>();
+    .first<{ id: string; scoutingEnabled: number; outreachEnabled: number }>();
   if (!event)
     return Response.json({ error: 'Load an event first.' }, { status: 409 });
+  if (
+    !roleEnabled(parsed.data.role, {
+      scoutingEnabled: Boolean(event.scoutingEnabled),
+      outreachEnabled: Boolean(event.outreachEnabled),
+    })
+  )
+    return Response.json(
+      { error: 'That role is turned off for this event.' },
+      { status: 400 },
+    );
   const member = await env.DB.prepare(
     'SELECT 1 FROM memberships WHERE organization_id = ? AND user_id = ? AND disabled = 0',
   )
