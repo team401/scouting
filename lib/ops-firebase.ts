@@ -96,7 +96,6 @@ export async function synchronizeOpsRoster(
     "SELECT id FROM organizations WHERE id = 'team-401' LIMIT 1",
   ).first();
   const rosterUsers = new Map<string, string>();
-  const newlyCreatedUsers = new Set<string>();
   for (const profile of profiles) {
     const existing = await env.DB.prepare(
       'SELECT id FROM users WHERE firebase_uid = ? OR lower(email) = ? LIMIT 1',
@@ -118,7 +117,6 @@ export async function synchronizeOpsRoster(
       )
         .bind(userId, profile.uid, profile.email, profile.displayName, now, now)
         .run();
-    if (!existing) newlyCreatedUsers.add(userId);
   }
   const user = await env.DB.prepare(
     'SELECT id FROM users WHERE firebase_uid = ? LIMIT 1',
@@ -137,7 +135,7 @@ export async function synchronizeOpsRoster(
   }
   for (const profile of profiles) {
     const userId = rosterUsers.get(profile.uid);
-    if (!userId || !newlyCreatedUsers.has(userId)) continue;
+    if (!userId) continue;
     await env.DB.prepare(
       `INSERT OR IGNORE INTO memberships (organization_id, user_id, role, disabled, created_at, updated_at)
        VALUES ('team-401', ?, ?, 0, ?, ?)`,

@@ -48,6 +48,7 @@ import { QrRelay } from '@/components/qr-relay';
 import { MatchSubmissionQr } from '@/components/match-submission-qr';
 import { GuestPassManager } from '@/components/guest-pass-manager';
 import { ConfirmActionDialog } from '@/components/confirm-action-dialog';
+import { PwaInstallButton } from '@/components/service-worker-register';
 import {
   getCachedValue,
   getDraft,
@@ -4422,14 +4423,17 @@ export default function Home() {
                     {session.user.email}
                   </span>
                 </div>
-                <Button
-                  variant="outline"
-                  disabled={signingOut}
-                  onClick={() => void signOut()}
-                >
-                  <LogOut />
-                  {signingOut ? 'Signing out…' : 'Sign out'}
-                </Button>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <PwaInstallButton />
+                  <Button
+                    variant="outline"
+                    disabled={signingOut}
+                    onClick={() => void signOut()}
+                  >
+                    <LogOut />
+                    {signingOut ? 'Signing out…' : 'Sign out'}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
             <Card>
@@ -4620,6 +4624,7 @@ export default function Home() {
                 </button>
               )}
             </div>
+            <PwaInstallButton className="mobile-install-app" />
             <button
               type="button"
               className="mobile-theme-toggle"

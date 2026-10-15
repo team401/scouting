@@ -112,3 +112,19 @@ Enable match score and schedule notifications. After clicking **Resend code**
 in TBA, refresh **Admin → Team and event → TBA webhook verification** in the
 scouting app and enter the received code back in TBA. The webhook accelerates
 updates; client polling remains the fallback.
+
+## Installable app and offline use
+
+The deployed site is a Progressive Web App. On a supported browser, use
+**Install app** from the account page or mobile navigation menu. On iPhone and
+iPad, use Safari’s **Share → Add to Home Screen** action.
+
+Open the app online once after each deployment so the service worker can cache
+the current app shell. The last authenticated session and event pack remain on
+the device, match and pit entries are queued in IndexedDB, and queued entries
+synchronize automatically when connectivity returns. API responses and
+credentials are never stored in the service-worker cache.
+
+To verify a release, load the installed app online, switch the browser or device
+offline, close and reopen the app, complete a test entry, then reconnect and
+confirm that the pending entry synchronizes.

@@ -724,6 +724,11 @@ select option {
   .mobile-theme-toggle {
     border-top: 1px solid var(--border);
   }
+  .mobile-install-app {
+    border-radius: 0;
+    border-inline: 0;
+    border-bottom: 0;
+  }
   .app-content {
     padding-bottom: 0;
   }
@@ -919,6 +924,20 @@ select option {
   }
   .scout-form .choice {
     min-height: 42px;
+  }
+}
+
+@media (display-mode: standalone) {
+  .desktop-nav {
+    padding-top: calc(14px + env(safe-area-inset-top));
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+  .topbar {
+    min-height: calc(60px + env(safe-area-inset-top));
+    padding-top: calc(8px + env(safe-area-inset-top));
+  }
+  .app-content {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
 @media (max-width: 520px) {
