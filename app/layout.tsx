@@ -51,7 +51,10 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {process.env.NODE_ENV === 'development' && (
-          <Script id="team401-dev-service-worker-cleanup" strategy="beforeInteractive">
+          <Script
+            id="team401-dev-service-worker-cleanup"
+            strategy="beforeInteractive"
+          >
             {`(async()=>{try{const registrations=await navigator.serviceWorker?.getRegistrations?.()??[];const hadRegistrations=registrations.length>0;await Promise.all(registrations.map(r=>r.unregister()));const keys=await caches.keys();await Promise.all(keys.filter(k=>k.startsWith('team401-')).map(k=>caches.delete(k)));if(hadRegistrations&&!sessionStorage.getItem('team401-dev-sw-cleaned')){sessionStorage.setItem('team401-dev-sw-cleaned','1');location.reload()}}catch{}})()`}
           </Script>
         )}

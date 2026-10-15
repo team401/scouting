@@ -5,10 +5,7 @@ import Image from 'next/image';
 import QRCode from 'qrcode';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { PendingMutation } from '@/lib/offline-db';
-import {
-  createRelayFrames,
-  ensureRelayDeviceRegistered,
-} from '@/lib/qr-relay';
+import { createRelayFrames, ensureRelayDeviceRegistered } from '@/lib/qr-relay';
 
 export function MatchSubmissionQr({
   mutation,

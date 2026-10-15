@@ -63,7 +63,8 @@ self.addEventListener('activate', (event) => {
           Promise.all(
             keys
               .filter(
-                (key) => key.startsWith('team401-') && !APP_CACHES.includes(key),
+                (key) =>
+                  key.startsWith('team401-') && !APP_CACHES.includes(key),
               )
               .map((key) => caches.delete(key)),
           ),
@@ -115,7 +116,9 @@ self.addEventListener('fetch', (event) => {
     return;
 
   if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request, PAGE_CACHE, ['/', '/offline.html']));
+    event.respondWith(
+      networkFirst(request, PAGE_CACHE, ['/', '/offline.html']),
+    );
     return;
   }
 
@@ -145,9 +148,11 @@ self.addEventListener('message', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-      const existing = clients.find((client) => 'focus' in client);
-      return existing ? existing.focus() : self.clients.openWindow('/');
-    }),
+    self.clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clients) => {
+        const existing = clients.find((client) => 'focus' in client);
+        return existing ? existing.focus() : self.clients.openWindow('/');
+      }),
   );
 });

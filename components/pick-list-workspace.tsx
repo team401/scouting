@@ -319,19 +319,14 @@ export function PickListWorkspace({
     if (list.entries.some((entry) => entry.teamNumber === teamNumber)) return;
     setList({
       ...list,
-      entries: [
-        ...list.entries,
-        { teamNumber, note: '', tier: 'first' },
-      ],
+      entries: [...list.entries, { teamNumber, note: '', tier: 'first' }],
     });
   }
 
   function removeTeam(teamNumber: number) {
     setList({
       ...list,
-      entries: list.entries.filter(
-        (entry) => entry.teamNumber !== teamNumber,
-      ),
+      entries: list.entries.filter((entry) => entry.teamNumber !== teamNumber),
     });
   }
 
@@ -356,15 +351,14 @@ export function PickListWorkspace({
     teamNumber: number,
     reason: 'declined' | 'ineligible',
   ) {
-    const allianceNumber = reason === 'declined' ? nextPick?.allianceNumber : undefined;
+    const allianceNumber =
+      reason === 'declined' ? nextPick?.allianceNumber : undefined;
     if (reason === 'declined' && !allianceNumber) return;
     setOfficial({
       ...official,
       selections:
         reason === 'ineligible'
-          ? official.selections.filter(
-              (item) => item.teamNumber !== teamNumber,
-            )
+          ? official.selections.filter((item) => item.teamNumber !== teamNumber)
           : official.selections,
       unavailable: [
         ...(official.unavailable ?? []).filter(
@@ -604,7 +598,9 @@ export function PickListWorkspace({
                           (entry) => entry.teamNumber === team.teamNumber,
                         ) &&
                         (!builderSearch.trim() ||
-                          String(team.teamNumber).includes(builderSearch.trim()) ||
+                          String(team.teamNumber).includes(
+                            builderSearch.trim(),
+                          ) ||
                           team.name
                             ?.toLowerCase()
                             .includes(builderSearch.trim().toLowerCase())),
@@ -667,9 +663,7 @@ export function PickListWorkspace({
                 }}
               >
                 <div className="border-b border-primary/20 bg-primary/10 p-2 sm:p-3">
-                  <h3 className="font-semibold text-primary">
-                    My Pick List
-                  </h3>
+                  <h3 className="font-semibold text-primary">My Pick List</h3>
                 </div>
                 <div className="min-h-0 flex-1 divide-y overflow-y-auto">
                   {list.entries.length === 0 && (
@@ -721,7 +715,9 @@ export function PickListWorkspace({
                         <div className="min-w-0 space-y-1.5">
                           <div className="flex min-w-0 items-center gap-1.5">
                             <div className="min-w-0 flex-1 leading-tight">
-                              <strong className="text-sm">Team {entry.teamNumber}</strong>
+                              <strong className="text-sm">
+                                Team {entry.teamNumber}
+                              </strong>
                               {team?.name && (
                                 <small className="block truncate text-muted-foreground">
                                   {team.name}
@@ -729,10 +725,20 @@ export function PickListWorkspace({
                               )}
                               {rankingDistribution(entry.teamNumber)}
                             </div>
-                            <Button size="icon-sm" variant="ghost" aria-label={`View stats for team ${entry.teamNumber}`} onClick={() => setStatsTeam(entry.teamNumber)}>
+                            <Button
+                              size="icon-sm"
+                              variant="ghost"
+                              aria-label={`View stats for team ${entry.teamNumber}`}
+                              onClick={() => setStatsTeam(entry.teamNumber)}
+                            >
                               <ChartNoAxesColumn />
                             </Button>
-                            <Button size="icon-sm" variant="ghost" aria-label={`Remove team ${entry.teamNumber}`} onClick={() => removeTeam(entry.teamNumber)}>
+                            <Button
+                              size="icon-sm"
+                              variant="ghost"
+                              aria-label={`Remove team ${entry.teamNumber}`}
+                              onClick={() => removeTeam(entry.teamNumber)}
+                            >
                               <X />
                             </Button>
                           </div>
@@ -743,7 +749,8 @@ export function PickListWorkspace({
                               value={entry.tier}
                               onChange={(event) =>
                                 updateEntry(index, {
-                                  tier: event.target.value as PickListEntry['tier'],
+                                  tier: event.target
+                                    .value as PickListEntry['tier'],
                                 })
                               }
                             >
@@ -756,12 +763,44 @@ export function PickListWorkspace({
                               className="h-8 min-w-0 flex-1 px-2"
                               placeholder="Notes"
                               value={entry.note}
-                              onChange={(event) => updateEntry(index, { note: event.target.value })}
+                              onChange={(event) =>
+                                updateEntry(index, { note: event.target.value })
+                              }
                             />
-                            <Button size="icon-sm" variant="ghost" disabled={index === 0} aria-label="Move team up" onClick={() => setList({ ...list, entries: reorder(list.entries, index, index - 1) })}>
+                            <Button
+                              size="icon-sm"
+                              variant="ghost"
+                              disabled={index === 0}
+                              aria-label="Move team up"
+                              onClick={() =>
+                                setList({
+                                  ...list,
+                                  entries: reorder(
+                                    list.entries,
+                                    index,
+                                    index - 1,
+                                  ),
+                                })
+                              }
+                            >
                               <ArrowUp />
                             </Button>
-                            <Button size="icon-sm" variant="ghost" disabled={index === list.entries.length - 1} aria-label="Move team down" onClick={() => setList({ ...list, entries: reorder(list.entries, index, index + 1) })}>
+                            <Button
+                              size="icon-sm"
+                              variant="ghost"
+                              disabled={index === list.entries.length - 1}
+                              aria-label="Move team down"
+                              onClick={() =>
+                                setList({
+                                  ...list,
+                                  entries: reorder(
+                                    list.entries,
+                                    index,
+                                    index + 1,
+                                  ),
+                                })
+                              }
+                            >
                               <ArrowDown />
                             </Button>
                           </div>
@@ -829,9 +868,11 @@ export function PickListWorkspace({
                       )
                       .map((team) => ({
                         teamNumber: team.teamNumber,
-                        rank: team.eventRank === null || team.eventRank === undefined
-                          ? null
-                          : team.eventRank - 1,
+                        rank:
+                          team.eventRank === null ||
+                          team.eventRank === undefined
+                            ? null
+                            : team.eventRank - 1,
                         note: '',
                         blocked: false,
                       }))
@@ -846,7 +887,8 @@ export function PickListWorkspace({
                           item.teamNumber === team.teamNumber &&
                           (item.reason === 'ineligible' ||
                             (item.reason === 'declined' &&
-                              item.allianceNumber === nextPick?.allianceNumber)),
+                              item.allianceNumber ===
+                                nextPick?.allianceNumber)),
                       ) &&
                       (!selectionSearch.trim() ||
                         String(team.teamNumber).includes(

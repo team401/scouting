@@ -302,9 +302,7 @@ export function TeamComparison({
                         {team.towerLevelCounts.level2} · L3{' '}
                         {team.towerLevelCounts.level3}
                       </td>
-                      <td className="p-2">
-                        {team.disabledMatches}
-                      </td>
+                      <td className="p-2">{team.disabledMatches}</td>
                       <td className="p-2">{team.averageDefense.toFixed(1)}</td>
                       <td className="p-2">±{team.pointStdDev.toFixed(1)}</td>
                       <td className="p-2">
@@ -349,7 +347,9 @@ export function TeamComparison({
                       </small>
                     </span>
                     <span>
-                      <strong>{team.samples}/{team.scheduledMatches}</strong>
+                      <strong>
+                        {team.samples}/{team.scheduledMatches}
+                      </strong>
                       <small className="block text-muted-foreground">
                         Matches scouted
                       </small>

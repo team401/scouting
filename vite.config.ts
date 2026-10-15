@@ -18,7 +18,9 @@ export default defineConfig(async ({ mode }) => {
     main: 'vinext/server/fetch-handler',
     compatibility_date: '2026-05-15',
     compatibility_flags: ['nodejs_compat'],
-    routes: customDomain ? [{ pattern: customDomain, custom_domain: true }] : [],
+    routes: customDomain
+      ? [{ pattern: customDomain, custom_domain: true }]
+      : [],
     vars: {
       FIREBASE_WEB_API_KEY: environment.FIREBASE_WEB_API_KEY ?? '',
       FIREBASE_PROJECT_ID: environment.FIREBASE_PROJECT_ID ?? '',
@@ -33,9 +35,7 @@ export default defineConfig(async ({ mode }) => {
             : 'team401-scouting-local'),
         database_id:
           environment.CLOUDFLARE_D1_DATABASE_ID ??
-          (useRemoteBindings
-            ? STAGING_D1_DATABASE_ID
-            : LOCAL_D1_DATABASE_ID),
+          (useRemoteBindings ? STAGING_D1_DATABASE_ID : LOCAL_D1_DATABASE_ID),
         migrations_dir: 'drizzle',
         remote: useRemoteBindings,
       },
@@ -44,7 +44,8 @@ export default defineConfig(async ({ mode }) => {
       {
         binding: 'FILES',
         bucket_name:
-          environment.CLOUDFLARE_R2_BUCKET_NAME ?? 'team401-scouting-files-local',
+          environment.CLOUDFLARE_R2_BUCKET_NAME ??
+          'team401-scouting-files-local',
       },
     ],
   };

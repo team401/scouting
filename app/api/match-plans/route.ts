@@ -5,7 +5,11 @@ import { auth } from '@/lib/auth';
 const planSchema = z.object({
   matchId: z.string().min(1),
   notes: z.string().max(2000),
-  absentTeams: z.array(z.number().int().positive()).max(6).optional().default([]),
+  absentTeams: z
+    .array(z.number().int().positive())
+    .max(6)
+    .optional()
+    .default([]),
   board: z.object({
     robots: z
       .array(
@@ -29,14 +33,26 @@ const planSchema = z.object({
       .max(100),
   }),
   autoBoard: z.object({
-    robots: z.array(z.object({
-      team: z.number().int().positive(), station: z.string().max(4),
-      alliance: z.enum(['red', 'blue']), x: z.number(), y: z.number(),
-    })).max(6),
-    strokes: z.array(z.object({
-      id: z.string().max(100), color: z.string().max(20),
-      points: z.array(z.object({ x: z.number(), y: z.number() })).max(5000),
-    })).max(100),
+    robots: z
+      .array(
+        z.object({
+          team: z.number().int().positive(),
+          station: z.string().max(4),
+          alliance: z.enum(['red', 'blue']),
+          x: z.number(),
+          y: z.number(),
+        }),
+      )
+      .max(6),
+    strokes: z
+      .array(
+        z.object({
+          id: z.string().max(100),
+          color: z.string().max(20),
+          points: z.array(z.object({ x: z.number(), y: z.number() })).max(5000),
+        }),
+      )
+      .max(100),
   }),
 });
 

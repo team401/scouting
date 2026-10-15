@@ -1,13 +1,7 @@
 'use client';
 
 import { useRef, useState, type ReactNode } from 'react';
-import {
-  Eraser,
-  MousePointer2,
-  Pencil,
-  RotateCcw,
-  Undo2,
-} from 'lucide-react';
+import { Eraser, MousePointer2, Pencil, RotateCcw, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export type BoardPoint = { x: number; y: number };
@@ -219,433 +213,433 @@ export function TacticalBoard({
         {toolbarEnd && <div className="ml-auto shrink-0">{toolbarEnd}</div>}
       </div>
       <div className="tactical-board-viewport">
-      <svg
-        ref={svgRef}
-        viewBox="0 0 1654 800"
-        className="w-full touch-none select-none rounded-xl border bg-slate-800 shadow-inner"
-        style={{ WebkitUserSelect: 'none' }}
-        onDragStart={(event) => event.preventDefault()}
-        onPointerDown={startDraw}
-        onPointerMove={move}
-        onPointerUp={() => {
-          dragRef.current = null;
-        }}
-        onPointerCancel={() => {
-          dragRef.current = null;
-        }}
-        aria-label="Interactive 2026 field strategy board"
-      >
-        <rect width="1654" height="800" fill="#202b31" pointerEvents="none" />
-        <rect
-          x="10"
-          y="10"
-          width="1634"
-          height="780"
-          fill="#3f474b"
-          stroke="#d7e1e5"
-          strokeWidth="5"
-          pointerEvents="none"
-        />
-        {/* 2026 REBUILT field: 651.2 in x 317.7 in, scaled to this viewBox. */}
-        <rect
-          x="12"
-          y="12"
-          width="391"
-          height="776"
-          fill="#991b1b"
-          opacity=".34"
-          pointerEvents="none"
-        />
-        <rect
-          x="1251"
-          y="12"
-          width="391"
-          height="776"
-          fill="#1d4ed8"
-          opacity=".3"
-          pointerEvents="none"
-        />
-        <line
-          x1="403"
-          y1="12"
-          x2="403"
-          y2="788"
-          stroke="#ef4444"
-          strokeWidth="7"
-          pointerEvents="none"
-        />
-        <line
-          x1="1251"
-          y1="12"
-          x2="1251"
-          y2="788"
-          stroke="#3b82f6"
-          strokeWidth="7"
-          pointerEvents="none"
-        />
-        <line
-          x1="827"
-          y1="12"
-          x2="827"
-          y2="788"
-          stroke="#f8fafc"
-          strokeWidth="6"
-          pointerEvents="none"
-        />
-        <g pointerEvents="none">
-          {/* HUBS, centered between the paired BUMPS. */}
+        <svg
+          ref={svgRef}
+          viewBox="0 0 1654 800"
+          className="w-full touch-none select-none rounded-xl border bg-slate-800 shadow-inner"
+          style={{ WebkitUserSelect: 'none' }}
+          onDragStart={(event) => event.preventDefault()}
+          onPointerDown={startDraw}
+          onPointerMove={move}
+          onPointerUp={() => {
+            dragRef.current = null;
+          }}
+          onPointerCancel={() => {
+            dragRef.current = null;
+          }}
+          aria-label="Interactive 2026 field strategy board"
+        >
+          <rect width="1654" height="800" fill="#202b31" pointerEvents="none" />
           <rect
-            x="344"
-            y="341"
-            width="119"
-            height="119"
-            rx="10"
-            fill="#e5e7eb"
-            stroke="#ef4444"
-            strokeWidth="8"
-          />
-          <circle
-            cx="403"
-            cy="400"
-            r="36"
-            fill="#374151"
-            stroke="#f8fafc"
+            x="10"
+            y="10"
+            width="1634"
+            height="780"
+            fill="#3f474b"
+            stroke="#d7e1e5"
             strokeWidth="5"
+            pointerEvents="none"
           />
-          <text
-            x="403"
-            y="408"
-            textAnchor="middle"
-            fill="white"
-            fontSize="20"
-            fontWeight="700"
-          >
-            HUB
-          </text>
+          {/* 2026 REBUILT field: 651.2 in x 317.7 in, scaled to this viewBox. */}
           <rect
-            x="1191"
-            y="341"
-            width="119"
-            height="119"
-            rx="10"
-            fill="#e5e7eb"
-            stroke="#3b82f6"
-            strokeWidth="8"
+            x="12"
+            y="12"
+            width="391"
+            height="776"
+            fill="#991b1b"
+            opacity=".34"
+            pointerEvents="none"
           />
-          <circle
-            cx="1251"
-            cy="400"
-            r="36"
-            fill="#374151"
-            stroke="#f8fafc"
-            strokeWidth="5"
-          />
-          <text
+          <rect
             x="1251"
-            y="408"
-            textAnchor="middle"
-            fill="white"
-            fontSize="20"
-            fontWeight="700"
-          >
-            HUB
-          </text>
-
-          {/* Wall → TRENCH → BUMP → HUB → BUMP → TRENCH → wall. */}
-          {[112, 464].map((y) => (
-            <g key={`red-bump-${y}`}>
-              <rect
-                x="347"
-                y={y}
-                width="113"
-                height={y === 112 ? 225 : 224}
-                rx="8"
-                fill="#b91c1c"
-                stroke="#fca5a5"
-                strokeWidth="4"
-              />
-              <text
-                x="403"
-                y={y + 120}
-                textAnchor="middle"
-                fill="white"
-                fontSize="18"
-                fontWeight="700"
-              >
-                BUMP
-              </text>
-            </g>
-          ))}
-          {[12, 688].map((y) => (
-            <g key={`red-trench-${y}`}>
-              <rect
-                x="364"
-                y={y}
-                width="78"
-                height="100"
-                rx="4"
-                fill="#7f1d1d"
-                stroke="#fca5a5"
-                strokeWidth="4"
-              />
-              <text
-                x="403"
-                y={y + 57}
-                textAnchor="middle"
-                fill="white"
-                fontSize="14"
-                fontWeight="700"
-              >
-                TRENCH
-              </text>
-            </g>
-          ))}
-
-          {[112, 464].map((y) => (
-            <g key={`blue-bump-${y}`}>
-              <rect
-                x="1195"
-                y={y}
-                width="113"
-                height={y === 112 ? 225 : 224}
-                rx="8"
-                fill="#1d4ed8"
-                stroke="#93c5fd"
-                strokeWidth="4"
-              />
-              <text
-                x="1251"
-                y={y + 120}
-                textAnchor="middle"
-                fill="white"
-                fontSize="18"
-                fontWeight="700"
-              >
-                BUMP
-              </text>
-            </g>
-          ))}
-          {[12, 688].map((y) => (
-            <g key={`blue-trench-${y}`}>
-              <rect
-                x="1212"
-                y={y}
-                width="78"
-                height="100"
-                rx="4"
-                fill="#1e3a8a"
-                stroke="#93c5fd"
-                strokeWidth="4"
-              />
-              <text
-                x="1251"
-                y={y + 57}
-                textAnchor="middle"
-                fill="white"
-                fontSize="14"
-                fontWeight="700"
-              >
-                TRENCH
-              </text>
-            </g>
-          ))}
-
-          {/* Alliance-wall game pieces, oriented from the official top view. */}
-          <rect
-            x="12"
-            y="675"
-            width="69"
-            height="106"
-            fill="#f59e0b"
-            stroke="#fde68a"
-            strokeWidth="4"
+            y="12"
+            width="391"
+            height="776"
+            fill="#1d4ed8"
+            opacity=".3"
+            pointerEvents="none"
           />
-          <text
-            x="47"
-            y="735"
-            textAnchor="middle"
-            fill="#111827"
-            fontSize="15"
-            fontWeight="800"
-            transform="rotate(-90 47 735)"
-          >
-            OUTPOST
-          </text>
-          <rect
-            x="12"
-            y="150"
-            width="72"
-            height="100"
-            fill="#fbbf24"
-            stroke="#fef3c7"
-            strokeWidth="4"
+          <line
+            x1="403"
+            y1="12"
+            x2="403"
+            y2="788"
+            stroke="#ef4444"
+            strokeWidth="7"
+            pointerEvents="none"
           />
-          <text
-            x="48"
-            y="208"
-            textAnchor="middle"
-            fill="#111827"
-            fontSize="15"
-            fontWeight="800"
-            transform="rotate(-90 48 208)"
-          >
-            DEPOT
-          </text>
-          <path
-            d="M 12 332 H 98 V 468 H 12 Z M 98 350 L 126 400 L 98 450 Z"
-            fill="#111827"
-            stroke="#e5e7eb"
-            strokeWidth="5"
-            fillRule="evenodd"
+          <line
+            x1="1251"
+            y1="12"
+            x2="1251"
+            y2="788"
+            stroke="#3b82f6"
+            strokeWidth="7"
+            pointerEvents="none"
           />
-          <text
-            x="58"
-            y="407"
-            textAnchor="middle"
-            fill="white"
-            fontSize="16"
-            fontWeight="700"
-            transform="rotate(-90 58 407)"
-          >
-            TOWER
-          </text>
-
-          <rect
-            x="1573"
-            y="19"
-            width="69"
-            height="106"
-            fill="#f59e0b"
-            stroke="#fde68a"
-            strokeWidth="4"
+          <line
+            x1="827"
+            y1="12"
+            x2="827"
+            y2="788"
+            stroke="#f8fafc"
+            strokeWidth="6"
+            pointerEvents="none"
           />
-          <text
-            x="1608"
-            y="80"
-            textAnchor="middle"
-            fill="#111827"
-            fontSize="15"
-            fontWeight="800"
-            transform="rotate(90 1608 80)"
-          >
-            OUTPOST
-          </text>
-          <rect
-            x="1554"
-            y="550"
-            width="88"
-            height="100"
-            fill="#fbbf24"
-            stroke="#fef3c7"
-            strokeWidth="4"
-          />
-          <text
-            x="1598"
-            y="608"
-            textAnchor="middle"
-            fill="#111827"
-            fontSize="15"
-            fontWeight="800"
-            transform="rotate(90 1598 608)"
-          >
-            DEPOT
-          </text>
-          <path
-            d="M 1642 332 H 1556 V 468 H 1642 Z M 1556 350 L 1528 400 L 1556 450 Z"
-            fill="#111827"
-            stroke="#e5e7eb"
-            strokeWidth="5"
-            fillRule="evenodd"
-          />
-          <text
-            x="1596"
-            y="407"
-            textAnchor="middle"
-            fill="white"
-            fontSize="16"
-            fontWeight="700"
-            transform="rotate(90 1596 407)"
-          >
-            TOWER
-          </text>
-        </g>
-        {value.strokes.map((stroke) => {
-          const points = stroke.points.map((p) => `${p.x},${p.y}`).join(' ');
-          return (
-            <g key={stroke.id}>
-              <polyline
-                points={points}
-                fill="none"
-                stroke={stroke.color}
-                strokeWidth="10"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                pointerEvents="none"
-              />
-              <polyline
-                points={points}
-                fill="none"
-                stroke="transparent"
-                strokeWidth="34"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                pointerEvents={
-                  mode === 'erase' && !readOnly ? 'stroke' : 'none'
-                }
-                className={
-                  mode === 'erase' && !readOnly ? 'cursor-pointer' : ''
-                }
-                onPointerDown={(event) => {
-                  if (mode !== 'erase' || readOnly) return;
-                  event.stopPropagation();
-                  onChange({
-                    ...value,
-                    strokes: value.strokes.filter(
-                      (item) => item.id !== stroke.id,
-                    ),
-                  });
-                }}
-              />
-            </g>
-          );
-        })}
-        {value.robots.map((robot) => (
-          <g
-            key={robot.team}
-            transform={`translate(${robot.x} ${robot.y})`}
-            className={readOnly ? '' : 'cursor-grab'}
-            onPointerDown={(event) => {
-              if (readOnly || mode !== 'move') return;
-              event.stopPropagation();
-              dragRef.current = { kind: 'robot', team: robot.team };
-              event.currentTarget.setPointerCapture(event.pointerId);
-            }}
-          >
+          <g pointerEvents="none">
+            {/* HUBS, centered between the paired BUMPS. */}
             <rect
-              x="-48"
-              y="-36"
-              width="96"
-              height="72"
-              rx="12"
-              fill={robot.alliance === 'red' ? '#dc2626' : '#2563eb'}
-              stroke="white"
+              x="344"
+              y="341"
+              width="119"
+              height="119"
+              rx="10"
+              fill="#e5e7eb"
+              stroke="#ef4444"
+              strokeWidth="8"
+            />
+            <circle
+              cx="403"
+              cy="400"
+              r="36"
+              fill="#374151"
+              stroke="#f8fafc"
+              strokeWidth="5"
+            />
+            <text
+              x="403"
+              y="408"
+              textAnchor="middle"
+              fill="white"
+              fontSize="20"
+              fontWeight="700"
+            >
+              HUB
+            </text>
+            <rect
+              x="1191"
+              y="341"
+              width="119"
+              height="119"
+              rx="10"
+              fill="#e5e7eb"
+              stroke="#3b82f6"
+              strokeWidth="8"
+            />
+            <circle
+              cx="1251"
+              cy="400"
+              r="36"
+              fill="#374151"
+              stroke="#f8fafc"
+              strokeWidth="5"
+            />
+            <text
+              x="1251"
+              y="408"
+              textAnchor="middle"
+              fill="white"
+              fontSize="20"
+              fontWeight="700"
+            >
+              HUB
+            </text>
+
+            {/* Wall → TRENCH → BUMP → HUB → BUMP → TRENCH → wall. */}
+            {[112, 464].map((y) => (
+              <g key={`red-bump-${y}`}>
+                <rect
+                  x="347"
+                  y={y}
+                  width="113"
+                  height={y === 112 ? 225 : 224}
+                  rx="8"
+                  fill="#b91c1c"
+                  stroke="#fca5a5"
+                  strokeWidth="4"
+                />
+                <text
+                  x="403"
+                  y={y + 120}
+                  textAnchor="middle"
+                  fill="white"
+                  fontSize="18"
+                  fontWeight="700"
+                >
+                  BUMP
+                </text>
+              </g>
+            ))}
+            {[12, 688].map((y) => (
+              <g key={`red-trench-${y}`}>
+                <rect
+                  x="364"
+                  y={y}
+                  width="78"
+                  height="100"
+                  rx="4"
+                  fill="#7f1d1d"
+                  stroke="#fca5a5"
+                  strokeWidth="4"
+                />
+                <text
+                  x="403"
+                  y={y + 57}
+                  textAnchor="middle"
+                  fill="white"
+                  fontSize="14"
+                  fontWeight="700"
+                >
+                  TRENCH
+                </text>
+              </g>
+            ))}
+
+            {[112, 464].map((y) => (
+              <g key={`blue-bump-${y}`}>
+                <rect
+                  x="1195"
+                  y={y}
+                  width="113"
+                  height={y === 112 ? 225 : 224}
+                  rx="8"
+                  fill="#1d4ed8"
+                  stroke="#93c5fd"
+                  strokeWidth="4"
+                />
+                <text
+                  x="1251"
+                  y={y + 120}
+                  textAnchor="middle"
+                  fill="white"
+                  fontSize="18"
+                  fontWeight="700"
+                >
+                  BUMP
+                </text>
+              </g>
+            ))}
+            {[12, 688].map((y) => (
+              <g key={`blue-trench-${y}`}>
+                <rect
+                  x="1212"
+                  y={y}
+                  width="78"
+                  height="100"
+                  rx="4"
+                  fill="#1e3a8a"
+                  stroke="#93c5fd"
+                  strokeWidth="4"
+                />
+                <text
+                  x="1251"
+                  y={y + 57}
+                  textAnchor="middle"
+                  fill="white"
+                  fontSize="14"
+                  fontWeight="700"
+                >
+                  TRENCH
+                </text>
+              </g>
+            ))}
+
+            {/* Alliance-wall game pieces, oriented from the official top view. */}
+            <rect
+              x="12"
+              y="675"
+              width="69"
+              height="106"
+              fill="#f59e0b"
+              stroke="#fde68a"
               strokeWidth="4"
             />
             <text
-              y="-4"
+              x="47"
+              y="735"
+              textAnchor="middle"
+              fill="#111827"
+              fontSize="15"
+              fontWeight="800"
+              transform="rotate(-90 47 735)"
+            >
+              OUTPOST
+            </text>
+            <rect
+              x="12"
+              y="150"
+              width="72"
+              height="100"
+              fill="#fbbf24"
+              stroke="#fef3c7"
+              strokeWidth="4"
+            />
+            <text
+              x="48"
+              y="208"
+              textAnchor="middle"
+              fill="#111827"
+              fontSize="15"
+              fontWeight="800"
+              transform="rotate(-90 48 208)"
+            >
+              DEPOT
+            </text>
+            <path
+              d="M 12 332 H 98 V 468 H 12 Z M 98 350 L 126 400 L 98 450 Z"
+              fill="#111827"
+              stroke="#e5e7eb"
+              strokeWidth="5"
+              fillRule="evenodd"
+            />
+            <text
+              x="58"
+              y="407"
               textAnchor="middle"
               fill="white"
-              fontSize="25"
+              fontSize="16"
               fontWeight="700"
+              transform="rotate(-90 58 407)"
             >
-              {robot.team}
+              TOWER
             </text>
-            <text y="22" textAnchor="middle" fill="white" fontSize="16">
-              {robot.station}
+
+            <rect
+              x="1573"
+              y="19"
+              width="69"
+              height="106"
+              fill="#f59e0b"
+              stroke="#fde68a"
+              strokeWidth="4"
+            />
+            <text
+              x="1608"
+              y="80"
+              textAnchor="middle"
+              fill="#111827"
+              fontSize="15"
+              fontWeight="800"
+              transform="rotate(90 1608 80)"
+            >
+              OUTPOST
+            </text>
+            <rect
+              x="1554"
+              y="550"
+              width="88"
+              height="100"
+              fill="#fbbf24"
+              stroke="#fef3c7"
+              strokeWidth="4"
+            />
+            <text
+              x="1598"
+              y="608"
+              textAnchor="middle"
+              fill="#111827"
+              fontSize="15"
+              fontWeight="800"
+              transform="rotate(90 1598 608)"
+            >
+              DEPOT
+            </text>
+            <path
+              d="M 1642 332 H 1556 V 468 H 1642 Z M 1556 350 L 1528 400 L 1556 450 Z"
+              fill="#111827"
+              stroke="#e5e7eb"
+              strokeWidth="5"
+              fillRule="evenodd"
+            />
+            <text
+              x="1596"
+              y="407"
+              textAnchor="middle"
+              fill="white"
+              fontSize="16"
+              fontWeight="700"
+              transform="rotate(90 1596 407)"
+            >
+              TOWER
             </text>
           </g>
-        ))}
-      </svg>
+          {value.strokes.map((stroke) => {
+            const points = stroke.points.map((p) => `${p.x},${p.y}`).join(' ');
+            return (
+              <g key={stroke.id}>
+                <polyline
+                  points={points}
+                  fill="none"
+                  stroke={stroke.color}
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  pointerEvents="none"
+                />
+                <polyline
+                  points={points}
+                  fill="none"
+                  stroke="transparent"
+                  strokeWidth="34"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  pointerEvents={
+                    mode === 'erase' && !readOnly ? 'stroke' : 'none'
+                  }
+                  className={
+                    mode === 'erase' && !readOnly ? 'cursor-pointer' : ''
+                  }
+                  onPointerDown={(event) => {
+                    if (mode !== 'erase' || readOnly) return;
+                    event.stopPropagation();
+                    onChange({
+                      ...value,
+                      strokes: value.strokes.filter(
+                        (item) => item.id !== stroke.id,
+                      ),
+                    });
+                  }}
+                />
+              </g>
+            );
+          })}
+          {value.robots.map((robot) => (
+            <g
+              key={robot.team}
+              transform={`translate(${robot.x} ${robot.y})`}
+              className={readOnly ? '' : 'cursor-grab'}
+              onPointerDown={(event) => {
+                if (readOnly || mode !== 'move') return;
+                event.stopPropagation();
+                dragRef.current = { kind: 'robot', team: robot.team };
+                event.currentTarget.setPointerCapture(event.pointerId);
+              }}
+            >
+              <rect
+                x="-48"
+                y="-36"
+                width="96"
+                height="72"
+                rx="12"
+                fill={robot.alliance === 'red' ? '#dc2626' : '#2563eb'}
+                stroke="white"
+                strokeWidth="4"
+              />
+              <text
+                y="-4"
+                textAnchor="middle"
+                fill="white"
+                fontSize="25"
+                fontWeight="700"
+              >
+                {robot.team}
+              </text>
+              <text y="22" textAnchor="middle" fill="white" fontSize="16">
+                {robot.station}
+              </text>
+            </g>
+          ))}
+        </svg>
       </div>
     </div>
   );

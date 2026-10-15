@@ -222,8 +222,8 @@ export default function SignInPage() {
         <CardContent>
           <form className="space-y-4" onSubmit={guestSubmit}>
             <p className="text-sm text-muted-foreground">
-              Scouting with Team 401 temporarily? Enter your name and the
-              shared code provided to your team.
+              Scouting with Team 401 temporarily? Enter your name and the shared
+              code provided to your team.
             </p>
             <div className="space-y-2">
               <Label htmlFor="guest-name">Your name</Label>

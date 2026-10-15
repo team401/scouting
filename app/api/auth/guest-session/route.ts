@@ -20,11 +20,17 @@ export async function POST(request: Request) {
   if (!limit.allowed)
     return Response.json(
       { error: 'Too many guest sign-in attempts. Try again shortly.' },
-      { status: 429, headers: { 'retry-after': String(limit.retryAfter ?? 60) } },
+      {
+        status: 429,
+        headers: { 'retry-after': String(limit.retryAfter ?? 60) },
+      },
     );
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success)
-    return Response.json({ error: 'Enter a valid guest pass.' }, { status: 400 });
+    return Response.json(
+      { error: 'Enter a valid guest pass.' },
+      { status: 400 },
+    );
   const hash = await hashGuestPassCode(parsed.data.code);
   const pass = await env.DB.prepare(
     `SELECT guest_access_passes.id, guest_access_passes.organization_id AS organizationId,

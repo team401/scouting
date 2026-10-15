@@ -44,7 +44,9 @@ export function ServiceWorkerRegister() {
       void navigator.serviceWorker
         ?.getRegistrations()
         .then((registrations) =>
-          Promise.all(registrations.map((registration) => registration.unregister())),
+          Promise.all(
+            registrations.map((registration) => registration.unregister()),
+          ),
         )
         .then(() => caches.keys())
         .then((keys) =>
@@ -55,7 +57,10 @@ export function ServiceWorkerRegister() {
           ),
         )
         .then(() => {
-          if (navigator.serviceWorker?.controller && !sessionStorage.getItem('team401-dev-sw-cleaned')) {
+          if (
+            navigator.serviceWorker?.controller &&
+            !sessionStorage.getItem('team401-dev-sw-cleaned')
+          ) {
             sessionStorage.setItem('team401-dev-sw-cleaned', '1');
             window.location.reload();
           }
@@ -91,7 +96,8 @@ export function PwaInstallButton({ className }: { className?: string }) {
   const [available, setAvailable] = useState(false);
 
   useEffect(() => {
-    const update = () => setAvailable(Boolean(installPrompt) && !isStandalone());
+    const update = () =>
+      setAvailable(Boolean(installPrompt) && !isStandalone());
     update();
     window.addEventListener('team401-install-available', update);
     window.addEventListener('team401-install-changed', update);

@@ -33,7 +33,10 @@ async function getAdmin(request: Request) {
 export async function GET(request: Request) {
   const actor = await getAdmin(request);
   if (!actor)
-    return Response.json({ error: 'Admin access is required.' }, { status: 403 });
+    return Response.json(
+      { error: 'Admin access is required.' },
+      { status: 403 },
+    );
   const rows = await env.DB.prepare(
     `SELECT guest_access_passes.id, guest_access_passes.user_id AS userId,
        users.name, guest_access_passes.expires_at AS expiresAt,
@@ -56,7 +59,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const actor = await getAdmin(request);
   if (!actor)
-    return Response.json({ error: 'Admin access is required.' }, { status: 403 });
+    return Response.json(
+      { error: 'Admin access is required.' },
+      { status: 403 },
+    );
   const parsed = createSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success)
     return Response.json(
@@ -100,7 +106,10 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   const actor = await getAdmin(request);
   if (!actor)
-    return Response.json({ error: 'Admin access is required.' }, { status: 403 });
+    return Response.json(
+      { error: 'Admin access is required.' },
+      { status: 403 },
+    );
   const parsed = revokeSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success)
     return Response.json({ error: 'Invalid guest pass.' }, { status: 400 });
@@ -141,11 +150,7 @@ export async function DELETE(request: Request) {
     env.DB.prepare(
       `UPDATE memberships SET disabled = 1, updated_at = ?
        WHERE organization_id = ? AND user_id LIKE ?`,
-    ).bind(
-      now,
-      actor.membership.organizationId,
-      `guest:${parsed.data.id}:%`,
-    ),
+    ).bind(now, actor.membership.organizationId, `guest:${parsed.data.id}:%`),
     env.DB.prepare(
       'DELETE FROM sessions WHERE user_id = ? OR user_id LIKE ?',
     ).bind(pass.userId, `guest:${parsed.data.id}:%`),

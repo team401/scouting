@@ -75,18 +75,12 @@
       "indexes": {
         "idx_events_org_tba": {
           "name": "idx_events_org_tba",
-          "columns": [
-            "organization_id",
-            "tba_event_key"
-          ],
+          "columns": ["organization_id", "tba_event_key"],
           "isUnique": true
         },
         "idx_events_current": {
           "name": "idx_events_current",
-          "columns": [
-            "organization_id",
-            "is_current"
-          ],
+          "columns": ["organization_id", "is_current"],
           "isUnique": false
         }
       },
@@ -95,12 +89,8 @@
           "name": "events_organization_id_organizations_id_fk",
           "tableFrom": "events",
           "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["organization_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -108,12 +98,8 @@
           "name": "events_season_year_seasons_year_fk",
           "tableFrom": "events",
           "tableTo": "seasons",
-          "columnsFrom": [
-            "season_year"
-          ],
-          "columnsTo": [
-            "year"
-          ],
+          "columnsFrom": ["season_year"],
+          "columnsTo": ["year"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -185,10 +171,7 @@
       "indexes": {
         "idx_plans_match": {
           "name": "idx_plans_match",
-          "columns": [
-            "organization_id",
-            "match_id"
-          ],
+          "columns": ["organization_id", "match_id"],
           "isUnique": false
         }
       },
@@ -197,12 +180,8 @@
           "name": "match_plans_organization_id_organizations_id_fk",
           "tableFrom": "match_plans",
           "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["organization_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -210,12 +189,8 @@
           "name": "match_plans_event_id_events_id_fk",
           "tableFrom": "match_plans",
           "tableTo": "events",
-          "columnsFrom": [
-            "event_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["event_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -223,12 +198,8 @@
           "name": "match_plans_match_id_matches_id_fk",
           "tableFrom": "match_plans",
           "tableTo": "matches",
-          "columnsFrom": [
-            "match_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["match_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -236,12 +207,8 @@
           "name": "match_plans_author_user_id_users_id_fk",
           "tableFrom": "match_plans",
           "tableTo": "users",
-          "columnsFrom": [
-            "author_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["author_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -341,19 +308,12 @@
       "indexes": {
         "idx_matches_org_tba": {
           "name": "idx_matches_org_tba",
-          "columns": [
-            "organization_id",
-            "tba_match_key"
-          ],
+          "columns": ["organization_id", "tba_match_key"],
           "isUnique": true
         },
         "idx_matches_event_order": {
           "name": "idx_matches_event_order",
-          "columns": [
-            "event_id",
-            "comp_level",
-            "match_number"
-          ],
+          "columns": ["event_id", "comp_level", "match_number"],
           "isUnique": false
         }
       },
@@ -362,12 +322,8 @@
           "name": "matches_organization_id_organizations_id_fk",
           "tableFrom": "matches",
           "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["organization_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -375,12 +331,8 @@
           "name": "matches_event_id_events_id_fk",
           "tableFrom": "matches",
           "tableTo": "events",
-          "columnsFrom": [
-            "event_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["event_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -487,10 +439,7 @@
       "indexes": {
         "idx_media_match": {
           "name": "idx_media_match",
-          "columns": [
-            "organization_id",
-            "match_id"
-          ],
+          "columns": ["organization_id", "match_id"],
           "isUnique": false
         }
       },
@@ -499,12 +448,8 @@
           "name": "media_organization_id_organizations_id_fk",
           "tableFrom": "media",
           "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["organization_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -512,12 +457,8 @@
           "name": "media_event_id_events_id_fk",
           "tableFrom": "media",
           "tableTo": "events",
-          "columnsFrom": [
-            "event_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["event_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -525,12 +466,8 @@
           "name": "media_match_id_matches_id_fk",
           "tableFrom": "media",
           "tableTo": "matches",
-          "columnsFrom": [
-            "match_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["match_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -538,12 +475,8 @@
           "name": "media_uploader_user_id_users_id_fk",
           "tableFrom": "media",
           "tableTo": "users",
-          "columnsFrom": [
-            "uploader_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["uploader_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -594,9 +527,7 @@
       "indexes": {
         "idx_memberships_user": {
           "name": "idx_memberships_user",
-          "columns": [
-            "user_id"
-          ],
+          "columns": ["user_id"],
           "isUnique": false
         }
       },
@@ -605,12 +536,8 @@
           "name": "memberships_organization_id_organizations_id_fk",
           "tableFrom": "memberships",
           "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["organization_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -618,22 +545,15 @@
           "name": "memberships_user_id_users_id_fk",
           "tableFrom": "memberships",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "memberships_organization_id_user_id_pk": {
-          "columns": [
-            "organization_id",
-            "user_id"
-          ],
+          "columns": ["organization_id", "user_id"],
           "name": "memberships_organization_id_user_id_pk"
         }
       },
@@ -692,12 +612,8 @@
           "name": "organizations_owner_user_id_users_id_fk",
           "tableFrom": "organizations",
           "tableTo": "users",
-          "columnsFrom": [
-            "owner_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["owner_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -777,10 +693,7 @@
       "indexes": {
         "idx_picklists_event": {
           "name": "idx_picklists_event",
-          "columns": [
-            "organization_id",
-            "event_id"
-          ],
+          "columns": ["organization_id", "event_id"],
           "isUnique": false
         }
       },
@@ -789,12 +702,8 @@
           "name": "pick_lists_organization_id_organizations_id_fk",
           "tableFrom": "pick_lists",
           "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["organization_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -802,12 +711,8 @@
           "name": "pick_lists_event_id_events_id_fk",
           "tableFrom": "pick_lists",
           "tableTo": "events",
-          "columnsFrom": [
-            "event_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["event_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -815,12 +720,8 @@
           "name": "pick_lists_owner_user_id_users_id_fk",
           "tableFrom": "pick_lists",
           "tableTo": "users",
-          "columnsFrom": [
-            "owner_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["owner_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -941,11 +842,7 @@
       "indexes": {
         "idx_pit_team_event": {
           "name": "idx_pit_team_event",
-          "columns": [
-            "organization_id",
-            "event_id",
-            "team_number"
-          ],
+          "columns": ["organization_id", "event_id", "team_number"],
           "isUnique": true
         }
       },
@@ -954,12 +851,8 @@
           "name": "pit_entries_organization_id_organizations_id_fk",
           "tableFrom": "pit_entries",
           "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["organization_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -967,12 +860,8 @@
           "name": "pit_entries_event_id_events_id_fk",
           "tableFrom": "pit_entries",
           "tableTo": "events",
-          "columnsFrom": [
-            "event_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["event_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -980,12 +869,8 @@
           "name": "pit_entries_scout_user_id_users_id_fk",
           "tableFrom": "pit_entries",
           "tableTo": "users",
-          "columnsFrom": [
-            "scout_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["scout_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -993,12 +878,8 @@
           "name": "pit_entries_season_year_seasons_year_fk",
           "tableFrom": "pit_entries",
           "tableTo": "seasons",
-          "columnsFrom": [
-            "season_year"
-          ],
-          "columnsTo": [
-            "year"
-          ],
+          "columnsFrom": ["season_year"],
+          "columnsTo": ["year"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1123,11 +1004,7 @@
         },
         "idx_entries_analysis": {
           "name": "idx_entries_analysis",
-          "columns": [
-            "organization_id",
-            "event_id",
-            "team_number"
-          ],
+          "columns": ["organization_id", "event_id", "team_number"],
           "isUnique": false
         }
       },
@@ -1136,12 +1013,8 @@
           "name": "scout_entries_organization_id_organizations_id_fk",
           "tableFrom": "scout_entries",
           "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["organization_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1149,12 +1022,8 @@
           "name": "scout_entries_event_id_events_id_fk",
           "tableFrom": "scout_entries",
           "tableTo": "events",
-          "columnsFrom": [
-            "event_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["event_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1162,12 +1031,8 @@
           "name": "scout_entries_match_id_matches_id_fk",
           "tableFrom": "scout_entries",
           "tableTo": "matches",
-          "columnsFrom": [
-            "match_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["match_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1175,12 +1040,8 @@
           "name": "scout_entries_scout_user_id_users_id_fk",
           "tableFrom": "scout_entries",
           "tableTo": "users",
-          "columnsFrom": [
-            "scout_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["scout_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1188,12 +1049,8 @@
           "name": "scout_entries_season_year_seasons_year_fk",
           "tableFrom": "scout_entries",
           "tableTo": "seasons",
-          "columnsFrom": [
-            "season_year"
-          ],
-          "columnsTo": [
-            "year"
-          ],
+          "columnsFrom": ["season_year"],
+          "columnsTo": ["year"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1296,9 +1153,7 @@
       "indexes": {
         "idx_users_email": {
           "name": "idx_users_email",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "isUnique": true
         }
       },
