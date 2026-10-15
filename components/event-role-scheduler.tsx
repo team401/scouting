@@ -15,6 +15,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { assignmentClass } from '@/components/event-schedule-board';
+import { getCachedValue, saveCachedValue } from '@/lib/offline-db';
 import {
   eventRoleDescription,
   eventRoles,
@@ -228,16 +229,23 @@ type ScheduleEntry = {
   endsAt: number;
 };
 
+type PersonalSchedule = { items: Assignment[]; shifts: ScoutShift[] };
+
 export function PersonalEventSchedule({
   name,
   scoutShifts,
   previewUserId,
   header,
+  eventKey,
+  userId,
 }: {
   name: string;
   scoutShifts: ScoutShift[];
   // Set by an admin previewing the app as a member: shows that member's schedule.
   previewUserId?: string;
+  // Used with userId to cache this schedule on the device per event.
+  eventKey?: string;
+  userId?: string;
   // Event title and refresh controls, shown above the schedule.
   header?: ReactNode;
 }) {
@@ -251,7 +259,34 @@ export function PersonalEventSchedule({
       : Notification.permission,
   );
 
+  // The schedule is cached per event and user, so it shows at once on return
+  // visits. The server response replaces it when it arrives.
+  const cacheId =
+    eventKey && userId ? `personal-schedule:${eventKey}:${userId}` : null;
+
   useEffect(() => {
+    let cancelled = false;
+    let fresh = false;
+    const apply = (nextItems: Assignment[], nextShifts: ScoutShift[]) => {
+      if (cancelled) return;
+      fresh = true;
+      setItems(nextItems);
+      if (previewUserId) setPreviewShifts(nextShifts);
+      if (cacheId)
+        void saveCachedValue<PersonalSchedule>(cacheId, {
+          items: nextItems,
+          shifts: nextShifts,
+        }).catch(() => undefined);
+    };
+    if (cacheId) {
+      void getCachedValue<PersonalSchedule>(cacheId)
+        .then((cached) => {
+          if (!cached || cancelled || fresh) return;
+          setItems(cached.items);
+          if (previewUserId) setPreviewShifts(cached.shifts);
+        })
+        .catch(() => undefined);
+    }
     if (previewUserId) {
       void Promise.all([
         fetch('/api/event-schedule?all=1'),
@@ -264,25 +299,26 @@ export function PersonalEventSchedule({
         const shiftsBody = (await shiftsResponse.json()) as {
           shifts?: Array<ScoutShift & { scoutUserId: string }>;
         };
-        setItems(
+        apply(
           (rolesBody.assignments ?? []).filter(
             (item) => item.userId === previewUserId,
           ),
-        );
-        setPreviewShifts(
           (shiftsBody.shifts ?? []).filter(
             (shift) => shift.scoutUserId === previewUserId,
           ),
         );
       });
-      return;
+    } else {
+      void fetch('/api/event-schedule').then(async (response) => {
+        if (!response.ok) return;
+        const body = (await response.json()) as { assignments?: Assignment[] };
+        apply(body.assignments ?? [], []);
+      });
     }
-    void fetch('/api/event-schedule').then(async (response) => {
-      if (!response.ok) return;
-      const body = (await response.json()) as { assignments?: Assignment[] };
-      setItems(body.assignments ?? []);
-    });
-  }, [previewUserId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [cacheId, previewUserId]);
 
   useEffect(() => {
     // Reminders are for the signed-in user, not for a previewed member.

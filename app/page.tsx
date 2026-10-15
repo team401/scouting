@@ -2020,6 +2020,8 @@ export default function Home() {
               name={activePreview?.name ?? session.user.name}
               scoutShifts={eventPack?.scoutShifts ?? []}
               previewUserId={activePreview?.id}
+              eventKey={eventPack?.event.key ?? ''}
+              userId={effectiveUserId}
               header={
                 <div className="flex items-start justify-between gap-3">
                   <p className="min-w-0 truncate text-2xl font-semibold">
