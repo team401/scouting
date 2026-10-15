@@ -2138,7 +2138,7 @@ export default function Home() {
               </Card>
             )}
             <div
-              className={`scout-form min-w-0 space-y-4 ${selectedStation.startsWith('blue') ? 'scouting-blue' : 'scouting-red'}`}
+              className="scout-form min-w-0 space-y-4"
               onTouchStart={(event) => {
                 const touch = event.touches[0];
                 scoutSwipeStartRef.current = {
