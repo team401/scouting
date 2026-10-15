@@ -13,7 +13,6 @@ import {
   Minimize2,
   Handshake,
   KeyRound,
-  LayoutDashboard,
   LogOut,
   Map,
   Menu,
@@ -84,7 +83,6 @@ const nav: {
   label: Exclude<View, 'Account' | 'Admin'>;
   icon: typeof ClipboardList;
 }[] = [
-  { label: 'Home', icon: LayoutDashboard },
   { label: 'Scout', icon: ClipboardList },
   { label: 'Pit', icon: Wrench },
   { label: 'Plan', icon: Map },
