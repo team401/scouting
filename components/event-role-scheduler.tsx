@@ -1,6 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -226,11 +232,14 @@ export function PersonalEventSchedule({
   name,
   scoutShifts,
   previewUserId,
+  header,
 }: {
   name: string;
   scoutShifts: ScoutShift[];
   // Set by an admin previewing the app as a member: shows that member's schedule.
   previewUserId?: string;
+  // Event title and refresh controls, shown above the schedule.
+  header?: ReactNode;
 }) {
   const [items, setItems] = useState<Assignment[]>([]);
   const [previewShifts, setPreviewShifts] = useState<ScoutShift[]>([]);
@@ -360,7 +369,10 @@ export function PersonalEventSchedule({
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Event schedule for {name}</CardTitle>
+          {header}
+          <CardTitle className={header ? 'pt-3 text-base' : undefined}>
+            Event schedule for {name}
+          </CardTitle>
           <p className="text-sm text-muted-foreground">
             Tap an underlined role to see what it involves.
           </p>

@@ -2016,40 +2016,42 @@ export default function Home() {
         </header>
         {activeView === 'Home' && (
           <div className="mx-auto grid w-full max-w-3xl gap-4 p-4 sm:p-6">
-            <Card>
-              <CardContent className="flex flex-col justify-between gap-3 p-4 sm:flex-row sm:items-center">
-                <div className="min-w-0">
-                  <p className="truncate font-semibold">
-                    {eventPack?.event.name ?? 'No current event selected'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {eventPack?.event.updatedAt
-                      ? `Updated ${new Date(
-                          eventPack.event.updatedAt,
-                        ).toLocaleTimeString([], {
-                          hour: 'numeric',
-                          minute: '2-digit',
-                        })}`
-                      : isAdmin
-                        ? 'Choose an event from Admin.'
-                        : 'A scouting administrator needs to choose an event.'}
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={!online || packLoading}
-                  onClick={() => void loadEventPack(false, true)}
-                >
-                  <RefreshCw className={packLoading ? 'animate-spin' : ''} />
-                  Refresh
-                </Button>
-              </CardContent>
-            </Card>
             <PersonalEventSchedule
               name={activePreview?.name ?? session.user.name}
               scoutShifts={eventPack?.scoutShifts ?? []}
               previewUserId={activePreview?.id}
+              header={
+                <div className="flex items-start justify-between gap-3">
+                  <p className="min-w-0 truncate text-2xl font-semibold">
+                    {eventPack?.event.name ?? 'No current event selected'}
+                  </p>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!online || packLoading}
+                      onClick={() => void loadEventPack(false, true)}
+                    >
+                      <RefreshCw
+                        className={packLoading ? 'animate-spin' : ''}
+                      />
+                      Refresh
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      {eventPack?.event.updatedAt
+                        ? `Updated ${new Date(
+                            eventPack.event.updatedAt,
+                          ).toLocaleTimeString([], {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}`
+                        : isAdmin
+                          ? 'Choose an event from Admin.'
+                          : 'A scouting administrator needs to choose an event.'}
+                    </p>
+                  </div>
+                </div>
+              }
             />
             {canUsePickLists && (
               <Card>
