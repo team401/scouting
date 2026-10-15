@@ -3196,21 +3196,6 @@ export default function Home() {
               }
             >
               <CardContent className="flex flex-col gap-5">
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    aria-label={
-                      planFullscreen
-                        ? 'Exit full screen'
-                        : 'Open planning board full screen'
-                    }
-                    onClick={() => setPlanFullscreen((value) => !value)}
-                  >
-                    {planFullscreen ? <Minimize2 /> : <Maximize2 />}
-                  </Button>
-                </div>
                 <div className="flex items-center gap-3">
                   <label
                     className="shrink-0 font-semibold"
@@ -3277,6 +3262,21 @@ export default function Home() {
                             : matchPlan.board
                         }
                         readOnly={!planCanEdit}
+                        toolbarEnd={
+                          <Button
+                            type="button"
+                            size="icon-sm"
+                            variant="outline"
+                            aria-label={
+                              planFullscreen
+                                ? 'Exit full screen'
+                                : 'Open planning board full screen'
+                            }
+                            onClick={() => setPlanFullscreen((value) => !value)}
+                          >
+                            {planFullscreen ? <Minimize2 /> : <Maximize2 />}
+                          </Button>
+                        }
                         onChange={(board) =>
                           setMatchPlan(
                             planSection === 'auto'

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import {
   Eraser,
   MousePointer2,
@@ -59,10 +59,13 @@ export function TacticalBoard({
   value,
   onChange,
   readOnly = false,
+  toolbarEnd,
 }: {
   value: TacticalBoardData;
   onChange: (value: TacticalBoardData) => void;
   readOnly?: boolean;
+  // Extra controls shown at the end of the tools row, such as full screen.
+  toolbarEnd?: ReactNode;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<
@@ -213,6 +216,7 @@ export function TacticalBoard({
           <RotateCcw />
           Reset robots
         </Button>
+        {toolbarEnd && <div className="ml-auto shrink-0">{toolbarEnd}</div>}
       </div>
       <div className="tactical-board-viewport">
       <svg
