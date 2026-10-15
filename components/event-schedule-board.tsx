@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   activeCoverageTargets,
   coverageCount,
@@ -145,7 +146,7 @@ function canSchedule(member: Member) {
   return !member.disabled && member.opsRole !== 'coach';
 }
 
-function assignmentClass(label: string) {
+export function assignmentClass(label: string) {
   if (label.startsWith('Red'))
     return 'bg-red-200 text-red-950 dark:bg-red-950 dark:text-red-100';
   if (label.startsWith('Blue'))
@@ -868,34 +869,30 @@ export function EventScheduleBoard({
   return (
     <Card className="mb-4 overflow-hidden">
       <CardContent className="space-y-3 px-0 sm:px-0">
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-3 text-sm">
-          <span className="font-semibold">Event controls</span>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={controls.scoutingEnabled}
-              onChange={(event) =>
-                void changeControls({
-                  ...controls,
-                  scoutingEnabled: event.target.checked,
-                })
-              }
-            />
-            Scouting
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={controls.outreachEnabled}
-              onChange={(event) =>
-                void changeControls({
-                  ...controls,
-                  outreachEnabled: event.target.checked,
-                })
-              }
-            />
-            Outreach
-          </label>
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b px-3 pb-3 text-sm">
+          <span className="font-medium text-muted-foreground">
+            Open for assignment
+          </span>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <label className="flex items-center gap-2">
+              <Checkbox
+                checked={controls.scoutingEnabled}
+                onCheckedChange={(checked) =>
+                  void changeControls({ ...controls, scoutingEnabled: checked })
+                }
+              />
+              Scouting
+            </label>
+            <label className="flex items-center gap-2">
+              <Checkbox
+                checked={controls.outreachEnabled}
+                onCheckedChange={(checked) =>
+                  void changeControls({ ...controls, outreachEnabled: checked })
+                }
+              />
+              Outreach
+            </label>
+          </div>
         </div>
         <div className="grid gap-2 px-3 sm:grid-cols-3">
           <input

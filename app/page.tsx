@@ -2082,7 +2082,7 @@ export default function Home() {
               previewUserId={activePreview?.id}
             />
             {canUsePickLists && (
-              <Card className="border-primary/30 bg-primary/5">
+              <Card>
                 <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className="font-semibold">Build your pick list</h2>

@@ -4,6 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { assignmentClass } from '@/components/event-schedule-board';
+import {
   eventRoleDescription,
   eventRoles,
   type EventRole,
@@ -207,6 +213,14 @@ type ScoutShift = {
   startsAt: number;
   endsAt: number;
 };
+type ScheduleEntry = {
+  id: string;
+  role?: EventRole;
+  label: string;
+  color: string;
+  startsAt: number;
+  endsAt: number;
+};
 
 export function PersonalEventSchedule({
   name,
@@ -304,19 +318,25 @@ export function PersonalEventSchedule({
   const shifts = previewUserId ? previewShifts : scoutShifts;
 
   const scheduleDays = useMemo(() => {
-    const combined = [
+    const combined: ScheduleEntry[] = [
       ...items.map((item) => ({
         id: item.id,
+        role: item.role,
         label: item.role,
+        color: assignmentClass(item.role),
         startsAt: item.startsAt,
         endsAt: item.endsAt,
       })),
-      ...shifts.map((shift) => ({
-        id: shift.id,
-        label: `${shift.station.toUpperCase()} · Scouting`,
-        startsAt: shift.startsAt,
-        endsAt: shift.endsAt,
-      })),
+      ...shifts.map((shift) => {
+        const station = `${shift.station.startsWith('red') ? 'Red' : 'Blue'} ${shift.station.at(-1)}`;
+        return {
+          id: shift.id,
+          label: `Scouting · ${station}`,
+          color: assignmentClass(station),
+          startsAt: shift.startsAt,
+          endsAt: shift.endsAt,
+        };
+      }),
     ].sort((a, b) => a.startsAt - b.startsAt);
     const grouped = new Map<string, typeof combined>();
     for (const item of combined) {
@@ -330,49 +350,89 @@ export function PersonalEventSchedule({
     return [...grouped.entries()];
   }, [items, shifts]);
 
+  const formatTime = (value: number) =>
+    new Date(value).toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Event schedule for {name}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {scheduleDays.map(([day, assignments]) => (
-          <section className="space-y-2" key={day}>
-            <h3 className="pt-2 font-semibold">{day}</h3>
-            {assignments.map((item) => (
-              <div className="schedule-row" key={item.id}>
-                <strong>{item.label}</strong>
-                <span>
-                  {new Date(item.startsAt).toLocaleTimeString([], {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  })}
-                  –
-                  {new Date(item.endsAt).toLocaleTimeString([], {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  })}
-                </span>
-              </div>
-            ))}
-          </section>
-        ))}
-        {!scheduleDays.length && (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Event schedule for {name}</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Nothing is scheduled yet.
+            Tap an underlined role to see what it involves.
           </p>
-        )}
-        {permission === 'default' && (
-          <Button
-            variant="outline"
-            onClick={() =>
-              void Notification.requestPermission().then(setPermission)
-            }
-          >
-            Enable 10- and 5-minute reminders
-          </Button>
-        )}
-      </CardContent>
-    </Card>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          {scheduleDays.map(([day, entries]) => (
+            <section key={day}>
+              <h3 className="pt-4 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase first:pt-0">
+                {day}
+              </h3>
+              <div className="divide-y">
+                {entries.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="flex items-center justify-between gap-3 py-2.5"
+                  >
+                    {entry.role ? (
+                      <Popover>
+                        <PopoverTrigger
+                          className={`rounded-md px-2.5 py-1 text-left text-sm font-semibold underline decoration-dotted underline-offset-4 ${entry.color}`}
+                        >
+                          {entry.label}
+                        </PopoverTrigger>
+                        <PopoverContent align="start" className="max-w-72">
+                          <p className="font-semibold">{entry.role}</p>
+                          <p className="text-muted-foreground">
+                            {eventRoleDescription[entry.role]}
+                          </p>
+                        </PopoverContent>
+                      </Popover>
+                    ) : (
+                      <span
+                        className={`rounded-md px-2.5 py-1 text-sm font-semibold ${entry.color}`}
+                      >
+                        {entry.label}
+                      </span>
+                    )}
+                    <span className="shrink-0 text-sm whitespace-nowrap text-muted-foreground tabular-nums">
+                      {formatTime(entry.startsAt)}–{formatTime(entry.endsAt)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))}
+          {!scheduleDays.length && (
+            <p className="text-sm text-muted-foreground">
+              Nothing is scheduled yet.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+      {permission === 'default' && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-semibold">Get match reminders</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Get a notification 10 and 5 minutes before each of your roles
+                and scouting shifts.
+              </p>
+            </div>
+            <Button
+              onClick={() =>
+                void Notification.requestPermission().then(setPermission)
+              }
+            >
+              Enable 10- and 5-minute reminders
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+    </>
   );
 }
