@@ -31,13 +31,27 @@ export function summarizeEntries(payloads: ScoutingPayload[]) {
     typeof payload.defenseRating === 'number' ? [payload.defenseRating] : [],
   );
   const points = played.map(observedPoints);
+  const towerLevelCounts = {
+    level1: played.reduce(
+      (count, payload) =>
+        count +
+        (payload.autoTower === 'Level 1' ? 1 : 0) +
+        (payload.tower === 'Level 1' ? 1 : 0),
+      0,
+    ),
+    level2: played.filter((payload) => payload.tower === 'Level 2').length,
+    level3: played.filter((payload) => payload.tower === 'Level 3').length,
+  };
+  const disabledMatches = played.filter((payload) => payload.disabled).length;
   const meanPoints = points.length ? points.reduce((sum, value) => sum + value, 0) / points.length : 0;
   return {
     samples: payloads.length,
     medianPoints: median(played.map(observedPoints)),
     medianActiveFuel: median(played.map((payload) => payload.activeFuel)),
     towerSuccessRate: played.length ? played.filter((payload) => payload.tower !== 'None').length / played.length : 0,
-    disabledRate: played.length ? played.filter((payload) => payload.disabled).length / played.length : 0,
+    towerLevelCounts,
+    disabledMatches,
+    disabledRate: played.length ? disabledMatches / played.length : 0,
     averageDefense: defenseRatings.length
       ? defenseRatings.reduce((sum, rating) => sum + rating, 0) /
         defenseRatings.length

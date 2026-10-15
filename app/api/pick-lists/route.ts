@@ -28,6 +28,7 @@ const listSchema = z
         z.object({
           teamNumber: z.number().int().positive(),
           reason: z.enum(['declined', 'ineligible']),
+          allianceNumber: z.number().int().min(1).max(16).optional(),
         }),
       )
       .max(200)
@@ -52,10 +53,15 @@ const listSchema = z
           message: 'An alliance cannot contain more than three teams.',
         });
     }
-    if (data.unavailable.some((team) => selectedTeams.has(team.teamNumber)))
+    if (
+      data.unavailable.some(
+        (team) =>
+          team.reason === 'ineligible' && selectedTeams.has(team.teamNumber),
+      )
+    )
       context.addIssue({
         code: 'custom',
-        message: 'A selected team cannot also be unavailable.',
+        message: 'An ineligible team cannot also be selected.',
       });
   });
 const saveSchema = z.object({

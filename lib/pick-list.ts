@@ -14,6 +14,7 @@ export type AllianceSelection = {
 export type UnavailableTeam = {
   teamNumber: number;
   reason: 'declined' | 'ineligible';
+  allianceNumber?: number;
 };
 
 export type PickListData = {

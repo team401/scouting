@@ -4,21 +4,24 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ArrowDown,
   ArrowUp,
+  ChartNoAxesColumn,
   Download,
   Eye,
   GripVertical,
+  Plus,
   Printer,
-  RotateCcw,
   Search,
   Undo2,
   UserX,
   UserRoundCheck,
   Users,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { TeamStatsDialog } from '@/components/team-stats-dialog';
 import {
   emptyPickList,
   nextAlliancePick,
@@ -29,8 +32,23 @@ import {
 
 type TeamMetric = {
   teamNumber: number;
+  name?: string;
   medianPoints: number;
+  medianActiveFuel?: number;
+  towerSuccessRate?: number;
+  disabledRate?: number;
+  averageDefense?: number;
+  pointStdDev?: number;
+  eventRank?: number | null;
+  wins?: number;
+  losses?: number;
+  ties?: number;
+  samples?: number;
+  coverage?: number;
   xp: number | null;
+  xAuto?: number | null;
+  xTele?: number | null;
+  xEnd?: number | null;
   opr: number | null;
 };
 type PickListsResponse = {
@@ -47,24 +65,6 @@ type PickListsResponse = {
   }>;
   error?: string;
 };
-
-function seededList(
-  teams: TeamMetric[],
-  organizationTeamNumber: number,
-): PickListData {
-  return {
-    entries: [...teams]
-      .filter((team) => team.teamNumber !== organizationTeamNumber)
-      .sort((a, b) => (b.xp ?? b.medianPoints) - (a.xp ?? a.medianPoints))
-      .map((team) => ({
-        teamNumber: team.teamNumber,
-        note: '',
-        tier: 'first' as const,
-      })),
-    selections: [],
-    unavailable: [],
-  };
-}
 
 function reorder(entries: PickListEntry[], from: number, to: number) {
   const next = [...entries];
@@ -97,6 +97,8 @@ export function PickListWorkspace({
   const [saving, setSaving] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [selectionSearch, setSelectionSearch] = useState('');
+  const [builderSearch, setBuilderSearch] = useState('');
+  const [statsTeam, setStatsTeam] = useState<number | null>(null);
   const [selectionListMode, setSelectionListMode] = useState<
     'rankings' | 'picklist'
   >('picklist');
@@ -104,8 +106,9 @@ export function PickListWorkspace({
   const dragIndex = useRef<number | null>(null);
   const lastSavedPersonal = useRef(JSON.stringify(emptyPickList));
   const lastSavedOfficial = useRef(JSON.stringify(emptyPickList));
-  const cacheKey = `pick-lists:${eventKey}:${userId}`;
-  const draftKey = `pick-lists-draft:${eventKey}:${userId}`;
+  // Version these keys so clients do not restore the old generated default list.
+  const cacheKey = `pick-lists-v3:${eventKey}:${userId}`;
+  const draftKey = `pick-lists-draft-v3:${eventKey}:${userId}`;
 
   useEffect(() => {
     let cancelled = false;
@@ -117,9 +120,7 @@ export function PickListWorkspace({
           const data = JSON.parse(cached) as PickListsResponse;
           if (!cancelled) {
             setResponse(data);
-            setPersonal(
-              data.personal ?? seededList(teams, organizationTeamNumber),
-            );
+            setPersonal(data.personal ?? emptyPickList);
             setOfficial(data.official ?? emptyPickList);
           }
         }
@@ -147,8 +148,7 @@ export function PickListWorkspace({
         if (cancelled) return;
         setResponse(data);
         if (!hasDraft) {
-          const nextPersonal =
-            data.personal ?? seededList(teams, organizationTeamNumber);
+          const nextPersonal = data.personal ?? emptyPickList;
           const nextOfficial = data.official ?? emptyPickList;
           setPersonal(nextPersonal);
           setOfficial(nextOfficial);
@@ -232,9 +232,16 @@ export function PickListWorkspace({
   }
 
   useEffect(() => {
-    if (!hydrated || personal.entries.length === 0) return;
+    if (!hydrated) return;
     const serialized = JSON.stringify(personal);
     if (serialized === lastSavedPersonal.current) return;
+    // Do not create a ballot merely because a scout opened the page. An empty
+    // list is saved only when it replaces a previously saved non-empty list.
+    if (
+      personal.entries.length === 0 &&
+      lastSavedPersonal.current === JSON.stringify(emptyPickList)
+    )
+      return;
     const timeout = window.setTimeout(
       () => void save('personal', personal),
       800,
@@ -267,6 +274,26 @@ export function PickListWorkspace({
     });
   }
 
+  function addTeam(teamNumber: number) {
+    if (list.entries.some((entry) => entry.teamNumber === teamNumber)) return;
+    setList({
+      ...list,
+      entries: [
+        ...list.entries,
+        { teamNumber, note: '', tier: 'first' },
+      ],
+    });
+  }
+
+  function removeTeam(teamNumber: number) {
+    setList({
+      ...list,
+      entries: list.entries.filter(
+        (entry) => entry.teamNumber !== teamNumber,
+      ),
+    });
+  }
+
   function markTaken(teamNumber: number) {
     if (official.selections.some((item) => item.teamNumber === teamNumber))
       return;
@@ -288,16 +315,24 @@ export function PickListWorkspace({
     teamNumber: number,
     reason: 'declined' | 'ineligible',
   ) {
+    const allianceNumber = reason === 'declined' ? nextPick?.allianceNumber : undefined;
+    if (reason === 'declined' && !allianceNumber) return;
     setOfficial({
       ...official,
-      selections: official.selections.filter(
-        (item) => item.teamNumber !== teamNumber,
-      ),
+      selections:
+        reason === 'ineligible'
+          ? official.selections.filter(
+              (item) => item.teamNumber !== teamNumber,
+            )
+          : official.selections,
       unavailable: [
         ...(official.unavailable ?? []).filter(
-          (item) => item.teamNumber !== teamNumber,
+          (item) =>
+            item.teamNumber !== teamNumber ||
+            item.reason !== reason ||
+            item.allianceNumber !== allianceNumber,
         ),
-        { teamNumber, reason },
+        { teamNumber, reason, allianceNumber },
       ],
     });
   }
@@ -573,120 +608,200 @@ export function PickListWorkspace({
                   Start from consensus
                 </Button>
               )}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  setList(seededList(teams, organizationTeamNumber))
-                }
-              >
-                <RotateCcw /> Seed from metrics
-              </Button>
               <span className="self-center text-xs text-muted-foreground">
                 {saving ? 'Saving changes…' : 'Changes save automatically'}
               </span>
             </div>
-            <div className="overflow-x-auto rounded-lg border">
-              <div className="min-w-[760px] divide-y">
-                {list.entries.map((entry, index) => {
-                  const team = metrics.get(entry.teamNumber);
-                  const isDoNotPick = entry.tier === 'do-not-pick';
-                  const consensus = response?.consensus.find(
-                    (item) => item.teamNumber === entry.teamNumber,
-                  );
-                  return (
-                    <div
-                      key={entry.teamNumber}
-                      draggable
-                      onDragStart={() => {
-                        dragIndex.current = index;
-                      }}
-                      onDragOver={(event) => event.preventDefault()}
-                      onDrop={() => {
-                        if (dragIndex.current !== null)
-                          setList({
-                            ...list,
-                            entries: reorder(
-                              list.entries,
-                              dragIndex.current,
-                              index,
-                            ),
-                          });
-                        dragIndex.current = null;
-                      }}
-                      className={
-                        isDoNotPick
-                          ? 'grid grid-cols-[36px_54px_90px_80px_80px_120px_1fr] items-center gap-2 bg-destructive/10 p-2 text-destructive'
-                          : 'grid grid-cols-[36px_54px_90px_80px_80px_120px_1fr] items-center gap-2 p-2'
-                      }
-                    >
-                      <GripVertical className="cursor-grab text-muted-foreground" />
-                      <strong>#{index + 1}</strong>
-                      <strong>{entry.teamNumber}</strong>
-                      <span className="text-sm">
-                        xP {team?.xp?.toFixed(1) ?? '—'}
-                      </span>
-                      <span className="text-sm">
-                        OPR {team?.opr?.toFixed(1) ?? '—'}
-                      </span>
-                      <span className="text-sm">
-                        Consensus{' '}
-                        {consensus ? consensus.averageRank.toFixed(1) : '—'}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <select
-                          className="h-9 rounded-md border bg-transparent px-2"
-                          value={isDoNotPick ? 'do-not-pick' : entry.tier}
-                          onChange={(event) =>
-                            updateEntry(index, {
-                              tier: event.target.value as PickListEntry['tier'],
-                            })
-                          }
-                        >
-                          <option value="first">First pick</option>
-                          <option value="second">Second pick</option>
-                          <option value="do-not-pick">Do not pick</option>
-                        </select>
-                        <input
-                          aria-label={`Notes for team ${entry.teamNumber}`}
-                          className="h-9 min-w-40 flex-1 rounded-md border bg-transparent px-2"
-                          placeholder="Notes"
-                          value={entry.note}
-                          onChange={(event) =>
-                            updateEntry(index, { note: event.target.value })
-                          }
-                        />
+            <div className="grid gap-3 lg:grid-cols-[18rem_minmax(0,1fr)]">
+              <section className="flex h-[36rem] min-h-0 flex-col rounded-lg border bg-muted/20 lg:h-[42rem]">
+                <div className="border-b p-3">
+                  <h3 className="font-semibold">Available teams</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Click or drag a team into your list.
+                  </p>
+                  <div className="relative mt-2">
+                    <Search className="pointer-events-none absolute top-2.5 left-3 size-4 text-muted-foreground" />
+                    <Input
+                      className="pl-9"
+                      placeholder="Find a team"
+                      value={builderSearch}
+                      onChange={(event) => setBuilderSearch(event.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="max-h-[38rem] min-h-0 flex-1 divide-y overflow-y-auto">
+                  {teams
+                    .filter(
+                      (team) =>
+                        team.teamNumber !== organizationTeamNumber &&
+                        !list.entries.some(
+                          (entry) => entry.teamNumber === team.teamNumber,
+                        ) &&
+                        (!builderSearch.trim() ||
+                          String(team.teamNumber).includes(builderSearch.trim()) ||
+                          team.name
+                            ?.toLowerCase()
+                            .includes(builderSearch.trim().toLowerCase())),
+                    )
+                    .sort((a, b) => a.teamNumber - b.teamNumber)
+                    .map((team) => (
+                      <div
+                        className="flex items-center gap-2 p-2"
+                        draggable
+                        key={team.teamNumber}
+                        onDragStart={(event) =>
+                          event.dataTransfer.setData(
+                            'text/team-number',
+                            String(team.teamNumber),
+                          )
+                        }
+                      >
+                        <div className="min-w-0 flex-1">
+                          <strong>Team {team.teamNumber}</strong>
+                          {team.name && (
+                            <small className="block truncate text-muted-foreground">
+                              {team.name}
+                            </small>
+                          )}
+                          <small className="block text-muted-foreground">
+                            xP {team.xp?.toFixed(1) ?? '—'} · OPR{' '}
+                            {team.opr?.toFixed(1) ?? '—'}
+                          </small>
+                        </div>
                         <Button
                           size="icon-sm"
                           variant="ghost"
-                          disabled={index === 0}
-                          onClick={() =>
-                            setList({
-                              ...list,
-                              entries: reorder(list.entries, index, index - 1),
-                            })
-                          }
+                          aria-label={`View stats for team ${team.teamNumber}`}
+                          onClick={() => setStatsTeam(team.teamNumber)}
                         >
-                          <ArrowUp />
+                          <ChartNoAxesColumn />
                         </Button>
                         <Button
                           size="icon-sm"
-                          variant="ghost"
-                          disabled={index === list.entries.length - 1}
-                          onClick={() =>
-                            setList({
-                              ...list,
-                              entries: reorder(list.entries, index, index + 1),
-                            })
-                          }
+                          variant="outline"
+                          aria-label={`Add team ${team.teamNumber} to pick list`}
+                          onClick={() => addTeam(team.teamNumber)}
                         >
-                          <ArrowDown />
+                          <Plus />
                         </Button>
                       </div>
-                    </div>
+                    ))}
+                </div>
+              </section>
+
+              <section
+                className="flex h-[36rem] min-h-0 flex-col rounded-lg border lg:h-[42rem]"
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => {
+                  const teamNumber = Number(
+                    event.dataTransfer.getData('text/team-number'),
                   );
-                })}
-              </div>
+                  if (Number.isInteger(teamNumber)) addTeam(teamNumber);
+                }}
+              >
+                <div className="border-b p-3">
+                  <h3 className="font-semibold">
+                    {mode === 'official' ? 'Team ranked pick list' : 'My ranked pick list'}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Highest priority first. Empty lists do not count toward the
+                    team consensus.
+                  </p>
+                </div>
+                <div className="min-h-0 flex-1 divide-y overflow-y-auto">
+                  {list.entries.length === 0 && (
+                    <div className="grid h-full min-h-48 place-items-center p-6 text-center text-sm text-muted-foreground">
+                      Add teams to start building your rankings.
+                    </div>
+                  )}
+                  {list.entries.map((entry, index) => {
+                    const team = metrics.get(entry.teamNumber);
+                    const isDoNotPick = entry.tier === 'do-not-pick';
+                    return (
+                      <div
+                        key={entry.teamNumber}
+                        draggable
+                        onDragStart={() => {
+                          dragIndex.current = index;
+                        }}
+                        onDragOver={(event) => event.preventDefault()}
+                        onDrop={(event) => {
+                          event.stopPropagation();
+                          if (dragIndex.current !== null) {
+                            setList({
+                              ...list,
+                              entries: reorder(
+                                list.entries,
+                                dragIndex.current,
+                                index,
+                              ),
+                            });
+                          } else {
+                            const teamNumber = Number(
+                              event.dataTransfer.getData('text/team-number'),
+                            );
+                            if (Number.isInteger(teamNumber))
+                              addTeam(teamNumber);
+                          }
+                          dragIndex.current = null;
+                        }}
+                        className={
+                          isDoNotPick
+                            ? 'grid gap-2 bg-destructive/10 p-3 text-destructive sm:grid-cols-[auto_auto_1fr] sm:items-center'
+                            : 'grid gap-2 p-3 sm:grid-cols-[auto_auto_1fr] sm:items-center'
+                        }
+                      >
+                        <div className="flex items-center gap-2">
+                          <GripVertical className="cursor-grab text-muted-foreground" />
+                          <strong>#{index + 1}</strong>
+                        </div>
+                        <div className="min-w-28">
+                          <strong>Team {entry.teamNumber}</strong>
+                          {team?.name && (
+                            <small className="block text-muted-foreground">
+                              {team.name}
+                            </small>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button size="sm" variant="outline" onClick={() => setStatsTeam(entry.teamNumber)}>
+                            <ChartNoAxesColumn /> Stats
+                          </Button>
+                          <select
+                            className="h-9 rounded-md border bg-background px-2"
+                            value={entry.tier}
+                            onChange={(event) =>
+                              updateEntry(index, {
+                                tier: event.target.value as PickListEntry['tier'],
+                              })
+                            }
+                          >
+                            <option value="first">First pick</option>
+                            <option value="second">Second pick</option>
+                            <option value="do-not-pick">Do not pick</option>
+                          </select>
+                          <Input
+                            aria-label={`Notes for team ${entry.teamNumber}`}
+                            className="min-w-40 flex-1"
+                            placeholder="Notes"
+                            value={entry.note}
+                            onChange={(event) => updateEntry(index, { note: event.target.value })}
+                          />
+                          <Button size="icon-sm" variant="ghost" disabled={index === 0} aria-label="Move team up" onClick={() => setList({ ...list, entries: reorder(list.entries, index, index - 1) })}>
+                            <ArrowUp />
+                          </Button>
+                          <Button size="icon-sm" variant="ghost" disabled={index === list.entries.length - 1} aria-label="Move team down" onClick={() => setList({ ...list, entries: reorder(list.entries, index, index + 1) })}>
+                            <ArrowDown />
+                          </Button>
+                          <Button size="icon-sm" variant="ghost" aria-label={`Remove team ${entry.teamNumber}`} onClick={() => removeTeam(entry.teamNumber)}>
+                            <X />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
             </div>
           </>
         )}
@@ -739,11 +854,15 @@ export function PickListWorkspace({
                   : [...teams]
                       .sort(
                         (a, b) =>
-                          (b.xp ?? b.medianPoints) - (a.xp ?? a.medianPoints),
+                          (a.eventRank ?? Number.POSITIVE_INFINITY) -
+                            (b.eventRank ?? Number.POSITIVE_INFINITY) ||
+                          a.teamNumber - b.teamNumber,
                       )
-                      .map((team, rank) => ({
+                      .map((team) => ({
                         teamNumber: team.teamNumber,
-                        rank,
+                        rank: team.eventRank === null || team.eventRank === undefined
+                          ? null
+                          : team.eventRank - 1,
                         note: '',
                         blocked: false,
                       }))
@@ -754,7 +873,11 @@ export function PickListWorkspace({
                         (item) => item.teamNumber === team.teamNumber,
                       ) &&
                       !(official.unavailable ?? []).some(
-                        (item) => item.teamNumber === team.teamNumber,
+                        (item) =>
+                          item.teamNumber === team.teamNumber &&
+                          (item.reason === 'ineligible' ||
+                            (item.reason === 'declined' &&
+                              item.allianceNumber === nextPick?.allianceNumber)),
                       ) &&
                       (!selectionSearch.trim() ||
                         String(team.teamNumber).includes(
@@ -774,7 +897,7 @@ export function PickListWorkspace({
                       key={team.teamNumber}
                     >
                       <span className="text-right text-xs text-muted-foreground">
-                        {team.rank + 1}
+                        {team.rank === null ? '—' : team.rank + 1}
                       </span>
                       <div className="min-w-0">
                         <strong>{team.teamNumber}</strong>
@@ -786,6 +909,14 @@ export function PickListWorkspace({
                         </small>
                       </div>
                       <div className="flex gap-1">
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
+                          aria-label={`View stats for team ${team.teamNumber}`}
+                          onClick={() => setStatsTeam(team.teamNumber)}
+                        >
+                          <ChartNoAxesColumn />
+                        </Button>
                         <Button
                           size="sm"
                           disabled={team.blocked}
@@ -826,7 +957,7 @@ export function PickListWorkspace({
                 </div>
               </div>
 
-              <div className="grid flex-1 content-between gap-3 md:grid-cols-2">
+              <div className="grid content-start gap-2 md:grid-cols-2">
                 {Array.from({ length: 8 }, (_, alliance) => alliance + 1).map(
                   (alliance) => {
                     const selections = official.selections.filter(
@@ -896,7 +1027,7 @@ export function PickListWorkspace({
 
               <div className="rounded-lg border border-dashed p-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <strong>Declined pool</strong>
+                  <strong>Declined invitations</strong>
                   {(official.unavailable ?? []).filter(
                     (item) => item.reason === 'declined',
                   ).length === 0 && (
@@ -908,19 +1039,23 @@ export function PickListWorkspace({
                     .filter((item) => item.reason === 'declined')
                     .map((item) => (
                       <Button
-                        key={item.teamNumber}
+                        key={`${item.teamNumber}:${item.allianceNumber ?? 'legacy'}`}
                         size="sm"
                         variant="outline"
                         onClick={() =>
                           setOfficial({
                             ...official,
                             unavailable: official.unavailable?.filter(
-                              (team) => team.teamNumber !== item.teamNumber,
+                              (team) => team !== item,
                             ),
                           })
                         }
                       >
-                        {item.teamNumber} · restore
+                        Team {item.teamNumber}
+                        {item.allianceNumber
+                          ? ` declined Alliance ${item.allianceNumber}`
+                          : ' declined'}{' '}
+                        · undo
                       </Button>
                     ))}
                 </div>
@@ -931,6 +1066,15 @@ export function PickListWorkspace({
         {message && (
           <output className="text-sm text-muted-foreground">{message}</output>
         )}
+        <TeamStatsDialog
+          teamNumber={statsTeam}
+          teamName={statsTeam ? metrics.get(statsTeam)?.name : undefined}
+          summary={statsTeam ? metrics.get(statsTeam) : undefined}
+          eventSummaries={teams}
+          onOpenChange={(open) => {
+            if (!open) setStatsTeam(null);
+          }}
+        />
       </CardContent>
     </Card>
   );

@@ -40,6 +40,7 @@ import {
 import { PickListWorkspace } from '@/components/pick-list-workspace';
 import { MatchVideoLibrary } from '@/components/match-video-library';
 import { TeamComparison } from '@/components/team-comparison';
+import { TeamStatsDialog } from '@/components/team-stats-dialog';
 import { TeamTrendChart, type TeamTrend } from '@/components/team-trend-chart';
 import { ScoutingOperations } from '@/components/scouting-operations';
 import { ShiftScheduler } from '@/components/shift-scheduler';
@@ -203,6 +204,26 @@ function displaySelections(value: unknown, fallback = 'Unknown') {
   return typeof value === 'string' && value ? value : fallback;
 }
 
+function ordinal(value: number) {
+  const mod100 = value % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${value}th`;
+  return `${value}${['th', 'st', 'nd', 'rd'][Math.min(value % 10, 4)] ?? 'th'}`;
+}
+
+function eventMetricRank(
+  teams: TeamAnalysis[],
+  teamNumber: number | null,
+  key: 'xp' | 'xAuto' | 'xTele' | 'xEnd' | 'opr',
+) {
+  if (!teamNumber) return null;
+  const ranked = teams.filter((team) => typeof team[key] === 'number');
+  const selected = ranked.find((team) => team.teamNumber === teamNumber)?.[key];
+  if (typeof selected !== 'number') return null;
+  const rank =
+    ranked.filter((team) => (team[key] as number) > selected).length + 1;
+  return `${ordinal(rank)} of ${ranked.length}`;
+}
+
 function toggleSelection(
   selections: string[],
   value: string,
@@ -271,6 +292,9 @@ type MatchDraft = ScoutingPayload;
 type TeamAnalysis = {
   teamNumber: number;
   xp: number | null;
+  xAuto: number | null;
+  xTele: number | null;
+  xEnd: number | null;
   opr: number | null;
   eventRank: number | null;
   matchesPlayed: number;
@@ -283,6 +307,8 @@ type TeamAnalysis = {
   medianPoints: number;
   medianActiveFuel: number;
   towerSuccessRate: number;
+  towerLevelCounts: { level1: number; level2: number; level3: number };
+  disabledMatches: number;
   disabledRate: number;
   averageDefense: number;
   pointStdDev: number;
@@ -512,6 +538,7 @@ export default function Home() {
   const [analysis, setAnalysis] = useState<TeamAnalysis | null>(null);
   const [assignmentMessage, setAssignmentMessage] = useState('');
   const [strategyTeams, setStrategyTeams] = useState<TeamAnalysis[]>([]);
+  const [strategyLoading, setStrategyLoading] = useState(false);
   const [adminMessage, setAdminMessage] = useState('');
   const [memberPendingRemoval, setMemberPendingRemoval] = useState<{
     id: string;
@@ -562,6 +589,7 @@ export default function Home() {
   const [planAuthor, setPlanAuthor] = useState('');
   const [planUpdatedAt, setPlanUpdatedAt] = useState<number | null>(null);
   const [planStats, setPlanStats] = useState<TeamAnalysis[]>([]);
+  const [planStatsTeam, setPlanStatsTeam] = useState<number | null>(null);
   const [planSection, setPlanSection] = useState<'auto' | 'teleop' | 'metrics'>(
     'auto',
   );
@@ -877,25 +905,41 @@ export default function Home() {
   }, [activeView, online, selectedTeam]);
 
   useEffect(() => {
-    if (
-      !['Plan', 'Data', 'Alliance'].includes(activeView) ||
-      (activeView !== 'Data' && !canUseStrategy) ||
-      !online ||
-      !session
-    )
-      return;
-    fetch('/api/strategy')
-      .then(async (response) => {
-        const result = (await response.json()) as {
-          teams?: TeamAnalysis[];
-          error?: string;
-        };
-        if (!response.ok)
-          throw new Error(result.error ?? 'Strategy data unavailable.');
-        setStrategyTeams(result.teams ?? []);
-      })
-      .catch(() => setStrategyTeams([]));
-  }, [activeView, online, session]);
+    if (!eventPack || !session) return;
+    if (!['Home', 'Plan', 'Data', 'Alliance'].includes(activeView)) return;
+    let cancelled = false;
+    const cacheId = `strategy-teams:${eventPack.event.id}`;
+    setStrategyLoading(true);
+    void (async () => {
+      const cached = await getCachedValue<TeamAnalysis[]>(cacheId);
+      if (cancelled) return;
+      if (cached?.length) setStrategyTeams(cached);
+      if (!online) {
+        setStrategyLoading(false);
+        return;
+      }
+      try {
+        const response = await fetch('/api/strategy');
+          const result = (await response.json()) as {
+            teams?: TeamAnalysis[];
+            error?: string;
+          };
+          if (!response.ok)
+            throw new Error(result.error ?? 'Strategy data unavailable.');
+          const teams = result.teams ?? [];
+          if (cancelled) return;
+          setStrategyTeams(teams);
+          await saveCachedValue(cacheId, teams);
+      } catch {
+        // Keep the last successful event-specific cache on transient failure.
+      } finally {
+        if (!cancelled) setStrategyLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeView, eventPack?.event.id, online, session]);
 
   useEffect(() => {
     if (!eventPack) return;
@@ -2139,6 +2183,30 @@ export default function Home() {
                   )}
               </CardContent>
             </Card>
+            {canUsePickLists && (
+              <Card className="border-primary/30 bg-primary/5">
+                <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="font-semibold">Build your pick list</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Rank the teams you have watched, rate potential picks,
+                      and add notes so your observations can inform our pick
+                      list building.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    className="shrink-0"
+                    onClick={() => {
+                      setTeamsSection('picklist');
+                      navigate('Data');
+                    }}
+                  >
+                    <ClipboardList /> Open my pick list
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
             {reopenedEntries.length > 0 && (
               <Card className="border-amber-400">
                 <CardHeader>
@@ -3433,10 +3501,10 @@ export default function Home() {
                           </span>
                           <span>
                             <strong>
-                              {Math.round((stats?.disabledRate ?? 0) * 100)}%
+                              {stats?.disabledMatches ?? 0}
                             </strong>
                             <small className="block text-muted-foreground">
-                              disabled
+                              disabled matches
                             </small>
                           </span>
                         </div>
@@ -3491,22 +3559,17 @@ export default function Home() {
                           )}
                         </div>
                         <p className="mt-2 text-xs text-muted-foreground">
-                          {stats?.samples ?? 0} scouting samples ·{' '}
-                          {Math.round((stats?.coverage ?? 0) * 100)}% coverage
+                          {stats?.samples ?? 0}/{stats?.scheduledMatches ?? 0}{' '}
+                          matches scouted
                         </p>
                         <Button
                           type="button"
                           size="sm"
                           variant="outline"
                           className="mt-3 w-full bg-background/70"
-                          onClick={() => {
-                            setSelectedTeam(team);
-                            setTeamsSection('analysis');
-                            navigate('Data');
-                          }}
+                          onClick={() => setPlanStatsTeam(team)}
                         >
-                          View team {team}
-                          <ChevronRight />
+                          View stats for team {team}
                         </Button>
                       </div>
                     ))}
@@ -3516,6 +3579,22 @@ export default function Home() {
             </Card>
           </div>
         )}
+        <TeamStatsDialog
+          teamNumber={planStatsTeam}
+          teamName={
+            eventPack?.teams.find((team) => team.teamNumber === planStatsTeam)
+              ?.name
+          }
+          summary={
+            planStatsTeam
+              ? planStats.find((team) => team.teamNumber === planStatsTeam)
+              : undefined
+          }
+          eventSummaries={planStats}
+          onOpenChange={(open) => {
+            if (!open) setPlanStatsTeam(null);
+          }}
+        />
         {activeView === 'Admin' && isAdmin && (
           <div className="section-tabs flex gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
             <Button
@@ -3762,7 +3841,12 @@ export default function Home() {
             <div className="p-4 sm:p-6">
               {eventPack && (
                 <PickListWorkspace
-                  teams={strategyTeams}
+                  teams={strategyTeams.map((team) => ({
+                    ...team,
+                    name: eventPack.teams.find(
+                      (item) => item.teamNumber === team.teamNumber,
+                    )?.name,
+                  }))}
                   eventKey={eventPack.event.key}
                   organizationTeamNumber={organizationTeamNumber}
                   userId={eventPack.userId}
@@ -3825,15 +3909,26 @@ export default function Home() {
         )}
         {activeView === 'Alliance' && canUseStrategy && (
           <div className="p-2 sm:p-4">
-            {eventPack && (
+            {strategyLoading && strategyTeams.length === 0 ? (
+              <Card>
+                <CardContent className="p-6 text-center text-sm text-muted-foreground">
+                  Loading event teams and rankings…
+                </CardContent>
+              </Card>
+            ) : eventPack ? (
               <PickListWorkspace
-                teams={strategyTeams}
+                teams={strategyTeams.map((team) => ({
+                  ...team,
+                  name: eventPack.teams.find(
+                    (item) => item.teamNumber === team.teamNumber,
+                  )?.name,
+                }))}
                 eventKey={eventPack.event.key}
                 organizationTeamNumber={organizationTeamNumber}
                 userId={eventPack.userId}
                 initialMode="selection"
               />
-            )}
+            ) : null}
           </div>
         )}
         {activeView === 'Data' && teamsSection === 'analysis' && (
@@ -3883,9 +3978,8 @@ export default function Home() {
                 <div className="strategy-table">
                   <strong>Rank</strong>
                   <strong>Team</strong>
-                  <strong>Samples</strong>
                   <strong>Median pts</strong>
-                  <strong>Coverage</strong>
+                  <strong>Matches scouted</strong>
                   {[...strategyTeams]
                     .sort((a, b) => {
                       if (rankingSort === 'team')
@@ -3911,9 +4005,10 @@ export default function Home() {
                             ? ` — ${eventPack.teams.find((item) => item.teamNumber === team.teamNumber)?.name}`
                             : ''}
                         </span>
-                        <span>{team.samples}</span>
                         <span>{team.medianPoints.toFixed(1)}</span>
-                        <span>{Math.round(team.coverage * 100)}%</span>
+                        <span>
+                          {team.samples}/{team.scheduledMatches}
+                        </span>
                       </button>
                     ))}
                 </div>
@@ -3927,7 +4022,8 @@ export default function Home() {
                     : 'Select a team above'}
                 </CardTitle>
                 <Badge variant="outline">
-                  {analysis?.samples ?? 0} samples
+                  {analysis?.samples ?? 0}/{analysis?.scheduledMatches ?? 0}{' '}
+                  matches scouted
                 </Badge>
               </CardHeader>
               <CardContent>
@@ -3959,26 +4055,41 @@ export default function Home() {
               </CardHeader>
               <CardContent className="mini-stats">
                 <span>
-                  <strong>{selectedStrategyTeam?.eventRank ?? '—'}</strong>{' '}
-                  event rank
-                </span>
-                <span>
-                  <strong>
-                    {selectedStrategyTeam
-                      ? `${selectedStrategyTeam.wins}-${selectedStrategyTeam.losses}-${selectedStrategyTeam.ties}`
-                      : '—'}
-                  </strong>{' '}
-                  TBA record
-                </span>
-                <span>
                   <strong>
                     {selectedStrategyTeam?.opr?.toFixed(1) ?? '—'}
                   </strong>{' '}
                   TBA OPR
+                  {eventMetricRank(strategyTeams, selectedTeam, 'opr')
+                    ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'opr')}`
+                    : ''}
                 </span>
                 <span>
                   <strong>{selectedStrategyTeam?.xp?.toFixed(1) ?? '—'}</strong>{' '}
-                  Match13 xP
+                  Match13 total xP
+                  {eventMetricRank(strategyTeams, selectedTeam, 'xp')
+                    ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xp')}`
+                    : ''}
+                </span>
+                <span>
+                  <strong>{selectedStrategyTeam?.xAuto?.toFixed(1) ?? '—'}</strong>{' '}
+                  auto xP
+                  {eventMetricRank(strategyTeams, selectedTeam, 'xAuto')
+                    ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xAuto')}`
+                    : ''}
+                </span>
+                <span>
+                  <strong>{selectedStrategyTeam?.xTele?.toFixed(1) ?? '—'}</strong>{' '}
+                  teleop xP
+                  {eventMetricRank(strategyTeams, selectedTeam, 'xTele')
+                    ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xTele')}`
+                    : ''}
+                </span>
+                <span>
+                  <strong>{selectedStrategyTeam?.xEnd?.toFixed(1) ?? '—'}</strong>{' '}
+                  endgame xP
+                  {eventMetricRank(strategyTeams, selectedTeam, 'xEnd')
+                    ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xEnd')}`
+                    : ''}
                 </span>
               </CardContent>
             </Card>
@@ -3989,21 +4100,23 @@ export default function Home() {
               <CardContent className="mini-stats">
                 <span>
                   <strong>
-                    {Math.round((analysis?.towerSuccessRate ?? 0) * 100)}%
+                    L1 {analysis?.towerLevelCounts.level1 ?? 0} · L2{' '}
+                    {analysis?.towerLevelCounts.level2 ?? 0} · L3{' '}
+                    {analysis?.towerLevelCounts.level3 ?? 0}
                   </strong>{' '}
-                  tower success
+                  tower successes
                 </span>
                 <span>
                   <strong>
-                    {Math.round((analysis?.disabledRate ?? 0) * 100)}%
+                    {analysis?.disabledMatches ?? 0}
                   </strong>{' '}
-                  disabled rate
+                  disabled matches
                 </span>
                 <span>
                   <strong>
-                    {Math.round((analysis?.coverage ?? 0) * 100)}%
+                    {analysis?.samples ?? 0}/{analysis?.scheduledMatches ?? 0}
                   </strong>{' '}
-                  data coverage
+                  matches scouted
                 </span>
                 <span>
                   <strong>{analysis?.scheduledMatches ?? 0}</strong> scheduled

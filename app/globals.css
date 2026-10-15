@@ -517,7 +517,7 @@ select option {
 .strategy-table {
   display: grid;
   grid-template-columns: minmax(56px, 0.7fr) minmax(64px, 1fr) repeat(
-      3,
+      2,
       minmax(76px, 1fr)
     );
   min-width: 500px;
