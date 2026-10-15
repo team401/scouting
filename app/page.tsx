@@ -525,7 +525,6 @@ export default function Home() {
   const [eventKey, setEventKey] = useState('');
   const [eventMessage, setEventMessage] = useState('');
   const [configuringEvent, setConfiguringEvent] = useState(false);
-  const [eventYear, setEventYear] = useState(2026);
   const [eventChoices, setEventChoices] = useState<TbaEventChoice[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventPack, setEventPack] = useState<EventPack | null>(null);
@@ -970,7 +969,7 @@ export default function Home() {
     if (activeView !== 'Admin' || !isAdmin || !online) return;
     setEventsLoading(true);
     setEventMessage('');
-    fetch(`/api/tba-events?year=${eventYear}`)
+    fetch('/api/tba-events')
       .then(async (response) => {
         const result = (await response.json()) as {
           events?: TbaEventChoice[];
@@ -989,7 +988,7 @@ export default function Home() {
         );
       })
       .finally(() => setEventsLoading(false));
-  }, [activeView, eventYear, isAdmin, online]);
+  }, [activeView, isAdmin, online]);
 
   useEffect(() => {
     if (activeView !== 'Account' || !session || !online) return;
@@ -4249,48 +4248,38 @@ export default function Home() {
                 <CardTitle>Current event</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Choose one of Team 401&apos;s registered events from The Blue
-                  Alliance. Its schedule will be cached on every device.
-                </p>
-                <div className="grid gap-2 sm:grid-cols-[8rem_1fr_auto]">
-                  <Input
-                    aria-label="FRC season"
-                    type="number"
-                    min="1992"
-                    max="2100"
-                    value={eventYear}
-                    onChange={(event) =>
-                      setEventYear(Number(event.target.value))
-                    }
-                  />
-                  <select
-                    aria-label="Team 401 event"
-                    className="h-10 rounded-md border bg-transparent px-3"
-                    value={eventKey}
-                    onChange={(event) => setEventKey(event.target.value)}
-                    disabled={eventsLoading}
-                  >
-                    <option value="">
-                      {eventsLoading
-                        ? 'Loading Team 401 events…'
-                        : 'Select an event'}
-                    </option>
-                    {eventChoices.map((event) => (
-                      <option value={event.key} key={event.key}>
-                        {event.name}
-                        {event.date ? ` · ${event.date}` : ''}
-                        {event.location ? ` · ${event.location}` : ''}
+                <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                  <label className="grid min-w-0 gap-1 text-sm font-medium">
+                    Event
+                    <select
+                      aria-label="Team 401 event"
+                      className="h-10 w-full min-w-0 max-w-full truncate rounded-md border bg-background px-3"
+                      value={eventKey}
+                      onChange={(event) => setEventKey(event.target.value)}
+                      disabled={eventsLoading}
+                    >
+                      <option value="">
+                        {eventsLoading
+                          ? 'Loading events…'
+                          : 'Select an event'}
                       </option>
-                    ))}
-                  </select>
+                      {eventChoices.map((event) => (
+                        <option value={event.key} key={event.key}>
+                          {event.name}
+                          {event.date ? ` · ${event.date}` : ''}
+                          {event.location ? ` · ${event.location}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <Button
+                    className="w-full sm:w-auto"
                     disabled={
                       configuringEvent || !online || !session || !eventKey
                     }
                     onClick={configureEvent}
                   >
-                    {configuringEvent ? 'Loading…' : 'Load event pack'}
+                    {configuringEvent ? 'Loading event…' : 'Use this event'}
                   </Button>
                 </div>
                 {eventMessage && (
@@ -4309,12 +4298,6 @@ export default function Home() {
                 </Badge>
               </CardHeader>
               <CardContent className="space-y-1">
-                <p className="pb-3 text-sm text-muted-foreground">
-                  Accounts and passwords come from Team 401 Ops. Scouting roles
-                  and scouting access are managed here. A successful Team 401
-                  sign-in syncs the full Ops roster, including users who have
-                  never signed in themselves.
-                </p>
                 <div className="grid gap-2 pb-3 sm:grid-cols-[1fr_10rem]">
                   <Input
                     value={memberSearch}
@@ -4601,13 +4584,19 @@ export default function Home() {
             role="dialog"
             aria-label="Navigation and account menu"
           >
-            <div className="mobile-menu-account">
+            <button
+              type="button"
+              className="mobile-menu-account"
+              aria-current={activeView === 'Account' ? 'page' : undefined}
+              onClick={() => navigate('Account')}
+            >
               <CircleUserRound />
               <div>
                 <strong>{session.user.name}</strong>
                 <span>{online ? 'Online' : 'Offline ready'}</span>
               </div>
-            </div>
+              <ChevronRight aria-hidden="true" />
+            </button>
             <div className="mobile-menu-links">
               {visibleNav.map(({ label, icon: Icon }) => (
                 <button
@@ -4630,14 +4619,6 @@ export default function Home() {
                   <span>Admin</span>
                 </button>
               )}
-              <button
-                type="button"
-                aria-current={activeView === 'Account' ? 'page' : undefined}
-                onClick={() => navigate('Account')}
-              >
-                <CircleUserRound />
-                <span>Account</span>
-              </button>
             </div>
             <button
               type="button"

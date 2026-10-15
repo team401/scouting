@@ -669,11 +669,14 @@ select option {
   }
   .mobile-more-menu button {
     display: flex;
+    width: 100%;
     min-height: 44px;
     align-items: center;
+    justify-content: flex-start;
     gap: 10px;
     border-radius: 9px;
     padding: 0 12px;
+    cursor: pointer;
     text-align: left;
   }
   .mobile-more-menu button:hover {
@@ -695,6 +698,11 @@ select option {
   }
   .mobile-menu-account > svg {
     width: 22px;
+  }
+  .mobile-menu-account > svg:last-child {
+    width: 16px;
+    margin-left: auto;
+    color: var(--muted-foreground);
   }
   .mobile-menu-account div {
     display: grid;

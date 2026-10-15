@@ -6,15 +6,12 @@ import {
   ArrowUp,
   ChartNoAxesColumn,
   Download,
-  Eye,
   GripVertical,
   Plus,
   Printer,
   Search,
   Undo2,
   UserX,
-  UserRoundCheck,
-  Users,
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -94,7 +91,6 @@ export function PickListWorkspace({
   const [personal, setPersonal] = useState<PickListData>(emptyPickList);
   const [official, setOfficial] = useState<PickListData>(emptyPickList);
   const [message, setMessage] = useState('');
-  const [saving, setSaving] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [selectionSearch, setSelectionSearch] = useState('');
   const [builderSearch, setBuilderSearch] = useState('');
@@ -186,7 +182,6 @@ export function PickListWorkspace({
   );
 
   async function save(target: 'personal' | 'official', data: PickListData) {
-    setSaving(true);
     setMessage('');
     try {
       const result = await fetch('/api/pick-lists', {
@@ -215,19 +210,13 @@ export function PickListWorkspace({
       }
       setResponse(next);
       localStorage.setItem(cacheKey, JSON.stringify(next));
-      setMessage(
-        target === 'official'
-          ? `Team pick list saved automatically at ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`
-          : `Pick list saved automatically at ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`,
-      );
+      setMessage('');
     } catch (error) {
       setMessage(
         error instanceof Error
           ? error.message
           : 'Unable to save the pick list.',
       );
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -388,34 +377,24 @@ export function PickListWorkspace({
   }
 
   return (
-    <Card className="pick-list-print sm:col-span-2">
-      <CardHeader>
-        <div>
-          <CardTitle>
-            {standaloneSelection ? 'Alliance selection' : 'Pick lists'}
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            {standaloneSelection
-              ? 'Run the live draft using the team pick list and event rankings.'
-              : response?.canEditOfficial
-                ? 'Build your own list, review scout lists, and maintain the team list used for alliance selection.'
-                : 'Rank teams and keep notes on your own pick list.'}
-          </p>
-        </div>
-        {response?.canEditOfficial && !standaloneSelection && (
-          <Badge variant="outline">{response.ballotCount} scout lists</Badge>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <Card className="pick-list-print sm:col-span-2 max-md:gap-2 max-md:py-2">
+      {standaloneSelection && (
+        <CardHeader>
+          <CardTitle>Alliance selection</CardTitle>
+        </CardHeader>
+      )}
+      <CardContent className="space-y-4 max-md:px-2">
         {!standaloneSelection && (
           <div className="pick-list-controls flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              variant={mode === 'personal' ? 'default' : 'outline'}
-              onClick={() => setMode('personal')}
-            >
-              <UserRoundCheck /> My pick list
-            </Button>
+            {response?.canEditOfficial && (
+              <Button
+                size="sm"
+                variant={mode === 'personal' ? 'default' : 'outline'}
+                onClick={() => setMode('personal')}
+              >
+                My pick list
+              </Button>
+            )}
             {response?.canEditOfficial && (
               <>
                 <Button
@@ -428,14 +407,14 @@ export function PickListWorkspace({
                     setMode('review');
                   }}
                 >
-                  <Eye /> Review scout lists
+                  Review scout lists
                 </Button>
                 <Button
                   size="sm"
                   variant={mode === 'official' ? 'default' : 'outline'}
                   onClick={() => setMode('official')}
                 >
-                  <Users /> Team pick list
+                  Team pick list
                 </Button>
               </>
             )}
@@ -588,8 +567,8 @@ export function PickListWorkspace({
 
         {mode !== 'selection' && mode !== 'review' && (
           <>
-            <div className="flex flex-wrap gap-2">
-              {mode === 'official' && (
+            {mode === 'official' && (
+              <div className="flex flex-wrap gap-2">
                 <Button
                   size="sm"
                   variant="outline"
@@ -607,22 +586,16 @@ export function PickListWorkspace({
                 >
                   Start from consensus
                 </Button>
-              )}
-              <span className="self-center text-xs text-muted-foreground">
-                {saving ? 'Saving changes…' : 'Changes save automatically'}
-              </span>
-            </div>
-            <div className="grid gap-3 lg:grid-cols-[18rem_minmax(0,1fr)]">
-              <section className="flex h-[36rem] min-h-0 flex-col rounded-lg border bg-muted/20 lg:h-[42rem]">
-                <div className="border-b p-3">
-                  <h3 className="font-semibold">Available teams</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Click or drag a team into your list.
-                  </p>
-                  <div className="relative mt-2">
-                    <Search className="pointer-events-none absolute top-2.5 left-3 size-4 text-muted-foreground" />
+              </div>
+            )}
+            <div className="grid h-[calc(100dvh-11rem)] min-h-[26rem] grid-rows-[minmax(0,2fr)_minmax(0,3fr)] gap-2 lg:h-auto lg:min-h-0 lg:grid-cols-[18rem_minmax(0,1fr)] lg:grid-rows-none lg:gap-3">
+              <section className="flex h-full min-h-0 flex-col rounded-lg border border-l-4 border-l-muted-foreground/35 bg-muted/20 lg:h-[42rem]">
+                <div className="border-b bg-muted/60 p-2 sm:p-3">
+                  <h3 className="font-semibold">Available Teams</h3>
+                  <div className="relative mt-1.5">
+                    <Search className="pointer-events-none absolute top-2 left-3 size-4 text-muted-foreground sm:top-2.5" />
                     <Input
-                      className="pl-9"
+                      className="h-8 pl-9 sm:h-9"
                       placeholder="Find a team"
                       value={builderSearch}
                       onChange={(event) => setBuilderSearch(event.target.value)}
@@ -690,7 +663,7 @@ export function PickListWorkspace({
               </section>
 
               <section
-                className="flex h-[36rem] min-h-0 flex-col rounded-lg border lg:h-[42rem]"
+                className="flex h-full min-h-0 flex-col rounded-lg border border-primary/40 border-l-4 border-l-primary bg-primary/[0.025] lg:h-[42rem]"
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={(event) => {
                   const teamNumber = Number(
@@ -699,14 +672,10 @@ export function PickListWorkspace({
                   if (Number.isInteger(teamNumber)) addTeam(teamNumber);
                 }}
               >
-                <div className="border-b p-3">
-                  <h3 className="font-semibold">
-                    {mode === 'official' ? 'Team ranked pick list' : 'My ranked pick list'}
+                <div className="border-b border-primary/20 bg-primary/10 p-2 sm:p-3">
+                  <h3 className="font-semibold text-primary">
+                    My Pick List
                   </h3>
-                  <p className="text-xs text-muted-foreground">
-                    Highest priority first. Empty lists do not count toward the
-                    team consensus.
-                  </p>
                 </div>
                 <div className="min-h-0 flex-1 divide-y overflow-y-auto">
                   {list.entries.length === 0 && (
@@ -747,55 +716,60 @@ export function PickListWorkspace({
                         }}
                         className={
                           isDoNotPick
-                            ? 'grid gap-2 bg-destructive/10 p-3 text-destructive sm:grid-cols-[auto_auto_1fr] sm:items-center'
-                            : 'grid gap-2 p-3 sm:grid-cols-[auto_auto_1fr] sm:items-center'
+                            ? 'grid grid-cols-[auto_minmax(0,1fr)] gap-2 bg-destructive/10 p-2 text-destructive'
+                            : 'grid grid-cols-[auto_minmax(0,1fr)] gap-2 p-2'
                         }
                       >
-                        <div className="flex items-center gap-2">
-                          <GripVertical className="cursor-grab text-muted-foreground" />
-                          <strong>#{index + 1}</strong>
+                        <div className="flex items-start gap-1 pt-1">
+                          <GripVertical className="size-4 cursor-grab text-muted-foreground" />
+                          <strong className="text-sm">#{index + 1}</strong>
                         </div>
-                        <div className="min-w-28">
-                          <strong>Team {entry.teamNumber}</strong>
-                          {team?.name && (
-                            <small className="block text-muted-foreground">
-                              {team.name}
-                            </small>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Button size="sm" variant="outline" onClick={() => setStatsTeam(entry.teamNumber)}>
-                            <ChartNoAxesColumn /> Stats
-                          </Button>
-                          <select
-                            className="h-9 rounded-md border bg-background px-2"
-                            value={entry.tier}
-                            onChange={(event) =>
-                              updateEntry(index, {
-                                tier: event.target.value as PickListEntry['tier'],
-                              })
-                            }
-                          >
-                            <option value="first">First pick</option>
-                            <option value="second">Second pick</option>
-                            <option value="do-not-pick">Do not pick</option>
-                          </select>
-                          <Input
-                            aria-label={`Notes for team ${entry.teamNumber}`}
-                            className="min-w-40 flex-1"
-                            placeholder="Notes"
-                            value={entry.note}
-                            onChange={(event) => updateEntry(index, { note: event.target.value })}
-                          />
-                          <Button size="icon-sm" variant="ghost" disabled={index === 0} aria-label="Move team up" onClick={() => setList({ ...list, entries: reorder(list.entries, index, index - 1) })}>
-                            <ArrowUp />
-                          </Button>
-                          <Button size="icon-sm" variant="ghost" disabled={index === list.entries.length - 1} aria-label="Move team down" onClick={() => setList({ ...list, entries: reorder(list.entries, index, index + 1) })}>
-                            <ArrowDown />
-                          </Button>
-                          <Button size="icon-sm" variant="ghost" aria-label={`Remove team ${entry.teamNumber}`} onClick={() => removeTeam(entry.teamNumber)}>
-                            <X />
-                          </Button>
+                        <div className="min-w-0 space-y-1.5">
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <div className="min-w-0 flex-1 leading-tight">
+                              <strong className="text-sm">Team {entry.teamNumber}</strong>
+                              {team?.name && (
+                                <small className="block truncate text-muted-foreground">
+                                  {team.name}
+                                </small>
+                              )}
+                            </div>
+                            <Button size="icon-sm" variant="ghost" aria-label={`View stats for team ${entry.teamNumber}`} onClick={() => setStatsTeam(entry.teamNumber)}>
+                              <ChartNoAxesColumn />
+                            </Button>
+                            <Button size="icon-sm" variant="ghost" aria-label={`Remove team ${entry.teamNumber}`} onClick={() => removeTeam(entry.teamNumber)}>
+                              <X />
+                            </Button>
+                          </div>
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <select
+                              aria-label={`Pick tier for team ${entry.teamNumber}`}
+                              className="h-8 w-[7.25rem] shrink-0 rounded-md border bg-background px-2 text-sm"
+                              value={entry.tier}
+                              onChange={(event) =>
+                                updateEntry(index, {
+                                  tier: event.target.value as PickListEntry['tier'],
+                                })
+                              }
+                            >
+                              <option value="first">First pick</option>
+                              <option value="second">Second pick</option>
+                              <option value="do-not-pick">Do not pick</option>
+                            </select>
+                            <Input
+                              aria-label={`Notes for team ${entry.teamNumber}`}
+                              className="h-8 min-w-0 flex-1 px-2"
+                              placeholder="Notes"
+                              value={entry.note}
+                              onChange={(event) => updateEntry(index, { note: event.target.value })}
+                            />
+                            <Button size="icon-sm" variant="ghost" disabled={index === 0} aria-label="Move team up" onClick={() => setList({ ...list, entries: reorder(list.entries, index, index - 1) })}>
+                              <ArrowUp />
+                            </Button>
+                            <Button size="icon-sm" variant="ghost" disabled={index === list.entries.length - 1} aria-label="Move team down" onClick={() => setList({ ...list, entries: reorder(list.entries, index, index + 1) })}>
+                              <ArrowDown />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -951,9 +925,6 @@ export function PickListWorkspace({
                   >
                     <Undo2 /> Undo
                   </Button>
-                  <span className="self-center text-xs text-muted-foreground">
-                    {saving ? 'Saving changes…' : 'Changes save automatically'}
-                  </span>
                 </div>
               </div>
 
