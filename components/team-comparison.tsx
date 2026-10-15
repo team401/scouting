@@ -24,9 +24,12 @@ export type ComparisonTeam = {
   opr: number | null;
   samples: number;
   coverage: number;
+  scheduledMatches: number;
   medianPoints: number;
   medianActiveFuel: number;
   towerSuccessRate: number;
+  towerLevelCounts: { level1: number; level2: number; level3: number };
+  disabledMatches: number;
   disabledRate: number;
   averageDefense: number;
   pointStdDev: number;
@@ -281,7 +284,7 @@ export function TeamComparison({
                     <th className="p-2">Disabled</th>
                     <th className="p-2">Defense</th>
                     <th className="p-2">Consistency</th>
-                    <th className="p-2">Coverage</th>
+                    <th className="p-2">Matches scouted</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -295,15 +298,17 @@ export function TeamComparison({
                       <td className="p-2">{formatNumber(team.opr)}</td>
                       <td className="p-2">{team.medianPoints.toFixed(1)}</td>
                       <td className="p-2">
-                        {Math.round(team.towerSuccessRate * 100)}%
+                        L1 {team.towerLevelCounts.level1} · L2{' '}
+                        {team.towerLevelCounts.level2} · L3{' '}
+                        {team.towerLevelCounts.level3}
                       </td>
                       <td className="p-2">
-                        {Math.round(team.disabledRate * 100)}%
+                        {team.disabledMatches}
                       </td>
                       <td className="p-2">{team.averageDefense.toFixed(1)}</td>
                       <td className="p-2">±{team.pointStdDev.toFixed(1)}</td>
                       <td className="p-2">
-                        {Math.round(team.coverage * 100)}% ({team.samples})
+                        {team.samples}/{team.scheduledMatches}
                       </td>
                     </tr>
                   ))}
@@ -338,15 +343,15 @@ export function TeamComparison({
                       </small>
                     </span>
                     <span>
-                      <strong>{Math.round(team.disabledRate * 100)}%</strong>
+                      <strong>{team.disabledMatches}</strong>
                       <small className="block text-muted-foreground">
                         Disabled
                       </small>
                     </span>
                     <span>
-                      <strong>{Math.round(team.coverage * 100)}%</strong>
+                      <strong>{team.samples}/{team.scheduledMatches}</strong>
                       <small className="block text-muted-foreground">
-                        Coverage ({team.samples})
+                        Matches scouted
                       </small>
                     </span>
                   </div>

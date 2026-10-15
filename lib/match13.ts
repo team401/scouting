@@ -7,6 +7,9 @@ export type Match13EventTeams = {
     teamNumber?: number;
     xpEnd?: number | null;
     xpMean?: number | null;
+    xAuto?: number | null;
+    xTele?: number | null;
+    xEnd?: number | null;
   }>;
 };
 

@@ -1,12 +1,36 @@
 'use client';
-import { useEffect } from 'react';
+
+import { useEffect, useState } from 'react';
+import { Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { ensureRelayDeviceRegistered } from '@/lib/qr-relay';
 
+type InstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+};
+
+let installPrompt: InstallPromptEvent | null = null;
+
+function isStandalone() {
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    ('standalone' in navigator &&
+      (navigator as Navigator & { standalone?: boolean }).standalone === true)
+  );
+}
+
 async function prepareOfflineSupport() {
+  if ('storage' in navigator && 'persist' in navigator.storage)
+    await navigator.storage.persist().catch(() => false);
   if ('serviceWorker' in navigator) {
-    await navigator.serviceWorker.register('/sw.js');
-    const registration = await navigator.serviceWorker.ready;
+    const registration = await navigator.serviceWorker.register('/sw.js', {
+      scope: '/',
+      updateViaCache: 'none',
+    });
+    await navigator.serviceWorker.ready;
     registration.active?.postMessage({ type: 'CACHE_OFFLINE_SHELL' });
+    if (navigator.onLine) await registration.update();
   }
   if (navigator.onLine) await ensureRelayDeviceRegistered(true);
 }
@@ -14,9 +38,60 @@ async function prepareOfflineSupport() {
 export function ServiceWorkerRegister() {
   useEffect(() => {
     const prepare = () => void prepareOfflineSupport().catch(() => undefined);
+    const captureInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      installPrompt = event as InstallPromptEvent;
+      window.dispatchEvent(new Event('team401-install-available'));
+    };
+    const installed = () => {
+      installPrompt = null;
+      window.dispatchEvent(new Event('team401-install-changed'));
+    };
+
     prepare();
     window.addEventListener('online', prepare);
-    return () => window.removeEventListener('online', prepare);
+    window.addEventListener('beforeinstallprompt', captureInstallPrompt);
+    window.addEventListener('appinstalled', installed);
+    return () => {
+      window.removeEventListener('online', prepare);
+      window.removeEventListener('beforeinstallprompt', captureInstallPrompt);
+      window.removeEventListener('appinstalled', installed);
+    };
   }, []);
   return null;
+}
+
+export function PwaInstallButton({ className }: { className?: string }) {
+  const [available, setAvailable] = useState(false);
+
+  useEffect(() => {
+    const update = () => setAvailable(Boolean(installPrompt) && !isStandalone());
+    update();
+    window.addEventListener('team401-install-available', update);
+    window.addEventListener('team401-install-changed', update);
+    return () => {
+      window.removeEventListener('team401-install-available', update);
+      window.removeEventListener('team401-install-changed', update);
+    };
+  }, []);
+
+  if (!available) return null;
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      className={className}
+      onClick={async () => {
+        const prompt = installPrompt;
+        if (!prompt) return;
+        await prompt.prompt();
+        await prompt.userChoice;
+        installPrompt = null;
+        setAvailable(false);
+      }}
+    >
+      <Download />
+      Install app
+    </Button>
+  );
 }

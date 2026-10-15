@@ -90,6 +90,10 @@ export async function GET(request: Request) {
     }
   >();
   const xps = new Map<number, number>();
+  const phaseXps = new Map<
+    number,
+    { xAuto: number | null; xTele: number | null; xEnd: number | null }
+  >();
   if (event) {
     const [tbaResult, rankingsResult, match13Result] = await Promise.allSettled(
       [
@@ -139,7 +143,14 @@ export async function GET(request: Request) {
     if (match13Result.status === 'fulfilled' && match13Result.value) {
       for (const row of match13Result.value.teams ?? []) {
         const xp = finiteNumber(row.xpEnd) ?? finiteNumber(row.xpMean);
-        if (row.teamNumber && xp !== null) xps.set(row.teamNumber, xp);
+        if (row.teamNumber) {
+          if (xp !== null) xps.set(row.teamNumber, xp);
+          phaseXps.set(row.teamNumber, {
+            xAuto: finiteNumber(row.xAuto),
+            xTele: finiteNumber(row.xTele),
+            xEnd: finiteNumber(row.xEnd),
+          });
+        }
       }
     }
   }
@@ -155,6 +166,9 @@ export async function GET(request: Request) {
       return {
         teamNumber,
         xp: xps.get(teamNumber) ?? null,
+        xAuto: phaseXps.get(teamNumber)?.xAuto ?? null,
+        xTele: phaseXps.get(teamNumber)?.xTele ?? null,
+        xEnd: phaseXps.get(teamNumber)?.xEnd ?? null,
         opr: finiteNumber(oprs[`frc${teamNumber}`]),
         eventRank: rankings.get(teamNumber)?.eventRank ?? null,
         matchesPlayed: rankings.get(teamNumber)?.matchesPlayed ?? 0,
