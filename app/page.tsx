@@ -3517,11 +3517,53 @@ export default function Home() {
           isAdmin &&
           adminSection === 'assignments' && (
             <div className="p-4 sm:p-6">
+              <Card className="mb-4">
+                <CardContent className="space-y-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <label className="flex min-w-0 flex-1 items-center gap-3 text-sm font-medium">
+                      Event
+                      <select
+                        aria-label="Team 401 event"
+                        className="h-10 min-w-0 flex-1 truncate rounded-md border bg-background px-3"
+                        value={eventKey}
+                        onChange={(event) => setEventKey(event.target.value)}
+                        disabled={eventsLoading}
+                      >
+                        <option value="">
+                          {eventsLoading
+                            ? 'Loading events…'
+                            : 'Select an event'}
+                        </option>
+                        {eventChoices.map((event) => (
+                          <option value={event.key} key={event.key}>
+                            {event.name}
+                            {event.date ? ` · ${event.date}` : ''}
+                            {event.location ? ` · ${event.location}` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <Button
+                      className="w-full sm:w-auto"
+                      disabled={
+                        configuringEvent || !online || !session || !eventKey
+                      }
+                      onClick={configureEvent}
+                    >
+                      {configuringEvent ? 'Loading event…' : 'Use this event'}
+                    </Button>
+                  </div>
+                  {eventMessage && (
+                    <p className="text-sm text-muted-foreground" role="status">
+                      {eventMessage}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
               <EventScheduleBoard
                 members={eventPack?.members ?? []}
                 onChanged={() => loadEventPack(false, true)}
               />
-              <ScoutingOperations mode="coverage" />
             </div>
           )}
         {activeView === 'Data' && (
@@ -3960,50 +4002,6 @@ export default function Home() {
         )}
         {activeView === 'Admin' && isAdmin && adminSection === 'settings' && (
           <div className="grid gap-4 p-4 sm:p-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Current event</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                  <label className="grid min-w-0 gap-1 text-sm font-medium">
-                    Event
-                    <select
-                      aria-label="Team 401 event"
-                      className="h-10 w-full min-w-0 max-w-full truncate rounded-md border bg-background px-3"
-                      value={eventKey}
-                      onChange={(event) => setEventKey(event.target.value)}
-                      disabled={eventsLoading}
-                    >
-                      <option value="">
-                        {eventsLoading ? 'Loading events…' : 'Select an event'}
-                      </option>
-                      {eventChoices.map((event) => (
-                        <option value={event.key} key={event.key}>
-                          {event.name}
-                          {event.date ? ` · ${event.date}` : ''}
-                          {event.location ? ` · ${event.location}` : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <Button
-                    className="w-full sm:w-auto"
-                    disabled={
-                      configuringEvent || !online || !session || !eventKey
-                    }
-                    onClick={configureEvent}
-                  >
-                    {configuringEvent ? 'Loading event…' : 'Use this event'}
-                  </Button>
-                </div>
-                {eventMessage && (
-                  <p className="text-sm text-muted-foreground" role="status">
-                    {eventMessage}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
             <GuestPassManager />
             <Card>
               <CardHeader>
