@@ -69,3 +69,26 @@ Options (from web research; sources in the summary reply):
 4. **Two renditions.** Keep the original in R2 for archive, and create a 720p proxy for review and downloads at competitions. Uploading the proxy first gets clips to the team quickly on weak venue Wi-Fi.
 
 Recommended direction: lower the recording bitrate now (option 1), add a 720p proxy with an original fallback (option 4), and evaluate WebCodecs transcoding on real devices before committing to it (option 2). Competition network numbers (upload speed, number of clips per day) would decide between these.
+
+## Round 2: controls, coverage, and shift columns
+
+Commits: `660b700` (controls and gating), `6993c79` (board).
+
+### What changed
+
+- **Event controls.** Migration `drizzle/0025_event_controls.sql` adds `events.scouting_enabled` and `events.outreach_enabled` (default on). `GET`/`PUT /api/event-controls` read for members and write for owners and admins. Board toggles save immediately and roll back on failure.
+- **Gating.** Scouting gates the station options (Red/Blue 1–3) and the Scouting and Scouting Lead roles. Outreach gates Pit Outreach. Pit Scouting is not gated (assumption; see below). Both the dropdowns and the API (`event-schedule` POST, `scout-shifts` POST) enforce it. Turning a control off does not delete existing assignments.
+- **Columns.** Person width = longest name (plus 8 ch for the Guest badge). Time columns are sized to the longest enabled option. The single Assigned column is now Assigned scouting shifts, Assigned pit shifts, and Total roles (sticky right).
+- **Coverage footer.** Per displayed hour: Pit Crew 2, Pit Lead 1, Pit Programmer 1, Red scouts 3, Blue scouts 3, Scouting Lead 1, Pit Outreach 1, Team Media 1. Shortfalls are amber with `have/need` text, not errors. Scouting and outreach rows disappear when their control is off.
+- **Guests.** Guest passes create real users with a `guest:` ID and a scout membership, so they already appear in the roster. The board marks them with a Guest badge and sorts them after members.
+
+### Verification
+
+- `npm run typecheck`: pass. `oxlint` on changed files: 0 errors. `oxfmt --check` on changed files: pass.
+- `npm test`: 36/36 pass (29 existing plus 7 in `tests/event-coverage.test.ts`, covering gating, toggle-dependent targets, per-station counts, and shift summaries).
+- Not verified: the SQL migration on the staging D1, the API responses against real data, the layout in a browser, and the paste/arrow behavior from round 1 (still pending).
+
+### Assumptions to confirm
+
+- Pit Scouting is not gated by the scouting control.
+- Guest attendance is per person: each guest pass sign-in creates a separate user. A partner team that wants pre-planned blue shifts before its people sign in would need a placeholder row, which is not built.
