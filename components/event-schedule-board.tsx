@@ -11,6 +11,7 @@ import {
   type EventControls,
 } from '@/lib/event-coverage';
 import { eventRoles, type EventRole } from '@/lib/event-roles';
+import { getCachedValue, saveCachedValue } from '@/lib/offline-db';
 
 const stations = ['red1', 'red2', 'red3', 'blue1', 'blue2', 'blue3'] as const;
 type Station = (typeof stations)[number];
@@ -46,6 +47,16 @@ type ScheduleItem = {
   kind: 'role' | 'scouting';
 };
 type ScheduleDay = { date: string; startHour: number; endHour: number };
+type ScheduleCache = {
+  roles: RoleItem[];
+  scouting: ScoutItem[];
+  days: ScheduleDay[];
+  attendeeIds: string[];
+};
+
+function scheduleCacheId(eventKey: string) {
+  return `event-schedule-board:${eventKey}`;
+}
 
 function dateInputValue(value: number) {
   const date = new Date(value);
@@ -374,9 +385,11 @@ function ScheduleRoleInput({
 
 export function EventScheduleBoard({
   members,
+  eventKey,
   onChanged,
 }: {
   members: Member[];
+  eventKey: string;
   onChanged: () => void | Promise<void>;
 }) {
   const [date, setDate] = useState(() => dateInputValue(Date.now()));
@@ -390,6 +403,7 @@ export function EventScheduleBoard({
   const [attendeeIds, setAttendeeIds] = useState<Set<string>>(new Set());
   const [attendanceLoaded, setAttendanceLoaded] = useState(false);
   const attendanceDirtyRef = useRef(false);
+  const freshLoadedRef = useRef(false);
   const [controls, setControls] = useState<EventControls>({
     scoutingEnabled: true,
     outreachEnabled: true,
@@ -480,18 +494,12 @@ export function EventScheduleBoard({
     const loadedShifts = shiftsBody.shifts ?? [];
     setRoles(loadedRoles);
     setScouting(loadedShifts);
-    if (!attendanceDirtyRef.current)
-      setAttendeeIds(
-        new Set(
-          attendanceBody.configured
-            ? (attendanceBody.userIds ?? []).filter((id) =>
-                members.some(
-                  (member) => member.id === id && canSchedule(member),
-                ),
-              )
-            : [],
-        ),
-      );
+    const loadedAttendeeIds = attendanceBody.configured
+      ? (attendanceBody.userIds ?? []).filter((id) =>
+          members.some((member) => member.id === id && canSchedule(member)),
+        )
+      : [];
+    if (!attendanceDirtyRef.current) setAttendeeIds(new Set(loadedAttendeeIds));
     setAttendanceLoaded(true);
     const configuredDays = daysBody.days ?? [];
     const days = configuredDays.length
@@ -504,7 +512,44 @@ export function EventScheduleBoard({
       setStartHour(selected.startHour);
       setEndHour(selected.endHour);
     }
-  }, [members]);
+    freshLoadedRef.current = true;
+    if (eventKey)
+      void saveCachedValue<ScheduleCache>(scheduleCacheId(eventKey), {
+        roles: loadedRoles,
+        scouting: loadedShifts,
+        days,
+        attendeeIds: loadedAttendeeIds,
+      }).catch(() => undefined);
+  }, [eventKey, members]);
+
+  // Show the last schedule saved on this device right away, so the board is not
+  // blank while the server responds. The fresh load replaces it once it arrives.
+  useEffect(() => {
+    if (!eventKey) return;
+    let cancelled = false;
+    void getCachedValue<ScheduleCache>(scheduleCacheId(eventKey))
+      .then((cached) => {
+        if (!cached || cancelled || freshLoadedRef.current) return;
+        setRoles(cached.roles);
+        setScouting(cached.scouting);
+        if (!attendanceDirtyRef.current)
+          setAttendeeIds(new Set(cached.attendeeIds));
+        setAttendanceLoaded(true);
+        setScheduleDays(cached.days);
+        const today = dateInputValue(Date.now());
+        const selected =
+          cached.days.find((day) => day.date === today) ?? cached.days[0];
+        if (selected) {
+          setDate(selected.date);
+          setStartHour(selected.startHour);
+          setEndHour(selected.endHour);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [eventKey]);
 
   useEffect(() => {
     const showError = (error: unknown) =>

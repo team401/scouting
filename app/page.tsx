@@ -3560,6 +3560,7 @@ export default function Home() {
               </Card>
               <EventScheduleBoard
                 members={eventPack?.members ?? []}
+                eventKey={eventPack?.event.key ?? ''}
                 onChanged={() => loadEventPack(false, true)}
               />
             </div>
