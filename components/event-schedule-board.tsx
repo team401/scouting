@@ -47,6 +47,20 @@ function dateInputValue(value: number) {
     .slice(0, 10);
 }
 
+// Error responses can have empty bodies (for example a 500 after a dropped
+// database connection), so a failed request must not throw a parse error.
+async function readBody<T extends { error?: string }>(
+  response: Response,
+): Promise<T> {
+  const text = await response.text();
+  if (!text) return {} as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return {} as T;
+  }
+}
+
 function slotTime(dateValue: string, hour: number) {
   const [year, month, day] = dateValue.split('-').map(Number);
   return new Date(year, month - 1, day, hour).getTime();
@@ -357,23 +371,23 @@ export function EventScheduleBoard({
         fetch('/api/event-attendees'),
         fetch('/api/event-schedule-days'),
       ]);
-    const rolesBody = (await rolesResponse.json()) as {
+    const rolesBody = await readBody<{
       assignments?: RoleItem[];
       error?: string;
-    };
-    const shiftsBody = (await shiftsResponse.json()) as {
+    }>(rolesResponse);
+    const shiftsBody = await readBody<{
       shifts?: ScoutItem[];
       error?: string;
-    };
-    const attendanceBody = (await attendanceResponse.json()) as {
+    }>(shiftsResponse);
+    const attendanceBody = await readBody<{
       userIds?: string[];
       configured?: boolean;
       error?: string;
-    };
-    const daysBody = (await daysResponse.json()) as {
+    }>(attendanceResponse);
+    const daysBody = await readBody<{
       days?: ScheduleDay[];
       error?: string;
-    };
+    }>(daysResponse);
     if (!rolesResponse.ok)
       throw new Error(rolesBody.error ?? 'Could not load event roles.');
     if (!shiftsResponse.ok)
@@ -415,11 +429,14 @@ export function EventScheduleBoard({
   }, [members]);
 
   useEffect(() => {
-    void load().catch((error: unknown) =>
+    const showError = (error: unknown) =>
       setMessage(
         error instanceof Error ? error.message : 'Could not load the schedule.',
-      ),
-    );
+      );
+    // One quiet retry covers a transient connection drop before showing an error.
+    void load().catch(() => {
+      window.setTimeout(() => void load().catch(showError), 1500);
+    });
   }, [load]);
 
   const items = useMemo<ScheduleItem[]>(
@@ -490,7 +507,7 @@ export function EventScheduleBoard({
           `${endpoint}?id=${encodeURIComponent(existing.id)}`,
           { method: 'DELETE' },
         );
-        const body = (await response.json()) as { error?: string };
+        const body = await readBody<{ error?: string }>(response);
         if (!response.ok)
           throw new Error(body.error ?? 'Could not remove this assignment.');
         if (existing.kind === 'scouting')
@@ -667,7 +684,7 @@ export function EventScheduleBoard({
       `/api/event-schedule-days?date=${encodeURIComponent(day)}`,
       { method: 'DELETE' },
     );
-    const body = (await response.json()) as { error?: string };
+    const body = await readBody<{ error?: string }>(response);
     if (!response.ok) {
       setMessage(body.error ?? 'Could not remove this event day.');
       return;

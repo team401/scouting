@@ -27,6 +27,21 @@ async function context(request: Request) {
 }
 
 export async function GET(request: Request) {
+  try {
+    return await readScheduleDays(request);
+  } catch (error) {
+    console.error('event-schedule-days GET failed', error);
+    return Response.json(
+      {
+        error: 'Event days are temporarily unavailable. Try again.',
+        retryable: true,
+      },
+      { status: 503 },
+    );
+  }
+}
+
+async function readScheduleDays(request: Request) {
   const actor = await context(request);
   if (!actor)
     return Response.json(

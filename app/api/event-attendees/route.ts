@@ -17,6 +17,23 @@ async function identity(request: Request) {
 }
 
 export async function GET(request: Request) {
+  try {
+    return await readAttendance(request);
+  } catch (error) {
+    // A dropped database connection must not surface as an empty 500; the
+    // client parses this JSON and can show a retryable message instead.
+    console.error('event-attendees GET failed', error);
+    return Response.json(
+      {
+        error: 'Event attendance is temporarily unavailable. Try again.',
+        retryable: true,
+      },
+      { status: 503 },
+    );
+  }
+}
+
+async function readAttendance(request: Request) {
   const actor = await identity(request);
   if (!actor)
     return Response.json(
