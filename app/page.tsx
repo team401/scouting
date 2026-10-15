@@ -2022,48 +2022,41 @@ export default function Home() {
               previewUserId={activePreview?.id}
               eventKey={eventPack?.event.key ?? ''}
               userId={effectiveUserId}
-              header={
-                <div className="flex items-start justify-between gap-3">
-                  <p className="min-w-0 truncate text-2xl font-semibold">
-                    {eventPack?.event.name ?? 'No current event selected'}
+              eventName={eventPack?.event.name ?? 'No current event selected'}
+              actions={
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!online || packLoading}
+                    onClick={() => void loadEventPack(false, true)}
+                  >
+                    <RefreshCw className={packLoading ? 'animate-spin' : ''} />
+                    Refresh
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    {eventPack?.event.updatedAt
+                      ? `Updated ${new Date(
+                          eventPack.event.updatedAt,
+                        ).toLocaleTimeString([], {
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })}`
+                      : isAdmin
+                        ? 'Choose an event from Admin.'
+                        : 'A scouting administrator needs to choose an event.'}
                   </p>
-                  <div className="flex shrink-0 flex-col items-end gap-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={!online || packLoading}
-                      onClick={() => void loadEventPack(false, true)}
-                    >
-                      <RefreshCw
-                        className={packLoading ? 'animate-spin' : ''}
-                      />
-                      Refresh
-                    </Button>
-                    <p className="text-xs text-muted-foreground">
-                      {eventPack?.event.updatedAt
-                        ? `Updated ${new Date(
-                            eventPack.event.updatedAt,
-                          ).toLocaleTimeString([], {
-                            hour: 'numeric',
-                            minute: '2-digit',
-                          })}`
-                        : isAdmin
-                          ? 'Choose an event from Admin.'
-                          : 'A scouting administrator needs to choose an event.'}
-                    </p>
-                  </div>
                 </div>
               }
             />
             {canUsePickLists && (
-              <Card>
+              <Card className="py-0">
                 <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className="font-semibold">Build your pick list</h2>
                     <p className="mt-1 text-sm text-muted-foreground">
                       Rank the teams you have watched, rate potential picks, and
-                      add notes so your observations can inform our pick list
-                      building.
+                      add notes.
                     </p>
                   </div>
                   <Button

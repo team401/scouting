@@ -235,7 +235,8 @@ export function PersonalEventSchedule({
   name,
   scoutShifts,
   previewUserId,
-  header,
+  eventName,
+  actions,
   eventKey,
   userId,
 }: {
@@ -246,8 +247,9 @@ export function PersonalEventSchedule({
   // Used with userId to cache this schedule on the device per event.
   eventKey?: string;
   userId?: string;
-  // Event title and refresh controls, shown above the schedule.
-  header?: ReactNode;
+  // Event name, with controls (Refresh and last update) at its right.
+  eventName?: string;
+  actions?: ReactNode;
 }) {
   const [items, setItems] = useState<Assignment[]>([]);
   const [previewShifts, setPreviewShifts] = useState<ScoutShift[]>([]);
@@ -405,13 +407,15 @@ export function PersonalEventSchedule({
     <>
       <Card>
         <CardHeader>
-          {header}
-          <CardTitle className={header ? 'pt-3 text-base' : undefined}>
-            Event schedule for {name}
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Tap an underlined role to see what it involves.
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              {eventName && (
+                <p className="truncate text-2xl font-semibold">{eventName}</p>
+              )}
+              <CardTitle>Event schedule for {name}</CardTitle>
+            </div>
+            {actions}
+          </div>
         </CardHeader>
         <CardContent className="space-y-1">
           {scheduleDays.map(([day, entries]) => (
@@ -462,7 +466,7 @@ export function PersonalEventSchedule({
         </CardContent>
       </Card>
       {permission === 'default' && (
-        <Card className="border-primary/30 bg-primary/5">
+        <Card className="border-primary/30 bg-primary/5 py-0">
           <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-semibold">Get match reminders</h2>
