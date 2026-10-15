@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, Square, Trash2, Upload } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -43,10 +42,30 @@ export function MatchVideoLibrary({
   const [message, setMessage] = useState('');
   const [uploading, setUploading] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [selectedVideoKey, setSelectedVideoKey] = useState('');
   const previewRef = useRef<HTMLVideoElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
+  const videoSources = [
+    ...(data?.videos ?? []).map((video, index) => ({
+      key: `team:${video.id}`,
+      label: `Team ${index + 1}`,
+      kind: 'team' as const,
+      video,
+    })),
+    ...externalVideos
+      .filter((video) => video.type === 'youtube')
+      .map((video, index) => ({
+        key: `tba:${video.key}`,
+        label: `TBA ${index + 1}`,
+        kind: 'tba' as const,
+        video,
+      })),
+  ];
+  const selectedVideo =
+    videoSources.find((source) => source.key === selectedVideoKey) ??
+    videoSources[0];
 
   const loadVideos = useCallback(
     async (signal?: AbortSignal) => {
@@ -262,11 +281,35 @@ export function MatchVideoLibrary({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Match video</CardTitle>
-        <Badge variant="outline">
-          {(data?.videos.length ?? 0) + externalVideos.length} available
-        </Badge>
+      <CardHeader className="flex flex-row items-center gap-3 overflow-hidden">
+        <CardTitle className="shrink-0">Match video</CardTitle>
+        {videoSources.length > 1 && (
+          <div
+            className="flex min-w-0 gap-1 overflow-x-auto"
+            role="tablist"
+            aria-label="Video source"
+          >
+            {videoSources.map((source) => {
+              const selected = selectedVideo?.key === source.key;
+              return (
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  className={
+                    selected
+                      ? 'shrink-0 border-b-2 border-primary px-2 py-1 text-sm font-semibold text-primary'
+                      : 'shrink-0 border-b-2 border-transparent px-2 py-1 text-sm text-muted-foreground hover:text-foreground'
+                  }
+                  key={source.key}
+                  onClick={() => setSelectedVideoKey(source.key)}
+                >
+                  {source.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         {!matchId ? (
@@ -275,12 +318,11 @@ export function MatchVideoLibrary({
           </p>
         ) : (
           <>
-            {externalVideos.map((video) =>
-              video.type === 'youtube' ? (
-                <div className="space-y-2 rounded-lg border p-3" key={`tba:${video.key}`}>
+            {selectedVideo?.kind === 'tba' && (
+                <div className="space-y-2">
                   <iframe
                     className="aspect-video w-full rounded-md bg-black"
-                    src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(video.key)}`}
+                    src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(selectedVideo.video.key)}`}
                     title={`${matchLabel} TBA video`}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
@@ -289,39 +331,38 @@ export function MatchVideoLibrary({
                     {matchLabel} · provided by The Blue Alliance
                   </p>
                 </div>
-              ) : null,
             )}
-            {data?.videos.map((video) => (
-              <div className="space-y-2 rounded-lg border p-3" key={video.id}>
+            {selectedVideo?.kind === 'team' && (
+              <div className="space-y-2">
                 <video
                   className="aspect-video w-full rounded-md bg-black"
                   controls
                   preload="metadata"
-                  src={`/api/match-videos?mediaId=${encodeURIComponent(video.id)}`}
+                  src={`/api/match-videos?mediaId=${encodeURIComponent(selectedVideo.video.id)}`}
                 >
                   <track kind="captions" />
                 </video>
                 <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                   <span>
-                    {matchLabel} · {(video.bytes / 1024 / 1024).toFixed(1)} MB ·
-                    uploaded by {video.uploaderName}
+                    {matchLabel} · {(selectedVideo.video.bytes / 1024 / 1024).toFixed(1)} MB ·
+                    uploaded by {selectedVideo.video.uploaderName}
                   </span>
                   {!playbackOnly &&
-                    (data.canDeleteAny ||
-                    data.userId === video.uploaderUserId) && (
+                    (data?.canDeleteAny ||
+                    data?.userId === selectedVideo.video.uploaderUserId) && (
                     <Button
                       type="button"
                       size="icon"
                       variant="ghost"
                       aria-label="Delete match video"
-                      onClick={() => void deleteVideo(video.id)}
+                      onClick={() => void deleteVideo(selectedVideo.video.id)}
                     >
                       <Trash2 />
                     </Button>
                   )}
                 </div>
               </div>
-            ))}
+            )}
             {data && data.videos.length === 0 && externalVideos.length === 0 && (
               <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
                 No video has been uploaded for {matchLabel}.
