@@ -3177,7 +3177,7 @@ export default function Home() {
                   : 'rounded-none sm:rounded-xl'
               }
             >
-              <CardContent className="space-y-5">
+              <CardContent className="flex flex-col gap-5">
                 <div className="flex justify-end">
                   <Button
                     type="button"
@@ -3251,7 +3251,7 @@ export default function Home() {
                 )}
                 {planSection !== 'metrics' && (
                   <>
-                    <div className="border-t pt-4">
+                    <div className="order-first -mx-(--card-spacing)">
                       <TacticalBoard
                         value={
                           planSection === 'auto'

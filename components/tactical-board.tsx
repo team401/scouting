@@ -130,8 +130,9 @@ export function TacticalBoard({
   }
 
   return (
-    <div className="tactical-board space-y-3">
-      <div className="tactical-board-tools flex flex-wrap items-center gap-2">
+    // The field is drawn first; the tools sit below it (order-last).
+    <div className="tactical-board flex flex-col gap-3">
+      <div className="tactical-board-tools order-last flex flex-wrap items-center gap-2">
         <Button
           type="button"
           size="sm"
