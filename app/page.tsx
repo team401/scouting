@@ -1976,36 +1976,6 @@ export default function Home() {
             </h1>
           </div>
           <div className="desktop-header-actions flex items-center gap-2">
-            {realIsAdmin && (
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                Preview as
-                <select
-                  className="h-8 max-w-44 rounded-md border bg-background px-2 text-xs text-foreground"
-                  value={previewMember?.id ?? ''}
-                  onChange={(event) => {
-                    const member = eventPack?.members.find(
-                      (item) => item.id === event.target.value,
-                    );
-                    setPreviewMember(
-                      member
-                        ? {
-                            id: member.id,
-                            name: member.name,
-                            role: member.role,
-                          }
-                        : null,
-                    );
-                  }}
-                >
-                  <option value="">Myself</option>
-                  {eventPack?.members.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.name} ({member.role})
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
             <Badge variant="outline" className="status-badge">
               {online ? <Cloud /> : <CloudOff />}
               <span className="status-text">
@@ -4192,6 +4162,44 @@ export default function Home() {
                 </div>
               </CardContent>
             </Card>
+            {realIsAdmin && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Preview as</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    See the app as a team member. Actions still run as you.
+                  </p>
+                  <select
+                    aria-label="Preview as"
+                    className="h-9 rounded-md border bg-background px-3 text-sm text-foreground sm:w-56"
+                    value={previewMember?.id ?? ''}
+                    onChange={(event) => {
+                      const member = eventPack?.members.find(
+                        (item) => item.id === event.target.value,
+                      );
+                      setPreviewMember(
+                        member
+                          ? {
+                              id: member.id,
+                              name: member.name,
+                              role: member.role,
+                            }
+                          : null,
+                      );
+                    }}
+                  >
+                    <option value="">Myself</option>
+                    {eventPack?.members.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.name} ({member.role})
+                      </option>
+                    ))}
+                  </select>
+                </CardContent>
+              </Card>
+            )}
             <Card>
               <CardHeader>
                 <CardTitle>Change password</CardTitle>
