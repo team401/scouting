@@ -131,7 +131,13 @@ export function MatchVideoLibrary({
       );
       const recorder = new MediaRecorder(
         stream,
-        mimeType ? { mimeType } : undefined,
+        {
+          ...(mimeType ? { mimeType } : {}),
+          // Keep event video quick to upload while retaining enough detail to
+          // identify robots and field actions on a laptop or tablet.
+          videoBitsPerSecond: 2_500_000,
+          audioBitsPerSecond: 64_000,
+        },
       );
       streamRef.current = stream;
       recorderRef.current = recorder;
@@ -285,29 +291,24 @@ export function MatchVideoLibrary({
         <CardTitle className="shrink-0">Match video</CardTitle>
         {videoSources.length > 1 && (
           <div
-            className="flex min-w-0 gap-1 overflow-x-auto"
+            className="flex min-w-0 gap-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             role="tablist"
             aria-label="Video source"
           >
-            {videoSources.map((source) => {
-              const selected = selectedVideo?.key === source.key;
-              return (
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={selected}
-                  className={
-                    selected
-                      ? 'shrink-0 border-b-2 border-primary px-2 py-1 text-sm font-semibold text-primary'
-                      : 'shrink-0 border-b-2 border-transparent px-2 py-1 text-sm text-muted-foreground hover:text-foreground'
-                  }
-                  key={source.key}
-                  onClick={() => setSelectedVideoKey(source.key)}
-                >
-                  {source.label}
-                </button>
-              );
-            })}
+            {videoSources.map((source) => (
+              <Button
+                type="button"
+                size="sm"
+                variant={selectedVideo?.key === source.key ? 'default' : 'ghost'}
+                role="tab"
+                aria-selected={selectedVideo?.key === source.key}
+                className="shrink-0"
+                key={source.key}
+                onClick={() => setSelectedVideoKey(source.key)}
+              >
+                {source.label}
+              </Button>
+            ))}
           </div>
         )}
       </CardHeader>

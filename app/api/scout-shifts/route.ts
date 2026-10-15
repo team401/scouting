@@ -85,6 +85,25 @@ export async function POST(request: Request) {
       { error: 'One or more scouts are unavailable.' },
       { status: 400 },
     );
+  const attendeeRows = await env.DB.prepare(
+    'SELECT user_id AS userId FROM event_attendees WHERE event_id = ?',
+  )
+    .bind(event.id)
+    .all<{ userId: string }>();
+  const attendees = new Set(attendeeRows.results.map((item) => item.userId));
+  const attendanceConfigured = await env.DB.prepare(
+    'SELECT 1 FROM event_attendance_settings WHERE event_id = ?',
+  )
+    .bind(event.id)
+    .first();
+  if (
+    (attendanceConfigured || attendees.size > 0) &&
+    parsed.data.assignments.some((item) => !attendees.has(item.scoutUserId))
+  )
+    return Response.json(
+      { error: 'One or more selected scouts are not on this event roster.' },
+      { status: 400 },
+    );
   if (
     new Set(parsed.data.assignments.map((item) => item.scoutUserId)).size !==
     parsed.data.assignments.length
@@ -119,16 +138,41 @@ export async function POST(request: Request) {
       { error: 'A selected scout already has a station during this time.' },
       { status: 409 },
     );
+  const eventRoleConflicts = await env.DB.prepare(
+    `SELECT user_id AS userId FROM event_role_assignments
+     WHERE organization_id = ? AND event_id = ? AND starts_at < ? AND ends_at > ?`,
+  )
+    .bind(
+      actor.membership.organizationId,
+      event.id,
+      parsed.data.endsAt,
+      parsed.data.startsAt,
+    )
+    .all<{ userId: string }>();
+  const roleBusy = new Set(
+    eventRoleConflicts.results.map((item) => item.userId),
+  );
+  if (parsed.data.assignments.some((item) => roleBusy.has(item.scoutUserId)))
+    return Response.json(
+      {
+        error:
+          'A selected scout already has another event role during this time.',
+      },
+      { status: 409 },
+    );
   const now = Date.now();
+  const created = parsed.data.assignments.map((item) => ({
+    ...item,
+    id: crypto.randomUUID(),
+  }));
   await env.DB.batch(
-    parsed.data.assignments.map((item) => {
-      const id = crypto.randomUUID();
+    created.map((item) => {
       return env.DB.prepare(
         `INSERT INTO scout_shifts
          (id, organization_id, event_id, station, scout_user_id, starts_at, ends_at, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).bind(
-        id,
+        item.id,
         actor.membership.organizationId,
         event.id,
         item.station,
@@ -145,7 +189,15 @@ export async function POST(request: Request) {
     actor.membership.organizationId,
     event.id,
   );
-  return Response.json({ created: parsed.data.assignments.length });
+  return Response.json({
+    shifts: created.map((item) => ({
+      id: item.id,
+      station: item.station,
+      scoutUserId: item.scoutUserId,
+      startsAt: parsed.data.startsAt,
+      endsAt: parsed.data.endsAt,
+    })),
+  });
 }
 
 export async function DELETE(request: Request) {
@@ -165,14 +217,9 @@ export async function DELETE(request: Request) {
   if (!shift)
     return Response.json({ error: 'Shift not found.' }, { status: 404 });
   await env.DB.prepare(
-    'DELETE FROM scout_shifts WHERE organization_id = ? AND event_id = ? AND starts_at = ? AND ends_at = ?',
+    'DELETE FROM scout_shifts WHERE id = ? AND organization_id = ?',
   )
-    .bind(
-      actor.membership.organizationId,
-      shift.eventId,
-      shift.startsAt,
-      shift.endsAt,
-    )
+    .bind(id, actor.membership.organizationId)
     .run();
   await reconcileShiftAssignments(
     env.DB,

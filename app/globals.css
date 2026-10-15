@@ -984,3 +984,25 @@ select option {
     display: none !important;
   }
 }
+
+@media (max-width: 767px) {
+  .scout-form .choice,
+  .scout-form button {
+    min-height: 44px;
+  }
+
+  .scout-form .counter-input {
+    min-height: 44px;
+    font-size: 1.125rem;
+  }
+}
+
+.scouting-red > :first-child {
+  border-color: color-mix(in oklab, #dc2626 45%, var(--border));
+  box-shadow: inset 0 3px 0 #dc2626;
+}
+
+.scouting-blue > :first-child {
+  border-color: color-mix(in oklab, #2563eb 45%, var(--border));
+  box-shadow: inset 0 3px 0 #2563eb;
+}

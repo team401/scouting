@@ -7,8 +7,9 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "dev": "vinext dev",
-    "build": "vinext build",
+    "dev": "vite dev --mode staging",
+    "dev:local": "vite dev",
+    "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "start": "wrangler dev --config dist/server/wrangler.json",

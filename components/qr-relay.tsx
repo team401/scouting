@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -106,7 +105,6 @@ export function QrRelay({ online }: { online: boolean }) {
     <Card>
       <CardHeader>
         <CardTitle>Scan a scout match</CardTitle>
-        <Badge variant="outline">Online receiving device</Badge>
       </CardHeader>
       <CardContent className="space-y-3">
         <>

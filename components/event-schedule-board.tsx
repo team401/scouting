@@ -1,0 +1,865 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { eventRoles, type EventRole } from '@/lib/event-roles';
+
+const stations = ['red1', 'red2', 'red3', 'blue1', 'blue2', 'blue3'] as const;
+type Station = (typeof stations)[number];
+type Member = {
+  id: string;
+  name: string;
+  role: string;
+  opsRole?: string | null;
+  disabled?: boolean | number;
+};
+type RoleItem = {
+  id: string;
+  userId: string;
+  userName: string;
+  role: EventRole;
+  startsAt: number;
+  endsAt: number;
+};
+type ScoutItem = {
+  id: string;
+  scoutUserId: string;
+  scoutName: string;
+  station: Station;
+  startsAt: number;
+  endsAt: number;
+};
+type ScheduleItem = {
+  id: string;
+  userId: string;
+  label: string;
+  startsAt: number;
+  endsAt: number;
+  kind: 'role' | 'scouting';
+};
+type ScheduleDay = { date: string; startHour: number; endHour: number };
+
+function dateInputValue(value: number) {
+  const date = new Date(value);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 10);
+}
+
+function slotTime(dateValue: string, hour: number) {
+  const [year, month, day] = dateValue.split('-').map(Number);
+  return new Date(year, month - 1, day, hour).getTime();
+}
+
+function daysFromAssignments(
+  assignments: Array<{ startsAt: number; endsAt: number }>,
+) {
+  const grouped = new Map<string, ScheduleDay>();
+  for (const assignment of assignments) {
+    const date = dateInputValue(assignment.startsAt);
+    const start = new Date(assignment.startsAt);
+    const end = new Date(assignment.endsAt);
+    const startHour = start.getHours();
+    const endHour = Math.min(
+      24,
+      end.getHours() + (end.getMinutes() || end.getSeconds() ? 1 : 0),
+    );
+    const current = grouped.get(date);
+    grouped.set(date, {
+      date,
+      startHour: Math.min(current?.startHour ?? startHour, startHour),
+      endHour: Math.max(current?.endHour ?? endHour, endHour),
+    });
+  }
+  return [...grouped.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function displayStation(station: Station) {
+  return `${station.startsWith('red') ? 'Red' : 'Blue'} ${station.at(-1)}`;
+}
+
+const scheduleOptions = [
+  ...stations.map((station) => ({
+    label: displayStation(station),
+    value: `station:${station}`,
+  })),
+  ...eventRoles.map(([role]) => ({ label: role, value: `role:${role}` })),
+];
+
+function scheduleValue(label: string) {
+  return scheduleOptions.find(
+    (option) => option.label.toLowerCase() === label.trim().toLowerCase(),
+  )?.value;
+}
+
+function canSchedule(member: Member) {
+  return !member.disabled && member.opsRole !== 'coach';
+}
+
+function assignmentClass(label: string) {
+  if (label.startsWith('Red'))
+    return 'bg-red-200 text-red-950 dark:bg-red-950 dark:text-red-100';
+  if (label.startsWith('Blue'))
+    return 'bg-blue-200 text-blue-950 dark:bg-blue-950 dark:text-blue-100';
+  const roleColors: Partial<Record<EventRole, string>> = {
+    Inspection:
+      'bg-yellow-200 text-yellow-950 dark:bg-yellow-900 dark:text-yellow-100',
+    Calibration:
+      'bg-indigo-200 text-indigo-950 dark:bg-indigo-900 dark:text-indigo-100',
+    'Drive Team': 'bg-purple-600 text-white dark:bg-purple-800',
+    'Pit Lead': 'bg-amber-600 text-white dark:bg-amber-800',
+    'Pit Crew':
+      'bg-orange-300 text-orange-950 dark:bg-orange-900 dark:text-orange-100',
+    'Pit Programmer':
+      'bg-cyan-200 text-cyan-950 dark:bg-cyan-900 dark:text-cyan-100',
+    'Pit Outreach':
+      'bg-lime-200 text-lime-950 dark:bg-lime-900 dark:text-lime-100',
+    'Scouting Lead': 'bg-emerald-600 text-white dark:bg-emerald-800',
+    Scouting:
+      'bg-green-200 text-green-950 dark:bg-green-900 dark:text-green-100',
+    'Pit Scouting':
+      'bg-teal-200 text-teal-950 dark:bg-teal-900 dark:text-teal-100',
+    'Alliance Rep': 'bg-rose-600 text-white dark:bg-rose-800',
+    'Team Media': 'bg-sky-600 text-white dark:bg-sky-800',
+    'Spirit Lead':
+      'bg-pink-300 text-pink-950 dark:bg-pink-900 dark:text-pink-100',
+  };
+  if (roleColors[label as EventRole]) return roleColors[label as EventRole]!;
+  return 'bg-primary/15 text-foreground';
+}
+
+function matchingOptions(query: string) {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return scheduleOptions;
+  return scheduleOptions
+    .filter((option) => option.label.toLowerCase().includes(normalized))
+    .sort((a, b) => {
+      const aStarts = a.label.toLowerCase().startsWith(normalized) ? 0 : 1;
+      const bStarts = b.label.toLowerCase().startsWith(normalized) ? 0 : 1;
+      return aStarts - bStarts || a.label.localeCompare(b.label);
+    });
+}
+
+function ScheduleRoleInput({
+  label,
+  busy,
+  ariaLabel,
+  onCommit,
+  onRangePaste,
+  cellId,
+  onAdvance,
+}: {
+  label: string;
+  busy: boolean;
+  ariaLabel: string;
+  onCommit: (value: string) => void;
+  onRangePaste: (text: string) => void;
+  cellId: string;
+  onAdvance: () => void;
+}) {
+  const [query, setQuery] = useState(label);
+  const [open, setOpen] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const options = matchingOptions(query);
+
+  useEffect(() => {
+    if (!open) setQuery(label);
+  }, [label, open]);
+
+  function choose(optionLabel: string) {
+    const value = optionLabel ? scheduleValue(optionLabel) : '';
+    if (optionLabel && !value) return;
+    setQuery(optionLabel);
+    setOpen(false);
+    if (optionLabel !== label) onCommit(value ?? '');
+  }
+
+  return (
+    <div className="relative h-9 min-w-28">
+      <input
+        ref={inputRef}
+        aria-label={ariaLabel}
+        autoComplete="off"
+        className={`h-9 w-full rounded-md border px-1 text-center text-xs font-medium ${label && !open ? assignmentClass(label) : 'bg-background text-foreground'}`}
+        disabled={busy}
+        data-schedule-cell={cellId}
+        value={busy ? 'Saving…' : query}
+        onChange={(event) => {
+          setQuery(event.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => {
+          const input = inputRef.current;
+          if (input) {
+            const inputRect = input.getBoundingClientRect();
+            const scrollRect = input
+              .closest('[data-schedule-scroll]')
+              ?.getBoundingClientRect();
+            const visibleTop = Math.max(0, scrollRect?.top ?? 0);
+            const visibleBottom = Math.min(
+              window.innerHeight,
+              scrollRect?.bottom ?? window.innerHeight,
+            );
+            const below = visibleBottom - inputRect.bottom;
+            const above = inputRect.top - visibleTop;
+            setDropUp(below < 260 && above > below);
+          }
+          if (label && navigator.clipboard)
+            void navigator.clipboard.writeText(label).catch(() => undefined);
+          setQuery('');
+          setOpen(true);
+        }}
+        onBlur={() => {
+          window.setTimeout(() => {
+            setOpen(false);
+            setQuery(label);
+          }, 100);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            choose(query.trim() ? (options[0]?.label ?? '') : '');
+            event.currentTarget.blur();
+            window.setTimeout(onAdvance, 0);
+          } else if (event.key === 'Escape') {
+            setQuery(label);
+            setOpen(false);
+            event.currentTarget.blur();
+          }
+        }}
+        onCopy={(event) => {
+          if (query || !label) return;
+          event.preventDefault();
+          event.clipboardData.setData('text/plain', label);
+        }}
+        onPaste={(event) => {
+          const text = event.clipboardData.getData('text');
+          if (!/[\t\r\n]/.test(text)) return;
+          event.preventDefault();
+          onRangePaste(text);
+        }}
+      />
+      {open && (
+        <div
+          className={`absolute left-0 z-50 max-h-64 min-w-full overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg ${dropUp ? 'bottom-full mb-1' : 'top-full mt-1'}`}
+        >
+          {query === '' && label && (
+            <button
+              type="button"
+              className="block w-full rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => choose('')}
+            >
+              Clear assignment
+            </button>
+          )}
+          {options.map((option, index) => (
+            <button
+              type="button"
+              className={`mt-1 block w-full whitespace-nowrap rounded-md px-2 py-1.5 text-left text-xs font-medium ${assignmentClass(option.label)} ${index === 0 ? 'ring-2 ring-primary ring-inset' : ''}`}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => choose(option.label)}
+              key={option.value}
+            >
+              {option.label}
+            </button>
+          ))}
+          {!options.length && (
+            <p className="px-2 py-1.5 text-xs text-muted-foreground">
+              No matching role
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function EventScheduleBoard({
+  members,
+  onChanged,
+}: {
+  members: Member[];
+  onChanged: () => void | Promise<void>;
+}) {
+  const [date, setDate] = useState(() => dateInputValue(Date.now()));
+  const [startHour, setStartHour] = useState(7);
+  const [endHour, setEndHour] = useState(18);
+  const [scheduleDays, setScheduleDays] = useState<ScheduleDay[]>([]);
+  const [roles, setRoles] = useState<RoleItem[]>([]);
+  const [scouting, setScouting] = useState<ScoutItem[]>([]);
+  const [message, setMessage] = useState('');
+  const [busyCell, setBusyCell] = useState('');
+  const [attendeeIds, setAttendeeIds] = useState<Set<string>>(new Set());
+  const [attendanceLoaded, setAttendanceLoaded] = useState(false);
+  const attendanceDirtyRef = useRef(false);
+
+  const load = useCallback(async () => {
+    const [rolesResponse, shiftsResponse, attendanceResponse, daysResponse] =
+      await Promise.all([
+        fetch('/api/event-schedule?all=1'),
+        fetch('/api/scout-shifts'),
+        fetch('/api/event-attendees'),
+        fetch('/api/event-schedule-days'),
+      ]);
+    const rolesBody = (await rolesResponse.json()) as {
+      assignments?: RoleItem[];
+      error?: string;
+    };
+    const shiftsBody = (await shiftsResponse.json()) as {
+      shifts?: ScoutItem[];
+      error?: string;
+    };
+    const attendanceBody = (await attendanceResponse.json()) as {
+      userIds?: string[];
+      configured?: boolean;
+      error?: string;
+    };
+    const daysBody = (await daysResponse.json()) as {
+      days?: ScheduleDay[];
+      error?: string;
+    };
+    if (!rolesResponse.ok)
+      throw new Error(rolesBody.error ?? 'Could not load event roles.');
+    if (!shiftsResponse.ok)
+      throw new Error(shiftsBody.error ?? 'Could not load scouting shifts.');
+    if (!attendanceResponse.ok)
+      throw new Error(
+        attendanceBody.error ?? 'Could not load event attendance.',
+      );
+    if (!daysResponse.ok)
+      throw new Error(daysBody.error ?? 'Could not load event days.');
+    const loadedRoles = rolesBody.assignments ?? [];
+    const loadedShifts = shiftsBody.shifts ?? [];
+    setRoles(loadedRoles);
+    setScouting(loadedShifts);
+    if (!attendanceDirtyRef.current)
+      setAttendeeIds(
+        new Set(
+          attendanceBody.configured
+            ? (attendanceBody.userIds ?? []).filter((id) =>
+                members.some(
+                  (member) => member.id === id && canSchedule(member),
+                ),
+              )
+            : [],
+        ),
+      );
+    setAttendanceLoaded(true);
+    const configuredDays = daysBody.days ?? [];
+    const days = configuredDays.length
+      ? configuredDays
+      : daysFromAssignments([...loadedRoles, ...loadedShifts]);
+    setScheduleDays(days);
+    if (days.length) {
+      const selected = days.find((day) => day.date === date) ?? days[0];
+      setDate(selected.date);
+      setStartHour(selected.startHour);
+      setEndHour(selected.endHour);
+    }
+  }, [members]);
+
+  useEffect(() => {
+    void load().catch((error: unknown) =>
+      setMessage(
+        error instanceof Error ? error.message : 'Could not load the schedule.',
+      ),
+    );
+  }, [load]);
+
+  const items = useMemo<ScheduleItem[]>(
+    () => [
+      ...roles.map((item) => ({
+        id: item.id,
+        userId: item.userId,
+        label: item.role,
+        startsAt: item.startsAt,
+        endsAt: item.endsAt,
+        kind: 'role' as const,
+      })),
+      ...scouting.map((item) => ({
+        id: item.id,
+        userId: item.scoutUserId,
+        label: displayStation(item.station),
+        startsAt: item.startsAt,
+        endsAt: item.endsAt,
+        kind: 'scouting' as const,
+      })),
+    ],
+    [roles, scouting],
+  );
+  const activeMembers = useMemo(
+    () =>
+      members
+        .filter((member) => canSchedule(member) && attendeeIds.has(member.id))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [attendeeIds, members],
+  );
+  const hours = useMemo(
+    () =>
+      Array.from(
+        { length: Math.max(1, endHour - startHour) },
+        (_, index) => startHour + index,
+      ),
+    [endHour, startHour],
+  );
+  const dayStart = slotTime(date, 0);
+  const dayEnd = slotTime(date, 24);
+  const counts = useMemo(() => {
+    const result = new Map<string, number>();
+    for (const item of items)
+      if (item.startsAt < dayEnd && item.endsAt > dayStart)
+        result.set(item.userId, (result.get(item.userId) ?? 0) + 1);
+    return result;
+  }, [dayEnd, dayStart, items]);
+
+  async function changeCell(member: Member, hour: number, value: string) {
+    const startsAt = slotTime(date, hour);
+    const endsAt = startsAt + 60 * 60_000;
+    const existing = items.find(
+      (item) =>
+        item.userId === member.id &&
+        item.startsAt <= startsAt &&
+        item.endsAt > startsAt,
+    );
+    const key = `${member.id}:${startsAt}`;
+    setBusyCell(key);
+    setMessage('');
+    try {
+      if (existing) {
+        const endpoint =
+          existing.kind === 'scouting'
+            ? '/api/scout-shifts'
+            : '/api/event-schedule';
+        const response = await fetch(
+          `${endpoint}?id=${encodeURIComponent(existing.id)}`,
+          { method: 'DELETE' },
+        );
+        const body = (await response.json()) as { error?: string };
+        if (!response.ok)
+          throw new Error(body.error ?? 'Could not remove this assignment.');
+        if (existing.kind === 'scouting')
+          setScouting((current) =>
+            current.filter((item) => item.id !== existing.id),
+          );
+        else
+          setRoles((current) =>
+            current.filter((item) => item.id !== existing.id),
+          );
+      }
+      if (!value) {
+        void onChanged();
+        return;
+      }
+      if (value.startsWith('station:')) {
+        const station = value.slice('station:'.length) as Station;
+        const response = await fetch('/api/scout-shifts', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            startsAt,
+            endsAt,
+            assignments: [{ station, scoutUserId: member.id }],
+          }),
+        });
+        const body = (await response.json()) as {
+          error?: string;
+          shifts?: ScoutItem[];
+        };
+        if (!response.ok)
+          throw new Error(
+            body.error ?? 'Could not add the scouting assignment.',
+          );
+        const created = body.shifts?.[0];
+        if (created)
+          setScouting((current) => [
+            ...current,
+            { ...created, scoutName: member.name },
+          ]);
+      } else {
+        const role = value.slice('role:'.length) as EventRole;
+        const response = await fetch('/api/event-schedule', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            userId: member.id,
+            role,
+            startsAt,
+            endsAt,
+          }),
+        });
+        const body = (await response.json()) as {
+          error?: string;
+          assignment?: RoleItem;
+        };
+        if (!response.ok)
+          throw new Error(body.error ?? 'Could not add the event role.');
+        if (body.assignment)
+          setRoles((current) => [
+            ...current,
+            { ...body.assignment!, userName: member.name },
+          ]);
+      }
+      void onChanged();
+    } catch (error) {
+      await load().catch(() => undefined);
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : 'Could not update the schedule.',
+      );
+    } finally {
+      setBusyCell('');
+    }
+  }
+
+  async function pasteCells(
+    startRow: number,
+    startColumn: number,
+    text: string,
+  ) {
+    const rows = text
+      .trimEnd()
+      .split(/\r?\n/)
+      .map((row) => row.split('\t'));
+    for (let rowOffset = 0; rowOffset < rows.length; rowOffset += 1) {
+      const member = activeMembers[startRow + rowOffset];
+      if (!member) break;
+      for (
+        let columnOffset = 0;
+        columnOffset < rows[rowOffset].length;
+        columnOffset += 1
+      ) {
+        const hour = hours[startColumn + columnOffset];
+        if (hour === undefined) break;
+        const label = rows[rowOffset][columnOffset].trim();
+        const value = label ? scheduleValue(label) : '';
+        if (label && !value) {
+          setMessage(`“${label}” is not a recognized role or station.`);
+          return;
+        }
+        await changeCell(member, hour, value ?? '');
+      }
+    }
+  }
+
+  async function saveAttendance() {
+    setMessage('');
+    const response = await fetch('/api/event-attendees', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ userIds: [...attendeeIds] }),
+    });
+    const body = (await response.json()) as {
+      error?: string;
+      userIds?: string[];
+    };
+    if (!response.ok)
+      return setMessage(body.error ?? 'Could not save event attendance.');
+    attendanceDirtyRef.current = false;
+    setAttendeeIds(new Set(body.userIds ?? []));
+    setMessage('Event attendance saved.');
+    await onChanged();
+  }
+
+  function selectScheduleDay(day: ScheduleDay) {
+    setDate(day.date);
+    setStartHour(day.startHour);
+    setEndHour(day.endHour);
+  }
+
+  async function saveScheduleDay() {
+    setMessage('');
+    const response = await fetch('/api/event-schedule-days', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ date, startHour, endHour }),
+    });
+    const body = (await response.json()) as {
+      day?: ScheduleDay;
+      error?: string;
+    };
+    if (!response.ok || !body.day) {
+      setMessage(body.error ?? 'Could not save this event day.');
+      return;
+    }
+    setScheduleDays((current) =>
+      [...current.filter((day) => day.date !== body.day!.date), body.day!].sort(
+        (a, b) => a.date.localeCompare(b.date),
+      ),
+    );
+    setMessage('Event day saved.');
+  }
+
+  async function removeScheduleDay(day: string) {
+    setMessage('');
+    const response = await fetch(
+      `/api/event-schedule-days?date=${encodeURIComponent(day)}`,
+      { method: 'DELETE' },
+    );
+    const body = (await response.json()) as { error?: string };
+    if (!response.ok) {
+      setMessage(body.error ?? 'Could not remove this event day.');
+      return;
+    }
+    const remaining = scheduleDays.filter((item) => item.date !== day);
+    setScheduleDays(remaining);
+    if (remaining.length) selectScheduleDay(remaining[0]);
+    setMessage('Event day removed. Existing assignments were preserved.');
+  }
+
+  return (
+    <Card className="mb-4 overflow-hidden">
+      <CardHeader>
+        <CardTitle>Event schedule</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 px-0 sm:px-0">
+        {scheduleDays.length > 0 && (
+          <div
+            className="flex gap-2 overflow-x-auto px-3 pb-1"
+            aria-label="Event days"
+          >
+            {scheduleDays.map((day, index) => (
+              <Button
+                type="button"
+                variant={date === day.date ? 'default' : 'outline'}
+                className="shrink-0"
+                onClick={() => selectScheduleDay(day)}
+                key={day.date}
+              >
+                <span className="sm:hidden">Day {index + 1}</span>
+                <span className="hidden sm:inline">
+                  {new Date(`${day.date}T12:00:00`).toLocaleDateString([], {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </span>
+              </Button>
+            ))}
+          </div>
+        )}
+        <div className="grid gap-2 px-3 sm:grid-cols-3">
+          <input
+            aria-label="Schedule date"
+            className="h-10 rounded-md border bg-background px-3"
+            type="date"
+            value={date}
+            onChange={(event) => setDate(event.target.value)}
+          />
+          <select
+            aria-label="First displayed hour"
+            className="h-10 rounded-md border bg-background px-3"
+            value={startHour}
+            onChange={(event) =>
+              setStartHour(Math.min(Number(event.target.value), endHour - 1))
+            }
+          >
+            {Array.from({ length: 24 }, (_, hour) => (
+              <option value={hour} key={hour}>
+                Start{' '}
+                {new Date(2000, 0, 1, hour).toLocaleTimeString([], {
+                  hour: 'numeric',
+                })}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="Last displayed hour"
+            className="h-10 rounded-md border bg-background px-3"
+            value={endHour}
+            onChange={(event) =>
+              setEndHour(Math.max(Number(event.target.value), startHour + 1))
+            }
+          >
+            {Array.from({ length: 24 }, (_, index) => index + 1).map((hour) => (
+              <option value={hour} key={hour}>
+                End{' '}
+                {new Date(2000, 0, 1, hour % 24).toLocaleTimeString([], {
+                  hour: 'numeric',
+                })}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-wrap gap-2 px-3">
+          <Button type="button" onClick={() => void saveScheduleDay()}>
+            {scheduleDays.some((day) => day.date === date)
+              ? 'Update day'
+              : 'Add day'}
+          </Button>
+          {scheduleDays.some((day) => day.date === date) && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void removeScheduleDay(date)}
+            >
+              Remove day
+            </Button>
+          )}
+        </div>
+        {!scheduleDays.length && (
+          <p className="px-3 text-sm text-muted-foreground">
+            Add the first event day and choose when assignments can start and
+            end.
+          </p>
+        )}
+        <details className="mx-3 rounded-lg border p-3">
+          <summary className="cursor-pointer font-semibold">
+            People at this event · {activeMembers.length}
+          </summary>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                attendanceDirtyRef.current = true;
+                setAttendeeIds(
+                  new Set(
+                    members.filter(canSchedule).map((member) => member.id),
+                  ),
+                );
+              }}
+            >
+              Select all
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                attendanceDirtyRef.current = true;
+                setAttendeeIds(new Set());
+              }}
+            >
+              Clear
+            </Button>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {members
+              .filter(canSchedule)
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((member) => (
+                <label
+                  className="flex min-h-10 items-center gap-2 rounded-md border px-3 py-2"
+                  key={member.id}
+                >
+                  <input
+                    type="checkbox"
+                    checked={attendanceLoaded && attendeeIds.has(member.id)}
+                    onChange={(event) =>
+                      setAttendeeIds((current) => {
+                        attendanceDirtyRef.current = true;
+                        const next = new Set(current);
+                        if (event.target.checked) next.add(member.id);
+                        else next.delete(member.id);
+                        return next;
+                      })
+                    }
+                  />
+                  <span>{member.name}</span>
+                </label>
+              ))}
+          </div>
+          <Button
+            className="mt-3"
+            type="button"
+            onClick={() => void saveAttendance()}
+          >
+            Save event roster
+          </Button>
+        </details>
+        <p className="px-3 text-sm text-muted-foreground">
+          Type or choose a role in each time slot. Clear a cell to unassign it.
+          You can copy and paste single cells or rectangular spreadsheet ranges.
+        </p>
+        <div
+          className="max-h-[68dvh] overflow-auto border-y"
+          data-schedule-scroll
+        >
+          <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
+            <thead className="sticky top-0 z-30 bg-muted">
+              <tr>
+                <th className="sticky left-0 z-40 min-w-40 border-r border-b bg-muted px-3 py-2 text-left">
+                  Person
+                </th>
+                {hours.map((hour) => (
+                  <th
+                    className="min-w-28 border-r border-b px-2 py-2 text-center"
+                    key={hour}
+                  >
+                    {new Date(2000, 0, 1, hour).toLocaleTimeString([], {
+                      hour: 'numeric',
+                    })}
+                    –
+                    {new Date(2000, 0, 1, (hour + 1) % 24).toLocaleTimeString(
+                      [],
+                      { hour: 'numeric' },
+                    )}
+                  </th>
+                ))}
+                <th className="sticky right-0 z-40 min-w-20 border-b border-l bg-muted px-2 py-2 text-center">
+                  Assigned
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {activeMembers.map((member, rowIndex) => (
+                <tr
+                  className={rowIndex % 2 ? 'bg-muted/20' : 'bg-background'}
+                  key={member.id}
+                >
+                  <th className="sticky left-0 z-20 border-r border-b bg-inherit px-3 py-2 text-left font-medium">
+                    {member.name}
+                  </th>
+                  {hours.map((hour, columnIndex) => {
+                    const startsAt = slotTime(date, hour);
+                    const item = items.find(
+                      (candidate) =>
+                        candidate.userId === member.id &&
+                        candidate.startsAt <= startsAt &&
+                        candidate.endsAt > startsAt,
+                    );
+                    const key = `${member.id}:${startsAt}`;
+                    return (
+                      <td className="h-11 border-r border-b p-1" key={hour}>
+                        <ScheduleRoleInput
+                          ariaLabel={`${member.name}, ${new Date(2000, 0, 1, hour).toLocaleTimeString([], { hour: 'numeric' })}`}
+                          busy={busyCell === key}
+                          cellId={`${columnIndex}:${rowIndex}`}
+                          label={item?.label ?? ''}
+                          onAdvance={() => {
+                            const next =
+                              document.querySelector<HTMLInputElement>(
+                                `[data-schedule-cell="${columnIndex}:${rowIndex + 1}"]`,
+                              );
+                            next?.focus();
+                          }}
+                          onCommit={(value) =>
+                            void changeCell(member, hour, value)
+                          }
+                          onRangePaste={(text) =>
+                            void pasteCells(rowIndex, columnIndex, text)
+                          }
+                        />
+                      </td>
+                    );
+                  })}
+                  <td className="sticky right-0 z-20 border-b border-l bg-inherit px-2 py-2 text-center font-semibold">
+                    {counts.get(member.id) ?? 0}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {message && (
+          <p className="px-3 text-sm text-destructive" role="status">
+            {message}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

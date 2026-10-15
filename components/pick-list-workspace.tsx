@@ -5,10 +5,8 @@ import {
   ArrowDown,
   ArrowUp,
   ChartNoAxesColumn,
-  Download,
   GripVertical,
   Plus,
-  Printer,
   Search,
   Undo2,
   UserX,
@@ -180,6 +178,60 @@ export function PickListWorkspace({
   const reviewedBallot = response?.ballots?.find(
     (ballot) => ballot.ownerUserId === reviewOwnerId,
   );
+  const scoutDistribution = new Map<
+    number,
+    { first: number; second: number; dnp: number; ranked: number }
+  >();
+  for (const ballot of response?.ballots ?? []) {
+    for (const entry of ballot.data.entries) {
+      const counts = scoutDistribution.get(entry.teamNumber) ?? {
+        first: 0,
+        second: 0,
+        dnp: 0,
+        ranked: 0,
+      };
+      counts.ranked += 1;
+      if (entry.tier === 'first') counts.first += 1;
+      else if (entry.tier === 'second') counts.second += 1;
+      else counts.dnp += 1;
+      scoutDistribution.set(entry.teamNumber, counts);
+    }
+  }
+
+  function rankingDistribution(teamNumber: number) {
+    if (mode !== 'official') return null;
+    const counts = scoutDistribution.get(teamNumber) ?? {
+      first: 0,
+      second: 0,
+      dnp: 0,
+      ranked: 0,
+    };
+    const denominator = Math.max(response?.ballotCount ?? 0, 1);
+    return (
+      <div
+        className="mt-1"
+        title={`${counts.first} first pick, ${counts.second} second pick, ${counts.dnp} do not pick across ${response?.ballotCount ?? 0} scout lists`}
+      >
+        <div className="flex h-1.5 overflow-hidden rounded-full bg-muted">
+          <span
+            className="bg-emerald-500"
+            style={{ width: `${(counts.first / denominator) * 100}%` }}
+          />
+          <span
+            className="bg-amber-400"
+            style={{ width: `${(counts.second / denominator) * 100}%` }}
+          />
+          <span
+            className="bg-destructive"
+            style={{ width: `${(counts.dnp / denominator) * 100}%` }}
+          />
+        </div>
+        <small className="text-muted-foreground">
+          1st {counts.first} · 2nd {counts.second} · DNP {counts.dnp}
+        </small>
+      </div>
+    );
+  }
 
   async function save(target: 'personal' | 'official', data: PickListData) {
     setMessage('');
@@ -335,47 +387,6 @@ export function PickListWorkspace({
     });
   }
 
-  function exportOfficialList() {
-    const headings = [
-      'rank',
-      'team_number',
-      'tier',
-      'xp',
-      'opr',
-      'selected_by_alliance',
-      'notes',
-    ];
-    const quote = (value: string | number | boolean | null | undefined) =>
-      `"${String(value ?? '').replaceAll('"', '""')}"`;
-    const rows = official.entries.map((entry, index) => {
-      const team = metrics.get(entry.teamNumber);
-      const selection = official.selections.find(
-        (item) => item.teamNumber === entry.teamNumber,
-      );
-      return [
-        index + 1,
-        entry.teamNumber,
-        entry.tier,
-        team?.xp,
-        team?.opr,
-        selection?.allianceNumber,
-        entry.note,
-      ]
-        .map(quote)
-        .join(',');
-    });
-    const url = URL.createObjectURL(
-      new Blob([[headings.join(','), ...rows].join('\n')], {
-        type: 'text/csv;charset=utf-8',
-      }),
-    );
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `${eventKey}-official-pick-list.csv`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  }
-
   return (
     <Card className="pick-list-print sm:col-span-2 max-md:gap-2 max-md:py-2">
       {standaloneSelection && (
@@ -415,24 +426,6 @@ export function PickListWorkspace({
                   onClick={() => setMode('official')}
                 >
                   Team pick list
-                </Button>
-              </>
-            )}
-            {mode !== 'personal' && official.entries.length > 0 && (
-              <>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={exportOfficialList}
-                >
-                  <Download /> Export CSV
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => window.print()}
-                >
-                  <Printer /> Print
                 </Button>
               </>
             )}
@@ -640,6 +633,7 @@ export function PickListWorkspace({
                             xP {team.xp?.toFixed(1) ?? '—'} · OPR{' '}
                             {team.opr?.toFixed(1) ?? '—'}
                           </small>
+                          {rankingDistribution(team.teamNumber)}
                         </div>
                         <Button
                           size="icon-sm"
@@ -733,6 +727,7 @@ export function PickListWorkspace({
                                   {team.name}
                                 </small>
                               )}
+                              {rankingDistribution(entry.teamNumber)}
                             </div>
                             <Button size="icon-sm" variant="ghost" aria-label={`View stats for team ${entry.teamNumber}`} onClick={() => setStatsTeam(entry.teamNumber)}>
                               <ChartNoAxesColumn />

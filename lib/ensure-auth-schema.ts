@@ -1,5 +1,5 @@
 const statements = [
-  `CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY NOT NULL, firebase_uid TEXT, email TEXT NOT NULL, name TEXT NOT NULL, email_verified INTEGER DEFAULT 0 NOT NULL, image TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY NOT NULL, firebase_uid TEXT, email TEXT NOT NULL, name TEXT NOT NULL, ops_role TEXT, email_verified INTEGER DEFAULT 0 NOT NULL, image TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_firebase_uid ON users (firebase_uid)`,
   `CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY NOT NULL, expires_at INTEGER NOT NULL, token TEXT NOT NULL, ip_address TEXT, user_agent TEXT, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,

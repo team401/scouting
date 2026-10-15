@@ -78,12 +78,21 @@ export async function POST(request: Request) {
       firebase.idToken,
       parsed.data.newPassword,
     );
-    await clearOpsPasswordReset(changed.idToken, firebase.localId);
+    let warning: string | undefined;
+    try {
+      await clearOpsPasswordReset(changed.idToken, firebase.localId);
+    } catch (error) {
+      // Firebase has already committed the password change at this point. Do
+      // not tell the user the whole operation failed just because the Ops
+      // profile flag could not be cleared in the follow-up request.
+      warning = error instanceof Error ? error.message : 'Ops profile activation still needs to be completed.';
+      console.warn('Password changed but Ops reset flag was not cleared:', warning);
+    }
     if (session)
       await env.DB.prepare('DELETE FROM sessions WHERE user_id = ? AND id <> ?')
         .bind(session.user.id, session.session.id)
         .run();
-    return Response.json({ changed: true });
+    return Response.json({ changed: true, warning });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Password change failed.';
@@ -91,15 +100,18 @@ export async function POST(request: Request) {
       message,
     );
     const weak = /WEAK_PASSWORD/.test(message);
+    const throttled = /TOO_MANY_ATTEMPTS_TRY_LATER|QUOTA_EXCEEDED/.test(message);
     return Response.json(
       {
         error: invalid
           ? 'Your current password is incorrect.'
+          : throttled
+            ? 'Firebase temporarily blocked password attempts. Wait a few minutes, then try again.'
           : weak
             ? 'Choose a stronger password with at least 6 characters.'
             : message,
       },
-      { status: invalid ? 401 : weak ? 400 : 502 },
+      { status: invalid ? 401 : weak ? 400 : throttled ? 429 : 502 },
     );
   }
 }

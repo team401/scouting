@@ -1,4 +1,4 @@
-const VERSION = 'v6';
+const VERSION = 'v8';
 const SHELL_CACHE = `team401-shell-${VERSION}`;
 const PAGE_CACHE = `team401-pages-${VERSION}`;
 const ASSET_CACHE = `team401-assets-${VERSION}`;
@@ -50,7 +50,6 @@ async function cacheOfflineShell() {
 }
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
   event.waitUntil(cacheOfflineShell());
 });
 
@@ -122,8 +121,7 @@ self.addEventListener('fetch', (event) => {
 
   if (
     url.pathname.startsWith('/_next/static/') ||
-    url.pathname.startsWith('/icons/') ||
-    ['style', 'script', 'font', 'image'].includes(request.destination)
+    url.pathname.startsWith('/icons/')
   ) {
     event.respondWith(cacheFirst(request));
   }
@@ -141,5 +139,15 @@ self.addEventListener('message', (event) => {
       .catch((error) =>
         event.ports[0]?.postMessage({ ok: false, error: String(error) }),
       ),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      const existing = clients.find((client) => 'focus' in client);
+      return existing ? existing.focus() : self.clients.openWindow('/');
+    }),
   );
 });

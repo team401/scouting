@@ -101,7 +101,6 @@ export function GuestPassManager() {
     <Card>
       <CardHeader>
         <CardTitle>Partner-team guest access</CardTitle>
-        <Badge variant="outline">Revokable</Badge>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">

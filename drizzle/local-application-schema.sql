@@ -34,3 +34,10 @@ CREATE TABLE IF NOT EXISTS pick_lists (id TEXT PRIMARY KEY NOT NULL, organizatio
 CREATE INDEX IF NOT EXISTS idx_picklists_event ON pick_lists (organization_id, event_id);
 CREATE TABLE IF NOT EXISTS media (id TEXT PRIMARY KEY NOT NULL, organization_id TEXT NOT NULL REFERENCES organizations(id), event_id TEXT NOT NULL REFERENCES events(id), match_id TEXT REFERENCES matches(id), team_number INTEGER, uploader_user_id TEXT NOT NULL REFERENCES users(id), kind TEXT NOT NULL, object_key TEXT NOT NULL, content_type TEXT NOT NULL, bytes INTEGER NOT NULL, status TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_media_match ON media (organization_id, match_id);
+CREATE TABLE IF NOT EXISTS event_role_assignments (id TEXT PRIMARY KEY NOT NULL, organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE, event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, role TEXT NOT NULL, starts_at INTEGER NOT NULL, ends_at INTEGER NOT NULL, created_by TEXT NOT NULL REFERENCES users(id), created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_event_roles_event_time ON event_role_assignments(event_id, starts_at, ends_at);
+CREATE INDEX IF NOT EXISTS idx_event_roles_user_time ON event_role_assignments(user_id, starts_at, ends_at);
+CREATE TABLE IF NOT EXISTS event_attendees (event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at INTEGER NOT NULL, PRIMARY KEY (event_id, user_id));
+CREATE INDEX IF NOT EXISTS idx_event_attendees_user ON event_attendees(user_id, event_id);
+CREATE TABLE IF NOT EXISTS event_attendance_settings (event_id TEXT PRIMARY KEY NOT NULL REFERENCES events(id) ON DELETE CASCADE, configured_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS event_schedule_days (event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE, date TEXT NOT NULL, start_hour INTEGER NOT NULL, end_hour INTEGER NOT NULL, PRIMARY KEY (event_id, date));
