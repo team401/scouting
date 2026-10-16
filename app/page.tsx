@@ -3393,7 +3393,7 @@ export default function Home() {
                         ))}
                       </select>
                     </div>
-                    <div className="grid grid-cols-3 gap-1 rounded-lg border p-1">
+                    <div className="grid grid-cols-3 gap-1">
                       <Button
                         type="button"
                         size="sm"
