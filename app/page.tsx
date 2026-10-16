@@ -4050,8 +4050,8 @@ export default function Home() {
                     : 'Select a team above'}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-5 lg:grid-cols-3 lg:items-start">
-                <div className="grid gap-4 sm:grid-cols-[10rem_1fr] lg:grid-cols-[8rem_1fr]">
+              <CardContent className="space-y-5">
+                <div className="grid gap-4 sm:grid-cols-[12rem_1fr] sm:items-start">
                   <TeamRobotPhoto
                     teamNumber={selectedTeam}
                     hasPitPhoto={Boolean(analysis?.pit?.photoObjectKey)}
@@ -4064,7 +4064,7 @@ export default function Home() {
                     <p className="text-sm text-muted-foreground">
                       median observed points
                     </p>
-                    <div className="mini-stats">
+                    <div className="mini-stats sm:!grid-cols-3">
                       <span>
                         <strong>{analysis?.medianActiveFuel ?? 0}</strong>{' '}
                         median active FUEL
@@ -4084,9 +4084,9 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-                <section className="space-y-3">
+                <section className="space-y-3 border-t pt-5">
                   <h3 className="font-semibold">TBA and external ratings</h3>
-                  <div className="mini-stats">
+                  <div className="mini-stats !mt-0 sm:!grid-cols-3 xl:!grid-cols-5">
                     <span>
                       <strong>
                         {selectedStrategyTeam?.epa?.toFixed(1) ?? '—'}
@@ -4134,9 +4134,9 @@ export default function Home() {
                     </span>
                   </div>
                 </section>
-                <section className="space-y-3">
+                <section className="space-y-3 border-t pt-5">
                   <h3 className="font-semibold">Reliability and coverage</h3>
-                  <div className="mini-stats">
+                  <div className="mini-stats !mt-0 sm:!grid-cols-2 lg:!grid-cols-4">
                     <span>
                       <strong>
                         L1 {analysis?.towerLevelCounts.level1 ?? 0} · L2{' '}
