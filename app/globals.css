@@ -652,18 +652,13 @@ select option {
 .member-card-email {
   overflow-wrap: anywhere;
 }
-.member-card-email,
-.member-card-role > span {
+.member-card-email {
   color: var(--muted-foreground);
 }
 .member-card-role {
   display: grid;
   gap: 5px;
   margin-top: auto;
-}
-.member-card-role > span {
-  font-size: 12px;
-  font-weight: 600;
 }
 .member-card-role select {
   width: 100%;

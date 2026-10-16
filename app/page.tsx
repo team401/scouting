@@ -4329,7 +4329,6 @@ export default function Home() {
                           {guest ? 'Temporary partner access' : member.email}
                         </small>
                         <div className="member-card-role">
-                          <span>Scouting role</span>
                           {guest ? (
                             <Badge variant="outline">Guest scout</Badge>
                           ) : member.role === 'owner' ? (
