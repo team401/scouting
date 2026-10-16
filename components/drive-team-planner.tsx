@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ConfirmActionDialog } from '@/components/confirm-action-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -64,14 +64,12 @@ function matchTime(startsAt: number | null) {
 type PersonOption = { id: string; name: string };
 
 // Same behavior as the event role table: a text box that filters as you type,
-// with suggestions shown on focus. The list is rendered inline, so the table's
-// scroll wrapper never clips it.
+// with suggestions overlaid above or below the table row.
 function DrivePersonInput({
   label,
   hasValue,
   valueName,
   options,
-  emptyLabel,
   disabled,
   onChoose,
 }: {
@@ -79,13 +77,14 @@ function DrivePersonInput({
   hasValue: boolean;
   valueName: string;
   options: PersonOption[];
-  emptyLabel: string;
   disabled: boolean;
   onChoose: (id: string | null) => void;
 }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [edited, setEdited] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const needle = query.trim().toLowerCase();
   const matches = needle
@@ -120,15 +119,30 @@ function DrivePersonInput({
   }
 
   return (
-    <div className="grid gap-1">
+    <div className="relative">
       <input
+        ref={inputRef}
         aria-label={label}
         className="h-9 w-full min-w-[9rem] rounded-md border bg-background px-2 text-sm"
-        placeholder={emptyLabel}
         autoComplete="off"
         value={open ? query : valueName}
         disabled={disabled}
         onFocus={() => {
+          const input = inputRef.current;
+          if (input) {
+            const inputRect = input.getBoundingClientRect();
+            const scrollRect = input
+              .closest('[data-drive-team-scroll]')
+              ?.getBoundingClientRect();
+            const visibleTop = Math.max(0, scrollRect?.top ?? 0);
+            const visibleBottom = Math.min(
+              window.innerHeight,
+              scrollRect?.bottom ?? window.innerHeight,
+            );
+            const below = visibleBottom - inputRect.bottom;
+            const above = inputRect.top - visibleTop;
+            setDropUp(below < 220 && above > below);
+          }
           setOpen(true);
           setEdited(false);
           setQuery('');
@@ -149,7 +163,9 @@ function DrivePersonInput({
         }}
       />
       {open && (
-        <div className="max-h-48 overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-sm">
+        <div
+          className={`absolute left-0 z-50 max-h-48 min-w-full overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg ${dropUp ? 'bottom-full mb-1' : 'top-full mt-1'}`}
+        >
           {hasValue && !needle && (
             <button
               type="button"
@@ -359,7 +375,6 @@ export function DriveTeamPlanner({ members }: { members: PlannerMember[] }) {
 
   function renderSection(phase: DrivePhase) {
     const phaseSlots = slots.filter((slot) => slot.phase === phase);
-    const emptyLabel = phase === 'playoff' ? 'Anyone' : 'Unassigned';
     return (
       <section className="space-y-3" key={phase}>
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -400,7 +415,10 @@ export function DriveTeamPlanner({ members }: { members: PlannerMember[] }) {
             matches to create rows.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border">
+          <div
+            className="overflow-x-auto rounded-lg border"
+            data-drive-team-scroll
+          >
             <table className="w-full min-w-[60rem] border-separate border-spacing-0 text-sm">
               <thead className="bg-muted">
                 <tr>
@@ -439,7 +457,6 @@ export function DriveTeamPlanner({ members }: { members: PlannerMember[] }) {
                             position.key,
                             slot[position.key],
                           )}
-                          emptyLabel={emptyLabel}
                           disabled={busy}
                           onChoose={(id) =>
                             void saveSlot({ ...slot, [position.key]: id })
@@ -465,15 +482,10 @@ export function DriveTeamPlanner({ members }: { members: PlannerMember[] }) {
   return (
     <Card className="mb-4">
       <CardHeader>
-        <CardTitle>Drive team schedule</CardTitle>
+        <CardTitle>Drive Team</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <p className="max-w-prose text-sm text-muted-foreground">
-            Plan drive teams before the event releases its schedule. Official
-            matches fill in automatically from the team&apos;s qualification and
-            playoff matches. This publishes separately from the shift schedule.
-          </p>
+        <div className="flex justify-end">
           <div className="ml-auto flex items-start gap-2">
             {publishedAt && (
               <Button

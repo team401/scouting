@@ -1090,7 +1090,7 @@ export function EventScheduleBoard({
         <CardContent className="space-y-3 px-0 sm:px-0">
           <div className="flex flex-wrap items-center gap-3 border-b px-3 pb-3">
             <div className="shrink-0">
-              <p className="font-semibold">Schedule Builder</p>
+              <p className="font-semibold">Event Roles</p>
             </div>
             {scheduleDays.length > 0 && (
               <div
