@@ -1207,13 +1207,13 @@ export function EventScheduleBoard({
                   </th>
                 ))}
                 <th className="w-px border-b px-2 py-2 text-center">
-                  Assigned scouting shifts
+                  Scouting Shifts
                 </th>
                 <th className="w-px border-b px-2 py-2 text-center">
-                  Assigned pit shifts
+                  Pit Shifts
                 </th>
                 <th className="sticky right-0 z-40 w-px border-b border-l bg-muted px-2 py-2 text-center">
-                  Total roles
+                  Total Shifts
                 </th>
               </tr>
             </thead>
