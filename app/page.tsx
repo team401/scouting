@@ -2797,7 +2797,7 @@ export default function Home() {
               </CardContent>
             </Card>
             <Card className="pit-queue-card h-full min-h-0">
-              <CardHeader>
+              <CardHeader className="flex flex-wrap items-center gap-2">
                 <CardTitle>Pit queue</CardTitle>
                 <Badge variant="outline">
                   {eventPack?.pitEntries.length ?? 0}/{eventTeams.length}{' '}
