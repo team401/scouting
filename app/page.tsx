@@ -2945,7 +2945,7 @@ export default function Home() {
             <div className="pit-mobile-picker min-w-0">
               <select
                 aria-label="Team to pit scout"
-                className="h-11 w-full min-w-0 max-w-full truncate rounded-md border bg-background px-3 text-foreground"
+                className="h-11 w-full min-w-0 max-w-full truncate rounded-md border bg-background px-3 text-center text-foreground"
                 value={pitTeam ?? ''}
                 onChange={(event) =>
                   setPitTeam(
@@ -3014,7 +3014,7 @@ export default function Home() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>
+                <CardTitle className="w-full text-center">
                   {pitTeam
                     ? `Team ${pitTeam}${eventPack?.teams.find((item) => item.teamNumber === pitTeam)?.name ? ` — ${eventPack.teams.find((item) => item.teamNumber === pitTeam)?.name}` : ''}`
                     : 'Choose a team'}
