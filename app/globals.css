@@ -1003,6 +1003,16 @@ select option {
   }
 }
 @media (max-width: 520px) {
+  .pit-form > label,
+  .pit-form > div {
+    display: grid;
+    gap: 4px;
+  }
+  .pit-form > label > input,
+  .pit-form > label > select,
+  .pit-form > div > .choice {
+    width: 100%;
+  }
   .scout-form .counter-row {
     align-items: stretch;
     flex-direction: column;
