@@ -210,6 +210,33 @@ function displaySelections(value: unknown, fallback = 'Unknown') {
   return typeof value === 'string' && value ? value : fallback;
 }
 
+function formatDeviceName(userAgent: string | null) {
+  if (!userAgent) return 'Unknown device';
+  const platform = /iPhone|iPad/.test(userAgent)
+    ? /iPad/.test(userAgent)
+      ? 'iPad'
+      : 'iPhone'
+    : /Android/.test(userAgent)
+      ? 'Android'
+      : /Windows/.test(userAgent)
+        ? 'Windows'
+        : /Macintosh|Mac OS/.test(userAgent)
+          ? 'Mac'
+          : /Linux/.test(userAgent)
+            ? 'Linux'
+            : 'device';
+  const browser = /Edg\//.test(userAgent)
+    ? 'Edge'
+    : /Firefox\//.test(userAgent)
+      ? 'Firefox'
+      : /CriOS|Chrome\//.test(userAgent)
+        ? 'Chrome'
+        : /Safari\//.test(userAgent)
+          ? 'Safari'
+          : 'Browser';
+  return `${browser} on ${platform}`;
+}
+
 function ordinal(value: number) {
   const mod100 = value % 100;
   if (mod100 >= 11 && mod100 <= 13) return `${value}th`;
@@ -635,7 +662,7 @@ export default function Home() {
   const [accountSessions, setAccountSessions] = useState<
     Array<{
       id: string;
-      ipAddress: string | null;
+      location: string | null;
       userAgent: string | null;
       createdAt: number;
       updatedAt: number;
@@ -4342,18 +4369,22 @@ export default function Home() {
               <CardHeader>
                 <CardTitle>Other signed-in devices</CardTitle>
               </CardHeader>
-              <CardContent className="account-sessions grid gap-3 sm:grid-cols-2">
+              <CardContent className="account-sessions grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                 {accountSessions
                   .filter((item) => item.id !== currentSessionId)
                   .map((item) => (
-                    <div className="rounded-lg border p-3" key={item.id}>
-                      <p className="break-words text-sm">
-                        {item.userAgent?.split(' ').slice(0, 4).join(' ') ??
-                          'Unknown device'}
-                        {item.ipAddress ? ` · ${item.ipAddress}` : ''}
+                    <div className="rounded-lg border p-2.5" key={item.id}>
+                      <p
+                        className="truncate text-sm font-medium"
+                        title={item.userAgent ?? undefined}
+                      >
+                        {formatDeviceName(item.userAgent)}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        {item.location ?? 'Location unavailable'}
                       </p>
                       <Button
-                        className="mt-3 w-full"
+                        className="mt-2 w-full"
                         size="sm"
                         variant="outline"
                         onClick={() => void revokeSession(item.id)}
