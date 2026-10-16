@@ -1,4 +1,4 @@
-const VERSION = 'v8';
+const VERSION = 'v9';
 const SHELL_CACHE = `team401-shell-${VERSION}`;
 const PAGE_CACHE = `team401-pages-${VERSION}`;
 const ASSET_CACHE = `team401-assets-${VERSION}`;
@@ -112,8 +112,14 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/'))
+  if (url.origin !== self.location.origin) return;
+
+  if (url.pathname === '/api/team-photo') {
+    event.respondWith(networkFirst(request, ASSET_CACHE, []));
     return;
+  }
+
+  if (url.pathname.startsWith('/api/')) return;
 
   if (request.mode === 'navigate') {
     event.respondWith(

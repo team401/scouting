@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { TeamTrendChart, type TeamTrend } from '@/components/team-trend-chart';
+import { TeamRobotPhoto } from '@/components/team-robot-photo';
 
 export type TeamStatsSummary = {
   teamNumber?: number;
@@ -252,20 +253,14 @@ export function TeamStatsDialog({
         </section>
 
         <section className="space-y-2">
-          <h3 className="font-semibold">Pit scouting</h3>
+          <h3 className="font-semibold">Robot and pit scouting</h3>
           {pit ? (
             <div className="grid gap-4 sm:grid-cols-[12rem_1fr]">
-              {pit.photoObjectKey ? (
-                <img
-                  className="aspect-square w-full rounded-lg border bg-muted object-cover"
-                  src={`/api/pit-photo?team=${teamNumber}`}
-                  alt={`Team ${teamNumber} robot`}
-                />
-              ) : (
-                <div className="grid aspect-square place-items-center rounded-lg border bg-muted text-sm text-muted-foreground">
-                  No robot photo
-                </div>
-              )}
+              <TeamRobotPhoto
+                teamNumber={teamNumber}
+                hasPitPhoto={Boolean(pit.photoObjectKey)}
+                className="w-full"
+              />
               <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                 <span>
                   <strong className="block">{pit.drivetrain ?? '—'}</strong>
@@ -344,7 +339,12 @@ export function TeamStatsDialog({
               </div>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No pit report yet.</p>
+            <div className="grid gap-4 sm:grid-cols-[12rem_1fr] sm:items-start">
+              <TeamRobotPhoto teamNumber={teamNumber} className="w-full" />
+              <p className="text-sm text-muted-foreground">
+                No pit report yet.
+              </p>
+            </div>
           )}
         </section>
 

@@ -41,6 +41,7 @@ import { PickListWorkspace } from '@/components/pick-list-workspace';
 import { MatchVideoLibrary } from '@/components/match-video-library';
 import { TeamComparison } from '@/components/team-comparison';
 import { TeamStatsDialog } from '@/components/team-stats-dialog';
+import { TeamRobotPhoto } from '@/components/team-robot-photo';
 import { TeamTrendChart, type TeamTrend } from '@/components/team-trend-chart';
 import { ScoutingOperations } from '@/components/scouting-operations';
 import { PersonalEventSchedule } from '@/components/event-role-scheduler';
@@ -3795,26 +3796,35 @@ export default function Home() {
                   matches scouted
                 </Badge>
               </CardHeader>
-              <CardContent>
-                <p className="score-number">{analysis?.medianPoints ?? 0}</p>
-                <p className="text-sm text-muted-foreground">
-                  median observed points
-                </p>
-                <div className="mini-stats">
-                  <span>
-                    <strong>{analysis?.medianActiveFuel ?? 0}</strong> median
-                    active FUEL
-                  </span>
-                  <span>
-                    <strong>{analysis?.pointStdDev.toFixed(1) ?? '0.0'}</strong>{' '}
-                    point deviation
-                  </span>
-                  <span>
-                    <strong>
-                      {analysis?.averageDefense.toFixed(1) ?? '0.0'}
-                    </strong>{' '}
-                    defense rating
-                  </span>
+              <CardContent className="grid gap-4 sm:grid-cols-[10rem_1fr] sm:items-start">
+                <TeamRobotPhoto
+                  teamNumber={selectedTeam}
+                  hasPitPhoto={Boolean(analysis?.pit?.photoObjectKey)}
+                  className="w-full"
+                />
+                <div>
+                  <p className="score-number">{analysis?.medianPoints ?? 0}</p>
+                  <p className="text-sm text-muted-foreground">
+                    median observed points
+                  </p>
+                  <div className="mini-stats">
+                    <span>
+                      <strong>{analysis?.medianActiveFuel ?? 0}</strong> median
+                      active FUEL
+                    </span>
+                    <span>
+                      <strong>
+                        {analysis?.pointStdDev.toFixed(1) ?? '0.0'}
+                      </strong>{' '}
+                      point deviation
+                    </span>
+                    <span>
+                      <strong>
+                        {analysis?.averageDefense.toFixed(1) ?? '0.0'}
+                      </strong>{' '}
+                      defense rating
+                    </span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
