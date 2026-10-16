@@ -3366,61 +3366,68 @@ export default function Home() {
               }
             >
               <CardContent className="flex flex-col gap-5">
-                <div className="flex items-center gap-3">
-                  <label
-                    className="shrink-0 font-semibold"
-                    htmlFor="plan-match"
-                  >
-                    Match
-                  </label>
-                  <select
-                    id="plan-match"
-                    aria-label="Match to plan"
-                    className="h-11 min-w-0 flex-1 rounded-md border bg-transparent px-3"
-                    value={selectedMatchKey}
-                    onChange={(event) =>
-                      setSelectedMatchKey(event.target.value)
-                    }
-                  >
-                    {planningMatches.map((match) => (
-                      <option value={match.key} key={match.key}>
-                        {matchLabel(match)} · {match.alliances.red.join(', ')}{' '}
-                        vs {match.alliances.blue.join(', ')}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="grid grid-cols-3 gap-1 rounded-lg border p-1">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={planSection === 'auto' ? 'default' : 'ghost'}
-                    onClick={() => setPlanSection('auto')}
-                  >
-                    Auto Plan
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={planSection === 'teleop' ? 'default' : 'ghost'}
-                    onClick={() => setPlanSection('teleop')}
-                  >
-                    Tele Plan
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={planSection === 'metrics' ? 'default' : 'ghost'}
-                    onClick={() => setPlanSection('metrics')}
-                  >
-                    Team metrics
-                  </Button>
-                </div>
-                {eventPack && planningMatches.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    Team {organizationTeamNumber} is not scheduled for any
-                    matches in this event pack.
-                  </p>
+                {!planFullscreen && (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <label
+                        className="shrink-0 font-semibold"
+                        htmlFor="plan-match"
+                      >
+                        Match
+                      </label>
+                      <select
+                        id="plan-match"
+                        aria-label="Match to plan"
+                        className="h-11 min-w-0 flex-1 rounded-md border bg-transparent px-3"
+                        value={selectedMatchKey}
+                        onChange={(event) =>
+                          setSelectedMatchKey(event.target.value)
+                        }
+                      >
+                        {planningMatches.map((match) => (
+                          <option value={match.key} key={match.key}>
+                            {matchLabel(match)} ·{' '}
+                            {match.alliances.red.join(', ')} vs{' '}
+                            {match.alliances.blue.join(', ')}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1 rounded-lg border p-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={planSection === 'auto' ? 'default' : 'ghost'}
+                        onClick={() => setPlanSection('auto')}
+                      >
+                        Auto Plan
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={planSection === 'teleop' ? 'default' : 'ghost'}
+                        onClick={() => setPlanSection('teleop')}
+                      >
+                        Tele Plan
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={
+                          planSection === 'metrics' ? 'default' : 'ghost'
+                        }
+                        onClick={() => setPlanSection('metrics')}
+                      >
+                        Team metrics
+                      </Button>
+                    </div>
+                    {eventPack && planningMatches.length === 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        Team {organizationTeamNumber} is not scheduled for any
+                        matches in this event pack.
+                      </p>
+                    )}
+                  </>
                 )}
                 {planSection !== 'metrics' && (
                   <>
@@ -3456,7 +3463,11 @@ export default function Home() {
                         }
                       />
                     </div>
-                    <div className="space-y-3 border-t pt-4">
+                    <div
+                      className={
+                        planFullscreen ? 'hidden' : 'space-y-3 border-t pt-4'
+                      }
+                    >
                       <textarea
                         aria-label="Match plan notes"
                         className="min-h-20 w-full rounded-md border bg-transparent p-3"
