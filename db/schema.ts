@@ -157,7 +157,7 @@ export const guestAccessPasses = sqliteTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     tokenHash: text('token_hash').notNull(),
-    tokenCode: text('token_code'),
+    tokenCode: text('token_code').notNull(),
     expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
     revokedAt: integer('revoked_at', { mode: 'timestamp_ms' }),
     createdBy: text('created_by')

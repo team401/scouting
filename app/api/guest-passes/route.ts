@@ -16,7 +16,6 @@ const revokeSchema = z.object({
   id: z.string().uuid(),
   action: z.enum(['revoke', 'remove']).optional().default('revoke'),
 });
-const replaceCodeSchema = z.object({ id: z.string().uuid() });
 
 async function getAdmin(request: Request) {
   const session = await auth.api.getSession({ headers: request.headers });
@@ -104,47 +103,6 @@ export async function POST(request: Request) {
     ),
   ]);
   return Response.json({ id, userId, name: parsed.data.name, code, expiresAt });
-}
-
-export async function PUT(request: Request) {
-  const actor = await getAdmin(request);
-  if (!actor)
-    return Response.json(
-      { error: 'Admin access is required.' },
-      { status: 403 },
-    );
-  const parsed = replaceCodeSchema.safeParse(
-    await request.json().catch(() => null),
-  );
-  if (!parsed.success)
-    return Response.json({ error: 'Invalid guest pass.' }, { status: 400 });
-  const pass = await env.DB.prepare(
-    `SELECT id FROM guest_access_passes
-     WHERE id = ? AND organization_id = ? AND revoked_at IS NULL AND expires_at > ?`,
-  )
-    .bind(parsed.data.id, actor.membership.organizationId, Date.now())
-    .first();
-  if (!pass)
-    return Response.json(
-      { error: 'Only an active guest pass can receive a replacement code.' },
-      { status: 404 },
-    );
-  const code = createGuestPassCode();
-  const tokenHash = await hashGuestPassCode(code);
-  await env.DB.prepare(
-    `UPDATE guest_access_passes
-     SET token_hash = ?, token_code = ?, updated_at = ?
-     WHERE id = ? AND organization_id = ?`,
-  )
-    .bind(
-      tokenHash,
-      code,
-      Date.now(),
-      parsed.data.id,
-      actor.membership.organizationId,
-    )
-    .run();
-  return Response.json({ code });
 }
 
 export async function DELETE(request: Request) {

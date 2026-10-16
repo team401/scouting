@@ -18,7 +18,7 @@ type GuestPass = {
   createdAt: number;
   memberDisabled: number;
   expired: number;
-  code: string | null;
+  code: string;
 };
 
 export function GuestPassManager() {
@@ -59,24 +59,6 @@ export function GuestPassManager() {
     }
     setName('');
     setMessage('Guest pass created.');
-    await load();
-  }
-
-  async function replaceCode(pass: GuestPass) {
-    setBusy(true);
-    setMessage('');
-    const response = await fetch('/api/guest-passes', {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id: pass.id }),
-    });
-    const body = (await response.json()) as { error?: string; code?: string };
-    setBusy(false);
-    if (!response.ok || !body.code) {
-      setMessage(body.error ?? 'Could not generate a replacement code.');
-      return;
-    }
-    setMessage(`A replacement code was created for ${pass.name}.`);
     await load();
   }
 
@@ -167,21 +149,19 @@ export function GuestPassManager() {
                   <small>
                     Expires {new Date(pass.expiresAt).toLocaleString()}
                   </small>
-                  {pass.code && (
-                    <div className="mt-1 flex items-center gap-2">
-                      <code className="font-semibold">{pass.code}</code>
-                      <Button
-                        size="icon-sm"
-                        variant="ghost"
-                        aria-label={`Copy code for ${pass.name}`}
-                        onClick={() =>
-                          void navigator.clipboard.writeText(pass.code!)
-                        }
-                      >
-                        <Copy />
-                      </Button>
-                    </div>
-                  )}
+                  <div className="mt-1 flex items-center gap-2">
+                    <code className="font-semibold">{pass.code}</code>
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      aria-label={`Copy code for ${pass.name}`}
+                      onClick={() =>
+                        void navigator.clipboard.writeText(pass.code)
+                      }
+                    >
+                      <Copy />
+                    </Button>
+                  </div>
                 </div>
                 <Badge variant={active ? 'default' : 'outline'}>
                   {active ? <Check /> : <X />}
@@ -195,16 +175,6 @@ export function GuestPassManager() {
                 </Badge>
                 {active && (
                   <div className="flex flex-wrap gap-2">
-                    {!pass.code && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={busy}
-                        onClick={() => void replaceCode(pass)}
-                      >
-                        Generate replacement code
-                      </Button>
-                    )}
                     <Button
                       variant="outline"
                       size="sm"
