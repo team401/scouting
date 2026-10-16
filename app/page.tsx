@@ -2402,11 +2402,8 @@ export default function Home() {
               </div>
 
               {scoutingPhase === 'pre' && (
-                <Card>
-                  <CardHeader className="border-b">
-                    <CardTitle>Pre-match</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-5 pt-4">
+                <Card className="py-0">
+                  <CardContent className="space-y-5 py-4">
                     <div className="scout-assignment-selectors grid gap-3 sm:grid-cols-2">
                       <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-sm font-medium">
                         <span>Match</span>
@@ -2520,10 +2517,7 @@ export default function Home() {
               )}
 
               {scoutingPhase === 'auto' && (
-                <Card>
-                  <CardHeader className="border-b">
-                    <CardTitle>Autonomous</CardTitle>
-                  </CardHeader>
+                <Card className="py-0">
                   <CardContent className="divide-y divide-border p-0">
                     <Counter
                       label="Fuel scored"
@@ -2584,10 +2578,7 @@ export default function Home() {
               )}
 
               {scoutingPhase === 'tele' && (
-                <Card>
-                  <CardHeader className="border-b">
-                    <CardTitle>Teleoperated</CardTitle>
-                  </CardHeader>
+                <Card className="py-0">
                   <CardContent className="divide-y divide-border p-0">
                     <Counter
                       label="Fuel scored"
