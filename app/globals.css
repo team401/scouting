@@ -1011,6 +1011,7 @@ select option {
   .pit-form > div {
     display: grid;
     gap: 4px;
+    justify-content: stretch;
   }
   .pit-form > label > input,
   .pit-form > label > select,
