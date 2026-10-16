@@ -2083,7 +2083,7 @@ export default function Home() {
         ? `${matchHeaderLabel(currentMatch)}${selectedStation ? ` · ${selectedStation.replace('red', 'Red ').replace('blue', 'Blue ')}` : ''}${selectedTeam ? ` · Team ${selectedTeam}` : ''}`
         : 'Choose an assignment'
       : activeView === 'Pit'
-        ? 'Pit Scouting'
+        ? `Pit Scouting · ${eventPack?.pitEntries.length ?? 0}/${eventTeams.length} Complete`
         : activeView === 'Plan' && currentPlanningMatch
           ? `Plan · ${matchHeaderLabel(currentPlanningMatch)}`
           : activeView;
@@ -2910,12 +2910,6 @@ export default function Home() {
               </CardContent>
             </Card>
             <Card className="pit-queue-card h-full min-h-0">
-              <CardHeader className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline">
-                  {eventPack?.pitEntries.length ?? 0}/{eventTeams.length}{' '}
-                  complete
-                </Badge>
-              </CardHeader>
               <CardContent className="min-h-0 flex-1 space-y-1 overflow-auto">
                 {eventTeams.map((team) => {
                   const entry = eventPack?.pitEntries.find(
