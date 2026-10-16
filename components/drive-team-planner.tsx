@@ -123,7 +123,7 @@ function DrivePersonInput({
       <input
         ref={inputRef}
         aria-label={label}
-        className="h-9 w-full min-w-[9rem] rounded-md border bg-background px-2 text-sm"
+        className={`h-9 w-full min-w-[9rem] rounded-md border px-2 text-center text-sm transition-colors ${hasValue && !open ? 'border-primary/40 bg-primary/10 text-foreground' : 'border-slate-300 bg-white text-foreground hover:border-slate-400 hover:bg-slate-50 focus:border-primary dark:border-border dark:bg-background dark:hover:border-muted-foreground dark:hover:bg-muted/40'}`}
         autoComplete="off"
         value={open ? query : valueName}
         disabled={disabled}
@@ -416,37 +416,46 @@ export function DriveTeamPlanner({ members }: { members: PlannerMember[] }) {
           </p>
         ) : (
           <div
-            className="overflow-x-auto rounded-lg border"
+            className="overflow-x-auto rounded-lg border border-slate-300 bg-slate-100 dark:border-border dark:bg-background"
             data-drive-team-scroll
           >
             <table className="w-full min-w-[60rem] border-separate border-spacing-0 text-sm">
-              <thead className="bg-muted">
+              <thead className="bg-slate-200 dark:bg-muted">
                 <tr>
-                  <th className="border-b px-3 py-2 text-center">Match</th>
+                  <th className="border-r border-b border-slate-300 px-3 py-2 text-center dark:border-border">
+                    Match
+                  </th>
                   {drivePositions.map((position) => (
                     <th
-                      className="border-b px-3 py-2 text-center"
+                      className="border-r border-b border-slate-300 px-3 py-2 text-center dark:border-border"
                       key={position.key}
                     >
                       {position.label}
                     </th>
                   ))}
-                  <th className="border-b px-3 py-2 text-left">
+                  <th className="border-b border-slate-300 px-3 py-2 text-left dark:border-border">
                     Official match
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {phaseSlots.map((slot) => (
-                  <tr key={`${slot.phase}:${slot.slotNumber}`}>
-                    <th className="border-b px-3 py-2 text-center align-top font-medium tabular-nums">
+                {phaseSlots.map((slot, rowIndex) => (
+                  <tr
+                    className={
+                      rowIndex % 2
+                        ? 'bg-slate-100 dark:bg-[color-mix(in_srgb,var(--muted)_20%,var(--background))]'
+                        : 'bg-white dark:bg-background'
+                    }
+                    key={`${slot.phase}:${slot.slotNumber}`}
+                  >
+                    <th className="border-r border-b border-slate-300 bg-inherit px-3 py-2 text-center align-top font-medium tabular-nums dark:border-border">
                       {phase === 'playoff'
                         ? `Playoff ${slot.slotNumber}`
                         : slot.slotNumber}
                     </th>
                     {drivePositions.map((position) => (
                       <td
-                        className="border-b px-2 py-1 align-top"
+                        className="border-r border-b border-slate-300 px-2 py-1 align-top dark:border-border"
                         key={position.key}
                       >
                         <DrivePersonInput
@@ -464,7 +473,7 @@ export function DriveTeamPlanner({ members }: { members: PlannerMember[] }) {
                         />
                       </td>
                     ))}
-                    <td className="border-b px-3 py-2 align-top whitespace-nowrap text-muted-foreground tabular-nums">
+                    <td className="border-b border-slate-300 bg-inherit px-3 py-2 align-top whitespace-nowrap text-muted-foreground tabular-nums dark:border-border">
                       {slot.official
                         ? `${matchLabel(slot.official.matchNumber, slot.official.compLevel)}${matchTime(slot.official.startsAt)}`
                         : 'Not released yet'}
