@@ -1296,10 +1296,10 @@ export function EventScheduleBoard({
                   </th>
                   {perHour.map((have, index) => (
                     <td
-                      className={`border-r border-b px-1 py-1 text-center text-xs ${
+                      className={`border-r border-b px-1 py-1 text-center text-xs font-semibold ${
                         have >= target.need
-                          ? 'text-emerald-700 dark:text-emerald-400'
-                          : 'bg-amber-100 text-amber-900 dark:bg-amber-900/60 dark:text-amber-100'
+                          ? 'bg-emerald-300 text-emerald-950 dark:bg-emerald-400 dark:text-emerald-950'
+                          : 'bg-amber-300 text-amber-950 dark:bg-amber-400 dark:text-amber-950'
                       }`}
                       key={hours[index]}
                       title={`${have} of ${target.need} ${target.label.toLowerCase()}`}
