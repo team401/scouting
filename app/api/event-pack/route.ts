@@ -41,6 +41,13 @@ type PitEntryRow = {
   photoObjectKey: string | null;
   updatedAt: number;
 };
+
+function guestPoolUserId(userId: string) {
+  if (!userId.startsWith('guest:')) return userId;
+  const [prefix, passId] = userId.split(':');
+  return passId ? `${prefix}:${passId}` : userId;
+}
+
 async function getMembership(request: Request) {
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) return null;
@@ -209,13 +216,15 @@ export async function GET(request: Request) {
     }>();
   const scoutShifts = await env.DB.prepare(
     `SELECT id, station, starts_at AS startsAt, ends_at AS endsAt
-     FROM published_scout_shifts WHERE organization_id = ? AND event_id = ? AND scout_user_id = ?
+     FROM published_scout_shifts WHERE organization_id = ? AND event_id = ?
+       AND scout_user_id IN (?, ?)
      ORDER BY starts_at`,
   )
     .bind(
       identity.membership.organization_id,
       event.id,
       identity.session.user.id,
+      guestPoolUserId(identity.session.user.id),
     )
     .all();
   const normalizedMatches = matches.results.map((match) => {
@@ -250,7 +259,11 @@ export async function GET(request: Request) {
     },
     matches: normalizedMatches,
     teams: teams.results,
-    assignments: assignments.results,
+    assignments: assignments.results.map((assignment) =>
+      assignment.scoutUserId === guestPoolUserId(identity.session.user.id)
+        ? { ...assignment, scoutUserId: identity.session.user.id }
+        : assignment,
+    ),
     members: members.results,
     attendingUserIds:
       attendanceSetting || attendees.results.length > 0

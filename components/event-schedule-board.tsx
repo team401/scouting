@@ -31,6 +31,10 @@ type Member = {
   opsRole?: string | null;
   disabled?: boolean | number;
 };
+type ScheduleMember = Member & {
+  scheduleRowKey: string;
+  guestSlot?: number;
+};
 type RoleItem = {
   id: string;
   userId: string;
@@ -158,6 +162,12 @@ function isGuestMember(member: Member) {
 
 function canSchedule(member: Member) {
   return !member.disabled && member.opsRole !== 'coach';
+}
+
+function scheduleMemberName(member: ScheduleMember) {
+  return member.guestSlot === undefined
+    ? member.name
+    : `${member.name} · Scout ${member.guestSlot + 1}`;
 }
 
 export function assignmentClass(label: string) {
@@ -641,6 +651,15 @@ export function EventScheduleBoard({
           (a, b) =>
             Number(isGuestMember(a)) - Number(isGuestMember(b)) ||
             a.name.localeCompare(b.name),
+        )
+        .flatMap<ScheduleMember>((member) =>
+          isGuestMember(member)
+            ? Array.from({ length: 3 }, (_, guestSlot) => ({
+                ...member,
+                guestSlot,
+                scheduleRowKey: `${member.id}:${guestSlot}`,
+              }))
+            : [{ ...member, scheduleRowKey: member.id }],
         ),
     [attendeeIds, members],
   );
@@ -673,7 +692,8 @@ export function EventScheduleBoard({
   const nameChars = Math.max(
     0,
     ...activeMembers.map(
-      (member) => member.name.length + (isGuestMember(member) ? 8 : 0),
+      (member) =>
+        scheduleMemberName(member).length + (isGuestMember(member) ? 8 : 0),
     ),
   );
   const coverageTargets = useMemo(
@@ -700,16 +720,23 @@ export function EventScheduleBoard({
     [coverageTargets, hourItems],
   );
 
-  async function changeCell(member: Member, hour: number, value: string) {
+  async function changeCell(
+    member: ScheduleMember,
+    hour: number,
+    value: string,
+  ) {
     const startsAt = slotTime(date, hour);
     const endsAt = startsAt + 60 * 60_000;
-    const existing = items.find(
-      (item) =>
-        item.userId === member.id &&
-        item.startsAt <= startsAt &&
-        item.endsAt > startsAt,
-    );
-    const key = `${member.id}:${startsAt}`;
+    const memberItems = items
+      .filter(
+        (item) =>
+          item.userId === member.id &&
+          item.startsAt <= startsAt &&
+          item.endsAt > startsAt,
+      )
+      .sort((a, b) => a.label.localeCompare(b.label));
+    const existing = memberItems[member.guestSlot ?? 0];
+    const key = `${member.scheduleRowKey}:${startsAt}`;
     setBusyCell(key);
     setMessage('');
     try {
@@ -1283,10 +1310,10 @@ export function EventScheduleBoard({
                         ? 'bg-[color-mix(in_srgb,var(--muted)_20%,var(--background))]'
                         : 'bg-background'
                     }
-                    key={member.id}
+                    key={member.scheduleRowKey}
                   >
                     <th className="whitespace-nowrap border-r border-b bg-inherit px-3 py-2 text-left font-medium md:sticky md:left-0 md:z-20">
-                      {member.name}
+                      {scheduleMemberName(member)}
                       {isGuestMember(member) && (
                         <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal">
                           Guest
@@ -1295,13 +1322,16 @@ export function EventScheduleBoard({
                     </th>
                     {hours.map((hour, columnIndex) => {
                       const startsAt = slotTime(date, hour);
-                      const item = items.find(
-                        (candidate) =>
-                          candidate.userId === member.id &&
-                          candidate.startsAt <= startsAt &&
-                          candidate.endsAt > startsAt,
-                      );
-                      const key = `${member.id}:${startsAt}`;
+                      const memberItems = items
+                        .filter(
+                          (candidate) =>
+                            candidate.userId === member.id &&
+                            candidate.startsAt <= startsAt &&
+                            candidate.endsAt > startsAt,
+                        )
+                        .sort((a, b) => a.label.localeCompare(b.label));
+                      const item = memberItems[member.guestSlot ?? 0];
+                      const key = `${member.scheduleRowKey}:${startsAt}`;
                       return (
                         <td
                           className="h-11 border-r border-b p-1"
@@ -1309,7 +1339,7 @@ export function EventScheduleBoard({
                           style={{ minWidth: hourColumnWidth }}
                         >
                           <ScheduleRoleInput
-                            ariaLabel={`${member.name}, ${new Date(2000, 0, 1, hour).toLocaleTimeString([], { hour: 'numeric' })}`}
+                            ariaLabel={`${scheduleMemberName(member)}, ${new Date(2000, 0, 1, hour).toLocaleTimeString([], { hour: 'numeric' })}`}
                             busy={busyCell === key}
                             choices={choices}
                             cellId={`${columnIndex}:${rowIndex}`}
