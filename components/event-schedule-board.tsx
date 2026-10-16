@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -290,7 +291,7 @@ function ScheduleRoleInput({
         ref={inputRef}
         aria-label={ariaLabel}
         autoComplete="off"
-        className={`h-9 w-full rounded-md border px-1 text-center text-xs font-medium ${label && !open ? assignmentClass(label) : 'bg-background text-foreground'}`}
+        className={`h-9 w-full rounded-md border px-1 text-center text-xs font-medium transition-colors ${label && !open ? assignmentClass(label) : 'border-slate-300 bg-white text-foreground hover:border-slate-400 hover:bg-slate-50 focus:border-primary dark:border-border dark:bg-background dark:hover:border-muted-foreground dark:hover:bg-muted/40'}`}
         disabled={busy}
         data-schedule-cell={cellId}
         value={busy ? 'Saving…' : query}
@@ -434,6 +435,7 @@ export function EventScheduleBoard({
   const [attendeeIds, setAttendeeIds] = useState<Set<string>>(new Set());
   const [attendanceLoaded, setAttendanceLoaded] = useState(false);
   const [rosterOpen, setRosterOpen] = useState(false);
+  const [rosterSearch, setRosterSearch] = useState('');
   const [rosterMessage, setRosterMessage] = useState('');
   const [publishedAt, setPublishedAt] = useState<number | null>(null);
   const [hasUnpublishedChanges, setHasUnpublishedChanges] = useState(false);
@@ -670,6 +672,16 @@ export function EventScheduleBoard({
         ),
     [attendeeIds, members],
   );
+  const rosterMembers = useMemo(() => {
+    const search = rosterSearch.trim().toLowerCase();
+    return members
+      .filter(
+        (member) =>
+          canSchedule(member) &&
+          (!search || member.name.toLowerCase().includes(search)),
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [members, rosterSearch]);
   const hours = useMemo(
     () =>
       Array.from(
@@ -958,7 +970,7 @@ export function EventScheduleBoard({
     }
     setPublishedAt(body.publishedAt);
     setHasUnpublishedChanges(false);
-    setMessage('Schedule published to the team.');
+    setMessage('Shifts published to the team.');
     await onChanged();
   }
 
@@ -976,7 +988,7 @@ export function EventScheduleBoard({
     }
     setPublishedAt(null);
     setHasUnpublishedChanges(true);
-    setMessage('Schedule unpublished. Your draft is still available.');
+    setMessage('Shifts unpublished. Your draft is still available.');
     await onChanged();
   }
 
@@ -1005,23 +1017,43 @@ export function EventScheduleBoard({
 
   return (
     <>
-      <Card className="mb-4">
-        <CardContent className="space-y-3">
+      <Card className="mb-4 gap-0 overflow-hidden py-0">
+        <CardContent className="space-y-3 py-(--card-spacing)">
           {eventPicker}
-          <details
-            className="rounded-lg border p-3"
-            open={rosterOpen}
-            onToggle={(event) => setRosterOpen(event.currentTarget.open)}
-          >
-            <summary className="cursor-pointer font-semibold">
-              People at this event · {activeMembers.length}
-              {rosterMessage && (
-                <span className="ml-3 font-normal text-muted-foreground">
-                  {rosterMessage}
-                </span>
-              )}
-            </summary>
-            <div className="mt-3 flex flex-wrap gap-2">
+        </CardContent>
+        <details
+          className="group border-t"
+          open={rosterOpen}
+          onToggle={(event) => setRosterOpen(event.currentTarget.open)}
+        >
+          <summary className="flex cursor-pointer list-none items-center gap-3 px-(--card-spacing) py-3 font-semibold transition-colors hover:bg-muted/60 [&::-webkit-details-marker]:hidden">
+            <span>
+              Event Roster · {activeMembers.length}{' '}
+              {activeMembers.length === 1 ? 'person' : 'people'}
+            </span>
+            {rosterMessage && (
+              <span className="font-normal text-muted-foreground">
+                {rosterMessage}
+              </span>
+            )}
+            <span className="ml-auto flex items-center gap-1 text-sm font-normal text-muted-foreground">
+              {rosterOpen ? 'Hide' : 'Show'}
+              <ChevronDown
+                className="size-5 transition-transform group-open:rotate-180"
+                aria-hidden="true"
+              />
+            </span>
+          </summary>
+          <div className="px-(--card-spacing) pb-(--card-spacing)">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="search"
+                aria-label="Search event roster"
+                className="h-8 min-w-48 flex-1 rounded-md border bg-background px-3 text-sm"
+                placeholder="Find a person"
+                value={rosterSearch}
+                onChange={(event) => setRosterSearch(event.target.value)}
+              />
               <Button
                 type="button"
                 variant="outline"
@@ -1048,34 +1080,35 @@ export function EventScheduleBoard({
               </Button>
             </div>
             <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {members
-                .filter(canSchedule)
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((member) => {
-                  const checked =
-                    attendanceLoaded && attendeeIds.has(member.id);
-                  return (
-                    <label
-                      className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors ${checked ? 'border-primary/50 bg-primary/10' : 'hover:bg-muted/60'}`}
-                      key={member.id}
-                    >
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={(nextChecked) =>
-                          setAttendeeIds((current) => {
-                            attendanceDirtyRef.current = true;
-                            const next = new Set(current);
-                            if (nextChecked) next.add(member.id);
-                            else next.delete(member.id);
-                            return next;
-                          })
-                        }
-                      />
-                      <span>{member.name}</span>
-                    </label>
-                  );
-                })}
+              {rosterMembers.map((member) => {
+                const checked = attendanceLoaded && attendeeIds.has(member.id);
+                return (
+                  <label
+                    className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors ${checked ? 'border-primary/50 bg-primary/10' : 'hover:bg-muted/60'}`}
+                    key={member.id}
+                  >
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={(nextChecked) =>
+                        setAttendeeIds((current) => {
+                          attendanceDirtyRef.current = true;
+                          const next = new Set(current);
+                          if (nextChecked) next.add(member.id);
+                          else next.delete(member.id);
+                          return next;
+                        })
+                      }
+                    />
+                    <span>{member.name}</span>
+                  </label>
+                );
+              })}
             </div>
+            {rosterMembers.length === 0 && (
+              <p className="mt-3 text-sm text-muted-foreground">
+                No people match that search.
+              </p>
+            )}
             <Button
               className="mt-3"
               type="button"
@@ -1083,14 +1116,14 @@ export function EventScheduleBoard({
             >
               Save event roster
             </Button>
-          </details>
-        </CardContent>
+          </div>
+        </details>
       </Card>
       <Card className="mb-4 overflow-hidden">
         <CardContent className="space-y-3 px-0 sm:px-0">
           <div className="flex flex-wrap items-center gap-3 border-b px-3 pb-3">
             <div className="shrink-0">
-              <p className="font-semibold">Schedule Builder</p>
+              <p className="font-semibold">Event Roles</p>
             </div>
             {scheduleDays.length > 0 && (
               <div
@@ -1117,7 +1150,14 @@ export function EventScheduleBoard({
                 ))}
               </div>
             )}
-            <div className="ml-auto flex items-start gap-2">
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+              <p className="text-right text-xs text-muted-foreground">
+                {publishedAt
+                  ? hasUnpublishedChanges
+                    ? 'Unpublished changes'
+                    : `Published ${new Date(publishedAt).toLocaleString()}`
+                  : 'Not published yet'}
+              </p>
               {publishedAt && (
                 <Button
                   type="button"
@@ -1128,32 +1168,22 @@ export function EventScheduleBoard({
                   Unpublish
                 </Button>
               )}
-              <div className="flex flex-col items-end gap-1">
-                <Button
-                  type="button"
-                  disabled={
-                    publishing ||
-                    (!hasUnpublishedChanges && publishedAt !== null)
-                  }
-                  onClick={() => void publishSchedule()}
-                >
-                  {publishing
-                    ? 'Working…'
-                    : publishedAt
-                      ? 'Publish changes'
-                      : 'Publish schedule'}
-                </Button>
-                <p className="text-right text-xs text-muted-foreground">
-                  {publishedAt
-                    ? hasUnpublishedChanges
-                      ? 'Unpublished changes'
-                      : `Published ${new Date(publishedAt).toLocaleString()}`
-                    : 'Not published yet'}
-                </p>
-              </div>
+              <Button
+                type="button"
+                disabled={
+                  publishing || (!hasUnpublishedChanges && publishedAt !== null)
+                }
+                onClick={() => void publishSchedule()}
+              >
+                {publishing
+                  ? 'Working…'
+                  : publishedAt
+                    ? 'Publish shift changes'
+                    : 'Publish roles'}
+              </Button>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-y px-3 py-2 text-sm">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b px-3 py-2 text-sm">
             <div className="flex flex-wrap items-center gap-2">
               <input
                 aria-label="Schedule date"
@@ -1294,21 +1324,21 @@ export function EventScheduleBoard({
             </p>
           )}
           <div
-            className="max-h-[68dvh] overflow-auto border-y"
+            className="max-h-[68dvh] overflow-auto border-y border-slate-300 bg-slate-100 dark:border-border dark:bg-background"
             data-schedule-scroll
           >
             <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
-              <thead className="sticky top-0 z-30 bg-muted">
+              <thead className="sticky top-0 z-30 bg-slate-200 dark:bg-muted">
                 <tr>
                   <th
-                    className="whitespace-nowrap border-r border-b bg-muted px-3 py-2 text-left md:sticky md:left-0 md:z-40"
+                    className="whitespace-nowrap border-r border-b border-slate-300 bg-slate-200 px-3 py-2 text-left dark:border-border dark:bg-muted md:sticky md:left-0 md:z-40"
                     style={{ width: `calc(${nameChars}ch + 1.5rem)` }}
                   >
                     Person
                   </th>
                   {hours.map((hour) => (
                     <th
-                      className="whitespace-nowrap border-r border-b px-1 py-2 text-center"
+                      className="whitespace-nowrap border-r border-b border-slate-300 px-1 py-2 text-center dark:border-border"
                       key={hour}
                       style={{ minWidth: hourColumnWidth }}
                     >
@@ -1322,13 +1352,13 @@ export function EventScheduleBoard({
                       )}
                     </th>
                   ))}
-                  <th className="w-px border-b px-2 py-2 text-center">
+                  <th className="w-px border-b border-slate-300 px-2 py-2 text-center dark:border-border">
                     Scouting Shifts
                   </th>
-                  <th className="w-px border-b px-2 py-2 text-center">
+                  <th className="w-px border-b border-slate-300 px-2 py-2 text-center dark:border-border">
                     Pit Shifts
                   </th>
-                  <th className="w-px border-b border-l bg-muted px-2 py-2 text-center md:sticky md:right-0 md:z-40">
+                  <th className="w-px border-b border-l border-slate-300 bg-slate-200 px-2 py-2 text-center dark:border-border dark:bg-muted md:sticky md:right-0 md:z-40">
                     Total Shifts
                   </th>
                 </tr>
@@ -1338,12 +1368,12 @@ export function EventScheduleBoard({
                   <tr
                     className={
                       rowIndex % 2
-                        ? 'bg-[color-mix(in_srgb,var(--muted)_20%,var(--background))]'
-                        : 'bg-background'
+                        ? 'bg-slate-100 dark:bg-[color-mix(in_srgb,var(--muted)_20%,var(--background))]'
+                        : 'bg-white dark:bg-background'
                     }
                     key={member.scheduleRowKey}
                   >
-                    <th className="whitespace-nowrap border-r border-b bg-inherit px-3 py-2 text-left font-medium md:sticky md:left-0 md:z-20">
+                    <th className="whitespace-nowrap border-r border-b border-slate-300 bg-inherit px-3 py-2 text-left font-medium dark:border-border md:sticky md:left-0 md:z-20">
                       {scheduleMemberName(member)}
                       {isGuestMember(member) && (
                         <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal">
@@ -1365,7 +1395,7 @@ export function EventScheduleBoard({
                       const key = `${member.scheduleRowKey}:${startsAt}`;
                       return (
                         <td
-                          className="h-11 border-r border-b p-1"
+                          className="h-11 border-r border-b border-slate-300 p-1 dark:border-border"
                           key={hour}
                           style={{ minWidth: hourColumnWidth }}
                         >
@@ -1397,13 +1427,13 @@ export function EventScheduleBoard({
                         </td>
                       );
                     })}
-                    <td className="w-px border-b px-2 py-2 text-center">
+                    <td className="w-px border-b border-slate-300 px-2 py-2 text-center dark:border-border">
                       {(shiftCounts.get(member.id) ?? emptyShifts).scouting}
                     </td>
-                    <td className="w-px border-b px-2 py-2 text-center">
+                    <td className="w-px border-b border-slate-300 px-2 py-2 text-center dark:border-border">
                       {(shiftCounts.get(member.id) ?? emptyShifts).pit}
                     </td>
-                    <td className="w-px border-b border-l bg-inherit px-2 py-2 text-center font-semibold md:sticky md:right-0 md:z-20">
+                    <td className="w-px border-b border-l border-slate-300 bg-inherit px-2 py-2 text-center font-semibold dark:border-border md:sticky md:right-0 md:z-20">
                       {(shiftCounts.get(member.id) ?? emptyShifts).total}
                     </td>
                   </tr>
@@ -1442,9 +1472,9 @@ export function EventScheduleBoard({
           <ConfirmActionDialog
             open={unpublishConfirmOpen}
             onOpenChange={setUnpublishConfirmOpen}
-            title="Unpublish this schedule?"
-            description="The schedule will stop appearing for team members. Your draft assignments will be kept so you can edit and publish them again."
-            confirmLabel="Unpublish schedule"
+            title="Unpublish shifts?"
+            description="The shift schedule will stop appearing for team members. Your draft assignments will be kept so you can edit and publish them again."
+            confirmLabel="Unpublish shifts"
             destructive
             onConfirm={unpublishSchedule}
           />

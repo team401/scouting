@@ -104,6 +104,12 @@ export function TeamRobotPhoto({
             else setFailed(true);
           }}
         />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute right-2 bottom-2 rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white"
+        >
+          View full screen
+        </span>
         <span className="sr-only">View robot photo full screen</span>
       </button>
       <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>

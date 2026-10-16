@@ -330,6 +330,12 @@ export function TeamStatsDialog({
                   </strong>
                   visits depot in auto
                 </span>
+                <span>
+                  <strong className="block">
+                    {pit.payload.autonomousOutpost ? 'Yes' : 'No'}
+                  </strong>
+                  visits outpost in auto
+                </span>
                 {typeof pit.payload.notes === 'string' && pit.payload.notes ? (
                   <span className="col-span-2 sm:col-span-4">
                     <strong className="block">Notes</strong>

@@ -8,7 +8,6 @@ import {
   ChevronRight,
   CircleUserRound,
   ClipboardList,
-  Cloud,
   CloudOff,
   Film,
   Maximize2,
@@ -48,6 +47,7 @@ import { TeamRobotPhoto } from '@/components/team-robot-photo';
 import { TeamTrendChart, type TeamTrend } from '@/components/team-trend-chart';
 import { ScoutingOperations } from '@/components/scouting-operations';
 import { PersonalEventSchedule } from '@/components/event-role-scheduler';
+import { DriveTeamPlanner } from '@/components/drive-team-planner';
 import { EventScheduleBoard } from '@/components/event-schedule-board';
 import { EventTeamAliases } from '@/components/event-team-aliases';
 import { QrRelay } from '@/components/qr-relay';
@@ -66,6 +66,7 @@ import {
   type PendingMutation,
 } from '@/lib/offline-db';
 import { observedPoints, type ScoutingPayload } from '@/lib/scouting-metrics';
+import { isPitReportComplete } from '@/lib/pit-scouting';
 import {
   canManageAssignments,
   canReopenEntries,
@@ -153,8 +154,8 @@ type PitDraft = {
   drivetrain: string;
   swerveModule: string;
   motorTypes: string;
-  weightLbs: number;
-  fuelCapacity: number;
+  weightLbs: number | null;
+  fuelCapacity: number | null;
   climbCapability: string;
   fieldAccess: string;
   fieldAccessPreference: string;
@@ -164,6 +165,7 @@ type PitDraft = {
   autonomousStart: string[];
   autonomousSwipe: string[];
   autonomousDepot: boolean;
+  autonomousOutpost: boolean;
   autonomousNotes: string;
   notes: string;
 };
@@ -175,7 +177,7 @@ type PitEntry = {
   swerveModule: string | null;
   motorTypes: string[];
   weightLbs: number | null;
-  payload: Partial<PitDraft>;
+  payload: Partial<PitDraft> & { complete?: boolean };
   photoObjectKey: string | null;
   updatedAt: number;
 };
@@ -183,8 +185,8 @@ const emptyPitDraft: PitDraft = {
   drivetrain: 'Swerve',
   swerveModule: '',
   motorTypes: '',
-  weightLbs: 0,
-  fuelCapacity: 0,
+  weightLbs: null,
+  fuelCapacity: null,
   climbCapability: 'None',
   fieldAccess: 'Both',
   fieldAccessPreference: 'No preference',
@@ -194,9 +196,22 @@ const emptyPitDraft: PitDraft = {
   autonomousStart: ['Unknown'],
   autonomousSwipe: ['None'],
   autonomousDepot: false,
+  autonomousOutpost: false,
   autonomousNotes: '',
   notes: '',
 };
+
+function isPitEntryComplete(entry: PitEntry) {
+  if (typeof entry.payload.complete === 'boolean')
+    return entry.payload.complete;
+  return isPitReportComplete({
+    ...entry.payload,
+    drivetrain: entry.drivetrain,
+    swerveModule: entry.swerveModule,
+    motorTypes: entry.motorTypes,
+    weightLbs: entry.weightLbs,
+  });
+}
 
 function normalizeSelections(value: unknown, fallback: string): string[] {
   if (Array.isArray(value)) {
@@ -528,33 +543,31 @@ function Counter({
   value,
   onChange,
   quickAdds = [],
+  quickAddSlots = quickAdds.length,
 }: {
   label: string;
   value: number;
   onChange: (value: number) => void;
   quickAdds?: number[];
+  quickAddSlots?: number;
 }) {
   return (
     <div className="counter-row">
       <div>
         <p className="font-semibold">{label}</p>
       </div>
-      <div className="counter-controls">
-        {quickAdds.map((amount) => (
-          <Button
-            type="button"
-            key={amount}
-            variant="outline"
-            onClick={() => onChange(value + amount)}
-          >
-            +{amount}
-          </Button>
-        ))}
+      <div
+        className="counter-controls"
+        style={{
+          gridTemplateColumns: `48px 52px repeat(${1 + quickAddSlots}, 48px)`,
+        }}
+      >
         <Button
           type="button"
           aria-label={`Remove one ${label}`}
           size="icon-lg"
           variant="outline"
+          className="size-12"
           onClick={() => onChange(Math.max(0, value - 1))}
         >
           <Minus />
@@ -574,10 +587,27 @@ function Counter({
           type="button"
           aria-label={`Add one ${label}`}
           size="icon-lg"
+          className="size-12"
           onClick={() => onChange(value + 1)}
         >
           <Plus />
         </Button>
+        {Array.from({ length: quickAddSlots }, (_, index) => {
+          const amount = quickAdds[index];
+          return amount ? (
+            <Button
+              type="button"
+              key={index}
+              variant="outline"
+              className="h-12 min-w-12 px-3 text-base"
+              onClick={() => onChange(value + amount)}
+            >
+              +{amount}
+            </Button>
+          ) : (
+            <span className="size-12" aria-hidden="true" key={index} />
+          );
+        })}
       </div>
     </div>
   );
@@ -696,6 +726,7 @@ export default function Home() {
   const [pitDraft, setPitDraft] = useState<PitDraft>(emptyPitDraft);
   const [pitReady, setPitReady] = useState(false);
   const [pitMessage, setPitMessage] = useState('');
+  const pitSavedSnapshotRef = useRef('');
   const [pitPhoto, setPitPhoto] = useState<File | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoVersion, setPhotoVersion] = useState(0);
@@ -1377,7 +1408,7 @@ export default function Home() {
               drivetrain: serverEntry.drivetrain ?? 'Swerve',
               swerveModule: serverEntry.swerveModule ?? '',
               motorTypes: serverEntry.motorTypes.join(', '),
-              weightLbs: serverEntry.weightLbs ?? 0,
+              weightLbs: serverEntry.weightLbs ?? null,
             }
           : emptyPitDraft;
         const savedDraft = draft?.payload ?? serverDraft;
@@ -1385,7 +1416,7 @@ export default function Home() {
           ...emptyPitDraft,
           ...savedDraft,
         };
-        setPitDraft({
+        const normalizedDraft = {
           ...loadedDraft,
           shooterMount:
             (savedDraft as Partial<PitDraft>).shooterMount ?? 'Fixed',
@@ -1397,15 +1428,18 @@ export default function Home() {
             loadedDraft.autonomousSwipe,
             'None',
           ),
-        });
+        };
+        pitSavedSnapshotRef.current = JSON.stringify(normalizedDraft);
+        setPitDraft(normalizedDraft);
         setPitReady(true);
       })
       .catch(() => {
+        pitSavedSnapshotRef.current = JSON.stringify(emptyPitDraft);
         setPitDraft(emptyPitDraft);
         setPitReady(true);
         setPitMessage('Offline storage is unavailable on this device.');
       });
-  }, [eventPack, pitDraftId, pitTeam]);
+  }, [eventPack?.event.key, pitDraftId, pitTeam]);
 
   useEffect(() => {
     if (!pitReady || !pitDraftId) return;
@@ -1420,6 +1454,17 @@ export default function Home() {
     );
     return () => window.clearTimeout(timer);
   }, [pitDraft, pitDraftId, pitReady]);
+
+  useEffect(() => {
+    if (!pitReady || !pitDraftId || !eventPack || !pitTeam) return;
+    const snapshot = JSON.stringify(pitDraft);
+    if (snapshot === pitSavedSnapshotRef.current) return;
+    const timer = window.setTimeout(() => {
+      pitSavedSnapshotRef.current = snapshot;
+      void savePitReport(pitDraft, true);
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [eventPack, pitDraft, pitDraftId, pitReady, pitTeam]);
 
   async function submitMatch() {
     if (!draftId || !eventPack || !currentMatch || !selectedTeam) {
@@ -1523,16 +1568,13 @@ export default function Home() {
     }
   }
 
-  async function submitPit() {
+  async function savePitReport(draft: PitDraft, automatic = false) {
     if (!eventPack || !pitTeam) {
       setPitMessage('Choose a team first.');
-      return;
-    }
-    if (pitDraft.weightLbs <= 0) {
-      setPitMessage('Enter the robot weight before saving the pit report.');
-      return;
+      return false;
     }
     const id = `pit:${eventPack.event.key}:${pitTeam}`;
+    const complete = isPitReportComplete(draft);
     try {
       await queueMutation({
         id,
@@ -1546,22 +1588,60 @@ export default function Home() {
           teamNumber: pitTeam,
           seasonYear: eventPack.event.year,
           schemaVersion: 1,
-          ...pitDraft,
-          motorTypes: pitDraft.motorTypes
+          ...draft,
+          complete,
+          motorTypes: draft.motorTypes
             .split(',')
             .map((motor) => motor.trim())
             .filter(Boolean),
         },
       });
       setQueuedCount((await getPendingMutations()).length);
+      const updatedAt = Date.now();
+      setEventPack((current) => {
+        if (!current) return current;
+        const existing = current.pitEntries.find(
+          (entry) => entry.teamNumber === pitTeam,
+        );
+        const entry: PitEntry = {
+          teamNumber: pitTeam,
+          scoutUserId: current.userId,
+          scoutName: session?.user.name ?? 'You',
+          drivetrain: draft.drivetrain,
+          swerveModule: draft.swerveModule || null,
+          motorTypes: draft.motorTypes
+            .split(',')
+            .map((motor) => motor.trim())
+            .filter(Boolean),
+          weightLbs: draft.weightLbs,
+          payload: { ...draft, complete },
+          photoObjectKey: existing?.photoObjectKey ?? null,
+          updatedAt,
+        };
+        return {
+          ...current,
+          pitEntries: [
+            ...current.pitEntries.filter(
+              (candidate) => candidate.teamNumber !== pitTeam,
+            ),
+            entry,
+          ],
+        };
+      });
       setPitMessage(
-        online
-          ? 'Pit report queued and ready to synchronize.'
-          : 'Pit report saved offline. It will synchronize when connected.',
+        automatic
+          ? complete
+            ? 'Saved automatically.'
+            : 'Saved automatically · In Progress'
+          : online
+            ? 'Pit report queued and ready to synchronize.'
+            : 'Pit report saved offline. It will synchronize when connected.',
       );
       if (online) await syncNow();
+      return true;
     } catch {
       setPitMessage('Could not save this pit report.');
+      return false;
     }
   }
 
@@ -1579,7 +1659,7 @@ export default function Home() {
     setPhotoUploading(true);
     setPitMessage('Saving the pit report before uploading…');
     try {
-      await submitPit();
+      if (!(await savePitReport(pitDraft))) return;
       const form = new FormData();
       form.set('teamNumber', String(pitTeam));
       form.set('photo', pitPhoto);
@@ -2079,11 +2159,11 @@ export default function Home() {
 
   const pageTitle =
     activeView === 'Scout'
-      ? currentMatch
-        ? `${matchHeaderLabel(currentMatch)}${selectedStation ? ` · ${selectedStation.replace('red', 'Red ').replace('blue', 'Blue ')}` : ''}${selectedTeam ? ` · Team ${selectedTeam}` : ''}`
-        : 'Choose an assignment'
+      ? currentMatch && selectedStation
+        ? `${matchHeaderLabel(currentMatch)} · ${selectedStation.replace('red', 'Red ').replace('blue', 'Blue ')}${selectedTeam ? ` · Team ${selectedTeam}` : ''}`
+        : 'Choose a station'
       : activeView === 'Pit'
-        ? `Pit Scouting · ${eventPack?.pitEntries.length ?? 0}/${eventTeams.length} Complete`
+        ? `Pit Scouting · ${eventPack?.pitEntries.filter(isPitEntryComplete).length ?? 0}/${eventTeams.length}`
         : activeView === 'Plan' && currentPlanningMatch
           ? `Plan · ${matchHeaderLabel(currentPlanningMatch)}`
           : activeView;
@@ -2401,11 +2481,8 @@ export default function Home() {
               </div>
 
               {scoutingPhase === 'pre' && (
-                <Card>
-                  <CardHeader className="border-b">
-                    <CardTitle>Pre-match</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-5 pt-4">
+                <Card className="py-0">
+                  <CardContent className="space-y-5 py-4">
                     <div className="scout-assignment-selectors grid gap-3 sm:grid-cols-2">
                       <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-sm font-medium">
                         <span>Match</span>
@@ -2519,21 +2596,20 @@ export default function Home() {
               )}
 
               {scoutingPhase === 'auto' && (
-                <Card>
-                  <CardHeader className="border-b">
-                    <CardTitle>Autonomous</CardTitle>
-                  </CardHeader>
+                <Card className="py-0">
                   <CardContent className="divide-y divide-border p-0">
                     <Counter
                       label="Fuel scored"
                       value={autoFuel}
                       onChange={setAutoFuel}
                       quickAdds={[5]}
+                      quickAddSlots={1}
                     />
                     <Counter
                       label="Center swipes"
                       value={centerSwipes}
                       onChange={setCenterSwipes}
+                      quickAddSlots={1}
                     />
                     <div className="grid grid-cols-2 gap-2 px-4 py-3">
                       <button
@@ -2557,6 +2633,7 @@ export default function Home() {
                       label="Penalties"
                       value={autoPenalties}
                       onChange={setAutoPenalties}
+                      quickAddSlots={1}
                     />
                     <div className="flex items-center justify-between gap-3 px-4 py-3">
                       <strong>Auto tower</strong>
@@ -2568,8 +2645,8 @@ export default function Home() {
                             key={item}
                             className={
                               autoTower === item
-                                ? 'choice selected h-9 min-h-0 px-3 text-sm'
-                                : 'choice h-9 min-h-0 px-3 text-sm'
+                                ? 'choice selected h-12 min-h-12 px-4 text-base'
+                                : 'choice h-12 min-h-12 px-4 text-base'
                             }
                           >
                             {autoTower === item && <Check />}
@@ -2583,27 +2660,27 @@ export default function Home() {
               )}
 
               {scoutingPhase === 'tele' && (
-                <Card>
-                  <CardHeader className="border-b">
-                    <CardTitle>Teleoperated</CardTitle>
-                  </CardHeader>
+                <Card className="py-0">
                   <CardContent className="divide-y divide-border p-0">
                     <Counter
                       label="Fuel scored"
                       value={activeFuel}
                       onChange={setActiveFuel}
                       quickAdds={[5, 10]}
+                      quickAddSlots={2}
                     />
                     <Counter
                       label="Fuel passed"
                       value={passedFuel}
                       onChange={setPassedFuel}
                       quickAdds={[5]}
+                      quickAddSlots={2}
                     />
                     <Counter
                       label="Penalties"
                       value={teleopPenalties}
                       onChange={setTeleopPenalties}
+                      quickAddSlots={2}
                     />
                   </CardContent>
                 </Card>
@@ -2866,56 +2943,43 @@ export default function Home() {
           </div>
         )}
         {activeView === 'Pit' && (
-          <div className="pit-layout grid gap-4 p-4 sm:p-6 lg:grid-cols-[28rem_1fr]">
-            <Card className="pit-mobile-picker">
-              <CardContent className="p-3">
-                <label className="grid gap-1 text-sm font-semibold">
-                  Team to pit scout
-                  <select
-                    className="h-11 w-full rounded-md border bg-background px-3 text-foreground"
-                    value={pitTeam ?? ''}
-                    onChange={(event) =>
-                      setPitTeam(
-                        event.target.value ? Number(event.target.value) : null,
-                      )
-                    }
-                  >
-                    <option value="">Choose a team</option>
-                    {eventTeams.map((team) => {
-                      const entry = eventPack?.pitEntries.find(
-                        (entry) => entry.teamNumber === team,
-                      );
-                      return (
-                        <option value={team} key={team}>
-                          Team {team}
-                          {eventPack?.teams.find(
-                            (item) => item.teamNumber === team,
-                          )?.name
-                            ? ` — ${eventPack.teams.find((item) => item.teamNumber === team)?.name}`
-                            : ''}
-                          {' — '}
-                          {entry
-                            ? `Scouted by ${entry.scoutName}`
-                            : 'Needs scouting'}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </label>
-                {pitTeam && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Team {pitTeam} selected · changes save on this device
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+          <div className="pit-layout grid gap-4 p-4 sm:p-6 xl:grid-cols-[28rem_1fr]">
+            <div className="pit-mobile-picker min-w-0">
+              <select
+                aria-label="Team to pit scout"
+                className="h-11 w-full min-w-0 max-w-full truncate rounded-md border bg-background px-3 text-center text-foreground"
+                value={pitTeam ?? ''}
+                onChange={(event) =>
+                  setPitTeam(
+                    event.target.value ? Number(event.target.value) : null,
+                  )
+                }
+              >
+                <option value="">Choose a team</option>
+                {eventTeams.map((team) => {
+                  const entry = eventPack?.pitEntries.find(
+                    (entry) => entry.teamNumber === team,
+                  );
+                  return (
+                    <option value={team} key={team}>
+                      Team {team} -{' '}
+                      {entry
+                        ? isPitEntryComplete(entry)
+                          ? `Scouted by ${entry.scoutName}`
+                          : 'In Progress'
+                        : 'Needs Scouting'}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
             <Card className="pit-queue-card h-full min-h-0">
               <CardContent className="min-h-0 flex-1 space-y-1 overflow-auto">
                 {eventTeams.map((team) => {
                   const entry = eventPack?.pitEntries.find(
                     (entry) => entry.teamNumber === team,
                   );
-                  const complete = Boolean(entry);
+                  const complete = entry ? isPitEntryComplete(entry) : false;
                   return (
                     <button
                       type="button"
@@ -2935,7 +2999,7 @@ export default function Home() {
                       </strong>
                       <span className="pit-queue-status">
                         {entry
-                          ? `Scouted by ${entry.scoutName} · ${new Date(entry.updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
+                          ? `${complete ? `Scouted by ${entry.scoutName}` : `In Progress · ${entry.scoutName}`} · ${new Date(entry.updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
                           : 'Needs scouting'}
                       </span>
                       {complete ? <Check /> : <ChevronRight />}
@@ -2952,7 +3016,7 @@ export default function Home() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>
+                <CardTitle className="w-full justify-center text-center">
                   {pitTeam
                     ? `Team ${pitTeam}${eventPack?.teams.find((item) => item.teamNumber === pitTeam)?.name ? ` — ${eventPack.teams.find((item) => item.teamNumber === pitTeam)?.name}` : ''}`
                     : 'Choose a team'}
@@ -2962,7 +3026,13 @@ export default function Home() {
                     (entry) => entry.teamNumber === pitTeam,
                   ) && (
                     <p className="text-sm text-muted-foreground">
-                      Scouted by{' '}
+                      {isPitEntryComplete(
+                        eventPack.pitEntries.find(
+                          (entry) => entry.teamNumber === pitTeam,
+                        )!,
+                      )
+                        ? 'Scouted by '
+                        : 'In Progress · '}
                       {
                         eventPack.pitEntries.find(
                           (entry) => entry.teamNumber === pitTeam,
@@ -2986,10 +3056,10 @@ export default function Home() {
                 {pitTeam && (
                   <>
                     <div className="pit-form grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      <label className="grid gap-1 text-sm">
-                        Drivetrain
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>Drivetrain</span>
                         <select
-                          className="h-10 rounded-md border bg-transparent px-3"
+                          className="pit-field-control h-10 rounded-md border bg-transparent px-3"
                           value={pitDraft.drivetrain}
                           onChange={(event) =>
                             setPitDraft({
@@ -3004,9 +3074,10 @@ export default function Home() {
                           <option>Other</option>
                         </select>
                       </label>
-                      <label className="grid gap-1 text-sm">
-                        Swerve module
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>Swerve module</span>
                         <Input
+                          className="pit-field-control"
                           disabled={pitDraft.drivetrain !== 'Swerve'}
                           value={pitDraft.swerveModule}
                           onChange={(event) =>
@@ -3018,9 +3089,10 @@ export default function Home() {
                           placeholder="MK4i, MAXSwerve…"
                         />
                       </label>
-                      <label className="grid gap-1 text-sm">
-                        Motor types
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>Motor types</span>
                         <Input
+                          className="pit-field-control"
                           value={pitDraft.motorTypes}
                           onChange={(event) =>
                             setPitDraft({
@@ -3031,41 +3103,52 @@ export default function Home() {
                           placeholder="Kraken X60, NEO…"
                         />
                       </label>
-                      <label className="grid gap-1 text-sm">
-                        Weight (lb)
-                        <Input
-                          type="number"
-                          min="1"
-                          inputMode="decimal"
-                          required
-                          value={pitDraft.weightLbs || ''}
-                          onChange={(event) =>
-                            setPitDraft({
-                              ...pitDraft,
-                              weightLbs: Number(event.target.value),
-                            })
-                          }
-                        />
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>Weight</span>
+                        <span className="pit-field-control relative">
+                          <Input
+                            className="w-full pr-10"
+                            type="number"
+                            min="1"
+                            inputMode="decimal"
+                            required
+                            value={pitDraft.weightLbs ?? ''}
+                            onChange={(event) =>
+                              setPitDraft({
+                                ...pitDraft,
+                                weightLbs: event.target.value
+                                  ? Number(event.target.value)
+                                  : null,
+                              })
+                            }
+                          />
+                          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
+                            lb
+                          </span>
+                        </span>
                       </label>
-                      <label className="grid gap-1 text-sm">
-                        FUEL capacity
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>FUEL capacity</span>
                         <Input
+                          className="pit-field-control"
                           type="number"
                           min="0"
                           inputMode="numeric"
-                          value={pitDraft.fuelCapacity || ''}
+                          value={pitDraft.fuelCapacity ?? ''}
                           onChange={(event) =>
                             setPitDraft({
                               ...pitDraft,
-                              fuelCapacity: Number(event.target.value),
+                              fuelCapacity: event.target.value
+                                ? Number(event.target.value)
+                                : null,
                             })
                           }
                         />
                       </label>
-                      <label className="grid gap-1 text-sm">
-                        Tower capability
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>Tower capability</span>
                         <select
-                          className="h-10 rounded-md border bg-transparent px-3"
+                          className="pit-field-control h-10 rounded-md border bg-transparent px-3"
                           value={pitDraft.climbCapability}
                           onChange={(event) =>
                             setPitDraft({
@@ -3081,10 +3164,10 @@ export default function Home() {
                           <option>Multiple levels</option>
                         </select>
                       </label>
-                      <label className="grid gap-1 text-sm">
-                        Shooter mounting
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>Shooter mounting</span>
                         <select
-                          className="h-10 rounded-md border bg-transparent px-3"
+                          className="pit-field-control h-10 rounded-md border bg-transparent px-3"
                           value={pitDraft.shooterMount}
                           onChange={(event) =>
                             setPitDraft({
@@ -3097,10 +3180,10 @@ export default function Home() {
                           <option>Turreted</option>
                         </select>
                       </label>
-                      <label className="grid gap-1 text-sm">
-                        Shooter barrels
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>Shooter barrels</span>
                         <select
-                          className="h-10 rounded-md border bg-transparent px-3"
+                          className="pit-field-control h-10 rounded-md border bg-transparent px-3"
                           value={pitDraft.shooterBarrels}
                           onChange={(event) =>
                             setPitDraft({
@@ -3115,14 +3198,14 @@ export default function Home() {
                           <option value="Drum">Drum</option>
                         </select>
                       </label>
-                      <div className="grid gap-1 text-sm">
-                        Hood
+                      <div className="flex items-center justify-between gap-3 text-sm">
+                        <span>Hood</span>
                         <button
                           type="button"
                           className={
                             pitDraft.adjustableHood
-                              ? 'choice selected'
-                              : 'choice'
+                              ? 'choice selected pit-field-control'
+                              : 'choice pit-field-control'
                           }
                           onClick={() =>
                             setPitDraft({
@@ -3136,7 +3219,7 @@ export default function Home() {
                         </button>
                       </div>
                     </div>
-                    <div className="space-y-3 rounded-lg border p-3">
+                    <div className="space-y-3">
                       <div>
                         <p className="mb-2 font-semibold">Field access</p>
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -3187,7 +3270,7 @@ export default function Home() {
                         </div>
                       </div>
                     </div>
-                    <div className="space-y-3 rounded-lg border p-3">
+                    <div className="space-y-3">
                       <div>
                         <p className="font-semibold">Autonomous capabilities</p>
                       </div>
@@ -3262,38 +3345,59 @@ export default function Home() {
                           )}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        className={
-                          pitDraft.autonomousDepot
-                            ? 'choice selected w-full'
-                            : 'choice w-full'
-                        }
-                        onClick={() =>
-                          setPitDraft({
-                            ...pitDraft,
-                            autonomousDepot: !pitDraft.autonomousDepot,
-                          })
-                        }
-                      >
-                        {pitDraft.autonomousDepot && <Check />}
-                        Uses depot in autonomous
-                      </button>
-                      <textarea
-                        aria-label="Additional autonomous notes"
-                        className="min-h-20 w-full rounded-md border bg-transparent p-3"
-                        value={pitDraft.autonomousNotes}
-                        onChange={(event) =>
-                          setPitDraft({
-                            ...pitDraft,
-                            autonomousNotes: event.target.value,
-                          })
-                        }
-                        placeholder="Additional autonomous notes…"
-                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          className={
+                            pitDraft.autonomousDepot
+                              ? 'choice selected'
+                              : 'choice'
+                          }
+                          onClick={() =>
+                            setPitDraft({
+                              ...pitDraft,
+                              autonomousDepot: !pitDraft.autonomousDepot,
+                            })
+                          }
+                        >
+                          {pitDraft.autonomousDepot && <Check />}
+                          Auto Depot
+                        </button>
+                        <button
+                          type="button"
+                          className={
+                            pitDraft.autonomousOutpost
+                              ? 'choice selected'
+                              : 'choice'
+                          }
+                          onClick={() =>
+                            setPitDraft({
+                              ...pitDraft,
+                              autonomousOutpost: !pitDraft.autonomousOutpost,
+                            })
+                          }
+                        >
+                          {pitDraft.autonomousOutpost && <Check />}
+                          Auto Outpost
+                        </button>
+                      </div>
+                      <label className="grid gap-1 text-sm">
+                        Auto Notes
+                        <textarea
+                          className="min-h-20 w-full rounded-md border bg-transparent p-3"
+                          value={pitDraft.autonomousNotes}
+                          onChange={(event) =>
+                            setPitDraft({
+                              ...pitDraft,
+                              autonomousNotes: event.target.value,
+                            })
+                          }
+                          placeholder="Additional autonomous notes…"
+                        />
+                      </label>
                     </div>
                     <label className="grid gap-1 text-sm">
-                      Notes
+                      General Notes
                       <textarea
                         className="min-h-24 rounded-md border bg-transparent p-3"
                         value={pitDraft.notes}
@@ -3306,7 +3410,7 @@ export default function Home() {
                         placeholder="Mechanisms, reliability concerns, programming notes…"
                       />
                     </label>
-                    <div className="space-y-3 rounded-lg border p-3">
+                    <div className="space-y-3">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         <p className="font-semibold">Robot photo</p>
                         <p className="text-sm text-muted-foreground">
@@ -3344,14 +3448,6 @@ export default function Home() {
                         </Button>
                       </div>
                     </div>
-                    <Button
-                      className="w-full sm:w-auto"
-                      disabled={!pitReady}
-                      onClick={() => void submitPit()}
-                    >
-                      <Cloud />
-                      Save pit report
-                    </Button>
                     {pitMessage && (
                       <p
                         className="text-sm text-muted-foreground"
@@ -3667,6 +3763,9 @@ export default function Home() {
                                     .filter((item) => item !== 'None')
                                     .join(', ') || null,
                                   pit.payload.autonomousDepot ? 'Depot' : null,
+                                  pit.payload.autonomousOutpost
+                                    ? 'Outpost'
+                                    : null,
                                 ]
                                   .filter(Boolean)
                                   .join(' · ') || '—'}
@@ -3735,11 +3834,6 @@ export default function Home() {
           isAdmin &&
           adminSection === 'assignments' && (
             <div className="grid gap-4 p-4 sm:p-6">
-              <EventTeamAliases
-                eventType={eventPack?.event.eventType ?? null}
-                teams={eventPack?.teams ?? []}
-                onChanged={() => loadEventPack(false, true)}
-              />
               <EventScheduleBoard
                 members={eventPack?.members ?? []}
                 eventKey={eventPack?.event.key ?? ''}
@@ -3837,9 +3931,15 @@ export default function Home() {
                         {eventMessage}
                       </p>
                     )}
+                    <EventTeamAliases
+                      eventType={eventPack?.event.eventType ?? null}
+                      teams={eventPack?.teams ?? []}
+                      onChanged={() => loadEventPack(false, true)}
+                    />
                   </>
                 }
               />
+              <DriveTeamPlanner members={eventPack?.members ?? []} />
             </div>
           )}
         {activeView === 'Data' && (
@@ -4048,8 +4148,8 @@ export default function Home() {
                     : 'Select a team above'}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-5 lg:grid-cols-3 lg:items-start">
-                <div className="grid gap-4 sm:grid-cols-[10rem_1fr] lg:grid-cols-[8rem_1fr]">
+              <CardContent className="space-y-5">
+                <div className="grid gap-4 sm:grid-cols-[12rem_1fr] sm:items-start">
                   <TeamRobotPhoto
                     teamNumber={selectedTeam}
                     hasPitPhoto={Boolean(analysis?.pit?.photoObjectKey)}
@@ -4062,7 +4162,7 @@ export default function Home() {
                     <p className="text-sm text-muted-foreground">
                       median observed points
                     </p>
-                    <div className="mini-stats">
+                    <div className="mini-stats sm:!grid-cols-3">
                       <span>
                         <strong>{analysis?.medianActiveFuel ?? 0}</strong>{' '}
                         median active FUEL
@@ -4082,9 +4182,9 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-                <section className="space-y-3">
+                <section className="space-y-3 border-t pt-5">
                   <h3 className="font-semibold">TBA and external ratings</h3>
-                  <div className="mini-stats">
+                  <div className="mini-stats !mt-0 sm:!grid-cols-3 xl:!grid-cols-5">
                     <span>
                       <strong>
                         {selectedStrategyTeam?.epa?.toFixed(1) ?? '—'}
@@ -4132,9 +4232,9 @@ export default function Home() {
                     </span>
                   </div>
                 </section>
-                <section className="space-y-3">
+                <section className="space-y-3 border-t pt-5">
                   <h3 className="font-semibold">Reliability and coverage</h3>
-                  <div className="mini-stats">
+                  <div className="mini-stats !mt-0 sm:!grid-cols-2 lg:!grid-cols-4">
                     <span>
                       <strong>
                         L1 {analysis?.towerLevelCounts.level1 ?? 0} · L2{' '}
@@ -4327,7 +4427,6 @@ export default function Home() {
                           {guest ? 'Temporary partner access' : member.email}
                         </small>
                         <div className="member-card-role">
-                          <span>Scouting role</span>
                           {guest ? (
                             <Badge variant="outline">Guest scout</Badge>
                           ) : member.role === 'owner' ? (
