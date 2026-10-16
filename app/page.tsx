@@ -3473,8 +3473,8 @@ export default function Home() {
             <Card
               className={
                 planFullscreen
-                  ? 'min-h-dvh rounded-none border-0'
-                  : 'rounded-none sm:rounded-xl'
+                  ? 'min-h-dvh rounded-none border-0 pt-0'
+                  : 'rounded-none pt-0 sm:rounded-xl'
               }
               onClick={() => {
                 if (planFullscreen) setPlanFullscreen(false);
