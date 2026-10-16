@@ -5,6 +5,7 @@ export type Match13EventTeams = {
   eventKey?: string;
   teams?: Array<{
     teamNumber?: number;
+    epa?: number | null;
     xpEnd?: number | null;
     xpMean?: number | null;
     xAuto?: number | null;

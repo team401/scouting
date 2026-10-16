@@ -217,7 +217,7 @@ function ordinal(value: number) {
 function eventMetricRank(
   teams: TeamAnalysis[],
   teamNumber: number | null,
-  key: 'xp' | 'xAuto' | 'xTele' | 'xEnd' | 'opr',
+  key: 'xp' | 'xAuto' | 'xTele' | 'xEnd' | 'epa',
 ) {
   if (!teamNumber) return null;
   const ranked = teams.filter((team) => typeof team[key] === 'number');
@@ -299,7 +299,7 @@ type TeamAnalysis = {
   xAuto: number | null;
   xTele: number | null;
   xEnd: number | null;
-  opr: number | null;
+  epa: number | null;
   eventRank: number | null;
   matchesPlayed: number;
   wins: number;
@@ -3404,9 +3404,9 @@ export default function Home() {
                             </small>
                           </span>
                           <span>
-                            <strong>{stats?.opr?.toFixed(1) ?? '—'}</strong>
+                            <strong>{stats?.epa?.toFixed(1) ?? '—'}</strong>
                             <small className="block text-muted-foreground">
-                              OPR
+                              EPA
                             </small>
                           </span>
                           <span>
@@ -3835,11 +3835,11 @@ export default function Home() {
               <CardContent className="mini-stats">
                 <span>
                   <strong>
-                    {selectedStrategyTeam?.opr?.toFixed(1) ?? '—'}
+                    {selectedStrategyTeam?.epa?.toFixed(1) ?? '—'}
                   </strong>{' '}
-                  TBA OPR
-                  {eventMetricRank(strategyTeams, selectedTeam, 'opr')
-                    ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'opr')}`
+                  Match13 EPA
+                  {eventMetricRank(strategyTeams, selectedTeam, 'epa')
+                    ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'epa')}`
                     : ''}
                 </span>
                 <span>

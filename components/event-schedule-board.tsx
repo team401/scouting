@@ -205,7 +205,6 @@ function ScheduleRoleInput({
   busy,
   ariaLabel,
   choices,
-  widthChars,
   onCommit,
   onRangePaste,
   onInvalid,
@@ -217,7 +216,6 @@ function ScheduleRoleInput({
   busy: boolean;
   ariaLabel: string;
   choices: ScheduleOption[];
-  widthChars: number;
   onCommit: (value: string) => void;
   onRangePaste: (text: string) => void;
   onInvalid: (text: string) => void;
@@ -270,7 +268,6 @@ function ScheduleRoleInput({
         className={`h-9 w-full rounded-md border px-1 text-center text-xs font-medium ${label && !open ? assignmentClass(label) : 'bg-background text-foreground'}`}
         disabled={busy}
         data-schedule-cell={cellId}
-        style={{ width: `calc(${widthChars}ch + 0.5rem)` }}
         value={busy ? 'Saving…' : query}
         onChange={(event) => {
           editedRef.current = true;
@@ -658,9 +655,10 @@ export function EventScheduleBoard({
   const emptyShifts = { scouting: 0, pit: 0, total: 0 };
   const choices = useMemo(() => scheduleOptionsFor(controls), [controls]);
   const choiceChars = Math.max(
-    1,
+    10,
     ...choices.map((option) => option.label.length),
   );
+  const hourColumnWidth = `calc(${choiceChars}ch + 1.5rem)`;
   const nameChars = Math.max(
     0,
     ...activeMembers.map(
@@ -1194,8 +1192,9 @@ export function EventScheduleBoard({
                 </th>
                 {hours.map((hour) => (
                   <th
-                    className="border-r border-b px-1 py-2 text-center"
+                    className="whitespace-nowrap border-r border-b px-1 py-2 text-center"
                     key={hour}
+                    style={{ minWidth: hourColumnWidth }}
                   >
                     {new Date(2000, 0, 1, hour).toLocaleTimeString([], {
                       hour: 'numeric',
@@ -1208,13 +1207,13 @@ export function EventScheduleBoard({
                   </th>
                 ))}
                 <th className="w-px border-b px-2 py-2 text-center">
-                  Assigned scouting shifts
+                  Scouting Shifts
                 </th>
                 <th className="w-px border-b px-2 py-2 text-center">
-                  Assigned pit shifts
+                  Pit Shifts
                 </th>
                 <th className="sticky right-0 z-40 w-px border-b border-l bg-muted px-2 py-2 text-center">
-                  Total roles
+                  Total Shifts
                 </th>
               </tr>
             </thead>
@@ -1246,12 +1245,15 @@ export function EventScheduleBoard({
                     );
                     const key = `${member.id}:${startsAt}`;
                     return (
-                      <td className="h-11 border-r border-b p-1" key={hour}>
+                      <td
+                        className="h-11 border-r border-b p-1"
+                        key={hour}
+                        style={{ minWidth: hourColumnWidth }}
+                      >
                         <ScheduleRoleInput
                           ariaLabel={`${member.name}, ${new Date(2000, 0, 1, hour).toLocaleTimeString([], { hour: 'numeric' })}`}
                           busy={busyCell === key}
                           choices={choices}
-                          widthChars={choiceChars}
                           cellId={`${columnIndex}:${rowIndex}`}
                           label={item?.label ?? ''}
                           onAdvance={() => focusCell(rowIndex + 1, columnIndex)}
@@ -1294,10 +1296,10 @@ export function EventScheduleBoard({
                   </th>
                   {perHour.map((have, index) => (
                     <td
-                      className={`border-r border-b px-1 py-1 text-center text-xs ${
+                      className={`border-r border-b px-1 py-1 text-center text-xs font-semibold ${
                         have >= target.need
-                          ? 'text-emerald-700 dark:text-emerald-400'
-                          : 'bg-amber-100 text-amber-900 dark:bg-amber-900/60 dark:text-amber-100'
+                          ? 'bg-emerald-300 text-emerald-950 dark:bg-emerald-400 dark:text-emerald-950'
+                          : 'bg-amber-300 text-amber-950 dark:bg-amber-400 dark:text-amber-950'
                       }`}
                       key={hours[index]}
                       title={`${have} of ${target.need} ${target.label.toLowerCase()}`}

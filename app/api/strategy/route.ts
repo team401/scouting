@@ -4,7 +4,6 @@ import { summarizeEntries, type ScoutingPayload } from '@/lib/scouting-metrics';
 import { teamNumberFromTbaKey } from '@/lib/scouting-policy';
 import { getMatch13EventTeams } from '@/lib/match13';
 
-type TbaOprs = { oprs?: Record<string, number> };
 type TbaRankings = {
   rankings?: Array<{
     rank: number;
@@ -78,7 +77,6 @@ export async function GET(request: Request) {
       ...(grouped.get(row.teamNumber) ?? []),
       JSON.parse(row.payload) as ScoutingPayload,
     ]);
-  let oprs: Record<string, number> = {};
   const rankings = new Map<
     number,
     {
@@ -90,43 +88,26 @@ export async function GET(request: Request) {
     }
   >();
   const xps = new Map<number, number>();
+  const epas = new Map<number, number>();
   const phaseXps = new Map<
     number,
     { xAuto: number | null; xTele: number | null; xEnd: number | null }
   >();
   if (event) {
-    const [tbaResult, rankingsResult, match13Result] = await Promise.allSettled(
-      [
-        env.TBA_AUTH_KEY
-          ? fetch(
-              `https://www.thebluealliance.com/api/v3/event/${encodeURIComponent(event.eventKey)}/oprs`,
-              {
-                headers: {
-                  'X-TBA-Auth-Key': env.TBA_AUTH_KEY,
-                  'User-Agent': 'Team401-Scouting/1.0',
-                },
+    const [rankingsResult, match13Result] = await Promise.allSettled([
+      env.TBA_AUTH_KEY
+        ? fetch(
+            `https://www.thebluealliance.com/api/v3/event/${encodeURIComponent(event.eventKey)}/rankings`,
+            {
+              headers: {
+                'X-TBA-Auth-Key': env.TBA_AUTH_KEY,
+                'User-Agent': 'Team401-Scouting/1.0',
               },
-            )
-          : Promise.reject(new Error('TBA is not configured.')),
-        env.TBA_AUTH_KEY
-          ? fetch(
-              `https://www.thebluealliance.com/api/v3/event/${encodeURIComponent(event.eventKey)}/rankings`,
-              {
-                headers: {
-                  'X-TBA-Auth-Key': env.TBA_AUTH_KEY,
-                  'User-Agent': 'Team401-Scouting/1.0',
-                },
-              },
-            )
-          : Promise.reject(new Error('TBA is not configured.')),
-        getMatch13EventTeams(env.DB, event.eventKey, env.MATCH13_API_KEY),
-      ],
-    );
-    if (tbaResult.status === 'fulfilled' && tbaResult.value.ok) {
-      // TBA returns null for events without OPR data.
-      const data = (await tbaResult.value.json()) as TbaOprs | null;
-      oprs = data?.oprs ?? {};
-    }
+            },
+          )
+        : Promise.reject(new Error('TBA is not configured.')),
+      getMatch13EventTeams(env.DB, event.eventKey, env.MATCH13_API_KEY),
+    ]);
     if (rankingsResult.status === 'fulfilled' && rankingsResult.value.ok) {
       const data = (await rankingsResult.value.json()) as TbaRankings | null;
       for (const row of data?.rankings ?? []) {
@@ -146,6 +127,8 @@ export async function GET(request: Request) {
         const xp = finiteNumber(row.xpEnd) ?? finiteNumber(row.xpMean);
         if (row.teamNumber) {
           if (xp !== null) xps.set(row.teamNumber, xp);
+          const epa = finiteNumber(row.epa);
+          if (epa !== null) epas.set(row.teamNumber, epa);
           phaseXps.set(row.teamNumber, {
             xAuto: finiteNumber(row.xAuto),
             xTele: finiteNumber(row.xTele),
@@ -170,7 +153,7 @@ export async function GET(request: Request) {
         xAuto: phaseXps.get(teamNumber)?.xAuto ?? null,
         xTele: phaseXps.get(teamNumber)?.xTele ?? null,
         xEnd: phaseXps.get(teamNumber)?.xEnd ?? null,
-        opr: finiteNumber(oprs[`frc${teamNumber}`]),
+        epa: epas.get(teamNumber) ?? null,
         eventRank: rankings.get(teamNumber)?.eventRank ?? null,
         matchesPlayed: rankings.get(teamNumber)?.matchesPlayed ?? 0,
         wins: rankings.get(teamNumber)?.wins ?? 0,

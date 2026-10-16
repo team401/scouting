@@ -21,7 +21,7 @@ import type { TeamTrend } from '@/components/team-trend-chart';
 export type ComparisonTeam = {
   teamNumber: number;
   xp: number | null;
-  opr: number | null;
+  epa: number | null;
   samples: number;
   coverage: number;
   scheduledMatches: number;
@@ -35,7 +35,7 @@ export type ComparisonTeam = {
   pointStdDev: number;
 };
 
-type AnalysisResponse = Omit<ComparisonTeam, 'xp' | 'opr'> & {
+type AnalysisResponse = Omit<ComparisonTeam, 'xp' | 'epa'> & {
   trends?: TeamTrend[];
   error?: string;
 };
@@ -278,7 +278,7 @@ export function TeamComparison({
                   <tr className="border-b text-left">
                     <th className="p-2">Team</th>
                     <th className="p-2">Match13 xP</th>
-                    <th className="p-2">OPR</th>
+                    <th className="p-2">EPA</th>
                     <th className="p-2">Median pts</th>
                     <th className="p-2">Tower</th>
                     <th className="p-2">Disabled</th>
@@ -295,7 +295,7 @@ export function TeamComparison({
                     >
                       <th className="p-2 text-left">{team.teamNumber}</th>
                       <td className="p-2">{formatNumber(team.xp)}</td>
-                      <td className="p-2">{formatNumber(team.opr)}</td>
+                      <td className="p-2">{formatNumber(team.epa)}</td>
                       <td className="p-2">{team.medianPoints.toFixed(1)}</td>
                       <td className="p-2">
                         L1 {team.towerLevelCounts.level1} · L2{' '}
@@ -325,8 +325,8 @@ export function TeamComparison({
                       </small>
                     </span>
                     <span>
-                      <strong>{formatNumber(team.opr)}</strong>
-                      <small className="block text-muted-foreground">OPR</small>
+                      <strong>{formatNumber(team.epa)}</strong>
+                      <small className="block text-muted-foreground">EPA</small>
                     </span>
                     <span>
                       <strong>{team.medianPoints.toFixed(1)}</strong>

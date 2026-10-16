@@ -44,7 +44,7 @@ type TeamMetric = {
   xAuto?: number | null;
   xTele?: number | null;
   xEnd?: number | null;
-  opr: number | null;
+  epa: number | null;
 };
 type PickListsResponse = {
   personal: PickListData | null;
@@ -92,6 +92,7 @@ export function PickListWorkspace({
   const [hydrated, setHydrated] = useState(false);
   const [selectionSearch, setSelectionSearch] = useState('');
   const [builderSearch, setBuilderSearch] = useState('');
+  const [builderSort, setBuilderSort] = useState<'team' | 'xp' | 'epa'>('team');
   const [statsTeam, setStatsTeam] = useState<number | null>(null);
   const [selectionListMode, setSelectionListMode] = useState<
     'rankings' | 'picklist'
@@ -488,7 +489,7 @@ export function PickListWorkspace({
                             xP {team?.xp?.toFixed(1) ?? '—'}
                           </span>
                           <span className="text-sm">
-                            OPR {team?.opr?.toFixed(1) ?? '—'}
+                            EPA {team?.epa?.toFixed(1) ?? '—'}
                           </span>
                           <Badge
                             variant={isDoNotPick ? 'destructive' : 'outline'}
@@ -526,8 +527,8 @@ export function PickListWorkspace({
                               #{index + 1} · Team {entry.teamNumber}
                             </strong>
                             <p className="text-xs text-muted-foreground">
-                              xP {team?.xp?.toFixed(1) ?? '—'} · OPR{' '}
-                              {team?.opr?.toFixed(1) ?? '—'}
+                              xP {team?.xp?.toFixed(1) ?? '—'} · EPA{' '}
+                              {team?.epa?.toFixed(1) ?? '—'}
                             </p>
                           </div>
                           <Badge
@@ -578,7 +579,23 @@ export function PickListWorkspace({
             <div className="grid h-[calc(100dvh-11rem)] min-h-[26rem] grid-rows-[minmax(0,2fr)_minmax(0,3fr)] gap-2 lg:h-auto lg:min-h-0 lg:grid-cols-[18rem_minmax(0,1fr)] lg:grid-rows-none lg:gap-3">
               <section className="flex h-full min-h-0 flex-col rounded-lg border border-l-4 border-l-muted-foreground/35 bg-muted/20 lg:h-[42rem]">
                 <div className="border-b bg-muted/60 p-2 sm:p-3">
-                  <h3 className="font-semibold">Available Teams</h3>
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-semibold">Available Teams</h3>
+                    <select
+                      aria-label="Sort available teams"
+                      className="h-8 rounded-md border bg-background px-2 text-xs"
+                      value={builderSort}
+                      onChange={(event) =>
+                        setBuilderSort(
+                          event.target.value as 'team' | 'xp' | 'epa',
+                        )
+                      }
+                    >
+                      <option value="team">Team number: low to high</option>
+                      <option value="xp">xP: high to low</option>
+                      <option value="epa">EPA: high to low</option>
+                    </select>
+                  </div>
                   <div className="relative mt-1.5">
                     <Search className="pointer-events-none absolute top-2 left-3 size-4 text-muted-foreground sm:top-2.5" />
                     <Input
@@ -605,7 +622,17 @@ export function PickListWorkspace({
                             ?.toLowerCase()
                             .includes(builderSearch.trim().toLowerCase())),
                     )
-                    .sort((a, b) => a.teamNumber - b.teamNumber)
+                    .sort((a, b) => {
+                      if (builderSort === 'team')
+                        return a.teamNumber - b.teamNumber;
+                      const aValue = builderSort === 'xp' ? a.xp : a.epa;
+                      const bValue = builderSort === 'xp' ? b.xp : b.epa;
+                      if (aValue === null && bValue === null)
+                        return a.teamNumber - b.teamNumber;
+                      if (aValue === null) return 1;
+                      if (bValue === null) return -1;
+                      return bValue - aValue || a.teamNumber - b.teamNumber;
+                    })
                     .map((team) => (
                       <div
                         className="flex items-center gap-2 p-2"
@@ -626,8 +653,8 @@ export function PickListWorkspace({
                             </small>
                           )}
                           <small className="block text-muted-foreground">
-                            xP {team.xp?.toFixed(1) ?? '—'} · OPR{' '}
-                            {team.opr?.toFixed(1) ?? '—'}
+                            xP {team.xp?.toFixed(1) ?? '—'} · EPA{' '}
+                            {team.epa?.toFixed(1) ?? '—'}
                           </small>
                           {rankingDistribution(team.teamNumber)}
                         </div>
@@ -915,8 +942,8 @@ export function PickListWorkspace({
                         <small className="block truncate text-muted-foreground">
                           xP{' '}
                           {metrics.get(team.teamNumber)?.xp?.toFixed(1) ?? '—'}
-                          {' · '}OPR{' '}
-                          {metrics.get(team.teamNumber)?.opr?.toFixed(1) ?? '—'}
+                          {' · '}EPA{' '}
+                          {metrics.get(team.teamNumber)?.epa?.toFixed(1) ?? '—'}
                         </small>
                       </div>
                       <div className="flex gap-1">
