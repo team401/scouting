@@ -2999,10 +2999,10 @@ export default function Home() {
                 {pitTeam && (
                   <>
                     <div className="pit-form grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      <label className="grid gap-1 text-sm">
-                        Drivetrain
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>Drivetrain</span>
                         <select
-                          className="h-10 rounded-md border bg-transparent px-3"
+                          className="h-10 w-3/5 min-w-0 rounded-md border bg-transparent px-3"
                           value={pitDraft.drivetrain}
                           onChange={(event) =>
                             setPitDraft({
@@ -3017,9 +3017,10 @@ export default function Home() {
                           <option>Other</option>
                         </select>
                       </label>
-                      <label className="grid gap-1 text-sm">
-                        Swerve module
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>Swerve module</span>
                         <Input
+                          className="w-3/5 min-w-0"
                           disabled={pitDraft.drivetrain !== 'Swerve'}
                           value={pitDraft.swerveModule}
                           onChange={(event) =>
@@ -3031,9 +3032,10 @@ export default function Home() {
                           placeholder="MK4i, MAXSwerve…"
                         />
                       </label>
-                      <label className="grid gap-1 text-sm">
-                        Motor types
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>Motor types</span>
                         <Input
+                          className="w-3/5 min-w-0"
                           value={pitDraft.motorTypes}
                           onChange={(event) =>
                             setPitDraft({
@@ -3044,9 +3046,10 @@ export default function Home() {
                           placeholder="Kraken X60, NEO…"
                         />
                       </label>
-                      <label className="grid gap-1 text-sm">
-                        Weight (lb)
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>Weight (lb)</span>
                         <Input
+                          className="w-3/5 min-w-0"
                           type="number"
                           min="1"
                           inputMode="decimal"
@@ -3060,9 +3063,10 @@ export default function Home() {
                           }
                         />
                       </label>
-                      <label className="grid gap-1 text-sm">
-                        FUEL capacity
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>FUEL capacity</span>
                         <Input
+                          className="w-3/5 min-w-0"
                           type="number"
                           min="0"
                           inputMode="numeric"
@@ -3075,10 +3079,10 @@ export default function Home() {
                           }
                         />
                       </label>
-                      <label className="grid gap-1 text-sm">
-                        Tower capability
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>Tower capability</span>
                         <select
-                          className="h-10 rounded-md border bg-transparent px-3"
+                          className="h-10 w-3/5 min-w-0 rounded-md border bg-transparent px-3"
                           value={pitDraft.climbCapability}
                           onChange={(event) =>
                             setPitDraft({
@@ -3094,10 +3098,10 @@ export default function Home() {
                           <option>Multiple levels</option>
                         </select>
                       </label>
-                      <label className="grid gap-1 text-sm">
-                        Shooter mounting
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>Shooter mounting</span>
                         <select
-                          className="h-10 rounded-md border bg-transparent px-3"
+                          className="h-10 w-3/5 min-w-0 rounded-md border bg-transparent px-3"
                           value={pitDraft.shooterMount}
                           onChange={(event) =>
                             setPitDraft({
@@ -3110,10 +3114,10 @@ export default function Home() {
                           <option>Turreted</option>
                         </select>
                       </label>
-                      <label className="grid gap-1 text-sm">
-                        Shooter barrels
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>Shooter barrels</span>
                         <select
-                          className="h-10 rounded-md border bg-transparent px-3"
+                          className="h-10 w-3/5 min-w-0 rounded-md border bg-transparent px-3"
                           value={pitDraft.shooterBarrels}
                           onChange={(event) =>
                             setPitDraft({
@@ -3128,14 +3132,14 @@ export default function Home() {
                           <option value="Drum">Drum</option>
                         </select>
                       </label>
-                      <div className="grid gap-1 text-sm">
-                        Hood
+                      <div className="flex items-center justify-between gap-3 text-sm">
+                        <span>Hood</span>
                         <button
                           type="button"
                           className={
                             pitDraft.adjustableHood
-                              ? 'choice selected'
-                              : 'choice'
+                              ? 'choice selected w-3/5 min-w-0'
+                              : 'choice w-3/5 min-w-0'
                           }
                           onClick={() =>
                             setPitDraft({
