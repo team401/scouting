@@ -72,8 +72,8 @@
   --border: #4a5155;
   --input: var(--border);
   --ring: var(--primary);
-  --scout-red-background: oklch(0.3 0.05 25);
-  --scout-blue-background: oklch(0.3 0.05 255);
+  --scout-red-background: oklch(0.32 0.08 25);
+  --scout-blue-background: oklch(0.32 0.08 255);
 }
 * {
   border-color: var(--border);
@@ -110,10 +110,10 @@ select option {
     background 0.2s,
     color 0.2s;
 }
-.app-shell[data-scout-alliance='red'] {
+.app-shell[data-scout-alliance='red'] [data-slot='card'] {
   background: var(--scout-red-background);
 }
-.app-shell[data-scout-alliance='blue'] {
+.app-shell[data-scout-alliance='blue'] [data-slot='card'] {
   background: var(--scout-blue-background);
 }
 .desktop-nav {
