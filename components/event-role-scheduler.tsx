@@ -490,9 +490,9 @@ export function PersonalEventSchedule({
         <Card className="border-primary/30 bg-primary/5 py-0">
           <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="font-semibold">Get match reminders</h2>
+              <h2 className="font-semibold">Role reminders</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Get a notification 10 and 5 minutes before each of your roles.
+                Get notified 10 and 5 minutes before each assigned role.
               </p>
             </div>
             <Button
@@ -500,7 +500,7 @@ export function PersonalEventSchedule({
                 void Notification.requestPermission().then(setPermission)
               }
             >
-              Enable 10- and 5-minute reminders
+              Enable reminders
             </Button>
           </CardContent>
         </Card>
