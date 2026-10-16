@@ -433,7 +433,7 @@ export function DriveTeamPlanner({ members }: { members: PlannerMember[] }) {
                       {position.label}
                     </th>
                   ))}
-                  <th className="border-b border-slate-300 px-3 py-2 text-left dark:border-border">
+                  <th className="border-b border-slate-300 px-3 py-2 text-center dark:border-border">
                     Official match
                   </th>
                 </tr>
@@ -473,7 +473,7 @@ export function DriveTeamPlanner({ members }: { members: PlannerMember[] }) {
                         />
                       </td>
                     ))}
-                    <td className="border-b border-slate-300 bg-inherit px-3 py-2 align-top whitespace-nowrap text-muted-foreground tabular-nums dark:border-border">
+                    <td className="border-b border-slate-300 bg-inherit px-3 py-2 text-center align-top whitespace-nowrap text-muted-foreground tabular-nums dark:border-border">
                       {slot.official
                         ? `${matchLabel(slot.official.matchNumber, slot.official.compLevel)}${matchTime(slot.official.startsAt)}`
                         : 'Not released yet'}
