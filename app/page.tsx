@@ -3360,21 +3360,23 @@ export default function Home() {
                         {pitDraft.autonomousDepot && <Check />}
                         Uses depot in autonomous
                       </button>
-                      <textarea
-                        aria-label="Additional autonomous notes"
-                        className="min-h-20 w-full rounded-md border bg-transparent p-3"
-                        value={pitDraft.autonomousNotes}
-                        onChange={(event) =>
-                          setPitDraft({
-                            ...pitDraft,
-                            autonomousNotes: event.target.value,
-                          })
-                        }
-                        placeholder="Additional autonomous notes…"
-                      />
+                      <label className="grid gap-1 text-sm">
+                        Auto Notes
+                        <textarea
+                          className="min-h-20 w-full rounded-md border bg-transparent p-3"
+                          value={pitDraft.autonomousNotes}
+                          onChange={(event) =>
+                            setPitDraft({
+                              ...pitDraft,
+                              autonomousNotes: event.target.value,
+                            })
+                          }
+                          placeholder="Additional autonomous notes…"
+                        />
+                      </label>
                     </div>
                     <label className="grid gap-1 text-sm">
-                      Notes
+                      General Notes
                       <textarea
                         className="min-h-24 rounded-md border bg-transparent p-3"
                         value={pitDraft.notes}
