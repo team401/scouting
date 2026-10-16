@@ -2169,6 +2169,10 @@ export default function Home() {
       (entry) =>
         (entry.payload as MatchDraft & { reopened?: boolean }).reopened,
     ) ?? [];
+  const planTeamNumbers = new Set([
+    ...(eventPack?.teams.map((team) => team.teamNumber) ?? []),
+    ...strategyTeams.map((team) => team.teamNumber),
+  ]);
   const planTeams = currentPlanningMatch
     ? [
         ...currentPlanningMatch.alliances.red,
@@ -2182,7 +2186,15 @@ export default function Home() {
         pit: eventPack?.pitEntries.find((item) => item.teamNumber === team),
         name: eventPack?.teams?.find((item) => item.teamNumber === team)?.name,
       }))
-    : [];
+    : [...planTeamNumbers]
+        .sort((a, b) => a - b)
+        .map((team) => ({
+          team,
+          alliance: null,
+          stats: strategyTeams.find((item) => item.teamNumber === team),
+          pit: eventPack?.pitEntries.find((item) => item.teamNumber === team),
+          name: eventPack?.teams.find((item) => item.teamNumber === team)?.name,
+        }));
   const selectedStrategyTeam = strategyTeams.find(
     (team) => team.teamNumber === selectedTeam,
   );
@@ -3636,192 +3648,207 @@ export default function Home() {
                 )}
                 {planSection === 'metrics' && (
                   <div className="grid gap-3 border-t pt-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {planTeams.length === 0 ? (
+                      <p className="col-span-full rounded-lg border p-6 text-center text-sm text-muted-foreground">
+                        No teams are available for this event yet.
+                      </p>
+                    ) : (
+                      planTeams.map(({ team, alliance, stats, pit, name }) => (
+                        <div
+                          className={
+                            alliance === 'red'
+                              ? 'rounded-lg border border-l-8 border-red-500 bg-red-50 p-3 text-red-950 dark:bg-red-950/30 dark:text-red-50'
+                              : alliance === 'blue'
+                                ? 'rounded-lg border border-l-8 border-blue-500 bg-blue-50 p-3 text-blue-950 dark:bg-blue-950/30 dark:text-blue-50'
+                                : 'rounded-lg border bg-card p-3'
+                          }
+                          key={team}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <strong>
+                                Team {team}
+                                {name ? ` - ${name}` : ''}
+                              </strong>
+                              {currentPlanningMatch &&
+                                matchPlan.absentTeams.includes(team) && (
+                                  <Badge className="ml-2" variant="destructive">
+                                    Not playing
+                                  </Badge>
+                                )}
+                            </div>
+                            {alliance && (
+                              <span
+                                aria-label={`${alliance} alliance`}
+                                className={
+                                  alliance === 'red'
+                                    ? 'size-4 rounded-full bg-red-600 ring-2 ring-red-200'
+                                    : 'size-4 rounded-full bg-blue-600 ring-2 ring-blue-200'
+                                }
+                              />
+                            )}
+                          </div>
+                          {planCanEdit && currentPlanningMatch && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="mt-2"
+                              onClick={() => {
+                                const isAbsent =
+                                  matchPlan.absentTeams.includes(team);
+                                const absentTeams = isAbsent
+                                  ? matchPlan.absentTeams.filter(
+                                      (item) => item !== team,
+                                    )
+                                  : [...matchPlan.absentTeams, team];
+                                const defaultMarkers = initialRobotMarkers(
+                                  currentPlanningMatch?.alliances.red ?? [],
+                                  currentPlanningMatch?.alliances.blue ?? [],
+                                );
+                                const robots = isAbsent
+                                  ? [
+                                      ...matchPlan.board.robots,
+                                      ...defaultMarkers.filter(
+                                        (robot) => robot.team === team,
+                                      ),
+                                    ]
+                                  : matchPlan.board.robots.filter(
+                                      (robot) => robot.team !== team,
+                                    );
+                                const autoRobots = isAbsent
+                                  ? [
+                                      ...matchPlan.autoBoard.robots,
+                                      ...defaultMarkers.filter(
+                                        (robot) => robot.team === team,
+                                      ),
+                                    ]
+                                  : matchPlan.autoBoard.robots.filter(
+                                      (robot) => robot.team !== team,
+                                    );
+                                setMatchPlan({
+                                  ...matchPlan,
+                                  absentTeams,
+                                  board: { ...matchPlan.board, robots },
+                                  autoBoard: {
+                                    ...matchPlan.autoBoard,
+                                    robots: autoRobots,
+                                  },
+                                });
+                              }}
+                            >
+                              {matchPlan.absentTeams.includes(team)
+                                ? 'Return robot to field'
+                                : 'Robot not playing'}
+                            </Button>
+                          )}
+                          <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                            <span>
+                              <strong>{stats?.xp?.toFixed(1) ?? '—'}</strong>
+                              <small className="block text-muted-foreground">
+                                Match13 xP
+                              </small>
+                            </span>
+                            <span>
+                              <strong>{stats?.epa?.toFixed(1) ?? '—'}</strong>
+                              <small className="block text-muted-foreground">
+                                EPA
+                              </small>
+                            </span>
+                            <span>
+                              <strong>
+                                {stats?.medianPoints.toFixed(1) ?? '—'}
+                              </strong>
+                              <small className="block text-muted-foreground">
+                                median pts
+                              </small>
+                            </span>
+                            <span>
+                              <strong>{stats?.disabledMatches ?? 0}</strong>
+                              <small className="block text-muted-foreground">
+                                disabled matches
+                              </small>
+                            </span>
+                          </div>
+                          <div className="mt-3 border-t pt-2 text-xs">
+                            <p className="font-semibold">Pit summary</p>
+                            {pit ? (
+                              <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-muted-foreground">
+                                <span>
+                                  {pit.drivetrain ?? 'Unknown'}
+                                  {pit.swerveModule
+                                    ? ` · ${pit.swerveModule}`
+                                    : ''}
+                                </span>
+                                <span>
+                                  {pit.weightLbs
+                                    ? `${pit.weightLbs} lb`
+                                    : 'Weight —'}
+                                </span>
+                                <span>
+                                  Capacity {pit.payload.fuelCapacity ?? '—'}
+                                </span>
+                                <span>
+                                  Climb {pit.payload.climbCapability ?? '—'}
+                                </span>
+                                <span>
+                                  Access {pit.payload.fieldAccess ?? '—'}
+                                </span>
+                                <span>
+                                  Shooter {shooterSummary(pit.payload)}
+                                </span>
+                                <span className="col-span-2 line-clamp-2">
+                                  Auto:{' '}
+                                  {[
+                                    normalizeSelections(
+                                      pit.payload.autonomousStart,
+                                      'Unknown',
+                                    ).join(', '),
+                                    normalizeSelections(
+                                      pit.payload.autonomousSwipe,
+                                      'None',
+                                    )
+                                      .filter((item) => item !== 'None')
+                                      .join(', ') || null,
+                                    pit.payload.autonomousDepot
+                                      ? 'Depot'
+                                      : null,
+                                    pit.payload.autonomousOutpost
+                                      ? 'Outpost'
+                                      : null,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(' · ') || '—'}
+                                </span>
+                              </div>
+                            ) : (
+                              <p className="mt-1 text-muted-foreground">
+                                No pit report
+                              </p>
+                            )}
+                          </div>
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            {stats?.samples ?? 0}/{stats?.scheduledMatches ?? 0}{' '}
+                            matches scouted
+                          </p>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="mt-3 w-full bg-background/70"
+                            onClick={() => setPlanStatsTeam(team)}
+                          >
+                            View stats for team {team}
+                          </Button>
+                        </div>
+                      ))
+                    )}
                     <div className="col-span-full flex justify-end">
                       <PlanSectionButtons
                         value={planSection}
                         onChange={setPlanSection}
                       />
                     </div>
-                    {planTeams.map(({ team, alliance, stats, pit, name }) => (
-                      <div
-                        className={
-                          alliance === 'red'
-                            ? 'rounded-lg border border-l-8 border-red-500 bg-red-50 p-3 text-red-950 dark:bg-red-950/30 dark:text-red-50'
-                            : 'rounded-lg border border-l-8 border-blue-500 bg-blue-50 p-3 text-blue-950 dark:bg-blue-950/30 dark:text-blue-50'
-                        }
-                        key={team}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <strong>
-                              Team {team}
-                              {name ? ` - ${name}` : ''}
-                            </strong>
-                            {matchPlan.absentTeams.includes(team) && (
-                              <Badge className="ml-2" variant="destructive">
-                                Not playing
-                              </Badge>
-                            )}
-                          </div>
-                          <span
-                            aria-label={`${alliance} alliance`}
-                            className={
-                              alliance === 'red'
-                                ? 'size-4 rounded-full bg-red-600 ring-2 ring-red-200'
-                                : 'size-4 rounded-full bg-blue-600 ring-2 ring-blue-200'
-                            }
-                          />
-                        </div>
-                        {planCanEdit && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="mt-2"
-                            onClick={() => {
-                              const isAbsent =
-                                matchPlan.absentTeams.includes(team);
-                              const absentTeams = isAbsent
-                                ? matchPlan.absentTeams.filter(
-                                    (item) => item !== team,
-                                  )
-                                : [...matchPlan.absentTeams, team];
-                              const defaultMarkers = initialRobotMarkers(
-                                currentPlanningMatch?.alliances.red ?? [],
-                                currentPlanningMatch?.alliances.blue ?? [],
-                              );
-                              const robots = isAbsent
-                                ? [
-                                    ...matchPlan.board.robots,
-                                    ...defaultMarkers.filter(
-                                      (robot) => robot.team === team,
-                                    ),
-                                  ]
-                                : matchPlan.board.robots.filter(
-                                    (robot) => robot.team !== team,
-                                  );
-                              const autoRobots = isAbsent
-                                ? [
-                                    ...matchPlan.autoBoard.robots,
-                                    ...defaultMarkers.filter(
-                                      (robot) => robot.team === team,
-                                    ),
-                                  ]
-                                : matchPlan.autoBoard.robots.filter(
-                                    (robot) => robot.team !== team,
-                                  );
-                              setMatchPlan({
-                                ...matchPlan,
-                                absentTeams,
-                                board: { ...matchPlan.board, robots },
-                                autoBoard: {
-                                  ...matchPlan.autoBoard,
-                                  robots: autoRobots,
-                                },
-                              });
-                            }}
-                          >
-                            {matchPlan.absentTeams.includes(team)
-                              ? 'Return robot to field'
-                              : 'Robot not playing'}
-                          </Button>
-                        )}
-                        <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                          <span>
-                            <strong>{stats?.xp?.toFixed(1) ?? '—'}</strong>
-                            <small className="block text-muted-foreground">
-                              Match13 xP
-                            </small>
-                          </span>
-                          <span>
-                            <strong>{stats?.epa?.toFixed(1) ?? '—'}</strong>
-                            <small className="block text-muted-foreground">
-                              EPA
-                            </small>
-                          </span>
-                          <span>
-                            <strong>
-                              {stats?.medianPoints.toFixed(1) ?? '—'}
-                            </strong>
-                            <small className="block text-muted-foreground">
-                              median pts
-                            </small>
-                          </span>
-                          <span>
-                            <strong>{stats?.disabledMatches ?? 0}</strong>
-                            <small className="block text-muted-foreground">
-                              disabled matches
-                            </small>
-                          </span>
-                        </div>
-                        <div className="mt-3 border-t pt-2 text-xs">
-                          <p className="font-semibold">Pit summary</p>
-                          {pit ? (
-                            <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-muted-foreground">
-                              <span>
-                                {pit.drivetrain ?? 'Unknown'}
-                                {pit.swerveModule
-                                  ? ` · ${pit.swerveModule}`
-                                  : ''}
-                              </span>
-                              <span>
-                                {pit.weightLbs
-                                  ? `${pit.weightLbs} lb`
-                                  : 'Weight —'}
-                              </span>
-                              <span>
-                                Capacity {pit.payload.fuelCapacity ?? '—'}
-                              </span>
-                              <span>
-                                Climb {pit.payload.climbCapability ?? '—'}
-                              </span>
-                              <span>
-                                Access {pit.payload.fieldAccess ?? '—'}
-                              </span>
-                              <span>Shooter {shooterSummary(pit.payload)}</span>
-                              <span className="col-span-2 line-clamp-2">
-                                Auto:{' '}
-                                {[
-                                  normalizeSelections(
-                                    pit.payload.autonomousStart,
-                                    'Unknown',
-                                  ).join(', '),
-                                  normalizeSelections(
-                                    pit.payload.autonomousSwipe,
-                                    'None',
-                                  )
-                                    .filter((item) => item !== 'None')
-                                    .join(', ') || null,
-                                  pit.payload.autonomousDepot ? 'Depot' : null,
-                                  pit.payload.autonomousOutpost
-                                    ? 'Outpost'
-                                    : null,
-                                ]
-                                  .filter(Boolean)
-                                  .join(' · ') || '—'}
-                              </span>
-                            </div>
-                          ) : (
-                            <p className="mt-1 text-muted-foreground">
-                              No pit report
-                            </p>
-                          )}
-                        </div>
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          {stats?.samples ?? 0}/{stats?.scheduledMatches ?? 0}{' '}
-                          matches scouted
-                        </p>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="mt-3 w-full bg-background/70"
-                          onClick={() => setPlanStatsTeam(team)}
-                        >
-                          View stats for team {team}
-                        </Button>
-                      </div>
-                    ))}
                   </div>
                 )}
               </CardContent>
