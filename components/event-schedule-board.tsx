@@ -205,7 +205,6 @@ function ScheduleRoleInput({
   busy,
   ariaLabel,
   choices,
-  widthChars,
   onCommit,
   onRangePaste,
   onInvalid,
@@ -217,7 +216,6 @@ function ScheduleRoleInput({
   busy: boolean;
   ariaLabel: string;
   choices: ScheduleOption[];
-  widthChars: number;
   onCommit: (value: string) => void;
   onRangePaste: (text: string) => void;
   onInvalid: (text: string) => void;
@@ -270,7 +268,6 @@ function ScheduleRoleInput({
         className={`h-9 w-full rounded-md border px-1 text-center text-xs font-medium ${label && !open ? assignmentClass(label) : 'bg-background text-foreground'}`}
         disabled={busy}
         data-schedule-cell={cellId}
-        style={{ width: `calc(${widthChars}ch + 0.5rem)` }}
         value={busy ? 'Saving…' : query}
         onChange={(event) => {
           editedRef.current = true;
@@ -657,10 +654,6 @@ export function EventScheduleBoard({
   }, [dayEnd, dayStart, items]);
   const emptyShifts = { scouting: 0, pit: 0, total: 0 };
   const choices = useMemo(() => scheduleOptionsFor(controls), [controls]);
-  const choiceChars = Math.max(
-    1,
-    ...choices.map((option) => option.label.length),
-  );
   const nameChars = Math.max(
     0,
     ...activeMembers.map(
@@ -1251,7 +1244,6 @@ export function EventScheduleBoard({
                           ariaLabel={`${member.name}, ${new Date(2000, 0, 1, hour).toLocaleTimeString([], { hour: 'numeric' })}`}
                           busy={busyCell === key}
                           choices={choices}
-                          widthChars={choiceChars}
                           cellId={`${columnIndex}:${rowIndex}`}
                           label={item?.label ?? ''}
                           onAdvance={() => focusCell(rowIndex + 1, columnIndex)}
