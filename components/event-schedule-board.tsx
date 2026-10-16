@@ -11,6 +11,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverTitle,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { ConfirmActionDialog } from '@/components/confirm-action-dialog';
 import {
   activeCoverageTargets,
@@ -1248,6 +1255,34 @@ export function EventScheduleBoard({
                 </Button>
               )}
             </div>
+            <Popover>
+              <PopoverTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="ml-auto rounded-full text-base"
+                    aria-label="How to edit event assignments"
+                  />
+                }
+              >
+                ?
+              </PopoverTrigger>
+              <PopoverContent
+                align="end"
+                className="w-80 max-w-[calc(100vw-2rem)]"
+              >
+                <PopoverTitle>Editing assignments</PopoverTitle>
+                <PopoverDescription className="leading-relaxed">
+                  Type, paste, or choose a role in each time slot; a change
+                  saves when you click out of the cell. Clear a cell to unassign
+                  it. Arrow keys move between cells, Enter saves and moves down,
+                  and Escape cancels. You can copy and paste single cells or
+                  rectangular spreadsheet ranges.
+                </PopoverDescription>
+              </PopoverContent>
+            </Popover>
           </div>
           {!scheduleDays.length && (
             <p className="px-3 text-sm text-muted-foreground">
@@ -1255,13 +1290,6 @@ export function EventScheduleBoard({
               end.
             </p>
           )}
-          <p className="px-3 text-sm text-muted-foreground">
-            Type, paste, or choose a role in each time slot; a change saves when
-            you click out of the cell. Clear a cell to unassign it. Arrow keys
-            move between cells, Enter saves and moves down, and Escape cancels.
-            You can copy and paste single cells or rectangular spreadsheet
-            ranges.
-          </p>
           <div
             className="max-h-[68dvh] overflow-auto border-y"
             data-schedule-scroll
