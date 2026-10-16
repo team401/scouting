@@ -3873,10 +3873,6 @@ export default function Home() {
                     ? `Team ${selectedTeam}${eventPack?.teams.find((item) => item.teamNumber === selectedTeam)?.name ? ` — ${eventPack.teams.find((item) => item.teamNumber === selectedTeam)?.name}` : ''} summary`
                     : 'Select a team above'}
                 </CardTitle>
-                <Badge variant="outline">
-                  {analysis?.samples ?? 0}/{analysis?.scheduledMatches ?? 0}{' '}
-                  matches scouted
-                </Badge>
               </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-[10rem_1fr] sm:items-start">
                 <TeamRobotPhoto
