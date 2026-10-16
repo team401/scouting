@@ -1005,23 +1005,25 @@ export function EventScheduleBoard({
 
   return (
     <>
-      <Card className="mb-4">
-        <CardContent className="space-y-3">
+      <Card className="mb-4 gap-0 overflow-hidden py-0">
+        <CardContent className="space-y-3 py-(--card-spacing)">
           {eventPicker}
-          <details
-            className="rounded-lg border p-3"
-            open={rosterOpen}
-            onToggle={(event) => setRosterOpen(event.currentTarget.open)}
-          >
-            <summary className="cursor-pointer font-semibold">
-              People at this event · {activeMembers.length}
-              {rosterMessage && (
-                <span className="ml-3 font-normal text-muted-foreground">
-                  {rosterMessage}
-                </span>
-              )}
-            </summary>
-            <div className="mt-3 flex flex-wrap gap-2">
+        </CardContent>
+        <details
+          className="border-t"
+          open={rosterOpen}
+          onToggle={(event) => setRosterOpen(event.currentTarget.open)}
+        >
+          <summary className="cursor-pointer px-(--card-spacing) py-3 font-semibold">
+            Event Roster · {activeMembers.length}
+            {rosterMessage && (
+              <span className="ml-3 font-normal text-muted-foreground">
+                {rosterMessage}
+              </span>
+            )}
+          </summary>
+          <div className="px-(--card-spacing) pb-(--card-spacing)">
+            <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
                 variant="outline"
@@ -1083,8 +1085,8 @@ export function EventScheduleBoard({
             >
               Save event roster
             </Button>
-          </details>
-        </CardContent>
+          </div>
+        </details>
       </Card>
       <Card className="mb-4 overflow-hidden">
         <CardContent className="space-y-3 px-0 sm:px-0">
