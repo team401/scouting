@@ -19,6 +19,7 @@
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote --config dist/server/wrangler.json",
     "lint": "oxlint",
     "format": "oxfmt",
+    "format:check": "oxfmt --check",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {

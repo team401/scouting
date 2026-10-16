@@ -236,7 +236,10 @@ export async function DELETE(request: Request) {
     .bind(id, identity.membership.organizationId)
     .first<{ eventId: string }>();
   if (!assignment)
-    return Response.json({ error: 'Schedule item not found.' }, { status: 404 });
+    return Response.json(
+      { error: 'Schedule item not found.' },
+      { status: 404 },
+    );
   const now = Date.now();
   await env.DB.batch([
     env.DB.prepare(

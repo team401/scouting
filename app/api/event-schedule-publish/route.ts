@@ -24,7 +24,10 @@ async function context(request: Request) {
 export async function GET(request: Request) {
   const actor = await context(request);
   if (!actor)
-    return Response.json({ error: 'Admin access is required.' }, { status: 403 });
+    return Response.json(
+      { error: 'Admin access is required.' },
+      { status: 403 },
+    );
   if (!actor.event)
     return Response.json({ publishedAt: null, hasUnpublishedChanges: false });
   const publication = await env.DB.prepare(
@@ -52,7 +55,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const actor = await context(request);
   if (!actor)
-    return Response.json({ error: 'Admin access is required.' }, { status: 403 });
+    return Response.json(
+      { error: 'Admin access is required.' },
+      { status: 403 },
+    );
   if (!actor.event)
     return Response.json({ error: 'Load an event first.' }, { status: 409 });
   const now = Date.now();

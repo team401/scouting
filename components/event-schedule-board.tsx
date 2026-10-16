@@ -516,9 +516,7 @@ export function EventScheduleBoard({
         publicationBody.error ?? 'Could not load publication status.',
       );
     setPublishedAt(publicationBody.publishedAt ?? null);
-    setHasUnpublishedChanges(
-      publicationBody.hasUnpublishedChanges ?? false,
-    );
+    setHasUnpublishedChanges(publicationBody.hasUnpublishedChanges ?? false);
     const loadedDefaults = {
       scoutingEnabled: controlsBody.scoutingEnabled ?? true,
       outreachEnabled: controlsBody.outreachEnabled ?? true,
@@ -960,10 +958,16 @@ export function EventScheduleBoard({
           </div>
           <Button
             type="button"
-            disabled={publishing || (!hasUnpublishedChanges && publishedAt !== null)}
+            disabled={
+              publishing || (!hasUnpublishedChanges && publishedAt !== null)
+            }
             onClick={() => void publishSchedule()}
           >
-            {publishing ? 'Publishing…' : publishedAt ? 'Publish changes' : 'Publish schedule'}
+            {publishing
+              ? 'Publishing…'
+              : publishedAt
+                ? 'Publish changes'
+                : 'Publish schedule'}
           </Button>
         </div>
         <div className="grid gap-2 px-3 sm:grid-cols-3">
