@@ -62,12 +62,14 @@ export function TacticalBoard({
   onChange,
   readOnly = false,
   toolbarStart,
+  toolbarEnd,
 }: {
   value: TacticalBoardData;
   onChange: (value: TacticalBoardData) => void;
   readOnly?: boolean;
-  // Extra controls shown before the board tools, such as full screen.
+  // Extra controls shown at the start and end of the wrapping board toolbar.
   toolbarStart?: ReactNode;
+  toolbarEnd?: ReactNode;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<
@@ -223,6 +225,7 @@ export function TacticalBoard({
           <RotateCcw />
           Reset robots
         </Button>
+        {toolbarEnd}
       </div>
       <div className="tactical-board-viewport">
         <svg

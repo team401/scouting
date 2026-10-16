@@ -613,6 +613,52 @@ function Counter({
   );
 }
 
+type PlanSection = 'auto' | 'teleop' | 'metrics';
+
+function PlanSectionButtons({
+  value,
+  onChange,
+}: {
+  value: PlanSection;
+  onChange: (section: PlanSection) => void;
+}) {
+  return (
+    <div
+      aria-label="Plan view"
+      className="ml-auto flex w-max max-w-full shrink-0 flex-nowrap items-center gap-1"
+      role="group"
+    >
+      <Button
+        type="button"
+        size="sm"
+        variant={value === 'auto' ? 'default' : 'ghost'}
+        aria-pressed={value === 'auto'}
+        onClick={() => onChange('auto')}
+      >
+        Auto Plan
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant={value === 'teleop' ? 'default' : 'ghost'}
+        aria-pressed={value === 'teleop'}
+        onClick={() => onChange('teleop')}
+      >
+        Tele Plan
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant={value === 'metrics' ? 'default' : 'ghost'}
+        aria-pressed={value === 'metrics'}
+        onClick={() => onChange('metrics')}
+      >
+        Team metrics
+      </Button>
+    </div>
+  );
+}
+
 export default function Home() {
   const { data: session, isPending } = authClient.useSession();
   const [activeView, setActiveView] = useState<View>('Home');
@@ -3510,34 +3556,6 @@ export default function Home() {
                         </select>
                       </div>
                     )}
-                    <div className="grid grid-cols-3 gap-1">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={planSection === 'auto' ? 'default' : 'ghost'}
-                        onClick={() => setPlanSection('auto')}
-                      >
-                        Auto Plan
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={planSection === 'teleop' ? 'default' : 'ghost'}
-                        onClick={() => setPlanSection('teleop')}
-                      >
-                        Tele Plan
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={
-                          planSection === 'metrics' ? 'default' : 'ghost'
-                        }
-                        onClick={() => setPlanSection('metrics')}
-                      >
-                        Team metrics
-                      </Button>
-                    </div>
                   </>
                 )}
                 {planSection !== 'metrics' && (
@@ -3568,6 +3586,12 @@ export default function Home() {
                           >
                             {planFullscreen ? <Minimize2 /> : <Maximize2 />}
                           </Button>
+                        }
+                        toolbarEnd={
+                          <PlanSectionButtons
+                            value={planSection}
+                            onChange={setPlanSection}
+                          />
                         }
                         onChange={(board) =>
                           setMatchPlan(
@@ -3612,6 +3636,12 @@ export default function Home() {
                 )}
                 {planSection === 'metrics' && (
                   <div className="grid gap-3 border-t pt-4 sm:grid-cols-2 xl:grid-cols-3">
+                    <div className="col-span-full flex justify-end">
+                      <PlanSectionButtons
+                        value={planSection}
+                        onChange={setPlanSection}
+                      />
+                    </div>
                     {planTeams.map(({ team, alliance, stats, pit, name }) => (
                       <div
                         className={

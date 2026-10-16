@@ -862,12 +862,8 @@ select option {
     flex: none;
   }
   .tactical-board-tools {
-    flex-wrap: nowrap;
-    overflow-x: auto;
+    align-items: flex-start;
     padding-bottom: 4px;
-  }
-  .tactical-board-tools > * {
-    flex: none;
   }
   .tactical-board-viewport svg {
     width: 720px;
