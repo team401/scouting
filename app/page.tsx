@@ -2898,15 +2898,10 @@ export default function Home() {
                   );
                   return (
                     <option value={team} key={team}>
-                      Team {team}
-                      {eventPack?.teams.find((item) => item.teamNumber === team)
-                        ?.name
-                        ? ` — ${eventPack.teams.find((item) => item.teamNumber === team)?.name}`
-                        : ''}
-                      {' — '}
+                      Team {team} -{' '}
                       {entry
                         ? `Scouted by ${entry.scoutName}`
-                        : 'Needs scouting'}
+                        : 'Needs Scouting'}
                     </option>
                   );
                 })}
