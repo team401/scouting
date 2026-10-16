@@ -412,6 +412,24 @@ select option {
 .team-comparison-cards {
   display: none;
 }
+
+/* Tablet portrait widths do not leave enough room for both the full team
+   queue and a usable scouting form. Use the compact team picker until the
+   viewport can comfortably support the two-pane desktop layout. */
+@media (max-width: 1279px) {
+  .pit-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pit-queue-card {
+    display: none;
+  }
+  .pit-mobile-picker {
+    position: sticky;
+    top: 8px;
+    z-index: 5;
+    display: block;
+  }
+}
 .pick-list-mobile-editor {
   display: none;
 }
