@@ -6,9 +6,9 @@ import {
   drivePhases,
   drivePositions,
   hasDuplicateDriveMember,
-  mapSlotsToMatches,
   maxExpectedMatches,
 } from '@/lib/drive-team';
+import { draftSlotsWithMatches } from '@/lib/drive-team-schedule';
 import { canManageAssignments } from '@/lib/scouting-policy';
 
 const phaseSchema = z.enum(drivePhases);
@@ -26,11 +26,6 @@ const slotSchema = z.object({
   humanPlayerUserId: z.string().min(1).nullable(),
   technicianUserId: z.string().min(1).nullable(),
   coachUserId: z.string().min(1).nullable(),
-  matchId: z.string().min(1).nullable(),
-});
-
-const mapSchema = z.object({
-  startMatchNumber: z.number().int().min(1).max(999),
 });
 
 type PublishedRow = {
@@ -103,11 +98,8 @@ async function personError(
   )
     .bind(userId)
     .first<{ opsRole: string | null }>();
-  if (!canFillDrivePosition(key, user?.opsRole)) {
-    return key === 'coachUserId'
-      ? 'Only coaches can fill the Coach position.'
-      : 'Coaches can only fill the Technician and Coach positions.';
-  }
+  if (!canFillDrivePosition(key, user?.opsRole))
+    return 'Coaches can only fill the Technician and Coach positions.';
   return null;
 }
 
@@ -136,33 +128,28 @@ export async function GET(request: Request) {
     canManageAssignments(actor.membership.role) &&
     new URL(request.url).searchParams.get('all') === '1';
   const eventId = await currentEventId(organizationId);
-  if (!eventId)
-    return Response.json(
-      all ? { slots: [], matches: [] } : { assignments: [] },
-    );
+  if (!eventId) return Response.json(all ? { slots: [] } : { assignments: [] });
 
   if (all) {
-    const [slots, matches] = await Promise.all([
-      env.DB.prepare(
-        `SELECT phase, slot_number AS slotNumber, driver_user_id AS driverUserId,
-          operator_user_id AS operatorUserId, human_player_user_id AS humanPlayerUserId,
-          technician_user_id AS technicianUserId, coach_user_id AS coachUserId,
-          match_id AS matchId
-         FROM drive_team_slots WHERE organization_id = ? AND event_id = ?
-         ORDER BY CASE phase WHEN 'qual' THEN 0 ELSE 1 END, slot_number`,
-      )
-        .bind(organizationId, eventId)
-        .all(),
-      env.DB.prepare(
-        `SELECT id, match_number AS matchNumber, comp_level AS compLevel,
-          scheduled_at AS scheduledAt, predicted_at AS predictedAt
-         FROM matches WHERE organization_id = ? AND event_id = ?
-         ORDER BY comp_level, match_number`,
-      )
-        .bind(organizationId, eventId)
-        .all(),
-    ]);
-    return Response.json({ slots: slots.results, matches: matches.results });
+    const slots = await draftSlotsWithMatches(env.DB, organizationId, eventId);
+    return Response.json({
+      slots: slots.map((slot) => ({
+        phase: slot.phase,
+        slotNumber: slot.slotNumber,
+        driverUserId: slot.driverUserId,
+        operatorUserId: slot.operatorUserId,
+        humanPlayerUserId: slot.humanPlayerUserId,
+        technicianUserId: slot.technicianUserId,
+        coachUserId: slot.coachUserId,
+        official: slot.match
+          ? {
+              matchNumber: slot.match.matchNumber,
+              compLevel: slot.match.compLevel,
+              startsAt: slot.match.predictedAt ?? slot.match.scheduledAt,
+            }
+          : null,
+      })),
+    });
   }
 
   // Members only see published slots where they hold a position.
@@ -223,7 +210,7 @@ export async function POST(request: Request) {
     `SELECT slot_number AS slotNumber,
       (driver_user_id IS NOT NULL OR operator_user_id IS NOT NULL
         OR human_player_user_id IS NOT NULL OR technician_user_id IS NOT NULL
-        OR coach_user_id IS NOT NULL OR match_id IS NOT NULL) AS used
+        OR coach_user_id IS NOT NULL) AS used
      FROM drive_team_slots WHERE event_id = ? AND phase = ? ORDER BY slot_number`,
   )
     .bind(eventId, phase)
@@ -272,6 +259,8 @@ export async function POST(request: Request) {
   return Response.json({ phase, expectedMatches: count });
 }
 
+// Official matches are never set here: each planned row maps automatically to
+// our team's matches, so only the people in a row are saved.
 export async function PUT(request: Request) {
   const actor = await identity(request);
   if (!actor || !canManageAssignments(actor.membership.role))
@@ -328,48 +317,12 @@ export async function PUT(request: Request) {
     if (error) return Response.json({ error }, { status: 400 });
   }
 
-  if (parsed.data.matchId) {
-    const match = await env.DB.prepare(
-      'SELECT id, comp_level AS compLevel FROM matches WHERE id = ? AND organization_id = ? AND event_id = ?',
-    )
-      .bind(parsed.data.matchId, organizationId, eventId)
-      .first<{ id: string; compLevel: string }>();
-    if (!match)
-      return Response.json(
-        { error: 'That match is not in the current event.' },
-        { status: 400 },
-      );
-    const isQualification = match.compLevel === 'qm';
-    if (isQualification !== (phase === 'qual'))
-      return Response.json(
-        {
-          error:
-            phase === 'qual'
-              ? 'Qualification rows take a qualification match.'
-              : 'Playoff rows take a playoff match.',
-        },
-        { status: 400 },
-      );
-    const taken = await env.DB.prepare(
-      'SELECT phase, slot_number AS slotNumber FROM drive_team_slots WHERE event_id = ? AND match_id = ? AND id <> ?',
-    )
-      .bind(eventId, parsed.data.matchId, slot.id)
-      .first<{ phase: string; slotNumber: number }>();
-    if (taken)
-      return Response.json(
-        {
-          error: `That match is already planned in ${taken.phase === 'playoff' ? 'playoff' : 'planned'} match ${taken.slotNumber}.`,
-        },
-        { status: 409 },
-      );
-  }
-
   const now = Date.now();
   await env.DB.batch([
     env.DB.prepare(
       `UPDATE drive_team_slots SET driver_user_id = ?, operator_user_id = ?,
         human_player_user_id = ?, technician_user_id = ?, coach_user_id = ?,
-        match_id = ?, updated_at = ?
+        updated_at = ?
        WHERE id = ?`,
     ).bind(
       members.driverUserId,
@@ -377,66 +330,10 @@ export async function PUT(request: Request) {
       members.humanPlayerUserId,
       members.technicianUserId,
       members.coachUserId,
-      parsed.data.matchId,
       now,
       slot.id,
     ),
     markDraftChanged(eventId, now),
   ]);
   return Response.json({ ok: true, updatedAt: now });
-}
-
-// Maps planned qualification match N onto official qualification match
-// (start + N - 1). Replaces existing mappings, so the planner reports how many
-// slots matched. Playoff rows are mapped by hand.
-export async function PATCH(request: Request) {
-  const actor = await identity(request);
-  if (!actor || !canManageAssignments(actor.membership.role))
-    return Response.json(
-      { error: 'Only an owner or admin can manage drive teams.' },
-      { status: actor ? 403 : 401 },
-    );
-  const parsed = mapSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success)
-    return Response.json(
-      { error: 'Choose a valid starting match number.' },
-      { status: 400 },
-    );
-  const organizationId = actor.membership.organizationId;
-  const eventId = await currentEventId(organizationId);
-  if (!eventId)
-    return Response.json({ error: 'Load an event first.' }, { status: 409 });
-  const [slots, matches] = await Promise.all([
-    env.DB.prepare(
-      `SELECT slot_number AS slotNumber FROM drive_team_slots
-       WHERE event_id = ? AND phase = 'qual' ORDER BY slot_number`,
-    )
-      .bind(eventId)
-      .all<{ slotNumber: number }>(),
-    env.DB.prepare(
-      `SELECT id, match_number AS matchNumber FROM matches
-       WHERE organization_id = ? AND event_id = ? AND comp_level = 'qm'
-       ORDER BY match_number`,
-    )
-      .bind(organizationId, eventId)
-      .all<{ id: string; matchNumber: number }>(),
-  ]);
-  const mapping = mapSlotsToMatches(
-    slots.results.map((slot) => slot.slotNumber),
-    parsed.data.startMatchNumber,
-    matches.results,
-  );
-  const now = Date.now();
-  const statements = mapping.map(({ slotNumber, matchId }) =>
-    env.DB.prepare(
-      `UPDATE drive_team_slots SET match_id = ?, updated_at = ?
-       WHERE event_id = ? AND phase = 'qual' AND slot_number = ?`,
-    ).bind(matchId, now, eventId, slotNumber),
-  );
-  if (statements.length) statements.push(markDraftChanged(eventId, now));
-  await runInChunks(statements);
-  return Response.json({
-    mapped: mapping.filter((item) => item.matchId).length,
-    unmatched: mapping.filter((item) => !item.matchId).length,
-  });
 }

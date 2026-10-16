@@ -1,5 +1,6 @@
 import { env } from 'cloudflare:workers';
 import { auth } from '@/lib/auth';
+import { draftSlotsWithMatches } from '@/lib/drive-team-schedule';
 import { canManageAssignments } from '@/lib/scouting-policy';
 
 async function context(request: Request) {
@@ -59,24 +60,49 @@ export async function POST(request: Request) {
   if (!actor.event)
     return Response.json({ error: 'Load an event first.' }, { status: 409 });
   const now = Date.now();
-  await env.DB.batch([
+  // Official matches are mapped automatically, so publishing stores each
+  // planned row with the match it maps to right now.
+  const slots = await draftSlotsWithMatches(
+    env.DB,
+    actor.membership.organizationId,
+    actor.event.id,
+  );
+  const statements: D1PreparedStatement[] = [
     env.DB.prepare(
       'DELETE FROM published_drive_team_slots WHERE event_id = ?',
     ).bind(actor.event.id),
-    env.DB.prepare(
-      `INSERT INTO published_drive_team_slots
-       (id, organization_id, event_id, phase, slot_number, driver_user_id, operator_user_id,
-        human_player_user_id, technician_user_id, coach_user_id, match_id, created_at, updated_at)
-       SELECT id, organization_id, event_id, phase, slot_number, driver_user_id, operator_user_id,
-        human_player_user_id, technician_user_id, coach_user_id, match_id, created_at, updated_at
-       FROM drive_team_slots WHERE event_id = ?`,
-    ).bind(actor.event.id),
+    ...slots.map((slot) =>
+      env.DB.prepare(
+        `INSERT INTO published_drive_team_slots
+         (id, organization_id, event_id, phase, slot_number, driver_user_id, operator_user_id,
+          human_player_user_id, technician_user_id, coach_user_id, match_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).bind(
+        slot.id,
+        slot.organizationId,
+        slot.eventId,
+        slot.phase,
+        slot.slotNumber,
+        slot.driverUserId,
+        slot.operatorUserId,
+        slot.humanPlayerUserId,
+        slot.technicianUserId,
+        slot.coachUserId,
+        slot.match?.id ?? null,
+        slot.createdAt,
+        slot.updatedAt,
+      ),
+    ),
     env.DB.prepare(
       `INSERT INTO drive_team_publications (event_id, published_at, draft_updated_at)
        VALUES (?, ?, ?) ON CONFLICT(event_id) DO UPDATE SET
        published_at = excluded.published_at, draft_updated_at = excluded.draft_updated_at`,
     ).bind(actor.event.id, now, now),
-  ]);
+  ];
+  // D1 batches are capped, so larger plans are written in chunks. The
+  // publication timestamp is written last, after every slot.
+  for (let index = 0; index < statements.length; index += 50)
+    await env.DB.batch(statements.slice(index, index + 50));
   return Response.json({ publishedAt: now, hasUnpublishedChanges: false });
 }
 

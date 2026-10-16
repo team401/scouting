@@ -37,41 +37,91 @@ export function hasDuplicateDriveMember(members: DriveTeamSlotMembers) {
   return new Set(ids).size !== ids.length;
 }
 
-// Coaches fill the Technician and Coach positions. Students drive, operate,
-// and play human player, so coaches are not eligible for those.
+// Technician and Coach are open to coaches and all students. Driver, Operator,
+// and Human Player are student positions, so coaches cannot fill them.
 export function canFillDrivePosition(
   key: DrivePositionKey,
   opsRole: string | null | undefined,
 ) {
-  const coach = opsRole === 'coach';
-  if (key === 'coachUserId') return coach;
-  if (key === 'technicianUserId') return true;
-  return !coach;
+  if (key === 'technicianUserId' || key === 'coachUserId') return true;
+  return opsRole !== 'coach';
 }
 
-// Planned match N is the Nth match counted from startMatchNumber. Returns the
-// matching official match id, or null when that number is not in the schedule.
-export function matchForSlot(
-  slotNumber: number,
-  startMatchNumber: number,
-  officialMatches: ReadonlyArray<{ id: string; matchNumber: number }>,
-) {
-  const target = startMatchNumber + slotNumber - 1;
-  return (
-    officialMatches.find((match) => match.matchNumber === target)?.id ?? null
+// A match as stored from the event schedule. `alliances` is the JSON text of
+// the alliances column: { red: { team_keys }, blue: { team_keys } }.
+export type ScheduleMatch = {
+  id: string;
+  compLevel: string;
+  matchNumber: number;
+  alliances: string;
+};
+
+export type OfficialMatch = ScheduleMatch;
+
+// Team numbers in a match's alliances. Malformed JSON yields no teams.
+export function teamNumbersInAlliances(alliances: string): number[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(alliances);
+  } catch {
+    return [];
+  }
+  if (!parsed || typeof parsed !== 'object') return [];
+  return Object.values(parsed).flatMap((side) => {
+    const keys = (side as { team_keys?: unknown } | null)?.team_keys;
+    if (!Array.isArray(keys)) return [];
+    return keys.flatMap((key) => {
+      const match = typeof key === 'string' ? /^frc(\d+)$/.exec(key) : null;
+      return match ? [Number(match[1])] : [];
+    });
+  });
+}
+
+const playoffOrder: Record<string, number> = { ef: 0, qf: 1, sf: 2, f: 3 };
+
+// Our team's matches for one level, in play order: qualifications by match
+// number, playoffs by round and then match number.
+export function teamMatchesInOrder<T extends ScheduleMatch>(
+  matches: readonly T[],
+  teamNumber: number,
+): { quals: T[]; playoffs: T[] } {
+  const ours = matches.filter((match) =>
+    teamNumbersInAlliances(match.alliances).includes(teamNumber),
   );
+  const quals = ours
+    .filter((match) => match.compLevel === 'qm')
+    .sort((a, b) => a.matchNumber - b.matchNumber);
+  const playoffs = ours
+    .filter((match) => match.compLevel !== 'qm')
+    .sort(
+      (a, b) =>
+        (playoffOrder[a.compLevel] ?? 99) - (playoffOrder[b.compLevel] ?? 99) ||
+        a.matchNumber - b.matchNumber,
+    );
+  return { quals, playoffs };
 }
 
-// Returns the match id for every planned slot, in slot order.
-export function mapSlotsToMatches(
-  slotNumbers: readonly number[],
-  startMatchNumber: number,
-  officialMatches: ReadonlyArray<{ id: string; matchNumber: number }>,
+// Planned row k of a phase is our team's kth match in that phase. Returns the
+// official match for each row keyed by `${phase}:${slotNumber}`, or null when
+// the schedule does not have that match yet.
+export function autoMapDriveTeamMatches<T extends ScheduleMatch>(
+  slots: ReadonlyArray<{ phase: DrivePhase; slotNumber: number }>,
+  matches: readonly T[],
+  teamNumber: number | null,
 ) {
-  return slotNumbers.map((slotNumber) => ({
-    slotNumber,
-    matchId: matchForSlot(slotNumber, startMatchNumber, officialMatches),
-  }));
+  const mapped = new Map<string, T | null>();
+  const ours: { quals: T[]; playoffs: T[] } =
+    teamNumber === null
+      ? { quals: [], playoffs: [] }
+      : teamMatchesInOrder(matches, teamNumber);
+  for (const slot of slots) {
+    const list = slot.phase === 'qual' ? ours.quals : ours.playoffs;
+    mapped.set(
+      `${slot.phase}:${slot.slotNumber}`,
+      list[slot.slotNumber - 1] ?? null,
+    );
+  }
+  return mapped;
 }
 
 export function matchLabel(
