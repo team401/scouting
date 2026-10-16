@@ -2083,7 +2083,7 @@ export default function Home() {
         ? `${matchHeaderLabel(currentMatch)}${selectedStation ? ` · ${selectedStation.replace('red', 'Red ').replace('blue', 'Blue ')}` : ''}${selectedTeam ? ` · Team ${selectedTeam}` : ''}`
         : 'Choose an assignment'
       : activeView === 'Pit'
-        ? `Pit Scouting · ${eventPack?.pitEntries.length ?? 0}/${eventTeams.length} Complete`
+        ? `Pit Scouting · ${eventPack?.pitEntries.length ?? 0}/${eventTeams.length}`
         : activeView === 'Plan' && currentPlanningMatch
           ? `Plan · ${matchHeaderLabel(currentPlanningMatch)}`
           : activeView;
@@ -2867,48 +2867,38 @@ export default function Home() {
         )}
         {activeView === 'Pit' && (
           <div className="pit-layout grid gap-4 p-4 sm:p-6 lg:grid-cols-[28rem_1fr]">
-            <Card className="pit-mobile-picker">
-              <CardContent className="p-3">
-                <label className="grid gap-1 text-sm font-semibold">
-                  Team to pit scout
-                  <select
-                    className="h-11 w-full rounded-md border bg-background px-3 text-foreground"
-                    value={pitTeam ?? ''}
-                    onChange={(event) =>
-                      setPitTeam(
-                        event.target.value ? Number(event.target.value) : null,
-                      )
-                    }
-                  >
-                    <option value="">Choose a team</option>
-                    {eventTeams.map((team) => {
-                      const entry = eventPack?.pitEntries.find(
-                        (entry) => entry.teamNumber === team,
-                      );
-                      return (
-                        <option value={team} key={team}>
-                          Team {team}
-                          {eventPack?.teams.find(
-                            (item) => item.teamNumber === team,
-                          )?.name
-                            ? ` — ${eventPack.teams.find((item) => item.teamNumber === team)?.name}`
-                            : ''}
-                          {' — '}
-                          {entry
-                            ? `Scouted by ${entry.scoutName}`
-                            : 'Needs scouting'}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </label>
-                {pitTeam && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Team {pitTeam} selected · changes save on this device
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+            <div className="pit-mobile-picker bg-background">
+              <select
+                aria-label="Team to pit scout"
+                className="h-11 w-full rounded-md border bg-background px-3 text-foreground"
+                value={pitTeam ?? ''}
+                onChange={(event) =>
+                  setPitTeam(
+                    event.target.value ? Number(event.target.value) : null,
+                  )
+                }
+              >
+                <option value="">Choose a team</option>
+                {eventTeams.map((team) => {
+                  const entry = eventPack?.pitEntries.find(
+                    (entry) => entry.teamNumber === team,
+                  );
+                  return (
+                    <option value={team} key={team}>
+                      Team {team}
+                      {eventPack?.teams.find((item) => item.teamNumber === team)
+                        ?.name
+                        ? ` — ${eventPack.teams.find((item) => item.teamNumber === team)?.name}`
+                        : ''}
+                      {' — '}
+                      {entry
+                        ? `Scouted by ${entry.scoutName}`
+                        : 'Needs scouting'}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
             <Card className="pit-queue-card h-full min-h-0">
               <CardContent className="min-h-0 flex-1 space-y-1 overflow-auto">
                 {eventTeams.map((team) => {
@@ -2986,7 +2976,7 @@ export default function Home() {
                 {pitTeam && (
                   <>
                     <div className="pit-form grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      <label className="grid gap-1 text-sm">
+                      <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-sm">
                         Drivetrain
                         <select
                           className="h-10 rounded-md border bg-transparent px-3"
@@ -3004,7 +2994,7 @@ export default function Home() {
                           <option>Other</option>
                         </select>
                       </label>
-                      <label className="grid gap-1 text-sm">
+                      <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-sm">
                         Swerve module
                         <Input
                           disabled={pitDraft.drivetrain !== 'Swerve'}
@@ -3018,7 +3008,7 @@ export default function Home() {
                           placeholder="MK4i, MAXSwerve…"
                         />
                       </label>
-                      <label className="grid gap-1 text-sm">
+                      <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-sm">
                         Motor types
                         <Input
                           value={pitDraft.motorTypes}
@@ -3031,7 +3021,7 @@ export default function Home() {
                           placeholder="Kraken X60, NEO…"
                         />
                       </label>
-                      <label className="grid gap-1 text-sm">
+                      <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-sm">
                         Weight (lb)
                         <Input
                           type="number"
@@ -3047,7 +3037,7 @@ export default function Home() {
                           }
                         />
                       </label>
-                      <label className="grid gap-1 text-sm">
+                      <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-sm">
                         FUEL capacity
                         <Input
                           type="number"
@@ -3062,7 +3052,7 @@ export default function Home() {
                           }
                         />
                       </label>
-                      <label className="grid gap-1 text-sm">
+                      <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-sm">
                         Tower capability
                         <select
                           className="h-10 rounded-md border bg-transparent px-3"
@@ -3081,7 +3071,7 @@ export default function Home() {
                           <option>Multiple levels</option>
                         </select>
                       </label>
-                      <label className="grid gap-1 text-sm">
+                      <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-sm">
                         Shooter mounting
                         <select
                           className="h-10 rounded-md border bg-transparent px-3"
@@ -3097,7 +3087,7 @@ export default function Home() {
                           <option>Turreted</option>
                         </select>
                       </label>
-                      <label className="grid gap-1 text-sm">
+                      <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-sm">
                         Shooter barrels
                         <select
                           className="h-10 rounded-md border bg-transparent px-3"
@@ -3115,7 +3105,7 @@ export default function Home() {
                           <option value="Drum">Drum</option>
                         </select>
                       </label>
-                      <div className="grid gap-1 text-sm">
+                      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-sm">
                         Hood
                         <button
                           type="button"
