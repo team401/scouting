@@ -3,6 +3,17 @@ import { env } from 'cloudflare:workers';
 const COOKIE_NAME = 'team401-scouting-session';
 const SESSION_LENGTH_MS = 24 * 60 * 60 * 1000;
 
+function requestLocation(request: Request) {
+  const cf = (
+    request as Request & {
+      cf?: { city?: string; region?: string; country?: string };
+    }
+  ).cf;
+  if (!cf) return null;
+  const area = [cf.city, cf.region].filter(Boolean).join(', ');
+  return [area, cf.country].filter(Boolean).join(' · ') || null;
+}
+
 export type ScoutingSession = {
   user: { id: string; email: string; name: string; emailVerified: boolean };
   session: {
@@ -89,8 +100,8 @@ export async function createScoutingSession(
     maximumExpiresAt ?? Number.POSITIVE_INFINITY,
   );
   await env.DB.prepare(
-    `INSERT INTO sessions (id, expires_at, token, ip_address, user_agent, user_id, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO sessions (id, expires_at, token, ip_address, user_agent, location, user_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       id,
@@ -98,6 +109,7 @@ export async function createScoutingSession(
       token,
       request.headers.get('cf-connecting-ip'),
       request.headers.get('user-agent'),
+      requestLocation(request),
       userId,
       now,
       now,

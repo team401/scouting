@@ -4,6 +4,8 @@ import { defineConfig, loadEnv } from 'vite';
 
 const LOCAL_D1_DATABASE_ID = '00000000-0000-4000-8000-000000000000';
 const STAGING_D1_DATABASE_ID = 'd030411e-1ed8-4209-99c5-f625ab02a6a2';
+const VINEXT_PREFETCH_QUEUE =
+  'vinext/dist/shims/internal/app-prefetch-fetch-queue.js';
 export default defineConfig(async ({ mode }) => {
   const fileEnv = loadEnv(mode, process.cwd(), '');
   const environment = { ...fileEnv, ...process.env };
@@ -61,7 +63,14 @@ export default defineConfig(async ({ mode }) => {
   return {
     css: { postcss: { plugins: [tailwindcss()] } },
     optimizeDeps: {
-      exclude: ['vinext/dist/shims/internal/app-prefetch-fetch-queue.js'],
+      exclude: [VINEXT_PREFETCH_QUEUE],
+    },
+    environments: {
+      rsc: {
+        optimizeDeps: {
+          exclude: [VINEXT_PREFETCH_QUEUE],
+        },
+      },
     },
     plugins: [
       vinext(),

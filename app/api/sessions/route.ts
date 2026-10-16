@@ -4,6 +4,17 @@ import { auth } from '@/lib/auth';
 
 const schema = z.object({ sessionId: z.string().min(1) });
 
+function requestLocation(request: Request) {
+  const cf = (
+    request as Request & {
+      cf?: { city?: string; region?: string; country?: string };
+    }
+  ).cf;
+  if (!cf) return null;
+  const area = [cf.city, cf.region].filter(Boolean).join(', ');
+  return [area, cf.country].filter(Boolean).join(' · ') || null;
+}
+
 export async function GET(request: Request) {
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session)
@@ -11,8 +22,13 @@ export async function GET(request: Request) {
       { error: 'Sign in to manage sessions.' },
       { status: 401 },
     );
+  const location = requestLocation(request);
+  if (location)
+    await env.DB.prepare('UPDATE sessions SET location = ? WHERE id = ?')
+      .bind(location, session.session.id)
+      .run();
   const sessions = await env.DB.prepare(
-    `SELECT id, ip_address AS ipAddress, user_agent AS userAgent, created_at AS createdAt,
+    `SELECT id, location, user_agent AS userAgent, created_at AS createdAt,
      updated_at AS updatedAt, expires_at AS expiresAt FROM sessions
      WHERE user_id = ? AND expires_at > ? ORDER BY updated_at DESC`,
   )
