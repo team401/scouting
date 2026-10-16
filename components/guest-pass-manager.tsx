@@ -18,13 +18,13 @@ type GuestPass = {
   createdAt: number;
   memberDisabled: number;
   expired: number;
+  code: string | null;
 };
 
 export function GuestPassManager() {
   const [passes, setPasses] = useState<GuestPass[]>([]);
   const [name, setName] = useState('');
   const [hours, setHours] = useState(24);
-  const [newCode, setNewCode] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [pendingAction, setPendingAction] = useState<{
@@ -57,11 +57,26 @@ export function GuestPassManager() {
       setMessage(body.error ?? 'Could not create the guest pass.');
       return;
     }
-    setNewCode(body.code);
     setName('');
-    setMessage(
-      'Guest pass created. Copy it now; it is not stored in readable form.',
-    );
+    setMessage('Guest pass created.');
+    await load();
+  }
+
+  async function replaceCode(pass: GuestPass) {
+    setBusy(true);
+    setMessage('');
+    const response = await fetch('/api/guest-passes', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: pass.id }),
+    });
+    const body = (await response.json()) as { error?: string; code?: string };
+    setBusy(false);
+    if (!response.ok || !body.code) {
+      setMessage(body.error ?? 'Could not generate a replacement code.');
+      return;
+    }
+    setMessage(`A replacement code was created for ${pass.name}.`);
     await load();
   }
 
@@ -141,26 +156,6 @@ export function GuestPassManager() {
             Create pass
           </Button>
         </div>
-        {newCode && (
-          <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
-            <p className="text-xs font-medium text-muted-foreground">
-              New team code — shown only now
-            </p>
-            <div className="mt-1 flex items-center gap-2">
-              <code className="min-w-0 flex-1 overflow-x-auto text-base font-semibold">
-                {newCode}
-              </code>
-              <Button
-                size="icon"
-                variant="outline"
-                aria-label="Copy team code"
-                onClick={() => void navigator.clipboard.writeText(newCode)}
-              >
-                <Copy />
-              </Button>
-            </div>
-          </div>
-        )}
         <div className="space-y-2">
           {passes.map((pass) => {
             const active =
@@ -172,6 +167,21 @@ export function GuestPassManager() {
                   <small>
                     Expires {new Date(pass.expiresAt).toLocaleString()}
                   </small>
+                  {pass.code && (
+                    <div className="mt-1 flex items-center gap-2">
+                      <code className="font-semibold">{pass.code}</code>
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label={`Copy code for ${pass.name}`}
+                        onClick={() =>
+                          void navigator.clipboard.writeText(pass.code!)
+                        }
+                      >
+                        <Copy />
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 <Badge variant={active ? 'default' : 'outline'}>
                   {active ? <Check /> : <X />}
@@ -184,13 +194,27 @@ export function GuestPassManager() {
                         : 'Active'}
                 </Badge>
                 {active && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPendingAction({ pass, action: 'revoke' })}
-                  >
-                    Revoke
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    {!pass.code && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => void replaceCode(pass)}
+                      >
+                        Generate replacement code
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setPendingAction({ pass, action: 'revoke' })
+                      }
+                    >
+                      Revoke
+                    </Button>
+                  </div>
                 )}
                 {!active && (
                   <Button
