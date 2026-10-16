@@ -281,6 +281,11 @@ select option {
   background: color-mix(in oklch, var(--primary) 13%, transparent);
   color: var(--primary);
 }
+.dark .choice.selected {
+  border-color: color-mix(in oklch, var(--foreground) 45%, transparent);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
 .choice svg {
   width: 15px;
 }
