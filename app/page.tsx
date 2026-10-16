@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowDown,
   ArrowUp,
@@ -635,6 +635,10 @@ export default function Home() {
   const [configuringEvent, setConfiguringEvent] = useState(false);
   const [eventChoices, setEventChoices] = useState<TbaEventChoice[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
+  const [eventTeamInput, setEventTeamInput] = useState('401');
+  const [eventTeamNumber, setEventTeamNumber] = useState(401);
+  const [baseTeamNumber, setBaseTeamNumber] = useState(401);
+  const [testTeamNumber, setTestTeamNumber] = useState<number | null>(null);
   const [eventPack, setEventPack] = useState<EventPack | null>(null);
   const [packLoading, setPackLoading] = useState(false);
   const [_packError, setPackError] = useState('');
@@ -1083,19 +1087,27 @@ export default function Home() {
       setTeamsSection('analysis');
   }, [canUseStrategy, isGuest, teamsSection]);
 
-  useEffect(() => {
-    if (activeView !== 'Admin' || !isAdmin || !online) return;
+  const loadTeamEventChoices = useCallback(async (requestedTeam?: number) => {
     setEventsLoading(true);
     setEventMessage('');
-    fetch('/api/tba-events')
+    const query = requestedTeam ? `?team=${requestedTeam}` : '';
+    return fetch(`/api/tba-events${query}`)
       .then(async (response) => {
         const result = (await response.json()) as {
           events?: TbaEventChoice[];
+          teamNumber?: number;
+          baseTeamNumber?: number;
+          testTeamNumber?: number | null;
           error?: string;
         };
         if (!response.ok)
           throw new Error(result.error ?? 'Unable to load Team 401 events.');
         setEventChoices(result.events ?? []);
+        const loadedTeam = result.teamNumber ?? requestedTeam ?? 401;
+        setEventTeamNumber(loadedTeam);
+        setEventTeamInput(String(loadedTeam));
+        setBaseTeamNumber(result.baseTeamNumber ?? 401);
+        setTestTeamNumber(result.testTeamNumber ?? null);
       })
       .catch((error) => {
         setEventChoices([]);
@@ -1106,7 +1118,12 @@ export default function Home() {
         );
       })
       .finally(() => setEventsLoading(false));
-  }, [activeView, isAdmin, online]);
+  }, []);
+
+  useEffect(() => {
+    if (activeView !== 'Admin' || !isAdmin || !online) return;
+    void loadTeamEventChoices();
+  }, [activeView, isAdmin, loadTeamEventChoices, online]);
 
   useEffect(() => {
     if (activeView !== 'Account' || !session || !online) return;
@@ -1913,22 +1930,59 @@ export default function Home() {
       const response = await fetch('/api/event-pack', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ eventKey: eventKey.trim().toLowerCase() }),
+        body: JSON.stringify({
+          eventKey: eventKey.trim().toLowerCase(),
+          teamNumber: eventTeamNumber,
+        }),
       });
       const result = (await response.json()) as {
         error?: string;
         event?: { name: string };
         matchCount?: number;
+        organizationTeamNumber?: number;
       };
       if (!response.ok)
         throw new Error(result.error ?? 'Unable to load this event.');
       setEventMessage(
         `${result.event?.name ?? eventKey} is current. Cached ${result.matchCount ?? 0} matches.`,
       );
+      setTestTeamNumber(
+        result.organizationTeamNumber !== baseTeamNumber
+          ? (result.organizationTeamNumber ?? eventTeamNumber)
+          : null,
+      );
       await loadEventPack();
     } catch (error) {
       setEventMessage(
         error instanceof Error ? error.message : 'Unable to load this event.',
+      );
+    } finally {
+      setConfiguringEvent(false);
+    }
+  }
+
+  async function stopTeamTestMode() {
+    setConfiguringEvent(true);
+    setEventMessage('');
+    try {
+      const response = await fetch('/api/event-pack', { method: 'DELETE' });
+      const result = (await response.json()) as { error?: string };
+      if (!response.ok)
+        throw new Error(result.error ?? 'Unable to stop team test mode.');
+      setTestTeamNumber(null);
+      setEventTeamNumber(baseTeamNumber);
+      setEventTeamInput(String(baseTeamNumber));
+      setEventKey('');
+      setEventMessage(`Returned to Team ${baseTeamNumber}.`);
+      await Promise.all([
+        loadEventPack(),
+        loadTeamEventChoices(baseTeamNumber),
+      ]);
+    } catch (error) {
+      setEventMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to stop team test mode.',
       );
     } finally {
       setConfiguringEvent(false);
@@ -3648,11 +3702,56 @@ export default function Home() {
                 onChanged={() => loadEventPack(false, true)}
                 eventPicker={
                   <>
+                    {testTeamNumber && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-400/60 bg-amber-100 px-3 py-2 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">
+                        <strong>Testing as Team {testTeamNumber}</strong>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={configuringEvent}
+                          onClick={() => void stopTeamTestMode()}
+                        >
+                          Return to Team {baseTeamNumber}
+                        </Button>
+                      </div>
+                    )}
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <label className="flex items-center gap-2 text-sm font-medium">
+                        Team
+                        <Input
+                          className="w-24"
+                          min={1}
+                          max={99999}
+                          inputMode="numeric"
+                          type="number"
+                          value={eventTeamInput}
+                          onChange={(event) =>
+                            setEventTeamInput(event.target.value)
+                          }
+                        />
+                      </label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={
+                          eventsLoading ||
+                          !online ||
+                          !Number.isInteger(Number(eventTeamInput)) ||
+                          Number(eventTeamInput) <= 0
+                        }
+                        onClick={() => {
+                          const teamNumber = Number(eventTeamInput);
+                          setEventKey('');
+                          void loadTeamEventChoices(teamNumber);
+                        }}
+                      >
+                        Find events
+                      </Button>
                       <label className="flex min-w-0 items-center gap-3 text-sm font-medium">
                         Event
                         <select
-                          aria-label="Team 401 event"
+                          aria-label={`Team ${eventTeamNumber} event`}
                           className="h-10 truncate rounded-md border bg-background px-3"
                           value={eventKey}
                           onChange={(event) => setEventKey(event.target.value)}
@@ -3679,7 +3778,11 @@ export default function Home() {
                         }
                         onClick={configureEvent}
                       >
-                        {configuringEvent ? 'Loading event…' : 'Use this event'}
+                        {configuringEvent
+                          ? 'Loading event…'
+                          : eventTeamNumber === baseTeamNumber
+                            ? 'Use this event'
+                            : `Test as Team ${eventTeamNumber}`}
                       </Button>
                     </div>
                     {eventMessage && (

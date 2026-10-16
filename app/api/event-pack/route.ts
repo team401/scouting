@@ -9,6 +9,7 @@ const eventRequestSchema = z.object({
     .string()
     .regex(/^\d{4}[a-z0-9]+$/i)
     .max(30),
+  teamNumber: z.number().int().positive().max(99_999).optional(),
 });
 type EventRow = {
   id: string;
@@ -111,11 +112,16 @@ export async function GET(request: Request) {
       { status: 401 },
     );
   const organization = await env.DB.prepare(
-    'SELECT frc_team_number AS teamNumber FROM organizations WHERE id = ?',
+    `SELECT organizations.frc_team_number AS baseTeamNumber,
+      organization_settings.test_team_number AS testTeamNumber
+     FROM organizations LEFT JOIN organization_settings
+       ON organization_settings.organization_id = organizations.id
+     WHERE organizations.id = ?`,
   )
     .bind(identity.membership.organization_id)
-    .first<{ teamNumber: number | null }>();
-  const organizationTeamNumber = organization?.teamNumber ?? 401;
+    .first<{ baseTeamNumber: number | null; testTeamNumber: number | null }>();
+  const organizationTeamNumber =
+    organization?.testTeamNumber ?? organization?.baseTeamNumber ?? 401;
   const members = await env.DB.prepare(
     'SELECT users.id, users.name, users.email, users.ops_role AS opsRole, memberships.role, memberships.disabled FROM memberships JOIN users ON users.id = memberships.user_id WHERE memberships.organization_id = ? ORDER BY users.name',
   )
@@ -313,10 +319,51 @@ export async function POST(request: Request) {
     );
 
   try {
+    const organization = await env.DB.prepare(
+      'SELECT frc_team_number AS teamNumber FROM organizations WHERE id = ?',
+    )
+      .bind(identity.membership.organization_id)
+      .first<{ teamNumber: number | null }>();
+    const baseTeamNumber = organization?.teamNumber ?? 401;
+    const previousEvent = await env.DB.prepare(
+      'SELECT id FROM events WHERE organization_id = ? AND is_current = 1 LIMIT 1',
+    )
+      .bind(identity.membership.organization_id)
+      .first<{ id: string }>();
     const result = await syncTbaEvent(
       identity.membership.organization_id,
       parsed.data.eventKey,
     );
+    const now = Date.now();
+    if (parsed.data.teamNumber && parsed.data.teamNumber !== baseTeamNumber) {
+      await env.DB.prepare(
+        `INSERT INTO organization_settings
+         (organization_id, test_team_number, test_previous_event_id, updated_at)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(organization_id) DO UPDATE SET
+           test_team_number = excluded.test_team_number,
+           test_previous_event_id = CASE
+             WHEN organization_settings.test_team_number IS NULL
+             THEN excluded.test_previous_event_id
+             ELSE organization_settings.test_previous_event_id
+           END,
+           updated_at = excluded.updated_at`,
+      )
+        .bind(
+          identity.membership.organization_id,
+          parsed.data.teamNumber,
+          previousEvent?.id ?? null,
+          now,
+        )
+        .run();
+    } else {
+      await env.DB.prepare(
+        `UPDATE organization_settings SET test_team_number = NULL,
+         test_previous_event_id = NULL, updated_at = ? WHERE organization_id = ?`,
+      )
+        .bind(now, identity.membership.organization_id)
+        .run();
+    }
     return Response.json({
       event: {
         key: result.event.key,
@@ -325,6 +372,7 @@ export async function POST(request: Request) {
       },
       matchCount: result.matchCount,
       refreshedAt: result.refreshedAt,
+      organizationTeamNumber: parsed.data.teamNumber ?? baseTeamNumber,
     });
   } catch (error) {
     return Response.json(
@@ -334,4 +382,53 @@ export async function POST(request: Request) {
       { status: 502 },
     );
   }
+}
+
+export async function DELETE(request: Request) {
+  const identity = await getMembership(request);
+  if (!identity)
+    return Response.json(
+      { error: 'Sign in to stop test mode.' },
+      { status: 401 },
+    );
+  if (!['owner', 'admin'].includes(identity.membership.role))
+    return Response.json(
+      { error: 'Only an owner or admin can stop test mode.' },
+      { status: 403 },
+    );
+  const settings = await env.DB.prepare(
+    `SELECT test_team_number AS testTeamNumber,
+      test_previous_event_id AS previousEventId
+     FROM organization_settings WHERE organization_id = ?`,
+  )
+    .bind(identity.membership.organization_id)
+    .first<{ testTeamNumber: number | null; previousEventId: string | null }>();
+  if (!settings?.testTeamNumber)
+    return Response.json({ restored: true, testMode: false });
+
+  const now = Date.now();
+  const statements = [
+    env.DB.prepare(
+      'UPDATE events SET is_current = 0, updated_at = ? WHERE organization_id = ?',
+    ).bind(now, identity.membership.organization_id),
+  ];
+  if (settings.previousEventId)
+    statements.push(
+      env.DB.prepare(
+        `UPDATE events SET is_current = 1, updated_at = ?
+         WHERE id = ? AND organization_id = ?`,
+      ).bind(
+        now,
+        settings.previousEventId,
+        identity.membership.organization_id,
+      ),
+    );
+  statements.push(
+    env.DB.prepare(
+      `UPDATE organization_settings SET test_team_number = NULL,
+       test_previous_event_id = NULL, updated_at = ? WHERE organization_id = ?`,
+    ).bind(now, identity.membership.organization_id),
+  );
+  await env.DB.batch(statements);
+  return Response.json({ restored: true, testMode: false });
 }
