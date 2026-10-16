@@ -231,6 +231,38 @@ type ScheduleEntry = {
 
 type PersonalSchedule = { items: Assignment[]; shifts: ScoutShift[] };
 
+function ScheduleRoleBadge({ entry }: { entry: ScheduleEntry }) {
+  const [open, setOpen] = useState(false);
+  const usesHover = () =>
+    typeof window !== 'undefined' &&
+    window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <div
+        onMouseEnter={() => {
+          if (usesHover()) setOpen(true);
+        }}
+        onMouseLeave={() => {
+          if (usesHover()) setOpen(false);
+        }}
+      >
+        <PopoverTrigger
+          className={`rounded-md px-2.5 py-1 text-left text-sm font-semibold underline decoration-dotted underline-offset-4 ${entry.color}`}
+        >
+          {entry.label}
+        </PopoverTrigger>
+        <PopoverContent align="start" className="max-w-72">
+          <p className="font-semibold">{entry.role}</p>
+          <p className="text-muted-foreground">
+            {eventRoleDescription[entry.role!]}
+          </p>
+        </PopoverContent>
+      </div>
+    </Popover>
+  );
+}
+
 export function PersonalEventSchedule({
   name,
   scoutShifts,
@@ -431,19 +463,7 @@ export function PersonalEventSchedule({
                     className="flex items-center justify-between gap-3 py-2.5"
                   >
                     {entry.role ? (
-                      <Popover>
-                        <PopoverTrigger
-                          className={`rounded-md px-2.5 py-1 text-left text-sm font-semibold underline decoration-dotted underline-offset-4 ${entry.color}`}
-                        >
-                          {entry.label}
-                        </PopoverTrigger>
-                        <PopoverContent align="start" className="max-w-72">
-                          <p className="font-semibold">{entry.role}</p>
-                          <p className="text-muted-foreground">
-                            {eventRoleDescription[entry.role]}
-                          </p>
-                        </PopoverContent>
-                      </Popover>
+                      <ScheduleRoleBadge entry={entry} />
                     ) : (
                       <span
                         className={`rounded-md px-2.5 py-1 text-sm font-semibold ${entry.color}`}
