@@ -1913,7 +1913,7 @@ export default function Home() {
     localStorage.setItem('team401-theme', next ? 'dark' : 'light');
     document
       .querySelector('meta[name="theme-color"]')
-      ?.setAttribute('content', next ? '#1c2226' : '#65152f');
+      ?.setAttribute('content', next ? '#24282b' : '#65152f');
     setDark(next);
   }
 
@@ -2067,7 +2067,7 @@ export default function Home() {
                       navigate('Data');
                     }}
                   >
-                    <ClipboardList /> Open my pick list
+                    Open my pick list
                   </Button>
                 </CardContent>
               </Card>

@@ -7,6 +7,8 @@ const daySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   startHour: z.number().int().min(0).max(23),
   endHour: z.number().int().min(1).max(24),
+  scoutingEnabled: z.boolean(),
+  outreachEnabled: z.boolean(),
 });
 
 async function context(request: Request) {
@@ -50,7 +52,9 @@ async function readScheduleDays(request: Request) {
     );
   if (!actor.event) return Response.json({ days: [] });
   const days = await env.DB.prepare(
-    'SELECT date, start_hour AS startHour, end_hour AS endHour FROM event_schedule_days WHERE event_id = ? ORDER BY date',
+    `SELECT date, start_hour AS startHour, end_hour AS endHour,
+      scouting_enabled AS scoutingEnabled, outreach_enabled AS outreachEnabled
+     FROM event_schedule_days WHERE event_id = ? ORDER BY date`,
   )
     .bind(actor.event.id)
     .all();
@@ -73,15 +77,20 @@ export async function PUT(request: Request) {
       { status: 400 },
     );
   await env.DB.prepare(
-    `INSERT INTO event_schedule_days (event_id, date, start_hour, end_hour)
-     VALUES (?, ?, ?, ?) ON CONFLICT(event_id, date) DO UPDATE SET
-     start_hour = excluded.start_hour, end_hour = excluded.end_hour`,
+    `INSERT INTO event_schedule_days
+      (event_id, date, start_hour, end_hour, scouting_enabled, outreach_enabled)
+     VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(event_id, date) DO UPDATE SET
+     start_hour = excluded.start_hour, end_hour = excluded.end_hour,
+     scouting_enabled = excluded.scouting_enabled,
+     outreach_enabled = excluded.outreach_enabled`,
   )
     .bind(
       actor.event.id,
       parsed.data.date,
       parsed.data.startHour,
       parsed.data.endHour,
+      parsed.data.scoutingEnabled ? 1 : 0,
+      parsed.data.outreachEnabled ? 1 : 0,
     )
     .run();
   return Response.json({ day: parsed.data });

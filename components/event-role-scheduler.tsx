@@ -292,7 +292,7 @@ export function PersonalEventSchedule({
     if (previewUserId) {
       void Promise.all([
         fetch('/api/event-schedule?all=1'),
-        fetch('/api/scout-shifts'),
+        fetch('/api/scout-shifts?all=1'),
       ]).then(async ([rolesResponse, shiftsResponse]) => {
         if (!rolesResponse.ok || !shiftsResponse.ok) return;
         const rolesBody = (await rolesResponse.json()) as {
@@ -378,6 +378,7 @@ export function PersonalEventSchedule({
         const station = `${shift.station.startsWith('red') ? 'Red' : 'Blue'} ${shift.station.at(-1)}`;
         return {
           id: shift.id,
+          role: 'Scouting' as EventRole,
           label: `Scouting · ${station}`,
           color: assignmentClass(station),
           startsAt: shift.startsAt,
@@ -471,8 +472,7 @@ export function PersonalEventSchedule({
             <div>
               <h2 className="font-semibold">Get match reminders</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Get a notification 10 and 5 minutes before each of your roles
-                and scouting shifts.
+                Get a notification 10 and 5 minutes before each of your roles.
               </p>
             </div>
             <Button
