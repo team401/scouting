@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { auth } from '@/lib/auth';
 
-const provider = 'tba-team-photo-v2';
+const provider = 'tba-team-photo-v3';
 const freshForMs = 24 * 60 * 60 * 1000;
 const missingForMs = 6 * 60 * 60 * 1000;
 const lockForMs = 30 * 1000;
@@ -15,9 +15,11 @@ const mediaTypePriority = new Map([
 ]);
 
 type CachePayload = {
-  objectKey?: string;
-  contentType?: string;
-  sourceUrl?: string;
+  images?: Array<{
+    objectKey: string;
+    contentType: string;
+    sourceUrl: string;
+  }>;
   missing?: boolean;
 };
 
@@ -49,9 +51,10 @@ function extensionFor(contentType: string) {
   return 'jpg';
 }
 
-async function cachedResponse(payload: CachePayload) {
-  if (!payload.objectKey) return null;
-  const object = await env.FILES.get(payload.objectKey);
+async function cachedResponse(payload: CachePayload, index: number) {
+  const image = payload.images?.[index];
+  if (!image) return null;
+  const object = await env.FILES.get(image.objectKey);
   if (!object) return null;
   const headers = new Headers();
   object.writeHttpMetadata(headers);
@@ -64,7 +67,10 @@ export async function GET(request: Request) {
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) return new Response('Unauthorized', { status: 401 });
 
-  const teamNumber = Number(new URL(request.url).searchParams.get('team'));
+  const url = new URL(request.url);
+  const teamNumber = Number(url.searchParams.get('team'));
+  const imageIndex = Math.max(0, Number(url.searchParams.get('index')) || 0);
+  const metadataOnly = url.searchParams.get('meta') === '1';
   if (!Number.isInteger(teamNumber) || teamNumber <= 0)
     return new Response('Invalid team', { status: 400 });
 
@@ -104,8 +110,12 @@ export async function GET(request: Request) {
   const validFor = payload.missing ? missingForMs : freshForMs;
   if (row.fetchedAt > now - validFor) {
     if (payload.missing) return new Response('Not found', { status: 404 });
-    const response = await cachedResponse(payload);
+    if (metadataOnly)
+      return Response.json({ count: payload.images?.length ?? 0 });
+    const response = await cachedResponse(payload, imageIndex);
     if (response) return response;
+    if (payload.images?.length)
+      return new Response('Photo not found', { status: 404 });
   }
   if (!env.TBA_AUTH_KEY)
     return new Response('TBA is not configured', { status: 503 });
@@ -117,7 +127,9 @@ export async function GET(request: Request) {
     .bind(now + lockForMs, provider, cacheKey, now)
     .run();
   if (!lock.meta.changes) {
-    const stale = await cachedResponse(payload);
+    if (metadataOnly && payload.images?.length)
+      return Response.json({ count: payload.images.length });
+    const stale = await cachedResponse(payload, imageIndex);
     if (stale) return stale;
     return new Response('Photo is being cached', {
       status: 503,
@@ -140,7 +152,9 @@ export async function GET(request: Request) {
       )
         .bind(now, provider, cacheKey)
         .run();
-      const response = await cachedResponse(payload);
+      if (metadataOnly)
+        return Response.json({ count: payload.images?.length ?? 0 });
+      const response = await cachedResponse(payload, imageIndex);
       if (response) return response;
       if (payload.missing) return new Response('Not found', { status: 404 });
     }
@@ -162,10 +176,12 @@ export async function GET(request: Request) {
           Number(Boolean(b.preferred)) - Number(Boolean(a.preferred)),
       );
 
-    let selected:
-      | { bytes: ArrayBuffer; contentType: string; sourceUrl: string }
-      | undefined;
-    for (const candidate of candidates) {
+    const selected: Array<{
+      bytes: ArrayBuffer;
+      contentType: string;
+      sourceUrl: string;
+    }> = [];
+    for (const candidate of candidates.slice(0, 12)) {
       try {
         const imageResponse = await fetch(candidate.direct_url!);
         const contentType =
@@ -181,18 +197,17 @@ export async function GET(request: Request) {
           continue;
         const bytes = await imageResponse.arrayBuffer();
         if (bytes.byteLength > maxBytes) continue;
-        selected = {
+        selected.push({
           bytes,
           contentType,
           sourceUrl: candidate.direct_url!,
-        };
-        break;
+        });
       } catch {
         // Try the next TBA image when a third-party host is unavailable.
       }
     }
 
-    if (!selected) {
+    if (!selected.length) {
       payload = { missing: true };
       await env.DB.prepare(
         `UPDATE external_api_cache
@@ -210,23 +225,29 @@ export async function GET(request: Request) {
       return new Response('Not found', { status: 404 });
     }
 
-    const objectKey = `tba/team-photos/${event.seasonYear}/frc${teamNumber}.${extensionFor(selected.contentType)}`;
-    await env.FILES.put(objectKey, selected.bytes, {
-      httpMetadata: {
-        contentType: selected.contentType,
-        cacheControl: 'private, max-age=86400',
-      },
-      customMetadata: {
-        source: 'the-blue-alliance',
-        sourceUrl: selected.sourceUrl,
-        teamNumber: String(teamNumber),
-        seasonYear: String(event.seasonYear),
-      },
-    });
+    const images: NonNullable<CachePayload['images']> = [];
+    for (const [index, image] of selected.entries()) {
+      const objectKey = `tba/team-photos/${event.seasonYear}/frc${teamNumber}-${index}.${extensionFor(image.contentType)}`;
+      await env.FILES.put(objectKey, image.bytes, {
+        httpMetadata: {
+          contentType: image.contentType,
+          cacheControl: 'private, max-age=86400',
+        },
+        customMetadata: {
+          source: 'the-blue-alliance',
+          sourceUrl: image.sourceUrl,
+          teamNumber: String(teamNumber),
+          seasonYear: String(event.seasonYear),
+        },
+      });
+      images.push({
+        objectKey,
+        contentType: image.contentType,
+        sourceUrl: image.sourceUrl,
+      });
+    }
     payload = {
-      objectKey,
-      contentType: selected.contentType,
-      sourceUrl: selected.sourceUrl,
+      images,
     };
     await env.DB.prepare(
       `UPDATE external_api_cache
@@ -241,8 +262,9 @@ export async function GET(request: Request) {
         cacheKey,
       )
       .run();
+    if (metadataOnly) return Response.json({ count: images.length });
     return (
-      (await cachedResponse(payload)) ??
+      (await cachedResponse(payload, imageIndex)) ??
       new Response('Not found', { status: 404 })
     );
   } catch (error) {
@@ -252,7 +274,9 @@ export async function GET(request: Request) {
     )
       .bind(provider, cacheKey)
       .run();
-    const stale = await cachedResponse(payload);
+    if (metadataOnly && payload.images?.length)
+      return Response.json({ count: payload.images.length });
+    const stale = await cachedResponse(payload, imageIndex);
     if (stale) return stale;
     console.error('Could not cache TBA team photo', error);
     return new Response('Could not load robot photo', { status: 502 });

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
@@ -13,20 +14,64 @@ export function TeamRobotPhoto({
   hasPitPhoto?: boolean;
   className?: string;
 }) {
-  const source = teamNumber
-    ? hasPitPhoto
-      ? `/api/pit-photo?team=${teamNumber}`
-      : `/api/team-photo?team=${teamNumber}&v=2`
-    : null;
+  const [tbaPhotoCount, setTbaPhotoCount] = useState(teamNumber ? 1 : 0);
+  const sources = useMemo(() => {
+    if (!teamNumber) return [];
+    return [
+      ...(hasPitPhoto ? [`/api/pit-photo?team=${teamNumber}`] : []),
+      ...Array.from(
+        { length: tbaPhotoCount },
+        (_, index) => `/api/team-photo?team=${teamNumber}&index=${index}&v=3`,
+      ),
+    ];
+  }, [hasPitPhoto, tbaPhotoCount, teamNumber]);
+  const [photoIndex, setPhotoIndex] = useState(0);
   const [failed, setFailed] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
 
   useEffect(() => {
-    setFailed(false);
-    setViewerOpen(false);
-  }, [source]);
+    let cancelled = false;
+    setTbaPhotoCount(teamNumber ? 1 : 0);
+    if (teamNumber)
+      void fetch(`/api/team-photo?team=${teamNumber}&meta=1&v=3`)
+        .then(async (response) => {
+          if (!response.ok) return null;
+          return (await response.json()) as { count?: number };
+        })
+        .then((body) => {
+          if (!cancelled && body)
+            setTbaPhotoCount(Math.max(0, body.count ?? 0));
+        })
+        .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [teamNumber]);
 
-  if (!source || failed)
+  useEffect(() => {
+    setFailed(false);
+    setPhotoIndex(0);
+    setViewerOpen(false);
+  }, [hasPitPhoto, teamNumber]);
+
+  useEffect(() => {
+    if (!viewerOpen || sources.length < 2) return;
+    const timer = window.setInterval(
+      () => setPhotoIndex((current) => (current + 1) % sources.length),
+      5000,
+    );
+    return () => window.clearInterval(timer);
+  }, [sources.length, viewerOpen]);
+
+  const source = sources[photoIndex];
+
+  function movePhoto(direction: number) {
+    setPhotoIndex(
+      (current) => (current + direction + sources.length) % sources.length,
+    );
+  }
+
+  if (!source || (failed && sources.length === 1))
     return (
       <div
         className={cn(
@@ -53,20 +98,64 @@ export function TeamRobotPhoto({
           className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
           src={source}
           alt={`Team ${teamNumber} robot`}
-          onError={() => setFailed(true)}
+          onError={() => {
+            if (photoIndex < sources.length - 1)
+              setPhotoIndex((current) => current + 1);
+            else setFailed(true);
+          }}
         />
         <span className="sr-only">View robot photo full screen</span>
       </button>
       <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
-        <DialogContent className="h-dvh w-screen max-w-none rounded-none bg-black p-4 text-white ring-0 sm:max-w-none [&_[data-slot=dialog-close]]:bg-black/70 [&_[data-slot=dialog-close]]:text-white [&_[data-slot=dialog-close]]:hover:bg-black">
+        <DialogContent
+          className="grid h-dvh w-screen max-w-none place-items-center rounded-none bg-black p-4 text-white ring-0 sm:max-w-none [&_[data-slot=dialog-close]]:bg-black/70 [&_[data-slot=dialog-close]]:text-white [&_[data-slot=dialog-close]]:hover:bg-black"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setViewerOpen(false);
+          }}
+        >
           <DialogTitle className="sr-only">
             Team {teamNumber} robot photo
           </DialogTitle>
           <img
-            className="h-full w-full object-contain"
+            className="max-h-full max-w-full object-contain"
             src={source}
             alt={`Team ${teamNumber} robot, full screen`}
+            onClick={(event) => event.stopPropagation()}
           />
+          {sources.length > 1 && (
+            <>
+              <button
+                type="button"
+                className="absolute top-1/2 left-4 grid size-12 -translate-y-1/2 place-items-center rounded-full bg-black/65 text-white hover:bg-black/85"
+                aria-label="Previous robot photo"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  movePhoto(-1);
+                }}
+              >
+                <ChevronLeft aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="absolute top-1/2 right-4 grid size-12 -translate-y-1/2 place-items-center rounded-full bg-black/65 text-white hover:bg-black/85"
+                aria-label="Next robot photo"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  movePhoto(1);
+                }}
+              >
+                <ChevronRight aria-hidden="true" />
+              </button>
+              <div className="pointer-events-none absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-2">
+                {sources.map((_, index) => (
+                  <span
+                    className={`size-2 rounded-full ${index === photoIndex ? 'bg-white' : 'bg-white/40'}`}
+                    key={index}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </>
