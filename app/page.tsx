@@ -3201,7 +3201,12 @@ export default function Home() {
                       />
                     </label>
                     <div className="space-y-3 rounded-lg border p-3">
-                      <p className="font-semibold">Robot photo</p>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <p className="font-semibold">Robot photo</p>
+                        <p className="text-sm text-muted-foreground">
+                          JPEG, PNG, or WebP image up to 10 MB
+                        </p>
+                      </div>
                       {existingPitPhoto && (
                         <img
                           className="aspect-video w-full max-w-md rounded-md object-cover"
@@ -3209,10 +3214,6 @@ export default function Home() {
                           alt={`Team ${pitTeam} robot`}
                         />
                       )}
-                      <p className="text-sm text-muted-foreground">
-                        Take or choose a JPEG, PNG, or WebP image up to 10 MB.
-                        Photo upload requires a connection.
-                      </p>
                       <div className="flex flex-col gap-2 sm:flex-row">
                         <Input
                           type="file"
