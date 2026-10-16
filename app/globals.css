@@ -397,9 +397,20 @@ select option {
   min-width: 0;
 }
 @media (min-width: 521px) {
+  .pit-form > label,
+  .pit-form > div {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    align-items: center;
+    gap: 12px;
+  }
   .pit-form > label > span:first-child,
   .pit-form > div > span:first-child {
     text-align: right;
+    white-space: nowrap;
+  }
+  .pit-form .pit-field-control {
+    width: 100%;
   }
 }
 .right-rail {
@@ -1016,6 +1027,7 @@ select option {
   .pit-form > label,
   .pit-form > div {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 4px;
     justify-content: stretch;
   }
