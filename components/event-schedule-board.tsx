@@ -654,6 +654,11 @@ export function EventScheduleBoard({
   }, [dayEnd, dayStart, items]);
   const emptyShifts = { scouting: 0, pit: 0, total: 0 };
   const choices = useMemo(() => scheduleOptionsFor(controls), [controls]);
+  const choiceChars = Math.max(
+    10,
+    ...choices.map((option) => option.label.length),
+  );
+  const hourColumnWidth = `calc(${choiceChars}ch + 1.5rem)`;
   const nameChars = Math.max(
     0,
     ...activeMembers.map(
@@ -1187,8 +1192,9 @@ export function EventScheduleBoard({
                 </th>
                 {hours.map((hour) => (
                   <th
-                    className="border-r border-b px-1 py-2 text-center"
+                    className="whitespace-nowrap border-r border-b px-1 py-2 text-center"
                     key={hour}
+                    style={{ minWidth: hourColumnWidth }}
                   >
                     {new Date(2000, 0, 1, hour).toLocaleTimeString([], {
                       hour: 'numeric',
@@ -1239,7 +1245,11 @@ export function EventScheduleBoard({
                     );
                     const key = `${member.id}:${startsAt}`;
                     return (
-                      <td className="h-11 border-r border-b p-1" key={hour}>
+                      <td
+                        className="h-11 border-r border-b p-1"
+                        key={hour}
+                        style={{ minWidth: hourColumnWidth }}
+                      >
                         <ScheduleRoleInput
                           ariaLabel={`${member.name}, ${new Date(2000, 0, 1, hour).toLocaleTimeString([], { hour: 'numeric' })}`}
                           busy={busyCell === key}
