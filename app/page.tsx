@@ -3143,7 +3143,7 @@ export default function Home() {
                         </button>
                       </div>
                     </div>
-                    <div className="space-y-3 rounded-lg border p-3">
+                    <div className="space-y-3">
                       <div>
                         <p className="mb-2 font-semibold">Field access</p>
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -3194,7 +3194,7 @@ export default function Home() {
                         </div>
                       </div>
                     </div>
-                    <div className="space-y-3 rounded-lg border p-3">
+                    <div className="space-y-3">
                       <div>
                         <p className="font-semibold">Autonomous capabilities</p>
                       </div>
@@ -3313,7 +3313,7 @@ export default function Home() {
                         placeholder="Mechanisms, reliability concerns, programming notes…"
                       />
                     </label>
-                    <div className="space-y-3 rounded-lg border p-3">
+                    <div className="space-y-3">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         <p className="font-semibold">Robot photo</p>
                         <p className="text-sm text-muted-foreground">
