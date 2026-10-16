@@ -4040,7 +4040,7 @@ export default function Home() {
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="sm:col-span-2">
               <CardHeader>
                 <CardTitle>
                   {selectedTeam
@@ -4048,115 +4048,118 @@ export default function Home() {
                     : 'Select a team above'}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-4 sm:grid-cols-[10rem_1fr] sm:items-start">
-                <TeamRobotPhoto
-                  teamNumber={selectedTeam}
-                  hasPitPhoto={Boolean(analysis?.pit?.photoObjectKey)}
-                  className="w-full"
-                />
-                <div>
-                  <p className="score-number">{analysis?.medianPoints ?? 0}</p>
-                  <p className="text-sm text-muted-foreground">
-                    median observed points
-                  </p>
-                  <div className="mini-stats">
-                    <span>
-                      <strong>{analysis?.medianActiveFuel ?? 0}</strong> median
-                      active FUEL
-                    </span>
-                    <span>
-                      <strong>
-                        {analysis?.pointStdDev.toFixed(1) ?? '0.0'}
-                      </strong>{' '}
-                      point deviation
-                    </span>
-                    <span>
-                      <strong>
-                        {analysis?.averageDefense.toFixed(1) ?? '0.0'}
-                      </strong>{' '}
-                      defense rating
-                    </span>
+              <CardContent className="grid gap-5 lg:grid-cols-3 lg:items-start">
+                <div className="grid gap-4 sm:grid-cols-[10rem_1fr] lg:grid-cols-[8rem_1fr]">
+                  <TeamRobotPhoto
+                    teamNumber={selectedTeam}
+                    hasPitPhoto={Boolean(analysis?.pit?.photoObjectKey)}
+                    className="w-full"
+                  />
+                  <div>
+                    <p className="score-number">
+                      {analysis?.medianPoints ?? 0}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      median observed points
+                    </p>
+                    <div className="mini-stats">
+                      <span>
+                        <strong>{analysis?.medianActiveFuel ?? 0}</strong>{' '}
+                        median active FUEL
+                      </span>
+                      <span>
+                        <strong>
+                          {analysis?.pointStdDev.toFixed(1) ?? '0.0'}
+                        </strong>{' '}
+                        point deviation
+                      </span>
+                      <span>
+                        <strong>
+                          {analysis?.averageDefense.toFixed(1) ?? '0.0'}
+                        </strong>{' '}
+                        defense rating
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>TBA and external ratings</CardTitle>
-              </CardHeader>
-              <CardContent className="mini-stats">
-                <span>
-                  <strong>
-                    {selectedStrategyTeam?.epa?.toFixed(1) ?? '—'}
-                  </strong>{' '}
-                  Match13 EPA
-                  {eventMetricRank(strategyTeams, selectedTeam, 'epa')
-                    ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'epa')}`
-                    : ''}
-                </span>
-                <span>
-                  <strong>{selectedStrategyTeam?.xp?.toFixed(1) ?? '—'}</strong>{' '}
-                  Match13 total xP
-                  {eventMetricRank(strategyTeams, selectedTeam, 'xp')
-                    ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xp')}`
-                    : ''}
-                </span>
-                <span>
-                  <strong>
-                    {selectedStrategyTeam?.xAuto?.toFixed(1) ?? '—'}
-                  </strong>{' '}
-                  auto xP
-                  {eventMetricRank(strategyTeams, selectedTeam, 'xAuto')
-                    ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xAuto')}`
-                    : ''}
-                </span>
-                <span>
-                  <strong>
-                    {selectedStrategyTeam?.xTele?.toFixed(1) ?? '—'}
-                  </strong>{' '}
-                  teleop xP
-                  {eventMetricRank(strategyTeams, selectedTeam, 'xTele')
-                    ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xTele')}`
-                    : ''}
-                </span>
-                <span>
-                  <strong>
-                    {selectedStrategyTeam?.xEnd?.toFixed(1) ?? '—'}
-                  </strong>{' '}
-                  endgame xP
-                  {eventMetricRank(strategyTeams, selectedTeam, 'xEnd')
-                    ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xEnd')}`
-                    : ''}
-                </span>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Reliability and coverage</CardTitle>
-              </CardHeader>
-              <CardContent className="mini-stats">
-                <span>
-                  <strong>
-                    L1 {analysis?.towerLevelCounts.level1 ?? 0} · L2{' '}
-                    {analysis?.towerLevelCounts.level2 ?? 0} · L3{' '}
-                    {analysis?.towerLevelCounts.level3 ?? 0}
-                  </strong>{' '}
-                  tower successes
-                </span>
-                <span>
-                  <strong>{analysis?.disabledMatches ?? 0}</strong> disabled
-                  matches
-                </span>
-                <span>
-                  <strong>
-                    {analysis?.samples ?? 0}/{analysis?.scheduledMatches ?? 0}
-                  </strong>{' '}
-                  matches scouted
-                </span>
-                <span>
-                  <strong>{analysis?.scheduledMatches ?? 0}</strong> scheduled
-                  matches
-                </span>
+                <section className="space-y-3">
+                  <h3 className="font-semibold">TBA and external ratings</h3>
+                  <div className="mini-stats">
+                    <span>
+                      <strong>
+                        {selectedStrategyTeam?.epa?.toFixed(1) ?? '—'}
+                      </strong>{' '}
+                      Match13 EPA
+                      {eventMetricRank(strategyTeams, selectedTeam, 'epa')
+                        ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'epa')}`
+                        : ''}
+                    </span>
+                    <span>
+                      <strong>
+                        {selectedStrategyTeam?.xp?.toFixed(1) ?? '—'}
+                      </strong>{' '}
+                      Match13 total xP
+                      {eventMetricRank(strategyTeams, selectedTeam, 'xp')
+                        ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xp')}`
+                        : ''}
+                    </span>
+                    <span>
+                      <strong>
+                        {selectedStrategyTeam?.xAuto?.toFixed(1) ?? '—'}
+                      </strong>{' '}
+                      auto xP
+                      {eventMetricRank(strategyTeams, selectedTeam, 'xAuto')
+                        ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xAuto')}`
+                        : ''}
+                    </span>
+                    <span>
+                      <strong>
+                        {selectedStrategyTeam?.xTele?.toFixed(1) ?? '—'}
+                      </strong>{' '}
+                      teleop xP
+                      {eventMetricRank(strategyTeams, selectedTeam, 'xTele')
+                        ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xTele')}`
+                        : ''}
+                    </span>
+                    <span>
+                      <strong>
+                        {selectedStrategyTeam?.xEnd?.toFixed(1) ?? '—'}
+                      </strong>{' '}
+                      endgame xP
+                      {eventMetricRank(strategyTeams, selectedTeam, 'xEnd')
+                        ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xEnd')}`
+                        : ''}
+                    </span>
+                  </div>
+                </section>
+                <section className="space-y-3">
+                  <h3 className="font-semibold">Reliability and coverage</h3>
+                  <div className="mini-stats">
+                    <span>
+                      <strong>
+                        L1 {analysis?.towerLevelCounts.level1 ?? 0} · L2{' '}
+                        {analysis?.towerLevelCounts.level2 ?? 0} · L3{' '}
+                        {analysis?.towerLevelCounts.level3 ?? 0}
+                      </strong>{' '}
+                      tower successes
+                    </span>
+                    <span>
+                      <strong>{analysis?.disabledMatches ?? 0}</strong> disabled
+                      matches
+                    </span>
+                    <span>
+                      <strong>
+                        {analysis?.samples ?? 0}/
+                        {analysis?.scheduledMatches ?? 0}
+                      </strong>{' '}
+                      matches scouted
+                    </span>
+                    <span>
+                      <strong>{analysis?.scheduledMatches ?? 0}</strong>{' '}
+                      scheduled matches
+                    </span>
+                  </div>
+                </section>
               </CardContent>
             </Card>
             <Card className="sm:col-span-2">
