@@ -392,6 +392,10 @@ select option {
 .pit-form .choice {
   min-height: 2.5rem;
 }
+.pit-form .pit-field-control {
+  width: 60%;
+  min-width: 0;
+}
 .right-rail {
   display: grid;
   align-content: start;
@@ -1010,7 +1014,8 @@ select option {
   }
   .pit-form > label > input,
   .pit-form > label > select,
-  .pit-form > div > .choice {
+  .pit-form > div > .choice,
+  .pit-form .pit-field-control {
     width: 100%;
   }
   .scout-form .counter-row {

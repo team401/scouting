@@ -3002,7 +3002,7 @@ export default function Home() {
                       <label className="flex items-center justify-between gap-3 text-sm">
                         <span>Drivetrain</span>
                         <select
-                          className="h-10 w-full min-w-0 rounded-md border bg-transparent px-3 min-[521px]:w-3/5"
+                          className="pit-field-control h-10 rounded-md border bg-transparent px-3"
                           value={pitDraft.drivetrain}
                           onChange={(event) =>
                             setPitDraft({
@@ -3020,7 +3020,7 @@ export default function Home() {
                       <label className="flex items-center justify-between gap-3 text-sm">
                         <span>Swerve module</span>
                         <Input
-                          className="w-full min-w-0 min-[521px]:w-3/5"
+                          className="pit-field-control"
                           disabled={pitDraft.drivetrain !== 'Swerve'}
                           value={pitDraft.swerveModule}
                           onChange={(event) =>
@@ -3035,7 +3035,7 @@ export default function Home() {
                       <label className="flex items-center justify-between gap-3 text-sm">
                         <span>Motor types</span>
                         <Input
-                          className="w-full min-w-0 min-[521px]:w-3/5"
+                          className="pit-field-control"
                           value={pitDraft.motorTypes}
                           onChange={(event) =>
                             setPitDraft({
@@ -3048,7 +3048,7 @@ export default function Home() {
                       </label>
                       <label className="flex items-center justify-between gap-3 text-sm">
                         <span>Weight</span>
-                        <span className="relative w-full min-w-0 min-[521px]:w-3/5">
+                        <span className="pit-field-control relative">
                           <Input
                             className="w-full pr-10"
                             type="number"
@@ -3071,7 +3071,7 @@ export default function Home() {
                       <label className="flex items-center justify-between gap-3 text-sm">
                         <span>FUEL capacity</span>
                         <Input
-                          className="w-full min-w-0 min-[521px]:w-3/5"
+                          className="pit-field-control"
                           type="number"
                           min="0"
                           inputMode="numeric"
@@ -3087,7 +3087,7 @@ export default function Home() {
                       <label className="flex items-center justify-between gap-3 text-sm">
                         <span>Tower capability</span>
                         <select
-                          className="h-10 w-full min-w-0 rounded-md border bg-transparent px-3 min-[521px]:w-3/5"
+                          className="pit-field-control h-10 rounded-md border bg-transparent px-3"
                           value={pitDraft.climbCapability}
                           onChange={(event) =>
                             setPitDraft({
@@ -3106,7 +3106,7 @@ export default function Home() {
                       <label className="flex items-center justify-between gap-3 text-sm">
                         <span>Shooter mounting</span>
                         <select
-                          className="h-10 w-full min-w-0 rounded-md border bg-transparent px-3 min-[521px]:w-3/5"
+                          className="pit-field-control h-10 rounded-md border bg-transparent px-3"
                           value={pitDraft.shooterMount}
                           onChange={(event) =>
                             setPitDraft({
@@ -3122,7 +3122,7 @@ export default function Home() {
                       <label className="flex items-center justify-between gap-3 text-sm">
                         <span>Shooter barrels</span>
                         <select
-                          className="h-10 w-full min-w-0 rounded-md border bg-transparent px-3 min-[521px]:w-3/5"
+                          className="pit-field-control h-10 rounded-md border bg-transparent px-3"
                           value={pitDraft.shooterBarrels}
                           onChange={(event) =>
                             setPitDraft({
@@ -3143,8 +3143,8 @@ export default function Home() {
                           type="button"
                           className={
                             pitDraft.adjustableHood
-                              ? 'choice selected w-full min-w-0 min-[521px]:w-3/5'
-                              : 'choice w-full min-w-0 min-[521px]:w-3/5'
+                              ? 'choice selected pit-field-control'
+                              : 'choice pit-field-control'
                           }
                           onClick={() =>
                             setPitDraft({
