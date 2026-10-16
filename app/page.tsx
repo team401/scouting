@@ -3002,7 +3002,7 @@ export default function Home() {
                       <label className="flex items-center justify-between gap-3 text-sm">
                         <span>Drivetrain</span>
                         <select
-                          className="h-10 w-3/5 min-w-0 rounded-md border bg-transparent px-3"
+                          className="h-10 w-full min-w-0 rounded-md border bg-transparent px-3 min-[521px]:w-3/5"
                           value={pitDraft.drivetrain}
                           onChange={(event) =>
                             setPitDraft({
@@ -3020,7 +3020,7 @@ export default function Home() {
                       <label className="flex items-center justify-between gap-3 text-sm">
                         <span>Swerve module</span>
                         <Input
-                          className="w-3/5 min-w-0"
+                          className="w-full min-w-0 min-[521px]:w-3/5"
                           disabled={pitDraft.drivetrain !== 'Swerve'}
                           value={pitDraft.swerveModule}
                           onChange={(event) =>
@@ -3035,7 +3035,7 @@ export default function Home() {
                       <label className="flex items-center justify-between gap-3 text-sm">
                         <span>Motor types</span>
                         <Input
-                          className="w-3/5 min-w-0"
+                          className="w-full min-w-0 min-[521px]:w-3/5"
                           value={pitDraft.motorTypes}
                           onChange={(event) =>
                             setPitDraft({
@@ -3047,26 +3047,31 @@ export default function Home() {
                         />
                       </label>
                       <label className="flex items-center justify-between gap-3 text-sm">
-                        <span>Weight (lb)</span>
-                        <Input
-                          className="w-3/5 min-w-0"
-                          type="number"
-                          min="1"
-                          inputMode="decimal"
-                          required
-                          value={pitDraft.weightLbs || ''}
-                          onChange={(event) =>
-                            setPitDraft({
-                              ...pitDraft,
-                              weightLbs: Number(event.target.value),
-                            })
-                          }
-                        />
+                        <span>Weight</span>
+                        <span className="relative w-full min-w-0 min-[521px]:w-3/5">
+                          <Input
+                            className="w-full pr-10"
+                            type="number"
+                            min="1"
+                            inputMode="decimal"
+                            required
+                            value={pitDraft.weightLbs || ''}
+                            onChange={(event) =>
+                              setPitDraft({
+                                ...pitDraft,
+                                weightLbs: Number(event.target.value),
+                              })
+                            }
+                          />
+                          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
+                            lb
+                          </span>
+                        </span>
                       </label>
                       <label className="flex items-center justify-between gap-3 text-sm">
                         <span>FUEL capacity</span>
                         <Input
-                          className="w-3/5 min-w-0"
+                          className="w-full min-w-0 min-[521px]:w-3/5"
                           type="number"
                           min="0"
                           inputMode="numeric"
@@ -3082,7 +3087,7 @@ export default function Home() {
                       <label className="flex items-center justify-between gap-3 text-sm">
                         <span>Tower capability</span>
                         <select
-                          className="h-10 w-3/5 min-w-0 rounded-md border bg-transparent px-3"
+                          className="h-10 w-full min-w-0 rounded-md border bg-transparent px-3 min-[521px]:w-3/5"
                           value={pitDraft.climbCapability}
                           onChange={(event) =>
                             setPitDraft({
@@ -3101,7 +3106,7 @@ export default function Home() {
                       <label className="flex items-center justify-between gap-3 text-sm">
                         <span>Shooter mounting</span>
                         <select
-                          className="h-10 w-3/5 min-w-0 rounded-md border bg-transparent px-3"
+                          className="h-10 w-full min-w-0 rounded-md border bg-transparent px-3 min-[521px]:w-3/5"
                           value={pitDraft.shooterMount}
                           onChange={(event) =>
                             setPitDraft({
@@ -3117,7 +3122,7 @@ export default function Home() {
                       <label className="flex items-center justify-between gap-3 text-sm">
                         <span>Shooter barrels</span>
                         <select
-                          className="h-10 w-3/5 min-w-0 rounded-md border bg-transparent px-3"
+                          className="h-10 w-full min-w-0 rounded-md border bg-transparent px-3 min-[521px]:w-3/5"
                           value={pitDraft.shooterBarrels}
                           onChange={(event) =>
                             setPitDraft({
@@ -3138,8 +3143,8 @@ export default function Home() {
                           type="button"
                           className={
                             pitDraft.adjustableHood
-                              ? 'choice selected w-3/5 min-w-0'
-                              : 'choice w-3/5 min-w-0'
+                              ? 'choice selected w-full min-w-0 min-[521px]:w-3/5'
+                              : 'choice w-full min-w-0 min-[521px]:w-3/5'
                           }
                           onClick={() =>
                             setPitDraft({
