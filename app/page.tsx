@@ -3128,7 +3128,7 @@ export default function Home() {
                         </span>
                       </label>
                       <label className="flex items-center justify-between gap-3 text-sm">
-                        <span>FUEL capacity</span>
+                        <span>Fuel capacity</span>
                         <Input
                           className="pit-field-control"
                           type="number"
@@ -4165,7 +4165,7 @@ export default function Home() {
                     <div className="mini-stats sm:!grid-cols-3">
                       <span>
                         <strong>{analysis?.medianActiveFuel ?? 0}</strong>{' '}
-                        median active FUEL
+                        median active Fuel
                       </span>
                       <span>
                         <strong>
