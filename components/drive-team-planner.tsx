@@ -384,7 +384,7 @@ export function DriveTeamPlanner({ members }: { members: PlannerMember[] }) {
               Expected matches
               <input
                 aria-label={`Expected ${phaseTitle[phase]} matches`}
-                className="h-9 w-24 rounded-md border bg-background px-2 text-sm"
+                className="h-9 w-24 rounded-md border bg-background px-2 text-center text-sm tabular-nums"
                 type="number"
                 min={1}
                 max={maxExpectedMatches}
@@ -422,10 +422,10 @@ export function DriveTeamPlanner({ members }: { members: PlannerMember[] }) {
             <table className="w-full min-w-[60rem] border-separate border-spacing-0 text-sm">
               <thead className="bg-muted">
                 <tr>
-                  <th className="border-b px-3 py-2 text-left">Match</th>
+                  <th className="border-b px-3 py-2 text-center">Match</th>
                   {drivePositions.map((position) => (
                     <th
-                      className="border-b px-3 py-2 text-left"
+                      className="border-b px-3 py-2 text-center"
                       key={position.key}
                     >
                       {position.label}
@@ -439,7 +439,7 @@ export function DriveTeamPlanner({ members }: { members: PlannerMember[] }) {
               <tbody>
                 {phaseSlots.map((slot) => (
                   <tr key={`${slot.phase}:${slot.slotNumber}`}>
-                    <th className="border-b px-3 py-2 text-left align-top font-medium">
+                    <th className="border-b px-3 py-2 text-center align-top font-medium tabular-nums">
                       {phase === 'playoff'
                         ? `Playoff ${slot.slotNumber}`
                         : slot.slotNumber}
