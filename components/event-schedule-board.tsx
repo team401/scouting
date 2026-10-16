@@ -1152,7 +1152,7 @@ export function EventScheduleBoard({
               </Button>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-y px-3 py-2 text-sm">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b px-3 py-2 text-sm">
             <div className="flex flex-wrap items-center gap-2">
               <input
                 aria-label="Schedule date"
