@@ -1,4 +1,4 @@
-const VERSION = 'v6';
+const VERSION = 'v9';
 const SHELL_CACHE = `team401-shell-${VERSION}`;
 const PAGE_CACHE = `team401-pages-${VERSION}`;
 const ASSET_CACHE = `team401-assets-${VERSION}`;
@@ -50,7 +50,6 @@ async function cacheOfflineShell() {
 }
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
   event.waitUntil(cacheOfflineShell());
 });
 
@@ -64,7 +63,8 @@ self.addEventListener('activate', (event) => {
           Promise.all(
             keys
               .filter(
-                (key) => key.startsWith('team401-') && !APP_CACHES.includes(key),
+                (key) =>
+                  key.startsWith('team401-') && !APP_CACHES.includes(key),
               )
               .map((key) => caches.delete(key)),
           ),
@@ -112,18 +112,25 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/'))
+  if (url.origin !== self.location.origin) return;
+
+  if (url.pathname === '/api/team-photo') {
+    event.respondWith(networkFirst(request, ASSET_CACHE, []));
     return;
+  }
+
+  if (url.pathname.startsWith('/api/')) return;
 
   if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request, PAGE_CACHE, ['/', '/offline.html']));
+    event.respondWith(
+      networkFirst(request, PAGE_CACHE, ['/', '/offline.html']),
+    );
     return;
   }
 
   if (
     url.pathname.startsWith('/_next/static/') ||
-    url.pathname.startsWith('/icons/') ||
-    ['style', 'script', 'font', 'image'].includes(request.destination)
+    url.pathname.startsWith('/icons/')
   ) {
     event.respondWith(cacheFirst(request));
   }
@@ -141,5 +148,17 @@ self.addEventListener('message', (event) => {
       .catch((error) =>
         event.ports[0]?.postMessage({ ok: false, error: String(error) }),
       ),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clients) => {
+        const existing = clients.find((client) => 'focus' in client);
+        return existing ? existing.focus() : self.clients.openWindow('/');
+      }),
   );
 });

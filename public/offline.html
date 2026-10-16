@@ -2,22 +2,80 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
     <meta name="theme-color" content="#ffffff" />
     <title>Team 401 Scouting · Offline</title>
     <style>
-      :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
-      * { box-sizing: border-box; }
-      body { min-height: 100vh; min-height: 100dvh; margin: 0; display: grid; place-items: center; padding: 24px; background: #f4f7f9; color: #172033; }
-      main { width: min(100%, 420px); border: 1px solid #d7dee5; border-radius: 18px; background: white; padding: 28px; box-shadow: 0 12px 32px rgb(20 31 48 / 10%); }
-      .brand { display: inline-grid; width: 44px; height: 44px; place-items: center; border-radius: 13px; background: #d6552d; color: white; font-weight: 900; }
-      h1 { margin: 18px 0 8px; font-size: 24px; }
-      p { margin: 0; color: #5d6877; line-height: 1.5; }
-      button { width: 100%; min-height: 44px; margin-top: 22px; border: 0; border-radius: 10px; background: #991b4b; color: white; font: inherit; font-weight: 700; }
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        min-height: 100vh;
+        min-height: 100dvh;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: #f4f7f9;
+        color: #172033;
+      }
+      main {
+        width: min(100%, 420px);
+        border: 1px solid #d7dee5;
+        border-radius: 18px;
+        background: white;
+        padding: 28px;
+        box-shadow: 0 12px 32px rgb(20 31 48 / 10%);
+      }
+      .brand {
+        display: inline-grid;
+        width: 44px;
+        height: 44px;
+        place-items: center;
+        border-radius: 13px;
+        background: #d6552d;
+        color: white;
+        font-weight: 900;
+      }
+      h1 {
+        margin: 18px 0 8px;
+        font-size: 24px;
+      }
+      p {
+        margin: 0;
+        color: #5d6877;
+        line-height: 1.5;
+      }
+      button {
+        width: 100%;
+        min-height: 44px;
+        margin-top: 22px;
+        border: 0;
+        border-radius: 10px;
+        background: #991b4b;
+        color: white;
+        font: inherit;
+        font-weight: 700;
+      }
       @media (prefers-color-scheme: dark) {
-        body { background: #111518; color: #f5f7fa; }
-        main { border-color: #37414a; background: #1c2226; }
-        p { color: #b5bec8; }
+        body {
+          background: #111518;
+          color: #f5f7fa;
+        }
+        main {
+          border-color: #37414a;
+          background: #1c2226;
+        }
+        p {
+          color: #b5bec8;
+        }
       }
     </style>
   </head>
@@ -25,7 +83,11 @@
     <main>
       <span class="brand">401</span>
       <h1>You’re offline</h1>
-      <p>The scouting app will open here after it has been loaded once on this device. Reconnect, open the app, and it will be ready for future offline use.</p>
+      <p>
+        The scouting app will open here after it has been loaded once on this
+        device. Reconnect, open the app, and it will be ready for future offline
+        use.
+      </p>
       <button type="button" onclick="location.reload()">Try again</button>
     </main>
   </body>

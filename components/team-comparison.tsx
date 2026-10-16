@@ -15,13 +15,21 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/components/ui/combobox';
 import type { TeamTrend } from '@/components/team-trend-chart';
 
 export type ComparisonTeam = {
   teamNumber: number;
+  name?: string | null;
   xp: number | null;
-  opr: number | null;
+  epa: number | null;
   samples: number;
   coverage: number;
   scheduledMatches: number;
@@ -35,7 +43,7 @@ export type ComparisonTeam = {
   pointStdDev: number;
 };
 
-type AnalysisResponse = Omit<ComparisonTeam, 'xp' | 'opr'> & {
+type AnalysisResponse = Omit<ComparisonTeam, 'xp' | 'epa'> & {
   trends?: TeamTrend[];
   error?: string;
 };
@@ -78,6 +86,14 @@ export function TeamComparison({
     () => new Map(teams.map((team) => [team.teamNumber, team])),
     [teams],
   );
+  const teamNumbers = useMemo(
+    () => teams.map((team) => String(team.teamNumber)),
+    [teams],
+  );
+  const teamLabel = (teamNumber: number) => {
+    const name = teamMap.get(teamNumber)?.name;
+    return name ? `Team ${teamNumber} — ${name}` : `Team ${teamNumber}`;
+  };
   const selectedMatch = matches.find((match) => match.key === selectedMatchKey);
 
   useEffect(() => {
@@ -187,23 +203,34 @@ export function TeamComparison({
               else setMessage('Enter a valid team number.');
             }}
           >
-            <Input
-              aria-label="Team number to compare"
-              inputMode="numeric"
-              list="comparison-teams"
-              placeholder="Team number"
-              value={teamInput}
-              onChange={(event) =>
-                setTeamInput(event.target.value.replace(/\D/g, ''))
+            <Combobox
+              items={teamNumbers}
+              value={null}
+              inputValue={teamInput}
+              onInputValueChange={(value) =>
+                setTeamInput(value.replace(/\D/g, ''))
               }
-            />
-            <datalist id="comparison-teams">
-              {teams.map((team) => (
-                <option key={team.teamNumber} value={team.teamNumber}>
-                  Team {team.teamNumber}
-                </option>
-              ))}
-            </datalist>
+              onValueChange={(value) => {
+                if (value) addTeam(Number(value));
+              }}
+            >
+              <ComboboxInput
+                aria-label="Team number to compare"
+                inputMode="numeric"
+                placeholder="Team number"
+                className="w-full"
+              />
+              <ComboboxContent>
+                <ComboboxEmpty>No matching teams</ComboboxEmpty>
+                <ComboboxList>
+                  {(teamNumber: string) => (
+                    <ComboboxItem key={teamNumber} value={teamNumber}>
+                      {teamLabel(Number(teamNumber))}
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
             <Button type="submit" variant="outline">
               <Plus /> Add
             </Button>
@@ -214,7 +241,7 @@ export function TeamComparison({
             </label>
             <select
               id="comparison-match"
-              className="h-9 min-w-32 flex-1 rounded-md border px-3 text-sm"
+              className="h-9 rounded-md border px-3 text-sm"
               value={selectedMatchKey}
               onChange={(event) => setSelectedMatchKey(event.target.value)}
             >
@@ -278,7 +305,7 @@ export function TeamComparison({
                   <tr className="border-b text-left">
                     <th className="p-2">Team</th>
                     <th className="p-2">Match13 xP</th>
-                    <th className="p-2">OPR</th>
+                    <th className="p-2">EPA</th>
                     <th className="p-2">Median pts</th>
                     <th className="p-2">Tower</th>
                     <th className="p-2">Disabled</th>
@@ -295,16 +322,14 @@ export function TeamComparison({
                     >
                       <th className="p-2 text-left">{team.teamNumber}</th>
                       <td className="p-2">{formatNumber(team.xp)}</td>
-                      <td className="p-2">{formatNumber(team.opr)}</td>
+                      <td className="p-2">{formatNumber(team.epa)}</td>
                       <td className="p-2">{team.medianPoints.toFixed(1)}</td>
                       <td className="p-2">
                         L1 {team.towerLevelCounts.level1} · L2{' '}
                         {team.towerLevelCounts.level2} · L3{' '}
                         {team.towerLevelCounts.level3}
                       </td>
-                      <td className="p-2">
-                        {team.disabledMatches}
-                      </td>
+                      <td className="p-2">{team.disabledMatches}</td>
                       <td className="p-2">{team.averageDefense.toFixed(1)}</td>
                       <td className="p-2">±{team.pointStdDev.toFixed(1)}</td>
                       <td className="p-2">
@@ -327,8 +352,8 @@ export function TeamComparison({
                       </small>
                     </span>
                     <span>
-                      <strong>{formatNumber(team.opr)}</strong>
-                      <small className="block text-muted-foreground">OPR</small>
+                      <strong>{formatNumber(team.epa)}</strong>
+                      <small className="block text-muted-foreground">EPA</small>
                     </span>
                     <span>
                       <strong>{team.medianPoints.toFixed(1)}</strong>
@@ -349,7 +374,9 @@ export function TeamComparison({
                       </small>
                     </span>
                     <span>
-                      <strong>{team.samples}/{team.scheduledMatches}</strong>
+                      <strong>
+                        {team.samples}/{team.scheduledMatches}
+                      </strong>
                       <small className="block text-muted-foreground">
                         Matches scouted
                       </small>

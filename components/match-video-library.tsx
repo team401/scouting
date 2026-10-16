@@ -100,7 +100,8 @@ export function MatchVideoLibrary({
 
   useEffect(
     () => () => {
-      if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
+      if (recorderRef.current?.state === 'recording')
+        recorderRef.current.stop();
       streamRef.current?.getTracks().forEach((track) => track.stop());
     },
     [],
@@ -129,10 +130,13 @@ export function MatchVideoLibrary({
       const mimeType = candidates.find((type) =>
         MediaRecorder.isTypeSupported(type),
       );
-      const recorder = new MediaRecorder(
-        stream,
-        mimeType ? { mimeType } : undefined,
-      );
+      const recorder = new MediaRecorder(stream, {
+        ...(mimeType ? { mimeType } : {}),
+        // Keep event video quick to upload while retaining enough detail to
+        // identify robots and field actions on a laptop or tablet.
+        videoBitsPerSecond: 2_500_000,
+        audioBitsPerSecond: 64_000,
+      });
       streamRef.current = stream;
       recorderRef.current = recorder;
       recordedChunksRef.current = [];
@@ -285,29 +289,26 @@ export function MatchVideoLibrary({
         <CardTitle className="shrink-0">Match video</CardTitle>
         {videoSources.length > 1 && (
           <div
-            className="flex min-w-0 gap-1 overflow-x-auto"
+            className="flex min-w-0 gap-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             role="tablist"
             aria-label="Video source"
           >
-            {videoSources.map((source) => {
-              const selected = selectedVideo?.key === source.key;
-              return (
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={selected}
-                  className={
-                    selected
-                      ? 'shrink-0 border-b-2 border-primary px-2 py-1 text-sm font-semibold text-primary'
-                      : 'shrink-0 border-b-2 border-transparent px-2 py-1 text-sm text-muted-foreground hover:text-foreground'
-                  }
-                  key={source.key}
-                  onClick={() => setSelectedVideoKey(source.key)}
-                >
-                  {source.label}
-                </button>
-              );
-            })}
+            {videoSources.map((source) => (
+              <Button
+                type="button"
+                size="sm"
+                variant={
+                  selectedVideo?.key === source.key ? 'default' : 'ghost'
+                }
+                role="tab"
+                aria-selected={selectedVideo?.key === source.key}
+                className="shrink-0"
+                key={source.key}
+                onClick={() => setSelectedVideoKey(source.key)}
+              >
+                {source.label}
+              </Button>
+            ))}
           </div>
         )}
       </CardHeader>
@@ -319,18 +320,18 @@ export function MatchVideoLibrary({
         ) : (
           <>
             {selectedVideo?.kind === 'tba' && (
-                <div className="space-y-2">
-                  <iframe
-                    className="aspect-video w-full rounded-md bg-black"
-                    src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(selectedVideo.video.key)}`}
-                    title={`${matchLabel} TBA video`}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {matchLabel} · provided by The Blue Alliance
-                  </p>
-                </div>
+              <div className="space-y-2">
+                <iframe
+                  className="aspect-video w-full rounded-md bg-black"
+                  src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(selectedVideo.video.key)}`}
+                  title={`${matchLabel} TBA video`}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+                <p className="text-xs text-muted-foreground">
+                  {matchLabel} · provided by The Blue Alliance
+                </p>
+              </div>
             )}
             {selectedVideo?.kind === 'team' && (
               <div className="space-y-2">
@@ -344,30 +345,33 @@ export function MatchVideoLibrary({
                 </video>
                 <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                   <span>
-                    {matchLabel} · {(selectedVideo.video.bytes / 1024 / 1024).toFixed(1)} MB ·
+                    {matchLabel} ·{' '}
+                    {(selectedVideo.video.bytes / 1024 / 1024).toFixed(1)} MB ·
                     uploaded by {selectedVideo.video.uploaderName}
                   </span>
                   {!playbackOnly &&
                     (data?.canDeleteAny ||
-                    data?.userId === selectedVideo.video.uploaderUserId) && (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      aria-label="Delete match video"
-                      onClick={() => void deleteVideo(selectedVideo.video.id)}
-                    >
-                      <Trash2 />
-                    </Button>
-                  )}
+                      data?.userId === selectedVideo.video.uploaderUserId) && (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label="Delete match video"
+                        onClick={() => void deleteVideo(selectedVideo.video.id)}
+                      >
+                        <Trash2 />
+                      </Button>
+                    )}
                 </div>
               </div>
             )}
-            {data && data.videos.length === 0 && externalVideos.length === 0 && (
-              <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-                No video has been uploaded for {matchLabel}.
-              </p>
-            )}
+            {data &&
+              data.videos.length === 0 &&
+              externalVideos.length === 0 && (
+                <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                  No video has been uploaded for {matchLabel}.
+                </p>
+              )}
             {!playbackOnly && data?.canUpload && (
               <div className="space-y-2 rounded-lg border p-3">
                 <p className="text-sm font-medium">Record or upload video</p>
@@ -394,7 +398,9 @@ export function MatchVideoLibrary({
                     {recording ? 'Stop recording' : 'Record video'}
                   </Button>
                 </div>
-                <p className="text-xs font-medium">Or choose an existing file</p>
+                <p className="text-xs font-medium">
+                  Or choose an existing file
+                </p>
                 <Input
                   type="file"
                   accept="video/mp4,video/webm,video/quicktime,.mov"
@@ -407,7 +413,8 @@ export function MatchVideoLibrary({
                 </p>
                 {file && (
                   <p className="truncate text-sm">
-                    Ready to upload: {file.name} ({(file.size / 1024 / 1024).toFixed(1)} MB)
+                    Ready to upload: {file.name} (
+                    {(file.size / 1024 / 1024).toFixed(1)} MB)
                   </p>
                 )}
                 {uploading && (

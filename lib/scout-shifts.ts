@@ -33,7 +33,7 @@ export async function reconcileShiftAssignments(
     db
       .prepare(
         `SELECT id, station, scout_user_id AS scoutUserId, starts_at AS startsAt, ends_at AS endsAt
-         FROM scout_shifts WHERE organization_id = ? AND event_id = ? ORDER BY starts_at`,
+         FROM published_scout_shifts WHERE organization_id = ? AND event_id = ? ORDER BY starts_at`,
       )
       .bind(organizationId, eventId)
       .all<ShiftRow>(),

@@ -5,10 +5,8 @@ import {
   ArrowDown,
   ArrowUp,
   ChartNoAxesColumn,
-  Download,
   GripVertical,
   Plus,
-  Printer,
   Search,
   Undo2,
   UserX,
@@ -46,7 +44,7 @@ type TeamMetric = {
   xAuto?: number | null;
   xTele?: number | null;
   xEnd?: number | null;
-  opr: number | null;
+  epa: number | null;
 };
 type PickListsResponse = {
   personal: PickListData | null;
@@ -94,6 +92,7 @@ export function PickListWorkspace({
   const [hydrated, setHydrated] = useState(false);
   const [selectionSearch, setSelectionSearch] = useState('');
   const [builderSearch, setBuilderSearch] = useState('');
+  const [builderSort, setBuilderSort] = useState<'team' | 'xp' | 'epa'>('team');
   const [statsTeam, setStatsTeam] = useState<number | null>(null);
   const [selectionListMode, setSelectionListMode] = useState<
     'rankings' | 'picklist'
@@ -180,6 +179,60 @@ export function PickListWorkspace({
   const reviewedBallot = response?.ballots?.find(
     (ballot) => ballot.ownerUserId === reviewOwnerId,
   );
+  const scoutDistribution = new Map<
+    number,
+    { first: number; second: number; dnp: number; ranked: number }
+  >();
+  for (const ballot of response?.ballots ?? []) {
+    for (const entry of ballot.data.entries) {
+      const counts = scoutDistribution.get(entry.teamNumber) ?? {
+        first: 0,
+        second: 0,
+        dnp: 0,
+        ranked: 0,
+      };
+      counts.ranked += 1;
+      if (entry.tier === 'first') counts.first += 1;
+      else if (entry.tier === 'second') counts.second += 1;
+      else counts.dnp += 1;
+      scoutDistribution.set(entry.teamNumber, counts);
+    }
+  }
+
+  function rankingDistribution(teamNumber: number) {
+    if (mode !== 'official') return null;
+    const counts = scoutDistribution.get(teamNumber) ?? {
+      first: 0,
+      second: 0,
+      dnp: 0,
+      ranked: 0,
+    };
+    const denominator = Math.max(response?.ballotCount ?? 0, 1);
+    return (
+      <div
+        className="mt-1"
+        title={`${counts.first} first pick, ${counts.second} second pick, ${counts.dnp} do not pick across ${response?.ballotCount ?? 0} scout lists`}
+      >
+        <div className="flex h-1.5 overflow-hidden rounded-full bg-muted">
+          <span
+            className="bg-emerald-500"
+            style={{ width: `${(counts.first / denominator) * 100}%` }}
+          />
+          <span
+            className="bg-amber-400"
+            style={{ width: `${(counts.second / denominator) * 100}%` }}
+          />
+          <span
+            className="bg-destructive"
+            style={{ width: `${(counts.dnp / denominator) * 100}%` }}
+          />
+        </div>
+        <small className="text-muted-foreground">
+          1st {counts.first} · 2nd {counts.second} · DNP {counts.dnp}
+        </small>
+      </div>
+    );
+  }
 
   async function save(target: 'personal' | 'official', data: PickListData) {
     setMessage('');
@@ -267,19 +320,14 @@ export function PickListWorkspace({
     if (list.entries.some((entry) => entry.teamNumber === teamNumber)) return;
     setList({
       ...list,
-      entries: [
-        ...list.entries,
-        { teamNumber, note: '', tier: 'first' },
-      ],
+      entries: [...list.entries, { teamNumber, note: '', tier: 'first' }],
     });
   }
 
   function removeTeam(teamNumber: number) {
     setList({
       ...list,
-      entries: list.entries.filter(
-        (entry) => entry.teamNumber !== teamNumber,
-      ),
+      entries: list.entries.filter((entry) => entry.teamNumber !== teamNumber),
     });
   }
 
@@ -304,15 +352,14 @@ export function PickListWorkspace({
     teamNumber: number,
     reason: 'declined' | 'ineligible',
   ) {
-    const allianceNumber = reason === 'declined' ? nextPick?.allianceNumber : undefined;
+    const allianceNumber =
+      reason === 'declined' ? nextPick?.allianceNumber : undefined;
     if (reason === 'declined' && !allianceNumber) return;
     setOfficial({
       ...official,
       selections:
         reason === 'ineligible'
-          ? official.selections.filter(
-              (item) => item.teamNumber !== teamNumber,
-            )
+          ? official.selections.filter((item) => item.teamNumber !== teamNumber)
           : official.selections,
       unavailable: [
         ...(official.unavailable ?? []).filter(
@@ -333,47 +380,6 @@ export function PickListWorkspace({
       ...official,
       selections: official.selections.slice(0, -1),
     });
-  }
-
-  function exportOfficialList() {
-    const headings = [
-      'rank',
-      'team_number',
-      'tier',
-      'xp',
-      'opr',
-      'selected_by_alliance',
-      'notes',
-    ];
-    const quote = (value: string | number | boolean | null | undefined) =>
-      `"${String(value ?? '').replaceAll('"', '""')}"`;
-    const rows = official.entries.map((entry, index) => {
-      const team = metrics.get(entry.teamNumber);
-      const selection = official.selections.find(
-        (item) => item.teamNumber === entry.teamNumber,
-      );
-      return [
-        index + 1,
-        entry.teamNumber,
-        entry.tier,
-        team?.xp,
-        team?.opr,
-        selection?.allianceNumber,
-        entry.note,
-      ]
-        .map(quote)
-        .join(',');
-    });
-    const url = URL.createObjectURL(
-      new Blob([[headings.join(','), ...rows].join('\n')], {
-        type: 'text/csv;charset=utf-8',
-      }),
-    );
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `${eventKey}-official-pick-list.csv`;
-    anchor.click();
-    URL.revokeObjectURL(url);
   }
 
   return (
@@ -416,24 +422,25 @@ export function PickListWorkspace({
                 >
                   Team pick list
                 </Button>
-              </>
-            )}
-            {mode !== 'personal' && official.entries.length > 0 && (
-              <>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={exportOfficialList}
-                >
-                  <Download /> Export CSV
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => window.print()}
-                >
-                  <Printer /> Print
-                </Button>
+                {mode === 'official' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      setOfficial({
+                        entries: (response?.consensus ?? []).map((item) => ({
+                          teamNumber: item.teamNumber,
+                          note: '',
+                          tier: 'first',
+                        })),
+                        selections: official.selections,
+                        unavailable: official.unavailable ?? [],
+                      })
+                    }
+                  >
+                    Start from consensus
+                  </Button>
+                )}
               </>
             )}
           </div>
@@ -501,7 +508,7 @@ export function PickListWorkspace({
                             xP {team?.xp?.toFixed(1) ?? '—'}
                           </span>
                           <span className="text-sm">
-                            OPR {team?.opr?.toFixed(1) ?? '—'}
+                            EPA {team?.epa?.toFixed(1) ?? '—'}
                           </span>
                           <Badge
                             variant={isDoNotPick ? 'destructive' : 'outline'}
@@ -539,8 +546,8 @@ export function PickListWorkspace({
                               #{index + 1} · Team {entry.teamNumber}
                             </strong>
                             <p className="text-xs text-muted-foreground">
-                              xP {team?.xp?.toFixed(1) ?? '—'} · OPR{' '}
-                              {team?.opr?.toFixed(1) ?? '—'}
+                              xP {team?.xp?.toFixed(1) ?? '—'} · EPA{' '}
+                              {team?.epa?.toFixed(1) ?? '—'}
                             </p>
                           </div>
                           <Badge
@@ -567,31 +574,26 @@ export function PickListWorkspace({
 
         {mode !== 'selection' && mode !== 'review' && (
           <>
-            {mode === 'official' && (
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    setOfficial({
-                      entries: (response?.consensus ?? []).map((item) => ({
-                        teamNumber: item.teamNumber,
-                        note: '',
-                        tier: 'first',
-                      })),
-                      selections: official.selections,
-                      unavailable: official.unavailable ?? [],
-                    })
-                  }
-                >
-                  Start from consensus
-                </Button>
-              </div>
-            )}
             <div className="grid h-[calc(100dvh-11rem)] min-h-[26rem] grid-rows-[minmax(0,2fr)_minmax(0,3fr)] gap-2 lg:h-auto lg:min-h-0 lg:grid-cols-[18rem_minmax(0,1fr)] lg:grid-rows-none lg:gap-3">
               <section className="flex h-full min-h-0 flex-col rounded-lg border border-l-4 border-l-muted-foreground/35 bg-muted/20 lg:h-[42rem]">
                 <div className="border-b bg-muted/60 p-2 sm:p-3">
-                  <h3 className="font-semibold">Available Teams</h3>
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-semibold">Available Teams</h3>
+                    <select
+                      aria-label="Sort available teams"
+                      className="h-8 rounded-md border bg-background px-2 text-xs"
+                      value={builderSort}
+                      onChange={(event) =>
+                        setBuilderSort(
+                          event.target.value as 'team' | 'xp' | 'epa',
+                        )
+                      }
+                    >
+                      <option value="team">Team number: low to high</option>
+                      <option value="xp">xP: high to low</option>
+                      <option value="epa">EPA: high to low</option>
+                    </select>
+                  </div>
                   <div className="relative mt-1.5">
                     <Search className="pointer-events-none absolute top-2 left-3 size-4 text-muted-foreground sm:top-2.5" />
                     <Input
@@ -611,12 +613,24 @@ export function PickListWorkspace({
                           (entry) => entry.teamNumber === team.teamNumber,
                         ) &&
                         (!builderSearch.trim() ||
-                          String(team.teamNumber).includes(builderSearch.trim()) ||
+                          String(team.teamNumber).includes(
+                            builderSearch.trim(),
+                          ) ||
                           team.name
                             ?.toLowerCase()
                             .includes(builderSearch.trim().toLowerCase())),
                     )
-                    .sort((a, b) => a.teamNumber - b.teamNumber)
+                    .sort((a, b) => {
+                      if (builderSort === 'team')
+                        return a.teamNumber - b.teamNumber;
+                      const aValue = builderSort === 'xp' ? a.xp : a.epa;
+                      const bValue = builderSort === 'xp' ? b.xp : b.epa;
+                      if (aValue === null && bValue === null)
+                        return a.teamNumber - b.teamNumber;
+                      if (aValue === null) return 1;
+                      if (bValue === null) return -1;
+                      return bValue - aValue || a.teamNumber - b.teamNumber;
+                    })
                     .map((team) => (
                       <div
                         className="flex items-center gap-2 p-2"
@@ -637,9 +651,10 @@ export function PickListWorkspace({
                             </small>
                           )}
                           <small className="block text-muted-foreground">
-                            xP {team.xp?.toFixed(1) ?? '—'} · OPR{' '}
-                            {team.opr?.toFixed(1) ?? '—'}
+                            xP {team.xp?.toFixed(1) ?? '—'} · EPA{' '}
+                            {team.epa?.toFixed(1) ?? '—'}
                           </small>
+                          {rankingDistribution(team.teamNumber)}
                         </div>
                         <Button
                           size="icon-sm"
@@ -673,9 +688,7 @@ export function PickListWorkspace({
                 }}
               >
                 <div className="border-b border-primary/20 bg-primary/10 p-2 sm:p-3">
-                  <h3 className="font-semibold text-primary">
-                    My Pick List
-                  </h3>
+                  <h3 className="font-semibold text-primary">My Pick List</h3>
                 </div>
                 <div className="min-h-0 flex-1 divide-y overflow-y-auto">
                   {list.entries.length === 0 && (
@@ -727,17 +740,30 @@ export function PickListWorkspace({
                         <div className="min-w-0 space-y-1.5">
                           <div className="flex min-w-0 items-center gap-1.5">
                             <div className="min-w-0 flex-1 leading-tight">
-                              <strong className="text-sm">Team {entry.teamNumber}</strong>
+                              <strong className="text-sm">
+                                Team {entry.teamNumber}
+                              </strong>
                               {team?.name && (
                                 <small className="block truncate text-muted-foreground">
                                   {team.name}
                                 </small>
                               )}
+                              {rankingDistribution(entry.teamNumber)}
                             </div>
-                            <Button size="icon-sm" variant="ghost" aria-label={`View stats for team ${entry.teamNumber}`} onClick={() => setStatsTeam(entry.teamNumber)}>
+                            <Button
+                              size="icon-sm"
+                              variant="ghost"
+                              aria-label={`View stats for team ${entry.teamNumber}`}
+                              onClick={() => setStatsTeam(entry.teamNumber)}
+                            >
                               <ChartNoAxesColumn />
                             </Button>
-                            <Button size="icon-sm" variant="ghost" aria-label={`Remove team ${entry.teamNumber}`} onClick={() => removeTeam(entry.teamNumber)}>
+                            <Button
+                              size="icon-sm"
+                              variant="ghost"
+                              aria-label={`Remove team ${entry.teamNumber}`}
+                              onClick={() => removeTeam(entry.teamNumber)}
+                            >
                               <X />
                             </Button>
                           </div>
@@ -748,7 +774,8 @@ export function PickListWorkspace({
                               value={entry.tier}
                               onChange={(event) =>
                                 updateEntry(index, {
-                                  tier: event.target.value as PickListEntry['tier'],
+                                  tier: event.target
+                                    .value as PickListEntry['tier'],
                                 })
                               }
                             >
@@ -761,12 +788,44 @@ export function PickListWorkspace({
                               className="h-8 min-w-0 flex-1 px-2"
                               placeholder="Notes"
                               value={entry.note}
-                              onChange={(event) => updateEntry(index, { note: event.target.value })}
+                              onChange={(event) =>
+                                updateEntry(index, { note: event.target.value })
+                              }
                             />
-                            <Button size="icon-sm" variant="ghost" disabled={index === 0} aria-label="Move team up" onClick={() => setList({ ...list, entries: reorder(list.entries, index, index - 1) })}>
+                            <Button
+                              size="icon-sm"
+                              variant="ghost"
+                              disabled={index === 0}
+                              aria-label="Move team up"
+                              onClick={() =>
+                                setList({
+                                  ...list,
+                                  entries: reorder(
+                                    list.entries,
+                                    index,
+                                    index - 1,
+                                  ),
+                                })
+                              }
+                            >
                               <ArrowUp />
                             </Button>
-                            <Button size="icon-sm" variant="ghost" disabled={index === list.entries.length - 1} aria-label="Move team down" onClick={() => setList({ ...list, entries: reorder(list.entries, index, index + 1) })}>
+                            <Button
+                              size="icon-sm"
+                              variant="ghost"
+                              disabled={index === list.entries.length - 1}
+                              aria-label="Move team down"
+                              onClick={() =>
+                                setList({
+                                  ...list,
+                                  entries: reorder(
+                                    list.entries,
+                                    index,
+                                    index + 1,
+                                  ),
+                                })
+                              }
+                            >
                               <ArrowDown />
                             </Button>
                           </div>
@@ -834,9 +893,11 @@ export function PickListWorkspace({
                       )
                       .map((team) => ({
                         teamNumber: team.teamNumber,
-                        rank: team.eventRank === null || team.eventRank === undefined
-                          ? null
-                          : team.eventRank - 1,
+                        rank:
+                          team.eventRank === null ||
+                          team.eventRank === undefined
+                            ? null
+                            : team.eventRank - 1,
                         note: '',
                         blocked: false,
                       }))
@@ -851,7 +912,8 @@ export function PickListWorkspace({
                           item.teamNumber === team.teamNumber &&
                           (item.reason === 'ineligible' ||
                             (item.reason === 'declined' &&
-                              item.allianceNumber === nextPick?.allianceNumber)),
+                              item.allianceNumber ===
+                                nextPick?.allianceNumber)),
                       ) &&
                       (!selectionSearch.trim() ||
                         String(team.teamNumber).includes(
@@ -874,12 +936,17 @@ export function PickListWorkspace({
                         {team.rank === null ? '—' : team.rank + 1}
                       </span>
                       <div className="min-w-0">
-                        <strong>{team.teamNumber}</strong>
+                        <p className="truncate">
+                          <strong>{team.teamNumber}</strong>
+                          <span className="ml-2 text-muted-foreground">
+                            {metrics.get(team.teamNumber)?.name}
+                          </span>
+                        </p>
                         <small className="block truncate text-muted-foreground">
                           xP{' '}
                           {metrics.get(team.teamNumber)?.xp?.toFixed(1) ?? '—'}
-                          {' · '}OPR{' '}
-                          {metrics.get(team.teamNumber)?.opr?.toFixed(1) ?? '—'}
+                          {' · '}EPA{' '}
+                          {metrics.get(team.teamNumber)?.epa?.toFixed(1) ?? '—'}
                         </small>
                       </div>
                       <div className="flex gap-1">

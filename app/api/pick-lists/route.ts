@@ -141,9 +141,7 @@ export async function GET(request: Request) {
   return Response.json({
     eventKey: event.eventKey,
     personal:
-      allPersonalLists.find(
-        (list) => list.ownerUserId === user.session.user.id,
-      )
+      allPersonalLists.find((list) => list.ownerUserId === user.session.user.id)
         ?.data ?? null,
     ballots: canEditOfficial ? personalLists : [],
     official: canEditOfficial

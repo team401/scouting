@@ -6,6 +6,9 @@ type TbaEvent = {
   name: string;
   year: number;
   timezone: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  event_type: number | null;
 };
 type TbaAlliance = { team_keys: string[]; score: number };
 type TbaMatch = {
@@ -26,6 +29,32 @@ type TbaTeam = {
   nickname: string | null;
   name: string;
 };
+
+const championshipEventTypes = new Set([2, 3, 4, 5]);
+
+function shiftDate(date: string, days: number) {
+  const value = new Date(`${date}T12:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+}
+
+function defaultScheduleDays(event: TbaEvent) {
+  if (!event.start_date || !event.end_date) return [];
+  const days: Array<{ date: string; startHour: number; endHour: number }> = [];
+  if (event.event_type !== null && championshipEventTypes.has(event.event_type))
+    days.push({
+      date: shiftDate(event.start_date, -1),
+      startHour: 15,
+      endHour: 21,
+    });
+  for (
+    let date = event.start_date;
+    date <= event.end_date;
+    date = shiftDate(date, 1)
+  )
+    days.push({ date, startHour: 7, endHour: 19 });
+  return days;
+}
 
 export async function syncTbaEvent(organizationId: string, eventKey: string) {
   if (!env.TBA_AUTH_KEY)
@@ -50,6 +79,14 @@ export async function syncTbaEvent(organizationId: string, eventKey: string) {
   const teams = (await teamsResponse.json()) as TbaTeam[];
   const eventId = `${organizationId}:${event.key}`;
   const now = Date.now();
+  const scheduleDayCount = await env.DB.prepare(
+    'SELECT COUNT(*) AS count FROM event_schedule_days WHERE event_id = ?',
+  )
+    .bind(eventId)
+    .first<{ count: number }>();
+  const scheduleDays = Number(scheduleDayCount?.count ?? 0)
+    ? []
+    : defaultScheduleDays(event);
   await env.DB.batch([
     env.DB.prepare(
       'INSERT INTO seasons (year, game_key, schema_version, field_definition, created_at, updated_at) VALUES (?, ?, 1, ?, ?, ?) ON CONFLICT(year) DO UPDATE SET updated_at = excluded.updated_at',
@@ -63,9 +100,10 @@ export async function syncTbaEvent(organizationId: string, eventKey: string) {
     env.DB.prepare(
       'UPDATE events SET is_current = 0 WHERE organization_id = ? AND tba_event_key <> ?',
     ).bind(organizationId, event.key),
-    env.DB.prepare(`INSERT INTO events (id, organization_id, season_year, tba_event_key, name, is_current, tba_etag, timezone, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?) ON CONFLICT(organization_id, tba_event_key) DO UPDATE SET name = excluded.name,
-      is_current = 1, tba_etag = excluded.tba_etag, timezone = excluded.timezone, updated_at = excluded.updated_at`).bind(
+    env.DB.prepare(`INSERT INTO events (id, organization_id, season_year, tba_event_key, name, is_current, tba_etag, timezone, start_date, end_date, event_type, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(organization_id, tba_event_key) DO UPDATE SET name = excluded.name,
+      is_current = 1, tba_etag = excluded.tba_etag, timezone = excluded.timezone, start_date = excluded.start_date,
+      end_date = excluded.end_date, event_type = excluded.event_type, updated_at = excluded.updated_at`).bind(
       eventId,
       organizationId,
       event.year,
@@ -73,8 +111,17 @@ export async function syncTbaEvent(organizationId: string, eventKey: string) {
       event.name,
       matchesResponse.headers.get('etag'),
       event.timezone,
+      event.start_date,
+      event.end_date,
+      event.event_type,
       now,
       now,
+    ),
+    ...scheduleDays.map((day) =>
+      env.DB.prepare(
+        `INSERT OR IGNORE INTO event_schedule_days (event_id, date, start_hour, end_hour)
+         VALUES (?, ?, ?, ?)`,
+      ).bind(eventId, day.date, day.startHour, day.endHour),
     ),
     ...teams.map((team) =>
       env.DB.prepare(`INSERT INTO event_teams (organization_id, event_id, team_number, name, updated_at)

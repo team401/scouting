@@ -44,9 +44,27 @@ export function TeamTrendChart({ trends }: { trends: TeamTrend[] }) {
             <YAxis />
             <Tooltip />
             <Legend />
-            <Line type="monotone" dataKey="points" name="Observed points" stroke="#0ea5e9" strokeWidth={3} />
-            <Line type="monotone" dataKey="activeFuel" name="Active FUEL" stroke="#f59e0b" strokeWidth={2} />
-            <Line type="monotone" dataKey="autoFuel" name="Autonomous FUEL" stroke="#22c55e" strokeWidth={2} />
+            <Line
+              type="monotone"
+              dataKey="points"
+              name="Observed points"
+              stroke="#0ea5e9"
+              strokeWidth={3}
+            />
+            <Line
+              type="monotone"
+              dataKey="activeFuel"
+              name="Active FUEL"
+              stroke="#f59e0b"
+              strokeWidth={2}
+            />
+            <Line
+              type="monotone"
+              dataKey="autoFuel"
+              name="Autonomous FUEL"
+              stroke="#22c55e"
+              strokeWidth={2}
+            />
           </LineChart>
         </ResponsiveContainer>
       </div>

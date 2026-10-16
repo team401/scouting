@@ -62,11 +62,19 @@ export function nextAlliancePick(
     );
   }
 
-  for (let allianceNumber = 1; allianceNumber <= allianceCount; allianceNumber += 1) {
+  for (
+    let allianceNumber = 1;
+    allianceNumber <= allianceCount;
+    allianceNumber += 1
+  ) {
     const pickCount = pickCounts.get(allianceNumber) ?? 0;
     if (pickCount < 2) return { allianceNumber, pickCount };
   }
-  for (let allianceNumber = allianceCount; allianceNumber >= 1; allianceNumber -= 1) {
+  for (
+    let allianceNumber = allianceCount;
+    allianceNumber >= 1;
+    allianceNumber -= 1
+  ) {
     if ((pickCounts.get(allianceNumber) ?? 0) === 2)
       return { allianceNumber, pickCount: 2 };
   }

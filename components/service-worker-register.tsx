@@ -37,6 +37,37 @@ async function prepareOfflineSupport() {
 
 export function ServiceWorkerRegister() {
   useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      // A service worker caching Vite's transformed development modules can
+      // leave two React instances active after dependency optimization. PWA
+      // behavior belongs in preview/production, never the dev server.
+      void navigator.serviceWorker
+        ?.getRegistrations()
+        .then((registrations) =>
+          Promise.all(
+            registrations.map((registration) => registration.unregister()),
+          ),
+        )
+        .then(() => caches.keys())
+        .then((keys) =>
+          Promise.all(
+            keys
+              .filter((key) => key.startsWith('team401-'))
+              .map((key) => caches.delete(key)),
+          ),
+        )
+        .then(() => {
+          if (
+            navigator.serviceWorker?.controller &&
+            !sessionStorage.getItem('team401-dev-sw-cleaned')
+          ) {
+            sessionStorage.setItem('team401-dev-sw-cleaned', '1');
+            window.location.reload();
+          }
+        })
+        .catch(() => undefined);
+      return;
+    }
     const prepare = () => void prepareOfflineSupport().catch(() => undefined);
     const captureInstallPrompt = (event: Event) => {
       event.preventDefault();
@@ -65,7 +96,8 @@ export function PwaInstallButton({ className }: { className?: string }) {
   const [available, setAvailable] = useState(false);
 
   useEffect(() => {
-    const update = () => setAvailable(Boolean(installPrompt) && !isStandalone());
+    const update = () =>
+      setAvailable(Boolean(installPrompt) && !isStandalone());
     update();
     window.addEventListener('team401-install-available', update);
     window.addEventListener('team401-install-changed', update);
