@@ -1,17 +1,17 @@
 import { env } from 'cloudflare:workers';
 import { auth } from '@/lib/auth';
 
-const provider = 'tba-team-photo';
+const provider = 'tba-team-photo-v2';
 const freshForMs = 24 * 60 * 60 * 1000;
 const missingForMs = 6 * 60 * 60 * 1000;
 const lockForMs = 30 * 1000;
 const maxBytes = 10 * 1024 * 1024;
 const imageTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
-const mediaTypes = new Set([
-  'cdphotothread',
-  'imgur',
-  'instagram-image',
-  'smugmug-photo',
+const mediaTypes = new Set(['cdphotothread', 'imgur', 'smugmug-photo']);
+const mediaTypePriority = new Map([
+  ['smugmug-photo', 0],
+  ['imgur', 1],
+  ['cdphotothread', 2],
 ]);
 
 type CachePayload = {
@@ -156,7 +156,10 @@ export async function GET(request: Request) {
           item.direct_url?.startsWith('https://'),
       )
       .sort(
-        (a, b) => Number(Boolean(b.preferred)) - Number(Boolean(a.preferred)),
+        (a, b) =>
+          (mediaTypePriority.get(a.type!) ?? 99) -
+            (mediaTypePriority.get(b.type!) ?? 99) ||
+          Number(Boolean(b.preferred)) - Number(Boolean(a.preferred)),
       );
 
     let selected:

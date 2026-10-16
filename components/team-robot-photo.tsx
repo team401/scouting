@@ -15,7 +15,7 @@ export function TeamRobotPhoto({
   const source = teamNumber
     ? hasPitPhoto
       ? `/api/pit-photo?team=${teamNumber}`
-      : `/api/team-photo?team=${teamNumber}`
+      : `/api/team-photo?team=${teamNumber}&v=2`
     : null;
   const [failed, setFailed] = useState(false);
 
