@@ -3791,7 +3791,12 @@ export default function Home() {
         {activeView === 'Data' && teamsSection === 'analysis' && (
           <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
             <TeamComparison
-              teams={strategyTeams}
+              teams={strategyTeams.map((team) => ({
+                ...team,
+                name: eventPack?.teams.find(
+                  (item) => item.teamNumber === team.teamNumber,
+                )?.name,
+              }))}
               matches={(eventPack?.matches ?? []).map((match) => ({
                 key: match.key,
                 label: matchLabel(match),

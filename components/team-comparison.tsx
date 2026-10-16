@@ -27,6 +27,7 @@ import type { TeamTrend } from '@/components/team-trend-chart';
 
 export type ComparisonTeam = {
   teamNumber: number;
+  name?: string | null;
   xp: number | null;
   epa: number | null;
   samples: number;
@@ -89,6 +90,10 @@ export function TeamComparison({
     () => teams.map((team) => String(team.teamNumber)),
     [teams],
   );
+  const teamLabel = (teamNumber: number) => {
+    const name = teamMap.get(teamNumber)?.name;
+    return name ? `Team ${teamNumber} — ${name}` : `Team ${teamNumber}`;
+  };
   const selectedMatch = matches.find((match) => match.key === selectedMatchKey);
 
   useEffect(() => {
@@ -220,7 +225,7 @@ export function TeamComparison({
                 <ComboboxList>
                   {(teamNumber: string) => (
                     <ComboboxItem key={teamNumber} value={teamNumber}>
-                      Team {teamNumber}
+                      {teamLabel(Number(teamNumber))}
                     </ComboboxItem>
                   )}
                 </ComboboxList>
