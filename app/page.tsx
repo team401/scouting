@@ -2749,7 +2749,7 @@ export default function Home() {
           </div>
         )}
         {activeView === 'Pit' && (
-          <div className="pit-layout grid gap-4 p-4 sm:p-6 lg:grid-cols-[24rem_1fr]">
+          <div className="pit-layout grid gap-4 p-4 sm:p-6 lg:grid-cols-[28rem_1fr]">
             <Card className="pit-mobile-picker">
               <CardContent className="p-3">
                 <label className="grid gap-1 text-sm font-semibold">

@@ -322,6 +322,9 @@ select option {
   margin-inline: -8px;
   width: calc(100% + 16px);
   padding: 6px 8px;
+  grid-template-columns: minmax(0, 1fr) 1.25rem;
+  row-gap: 2px;
+  column-gap: 8px;
   border-left: 4px solid transparent;
   border-radius: 8px;
   transition:
@@ -356,6 +359,22 @@ select option {
 .dark .pit-queue-needed .pit-queue-status,
 .dark .pit-queue-needed > svg {
   color: oklch(0.82 0.13 75);
+}
+.pit-queue-row > strong {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pit-queue-row > .pit-queue-status {
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pit-queue-row > svg {
+  grid-column: 2;
+  grid-row: 1 / span 2;
 }
 .pit-queue-status {
   font-size: 0.875rem;
