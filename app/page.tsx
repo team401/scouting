@@ -2080,9 +2080,9 @@ export default function Home() {
 
   const pageTitle =
     activeView === 'Scout'
-      ? currentMatch
-        ? `${matchHeaderLabel(currentMatch)}${selectedStation ? ` · ${selectedStation.replace('red', 'Red ').replace('blue', 'Blue ')}` : ''}${selectedTeam ? ` · Team ${selectedTeam}` : ''}`
-        : 'Choose an assignment'
+      ? currentMatch && selectedStation
+        ? `${matchHeaderLabel(currentMatch)} · ${selectedStation.replace('red', 'Red ').replace('blue', 'Blue ')}${selectedTeam ? ` · Team ${selectedTeam}` : ''}`
+        : 'Choose a station'
       : activeView === 'Pit'
         ? `Pit Scouting · ${eventPack?.pitEntries.length ?? 0}/${eventTeams.length}`
         : activeView === 'Plan' && currentPlanningMatch
