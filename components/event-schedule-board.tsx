@@ -435,6 +435,7 @@ export function EventScheduleBoard({
   const [attendeeIds, setAttendeeIds] = useState<Set<string>>(new Set());
   const [attendanceLoaded, setAttendanceLoaded] = useState(false);
   const [rosterOpen, setRosterOpen] = useState(false);
+  const [rosterSearch, setRosterSearch] = useState('');
   const [rosterMessage, setRosterMessage] = useState('');
   const [publishedAt, setPublishedAt] = useState<number | null>(null);
   const [hasUnpublishedChanges, setHasUnpublishedChanges] = useState(false);
@@ -671,6 +672,16 @@ export function EventScheduleBoard({
         ),
     [attendeeIds, members],
   );
+  const rosterMembers = useMemo(() => {
+    const search = rosterSearch.trim().toLowerCase();
+    return members
+      .filter(
+        (member) =>
+          canSchedule(member) &&
+          (!search || member.name.toLowerCase().includes(search)),
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [members, rosterSearch]);
   const hours = useMemo(
     () =>
       Array.from(
@@ -1034,7 +1045,15 @@ export function EventScheduleBoard({
             </span>
           </summary>
           <div className="px-(--card-spacing) pb-(--card-spacing)">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="search"
+                aria-label="Search event roster"
+                className="h-8 min-w-48 flex-1 rounded-md border bg-background px-3 text-sm"
+                placeholder="Find a person"
+                value={rosterSearch}
+                onChange={(event) => setRosterSearch(event.target.value)}
+              />
               <Button
                 type="button"
                 variant="outline"
@@ -1061,34 +1080,35 @@ export function EventScheduleBoard({
               </Button>
             </div>
             <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {members
-                .filter(canSchedule)
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((member) => {
-                  const checked =
-                    attendanceLoaded && attendeeIds.has(member.id);
-                  return (
-                    <label
-                      className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors ${checked ? 'border-primary/50 bg-primary/10' : 'hover:bg-muted/60'}`}
-                      key={member.id}
-                    >
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={(nextChecked) =>
-                          setAttendeeIds((current) => {
-                            attendanceDirtyRef.current = true;
-                            const next = new Set(current);
-                            if (nextChecked) next.add(member.id);
-                            else next.delete(member.id);
-                            return next;
-                          })
-                        }
-                      />
-                      <span>{member.name}</span>
-                    </label>
-                  );
-                })}
+              {rosterMembers.map((member) => {
+                const checked = attendanceLoaded && attendeeIds.has(member.id);
+                return (
+                  <label
+                    className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors ${checked ? 'border-primary/50 bg-primary/10' : 'hover:bg-muted/60'}`}
+                    key={member.id}
+                  >
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={(nextChecked) =>
+                        setAttendeeIds((current) => {
+                          attendanceDirtyRef.current = true;
+                          const next = new Set(current);
+                          if (nextChecked) next.add(member.id);
+                          else next.delete(member.id);
+                          return next;
+                        })
+                      }
+                    />
+                    <span>{member.name}</span>
+                  </label>
+                );
+              })}
             </div>
+            {rosterMembers.length === 0 && (
+              <p className="mt-3 text-sm text-muted-foreground">
+                No people match that search.
+              </p>
+            )}
             <Button
               className="mt-3"
               type="button"
