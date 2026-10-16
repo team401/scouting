@@ -2876,7 +2876,7 @@ export default function Home() {
               <CardContent className="space-y-4">
                 {pitTeam && (
                   <>
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="pit-form grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                       <label className="grid gap-1 text-sm">
                         Drivetrain
                         <select
@@ -3006,23 +3006,26 @@ export default function Home() {
                           <option value="Drum">Drum</option>
                         </select>
                       </label>
-                      <button
-                        type="button"
-                        className={
-                          pitDraft.adjustableHood
-                            ? 'choice selected self-end'
-                            : 'choice self-end'
-                        }
-                        onClick={() =>
-                          setPitDraft({
-                            ...pitDraft,
-                            adjustableHood: !pitDraft.adjustableHood,
-                          })
-                        }
-                      >
-                        {pitDraft.adjustableHood && <Check />}
-                        Adjustable hood
-                      </button>
+                      <div className="grid gap-1 text-sm">
+                        Hood
+                        <button
+                          type="button"
+                          className={
+                            pitDraft.adjustableHood
+                              ? 'choice selected'
+                              : 'choice'
+                          }
+                          onClick={() =>
+                            setPitDraft({
+                              ...pitDraft,
+                              adjustableHood: !pitDraft.adjustableHood,
+                            })
+                          }
+                        >
+                          {pitDraft.adjustableHood && <Check />}
+                          Adjustable
+                        </button>
+                      </div>
                     </div>
                     <div className="space-y-3 rounded-lg border p-3">
                       <div>
