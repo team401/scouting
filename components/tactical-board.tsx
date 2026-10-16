@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 export type BoardPoint = { x: number; y: number };
 export type RobotMarker = BoardPoint & {
   team: number;
+  label?: string;
   station: string;
   alliance: 'red' | 'blue';
 };
@@ -47,6 +48,13 @@ export function initialRobotMarkers(
       y: 610 - index * 210,
     })),
   ];
+}
+
+export function initialPlaceholderRobotMarkers(): RobotMarker[] {
+  return initialRobotMarkers([1, 2, 3], [4, 5, 6]).map((robot) => ({
+    ...robot,
+    label: 'Robot',
+  }));
 }
 
 export function TacticalBoard({
@@ -117,6 +125,10 @@ export function TacticalBoard({
   }
 
   function resetRobots() {
+    if (value.robots.some((robot) => robot.label)) {
+      onChange({ ...value, robots: initialPlaceholderRobotMarkers() });
+      return;
+    }
     const red = value.robots
       .filter((robot) => robot.alliance === 'red')
       .map((robot) => robot.team);
@@ -632,7 +644,7 @@ export function TacticalBoard({
                 fontSize="25"
                 fontWeight="700"
               >
-                {robot.team}
+                {robot.label ?? robot.team}
               </text>
               <text y="22" textAnchor="middle" fill="white" fontSize="16">
                 {robot.station}

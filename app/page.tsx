@@ -35,6 +35,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
+  initialPlaceholderRobotMarkers,
   initialRobotMarkers,
   TacticalBoard,
   type TacticalBoardData,
@@ -444,8 +445,8 @@ type MatchPlan = {
 const emptyMatchPlan: MatchPlan = {
   notes: '',
   absentTeams: [],
-  board: { robots: [], strokes: [] },
-  autoBoard: { robots: [], strokes: [] },
+  board: { robots: initialPlaceholderRobotMarkers(), strokes: [] },
+  autoBoard: { robots: initialPlaceholderRobotMarkers(), strokes: [] },
 };
 
 function planForMatch(
@@ -3393,7 +3394,7 @@ export default function Home() {
               <CardContent className="flex flex-col gap-5">
                 {!planFullscreen && (
                   <>
-                    {planningMatches.length > 0 ? (
+                    {planningMatches.length > 0 && (
                       <div className="flex items-center gap-3">
                         <label
                           className="shrink-0 font-semibold"
@@ -3418,13 +3419,6 @@ export default function Home() {
                             </option>
                           ))}
                         </select>
-                      </div>
-                    ) : (
-                      <div>
-                        <p className="font-semibold">One-off strategy board</p>
-                        <p className="text-sm text-muted-foreground">
-                          Temporary drawing; it won&apos;t be saved.
-                        </p>
                       </div>
                     )}
                     <div className="grid grid-cols-3 gap-1">
