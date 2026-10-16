@@ -8,7 +8,6 @@ import {
   ChevronRight,
   CircleUserRound,
   ClipboardList,
-  Cloud,
   CloudOff,
   Film,
   Maximize2,
@@ -67,6 +66,7 @@ import {
   type PendingMutation,
 } from '@/lib/offline-db';
 import { observedPoints, type ScoutingPayload } from '@/lib/scouting-metrics';
+import { isPitReportComplete } from '@/lib/pit-scouting';
 import {
   canManageAssignments,
   canReopenEntries,
@@ -154,8 +154,8 @@ type PitDraft = {
   drivetrain: string;
   swerveModule: string;
   motorTypes: string;
-  weightLbs: number;
-  fuelCapacity: number;
+  weightLbs: number | null;
+  fuelCapacity: number | null;
   climbCapability: string;
   fieldAccess: string;
   fieldAccessPreference: string;
@@ -176,7 +176,7 @@ type PitEntry = {
   swerveModule: string | null;
   motorTypes: string[];
   weightLbs: number | null;
-  payload: Partial<PitDraft>;
+  payload: Partial<PitDraft> & { complete?: boolean };
   photoObjectKey: string | null;
   updatedAt: number;
 };
@@ -184,8 +184,8 @@ const emptyPitDraft: PitDraft = {
   drivetrain: 'Swerve',
   swerveModule: '',
   motorTypes: '',
-  weightLbs: 0,
-  fuelCapacity: 0,
+  weightLbs: null,
+  fuelCapacity: null,
   climbCapability: 'None',
   fieldAccess: 'Both',
   fieldAccessPreference: 'No preference',
@@ -198,6 +198,18 @@ const emptyPitDraft: PitDraft = {
   autonomousNotes: '',
   notes: '',
 };
+
+function isPitEntryComplete(entry: PitEntry) {
+  if (typeof entry.payload.complete === 'boolean')
+    return entry.payload.complete;
+  return isPitReportComplete({
+    ...entry.payload,
+    drivetrain: entry.drivetrain,
+    swerveModule: entry.swerveModule,
+    motorTypes: entry.motorTypes,
+    weightLbs: entry.weightLbs,
+  });
+}
 
 function normalizeSelections(value: unknown, fallback: string): string[] {
   if (Array.isArray(value)) {
@@ -712,6 +724,7 @@ export default function Home() {
   const [pitDraft, setPitDraft] = useState<PitDraft>(emptyPitDraft);
   const [pitReady, setPitReady] = useState(false);
   const [pitMessage, setPitMessage] = useState('');
+  const pitSavedSnapshotRef = useRef('');
   const [pitPhoto, setPitPhoto] = useState<File | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoVersion, setPhotoVersion] = useState(0);
@@ -1393,7 +1406,7 @@ export default function Home() {
               drivetrain: serverEntry.drivetrain ?? 'Swerve',
               swerveModule: serverEntry.swerveModule ?? '',
               motorTypes: serverEntry.motorTypes.join(', '),
-              weightLbs: serverEntry.weightLbs ?? 0,
+              weightLbs: serverEntry.weightLbs ?? null,
             }
           : emptyPitDraft;
         const savedDraft = draft?.payload ?? serverDraft;
@@ -1401,7 +1414,7 @@ export default function Home() {
           ...emptyPitDraft,
           ...savedDraft,
         };
-        setPitDraft({
+        const normalizedDraft = {
           ...loadedDraft,
           shooterMount:
             (savedDraft as Partial<PitDraft>).shooterMount ?? 'Fixed',
@@ -1413,15 +1426,18 @@ export default function Home() {
             loadedDraft.autonomousSwipe,
             'None',
           ),
-        });
+        };
+        pitSavedSnapshotRef.current = JSON.stringify(normalizedDraft);
+        setPitDraft(normalizedDraft);
         setPitReady(true);
       })
       .catch(() => {
+        pitSavedSnapshotRef.current = JSON.stringify(emptyPitDraft);
         setPitDraft(emptyPitDraft);
         setPitReady(true);
         setPitMessage('Offline storage is unavailable on this device.');
       });
-  }, [eventPack, pitDraftId, pitTeam]);
+  }, [eventPack?.event.key, pitDraftId, pitTeam]);
 
   useEffect(() => {
     if (!pitReady || !pitDraftId) return;
@@ -1436,6 +1452,17 @@ export default function Home() {
     );
     return () => window.clearTimeout(timer);
   }, [pitDraft, pitDraftId, pitReady]);
+
+  useEffect(() => {
+    if (!pitReady || !pitDraftId || !eventPack || !pitTeam) return;
+    const snapshot = JSON.stringify(pitDraft);
+    if (snapshot === pitSavedSnapshotRef.current) return;
+    const timer = window.setTimeout(() => {
+      pitSavedSnapshotRef.current = snapshot;
+      void savePitReport(pitDraft, true);
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [eventPack, pitDraft, pitDraftId, pitReady, pitTeam]);
 
   async function submitMatch() {
     if (!draftId || !eventPack || !currentMatch || !selectedTeam) {
@@ -1539,16 +1566,13 @@ export default function Home() {
     }
   }
 
-  async function submitPit() {
+  async function savePitReport(draft: PitDraft, automatic = false) {
     if (!eventPack || !pitTeam) {
       setPitMessage('Choose a team first.');
-      return;
-    }
-    if (pitDraft.weightLbs <= 0) {
-      setPitMessage('Enter the robot weight before saving the pit report.');
-      return;
+      return false;
     }
     const id = `pit:${eventPack.event.key}:${pitTeam}`;
+    const complete = isPitReportComplete(draft);
     try {
       await queueMutation({
         id,
@@ -1562,22 +1586,60 @@ export default function Home() {
           teamNumber: pitTeam,
           seasonYear: eventPack.event.year,
           schemaVersion: 1,
-          ...pitDraft,
-          motorTypes: pitDraft.motorTypes
+          ...draft,
+          complete,
+          motorTypes: draft.motorTypes
             .split(',')
             .map((motor) => motor.trim())
             .filter(Boolean),
         },
       });
       setQueuedCount((await getPendingMutations()).length);
+      const updatedAt = Date.now();
+      setEventPack((current) => {
+        if (!current) return current;
+        const existing = current.pitEntries.find(
+          (entry) => entry.teamNumber === pitTeam,
+        );
+        const entry: PitEntry = {
+          teamNumber: pitTeam,
+          scoutUserId: current.userId,
+          scoutName: session?.user.name ?? 'You',
+          drivetrain: draft.drivetrain,
+          swerveModule: draft.swerveModule || null,
+          motorTypes: draft.motorTypes
+            .split(',')
+            .map((motor) => motor.trim())
+            .filter(Boolean),
+          weightLbs: draft.weightLbs,
+          payload: { ...draft, complete },
+          photoObjectKey: existing?.photoObjectKey ?? null,
+          updatedAt,
+        };
+        return {
+          ...current,
+          pitEntries: [
+            ...current.pitEntries.filter(
+              (candidate) => candidate.teamNumber !== pitTeam,
+            ),
+            entry,
+          ],
+        };
+      });
       setPitMessage(
-        online
-          ? 'Pit report queued and ready to synchronize.'
-          : 'Pit report saved offline. It will synchronize when connected.',
+        automatic
+          ? complete
+            ? 'Saved automatically.'
+            : 'Saved automatically · In Progress'
+          : online
+            ? 'Pit report queued and ready to synchronize.'
+            : 'Pit report saved offline. It will synchronize when connected.',
       );
       if (online) await syncNow();
+      return true;
     } catch {
       setPitMessage('Could not save this pit report.');
+      return false;
     }
   }
 
@@ -1595,7 +1657,7 @@ export default function Home() {
     setPhotoUploading(true);
     setPitMessage('Saving the pit report before uploading…');
     try {
-      await submitPit();
+      if (!(await savePitReport(pitDraft))) return;
       const form = new FormData();
       form.set('teamNumber', String(pitTeam));
       form.set('photo', pitPhoto);
@@ -2099,7 +2161,7 @@ export default function Home() {
         ? `${matchHeaderLabel(currentMatch)} · ${selectedStation.replace('red', 'Red ').replace('blue', 'Blue ')}${selectedTeam ? ` · Team ${selectedTeam}` : ''}`
         : 'Choose a station'
       : activeView === 'Pit'
-        ? `Pit Scouting · ${eventPack?.pitEntries.length ?? 0}/${eventTeams.length}`
+        ? `Pit Scouting · ${eventPack?.pitEntries.filter(isPitEntryComplete).length ?? 0}/${eventTeams.length}`
         : activeView === 'Plan' && currentPlanningMatch
           ? `Plan · ${matchHeaderLabel(currentPlanningMatch)}`
           : activeView;
@@ -2900,7 +2962,9 @@ export default function Home() {
                     <option value={team} key={team}>
                       Team {team} -{' '}
                       {entry
-                        ? `Scouted by ${entry.scoutName}`
+                        ? isPitEntryComplete(entry)
+                          ? `Scouted by ${entry.scoutName}`
+                          : 'In Progress'
                         : 'Needs Scouting'}
                     </option>
                   );
@@ -2913,7 +2977,7 @@ export default function Home() {
                   const entry = eventPack?.pitEntries.find(
                     (entry) => entry.teamNumber === team,
                   );
-                  const complete = Boolean(entry);
+                  const complete = entry ? isPitEntryComplete(entry) : false;
                   return (
                     <button
                       type="button"
@@ -2933,7 +2997,7 @@ export default function Home() {
                       </strong>
                       <span className="pit-queue-status">
                         {entry
-                          ? `Scouted by ${entry.scoutName} · ${new Date(entry.updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
+                          ? `${complete ? `Scouted by ${entry.scoutName}` : `In Progress · ${entry.scoutName}`} · ${new Date(entry.updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
                           : 'Needs scouting'}
                       </span>
                       {complete ? <Check /> : <ChevronRight />}
@@ -2960,7 +3024,13 @@ export default function Home() {
                     (entry) => entry.teamNumber === pitTeam,
                   ) && (
                     <p className="text-sm text-muted-foreground">
-                      Scouted by{' '}
+                      {isPitEntryComplete(
+                        eventPack.pitEntries.find(
+                          (entry) => entry.teamNumber === pitTeam,
+                        )!,
+                      )
+                        ? 'Scouted by '
+                        : 'In Progress · '}
                       {
                         eventPack.pitEntries.find(
                           (entry) => entry.teamNumber === pitTeam,
@@ -3040,11 +3110,13 @@ export default function Home() {
                             min="1"
                             inputMode="decimal"
                             required
-                            value={pitDraft.weightLbs || ''}
+                            value={pitDraft.weightLbs ?? ''}
                             onChange={(event) =>
                               setPitDraft({
                                 ...pitDraft,
-                                weightLbs: Number(event.target.value),
+                                weightLbs: event.target.value
+                                  ? Number(event.target.value)
+                                  : null,
                               })
                             }
                           />
@@ -3060,11 +3132,13 @@ export default function Home() {
                           type="number"
                           min="0"
                           inputMode="numeric"
-                          value={pitDraft.fuelCapacity || ''}
+                          value={pitDraft.fuelCapacity ?? ''}
                           onChange={(event) =>
                             setPitDraft({
                               ...pitDraft,
-                              fuelCapacity: Number(event.target.value),
+                              fuelCapacity: event.target.value
+                                ? Number(event.target.value)
+                                : null,
                             })
                           }
                         />
@@ -3351,14 +3425,6 @@ export default function Home() {
                         </Button>
                       </div>
                     </div>
-                    <Button
-                      className="w-full sm:w-auto"
-                      disabled={!pitReady}
-                      onClick={() => void submitPit()}
-                    >
-                      <Cloud />
-                      Save pit report
-                    </Button>
                     {pitMessage && (
                       <p
                         className="text-sm text-muted-foreground"
