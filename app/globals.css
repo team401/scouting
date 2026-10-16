@@ -958,14 +958,14 @@ select option {
     flex-wrap: nowrap;
   }
   .scout-form .counter-controls [data-slot='button'] {
-    width: 40px;
-    height: 40px;
-    min-height: 40px;
+    width: 48px;
+    height: 48px;
+    min-height: 48px;
     padding-inline: 8px;
   }
   .scout-form .counter-input {
-    width: 48px;
-    height: 40px;
+    width: 52px;
+    height: 48px;
     font-size: 1.1rem;
   }
   .scout-form .choice {
@@ -988,16 +988,17 @@ select option {
 }
 @media (max-width: 520px) {
   .scout-form .counter-row {
-    align-items: center;
-    flex-direction: row;
+    align-items: stretch;
+    flex-direction: column;
   }
   .scout-form .counter-row > div:first-child {
-    min-width: 5.25rem;
+    min-width: 0;
   }
   .scout-form .counter-controls {
-    width: auto;
+    width: 100%;
     min-width: 0;
-    margin-left: auto;
+    margin-left: 0;
+    justify-content: space-between;
   }
 }
 @media (max-width: 390px) {

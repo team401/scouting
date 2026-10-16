@@ -546,6 +546,7 @@ function Counter({
             type="button"
             key={amount}
             variant="outline"
+            className="h-12 min-w-12 px-3 text-base"
             onClick={() => onChange(value + amount)}
           >
             +{amount}
@@ -556,6 +557,7 @@ function Counter({
           aria-label={`Remove one ${label}`}
           size="icon-lg"
           variant="outline"
+          className="size-12"
           onClick={() => onChange(Math.max(0, value - 1))}
         >
           <Minus />
@@ -575,6 +577,7 @@ function Counter({
           type="button"
           aria-label={`Add one ${label}`}
           size="icon-lg"
+          className="size-12"
           onClick={() => onChange(value + 1)}
         >
           <Plus />
@@ -2563,8 +2566,8 @@ export default function Home() {
                             key={item}
                             className={
                               autoTower === item
-                                ? 'choice selected h-9 min-h-0 px-3 text-sm'
-                                : 'choice h-9 min-h-0 px-3 text-sm'
+                                ? 'choice selected h-12 min-h-12 px-4 text-base'
+                                : 'choice h-12 min-h-12 px-4 text-base'
                             }
                           >
                             {autoTower === item && <Check />}
