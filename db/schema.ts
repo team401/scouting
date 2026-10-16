@@ -268,6 +268,7 @@ export const eventTeams = sqliteTable(
       .references(() => events.id, { onDelete: 'cascade' }),
     teamNumber: integer('team_number').notNull(),
     name: text('name').notNull(),
+    nameOverride: text('name_override'),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
   },
   (table) => [

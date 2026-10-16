@@ -48,6 +48,7 @@ import { TeamTrendChart, type TeamTrend } from '@/components/team-trend-chart';
 import { ScoutingOperations } from '@/components/scouting-operations';
 import { PersonalEventSchedule } from '@/components/event-role-scheduler';
 import { EventScheduleBoard } from '@/components/event-schedule-board';
+import { EventTeamAliases } from '@/components/event-team-aliases';
 import { QrRelay } from '@/components/qr-relay';
 import { MatchSubmissionQr } from '@/components/match-submission-qr';
 import { GuestPassManager } from '@/components/guest-pass-manager';
@@ -103,9 +104,15 @@ type EventPack = {
     name: string;
     updatedAt: number;
     timezone: string | null;
+    eventType: number | null;
   };
   matches: EventMatch[];
-  teams: { teamNumber: number; name: string }[];
+  teams: {
+    teamNumber: number;
+    name: string;
+    sourceName: string;
+    customName: string | null;
+  }[];
   assignments: {
     matchId: string;
     teamNumber: number;
@@ -3695,7 +3702,12 @@ export default function Home() {
         {activeView === 'Admin' &&
           isAdmin &&
           adminSection === 'assignments' && (
-            <div className="p-4 sm:p-6">
+            <div className="grid gap-4 p-4 sm:p-6">
+              <EventTeamAliases
+                eventType={eventPack?.event.eventType ?? null}
+                teams={eventPack?.teams ?? []}
+                onChanged={() => loadEventPack(false, true)}
+              />
               <EventScheduleBoard
                 members={eventPack?.members ?? []}
                 eventKey={eventPack?.event.key ?? ''}

@@ -18,6 +18,7 @@ type EventRow = {
   name: string;
   updated_at: number;
   timezone: string | null;
+  event_type: number | null;
 };
 type MatchRow = {
   id: string;
@@ -128,7 +129,7 @@ export async function GET(request: Request) {
     .bind(identity.membership.organization_id)
     .all();
   let event = await env.DB.prepare(
-    'SELECT id, season_year, tba_event_key, name, updated_at, timezone FROM events WHERE organization_id = ? AND is_current = 1 LIMIT 1',
+    'SELECT id, season_year, tba_event_key, name, updated_at, timezone, event_type FROM events WHERE organization_id = ? AND is_current = 1 LIMIT 1',
   )
     .bind(identity.membership.organization_id)
     .first<EventRow>();
@@ -159,7 +160,7 @@ export async function GET(request: Request) {
     ).catch(() => undefined);
     event =
       (await env.DB.prepare(
-        'SELECT id, season_year, tba_event_key, name, updated_at, timezone FROM events WHERE organization_id = ? AND is_current = 1 LIMIT 1',
+        'SELECT id, season_year, tba_event_key, name, updated_at, timezone, event_type FROM events WHERE organization_id = ? AND is_current = 1 LIMIT 1',
       )
         .bind(identity.membership.organization_id)
         .first<EventRow>()) ?? event;
@@ -170,7 +171,9 @@ export async function GET(request: Request) {
     .bind(identity.membership.organization_id, event.id)
     .all<MatchRow>();
   const teams = await env.DB.prepare(
-    'SELECT team_number AS teamNumber, name FROM event_teams WHERE organization_id = ? AND event_id = ? ORDER BY team_number',
+    `SELECT team_number AS teamNumber, COALESCE(name_override, name) AS name,
+      name AS sourceName, name_override AS customName
+     FROM event_teams WHERE organization_id = ? AND event_id = ? ORDER BY team_number`,
   )
     .bind(identity.membership.organization_id, event.id)
     .all<{ teamNumber: number; name: string }>();
@@ -262,6 +265,7 @@ export async function GET(request: Request) {
       name: event.name,
       updatedAt: event.updated_at,
       timezone: event.timezone,
+      eventType: event.event_type,
     },
     matches: normalizedMatches,
     teams: teams.results,
