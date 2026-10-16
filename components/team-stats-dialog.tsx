@@ -18,7 +18,7 @@ export type TeamStatsSummary = {
   xAuto?: number | null;
   xTele?: number | null;
   xEnd?: number | null;
-  opr?: number | null;
+  epa?: number | null;
   eventRank?: number | null;
   medianPoints?: number;
   medianActiveFuel?: number;
@@ -188,9 +188,9 @@ export function TeamStatsDialog({
               metricRank(eventSummaries, teamNumber, 'xEnd'),
             ],
             [
-              'TBA OPR',
-              number(stats.opr),
-              metricRank(eventSummaries, teamNumber, 'opr'),
+              'Match13 EPA',
+              number(stats.epa),
+              metricRank(eventSummaries, teamNumber, 'epa'),
             ],
             [
               'Median points',
