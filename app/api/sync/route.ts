@@ -73,6 +73,7 @@ const pitPayloadSchema = z.object({
     .max(3)
     .default(['None']),
   autonomousDepot: z.boolean().default(false),
+  autonomousOutpost: z.boolean().default(false),
   complete: z.boolean().default(false),
   autonomousNotes: z.string().max(500).default(''),
   notes: z.string().max(2000),

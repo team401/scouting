@@ -13,6 +13,7 @@ type PitReportFields = {
   autonomousStart?: unknown;
   autonomousSwipe?: unknown;
   autonomousDepot?: unknown;
+  autonomousOutpost?: unknown;
   autonomousNotes?: unknown;
   notes?: unknown;
 };
@@ -44,6 +45,7 @@ export function isPitReportComplete(report: PitReportFields) {
     report.autonomousStart.length > 0 &&
     Array.isArray(report.autonomousSwipe) &&
     report.autonomousSwipe.length > 0 &&
-    typeof report.autonomousDepot === 'boolean',
+    typeof report.autonomousDepot === 'boolean' &&
+    typeof report.autonomousOutpost === 'boolean',
   );
 }

@@ -17,6 +17,7 @@ const completeReport = {
   autonomousStart: ['Unknown'],
   autonomousSwipe: ['None'],
   autonomousDepot: false,
+  autonomousOutpost: false,
 };
 
 void test('pit reports are complete when every non-notes field is filled', () => {

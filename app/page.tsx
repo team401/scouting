@@ -165,6 +165,7 @@ type PitDraft = {
   autonomousStart: string[];
   autonomousSwipe: string[];
   autonomousDepot: boolean;
+  autonomousOutpost: boolean;
   autonomousNotes: string;
   notes: string;
 };
@@ -195,6 +196,7 @@ const emptyPitDraft: PitDraft = {
   autonomousStart: ['Unknown'],
   autonomousSwipe: ['None'],
   autonomousDepot: false,
+  autonomousOutpost: false,
   autonomousNotes: '',
   notes: '',
 };
@@ -3343,23 +3345,42 @@ export default function Home() {
                           )}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        className={
-                          pitDraft.autonomousDepot
-                            ? 'choice selected w-full'
-                            : 'choice w-full'
-                        }
-                        onClick={() =>
-                          setPitDraft({
-                            ...pitDraft,
-                            autonomousDepot: !pitDraft.autonomousDepot,
-                          })
-                        }
-                      >
-                        {pitDraft.autonomousDepot && <Check />}
-                        Uses depot in autonomous
-                      </button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          className={
+                            pitDraft.autonomousDepot
+                              ? 'choice selected'
+                              : 'choice'
+                          }
+                          onClick={() =>
+                            setPitDraft({
+                              ...pitDraft,
+                              autonomousDepot: !pitDraft.autonomousDepot,
+                            })
+                          }
+                        >
+                          {pitDraft.autonomousDepot && <Check />}
+                          Auto Depot
+                        </button>
+                        <button
+                          type="button"
+                          className={
+                            pitDraft.autonomousOutpost
+                              ? 'choice selected'
+                              : 'choice'
+                          }
+                          onClick={() =>
+                            setPitDraft({
+                              ...pitDraft,
+                              autonomousOutpost: !pitDraft.autonomousOutpost,
+                            })
+                          }
+                        >
+                          {pitDraft.autonomousOutpost && <Check />}
+                          Auto Outpost
+                        </button>
+                      </div>
                       <label className="grid gap-1 text-sm">
                         Auto Notes
                         <textarea
@@ -3742,6 +3763,9 @@ export default function Home() {
                                     .filter((item) => item !== 'None')
                                     .join(', ') || null,
                                   pit.payload.autonomousDepot ? 'Depot' : null,
+                                  pit.payload.autonomousOutpost
+                                    ? 'Outpost'
+                                    : null,
                                 ]
                                   .filter(Boolean)
                                   .join(' · ') || '—'}
