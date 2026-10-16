@@ -541,17 +541,6 @@ function Counter({
         <p className="font-semibold">{label}</p>
       </div>
       <div className="counter-controls">
-        {quickAdds.map((amount) => (
-          <Button
-            type="button"
-            key={amount}
-            variant="outline"
-            className="h-12 min-w-12 px-3 text-base"
-            onClick={() => onChange(value + amount)}
-          >
-            +{amount}
-          </Button>
-        ))}
         <Button
           type="button"
           aria-label={`Remove one ${label}`}
@@ -582,6 +571,22 @@ function Counter({
         >
           <Plus />
         </Button>
+        {[0, 1].map((index) => {
+          const amount = quickAdds[index];
+          return amount ? (
+            <Button
+              type="button"
+              key={index}
+              variant="outline"
+              className="h-12 min-w-12 px-3 text-base"
+              onClick={() => onChange(value + amount)}
+            >
+              +{amount}
+            </Button>
+          ) : (
+            <span className="size-12" aria-hidden="true" key={index} />
+          );
+        })}
       </div>
     </div>
   );

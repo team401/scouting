@@ -241,14 +241,14 @@ select option {
   padding: 14px 16px;
 }
 .counter-controls {
-  display: flex;
+  display: grid;
+  grid-template-columns: 48px 52px 48px 48px 48px;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  flex-wrap: wrap;
 }
 .counter-input {
-  width: 58px;
+  width: 52px;
   height: 48px;
   border: 1px solid var(--border);
   border-radius: 9px;
@@ -955,7 +955,6 @@ select option {
   }
   .scout-form .counter-controls {
     gap: 5px;
-    flex-wrap: nowrap;
   }
   .scout-form .counter-controls [data-slot='button'] {
     width: 48px;
@@ -998,7 +997,7 @@ select option {
     width: 100%;
     min-width: 0;
     margin-left: 0;
-    justify-content: space-between;
+    justify-content: end;
   }
 }
 @media (max-width: 390px) {
