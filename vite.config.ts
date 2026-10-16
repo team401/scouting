@@ -60,6 +60,9 @@ export default defineConfig(async ({ mode }) => {
 
   return {
     css: { postcss: { plugins: [tailwindcss()] } },
+    optimizeDeps: {
+      exclude: ['vinext/dist/shims/internal/app-prefetch-fetch-queue.js'],
+    },
     plugins: [
       vinext(),
       cloudflare({
