@@ -15,7 +15,14 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/components/ui/combobox';
 import type { TeamTrend } from '@/components/team-trend-chart';
 
 export type ComparisonTeam = {
@@ -76,6 +83,10 @@ export function TeamComparison({
 
   const teamMap = useMemo(
     () => new Map(teams.map((team) => [team.teamNumber, team])),
+    [teams],
+  );
+  const teamNumbers = useMemo(
+    () => teams.map((team) => String(team.teamNumber)),
     [teams],
   );
   const selectedMatch = matches.find((match) => match.key === selectedMatchKey);
@@ -187,23 +198,34 @@ export function TeamComparison({
               else setMessage('Enter a valid team number.');
             }}
           >
-            <Input
-              aria-label="Team number to compare"
-              inputMode="numeric"
-              list="comparison-teams"
-              placeholder="Team number"
-              value={teamInput}
-              onChange={(event) =>
-                setTeamInput(event.target.value.replace(/\D/g, ''))
+            <Combobox
+              items={teamNumbers}
+              value={null}
+              inputValue={teamInput}
+              onInputValueChange={(value) =>
+                setTeamInput(value.replace(/\D/g, ''))
               }
-            />
-            <datalist id="comparison-teams">
-              {teams.map((team) => (
-                <option key={team.teamNumber} value={team.teamNumber}>
-                  Team {team.teamNumber}
-                </option>
-              ))}
-            </datalist>
+              onValueChange={(value) => {
+                if (value) addTeam(Number(value));
+              }}
+            >
+              <ComboboxInput
+                aria-label="Team number to compare"
+                inputMode="numeric"
+                placeholder="Team number"
+                className="w-full"
+              />
+              <ComboboxContent>
+                <ComboboxEmpty>No matching teams</ComboboxEmpty>
+                <ComboboxList>
+                  {(teamNumber: string) => (
+                    <ComboboxItem key={teamNumber} value={teamNumber}>
+                      Team {teamNumber}
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
             <Button type="submit" variant="outline">
               <Plus /> Add
             </Button>

@@ -1996,14 +1996,18 @@ export default function Home() {
 
   if (isPending || !session) return null;
 
+  const stationOptions = currentMatch
+    ? [
+        ...currentMatch.alliances.red.map((_, index) => `red${index + 1}`),
+        ...currentMatch.alliances.blue.map((_, index) => `blue${index + 1}`),
+      ]
+    : [];
   const scoutAlliance =
-    activeView !== 'Scout'
+    activeView !== 'Scout' || !stationOptions.includes(selectedStation)
       ? undefined
       : selectedStation.startsWith('red')
         ? 'red'
-        : selectedStation.startsWith('blue')
-          ? 'blue'
-          : undefined;
+        : 'blue';
 
   return (
     <main className="app-shell" data-scout-alliance={scoutAlliance}>
@@ -3081,17 +3085,9 @@ export default function Home() {
                     <div className="space-y-3 rounded-lg border p-3">
                       <div>
                         <p className="font-semibold">Autonomous capabilities</p>
-                        <p className="text-xs text-muted-foreground">
-                          Select every routine the robot can run.
-                        </p>
                       </div>
                       <div>
                         <p className="text-sm">Starting positions</p>
-                        <p className="mb-2 text-xs text-muted-foreground">
-                          Select every position the robot has an autonomous
-                          routine for. Left and right are viewed from the driver
-                          station.
-                        </p>
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
                           {[
                             'Left trench',
@@ -3806,7 +3802,6 @@ export default function Home() {
             <Card className="sm:col-span-2">
               <CardHeader>
                 <CardTitle>Event Data</CardTitle>
-                <Badge variant="outline">{strategyTeams.length} teams</Badge>
               </CardHeader>
               <CardContent className="max-h-96 overflow-auto">
                 <div className="strategy-table">
