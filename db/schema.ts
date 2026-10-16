@@ -157,6 +157,7 @@ export const guestAccessPasses = sqliteTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     tokenHash: text('token_hash').notNull(),
+    tokenCode: text('token_code'),
     expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
     revokedAt: integer('revoked_at', { mode: 'timestamp_ms' }),
     createdBy: text('created_by')
@@ -402,6 +403,64 @@ export const eventRoleAssignments = sqliteTable(
   ],
 );
 
+export const publishedEventRoleAssignments = sqliteTable(
+  'published_event_role_assignments',
+  {
+    id: text('id').primaryKey(),
+    organizationId: text('organization_id').notNull(),
+    eventId: text('event_id').notNull(),
+    userId: text('user_id').notNull(),
+    role: text('role').notNull(),
+    startsAt: integer('starts_at', { mode: 'timestamp_ms' }).notNull(),
+    endsAt: integer('ends_at', { mode: 'timestamp_ms' }).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    index('idx_published_event_roles_event_time').on(
+      table.eventId,
+      table.startsAt,
+      table.endsAt,
+    ),
+    index('idx_published_event_roles_user_time').on(
+      table.userId,
+      table.startsAt,
+      table.endsAt,
+    ),
+  ],
+);
+
+export const publishedScoutShifts = sqliteTable(
+  'published_scout_shifts',
+  {
+    id: text('id').primaryKey(),
+    organizationId: text('organization_id').notNull(),
+    eventId: text('event_id').notNull(),
+    station: text('station').notNull(),
+    scoutUserId: text('scout_user_id').notNull(),
+    startsAt: integer('starts_at', { mode: 'timestamp_ms' }).notNull(),
+    endsAt: integer('ends_at', { mode: 'timestamp_ms' }).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    index('idx_published_scout_shifts_event_time').on(
+      table.eventId,
+      table.startsAt,
+      table.endsAt,
+    ),
+  ],
+);
+
+export const eventSchedulePublications = sqliteTable(
+  'event_schedule_publications',
+  {
+    eventId: text('event_id').primaryKey(),
+    publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
+    draftUpdatedAt: integer('draft_updated_at', {
+      mode: 'timestamp_ms',
+    }).notNull(),
+  },
+);
+
 export const eventAttendees = sqliteTable(
   'event_attendees',
   {
@@ -430,6 +489,12 @@ export const eventScheduleDays = sqliteTable(
     date: text('date').notNull(),
     startHour: integer('start_hour').notNull(),
     endHour: integer('end_hour').notNull(),
+    scoutingEnabled: integer('scouting_enabled', { mode: 'boolean' })
+      .notNull()
+      .default(true),
+    outreachEnabled: integer('outreach_enabled', { mode: 'boolean' })
+      .notNull()
+      .default(true),
   },
   (table) => [primaryKey({ columns: [table.eventId, table.date] })],
 );

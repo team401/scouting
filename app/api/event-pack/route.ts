@@ -209,7 +209,7 @@ export async function GET(request: Request) {
     }>();
   const scoutShifts = await env.DB.prepare(
     `SELECT id, station, starts_at AS startsAt, ends_at AS endsAt
-     FROM scout_shifts WHERE organization_id = ? AND event_id = ? AND scout_user_id = ?
+     FROM published_scout_shifts WHERE organization_id = ? AND event_id = ? AND scout_user_id = ?
      ORDER BY starts_at`,
   )
     .bind(

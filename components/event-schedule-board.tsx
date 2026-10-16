@@ -47,7 +47,13 @@ type ScheduleItem = {
   endsAt: number;
   kind: 'role' | 'scouting';
 };
-type ScheduleDay = { date: string; startHour: number; endHour: number };
+type ScheduleDay = {
+  date: string;
+  startHour: number;
+  endHour: number;
+  scoutingEnabled?: boolean | number;
+  outreachEnabled?: boolean | number;
+};
 type ScheduleCache = {
   roles: RoleItem[];
   scouting: ScoutItem[];
@@ -403,67 +409,71 @@ export function EventScheduleBoard({
   const [busyCell, setBusyCell] = useState('');
   const [attendeeIds, setAttendeeIds] = useState<Set<string>>(new Set());
   const [attendanceLoaded, setAttendanceLoaded] = useState(false);
+  const [rosterOpen, setRosterOpen] = useState(false);
+  const [rosterMessage, setRosterMessage] = useState('');
+  const [publishedAt, setPublishedAt] = useState<number | null>(null);
+  const [hasUnpublishedChanges, setHasUnpublishedChanges] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const attendanceDirtyRef = useRef(false);
   const freshLoadedRef = useRef(false);
   const [controls, setControls] = useState<EventControls>({
     scoutingEnabled: true,
     outreachEnabled: true,
   });
-
-  useEffect(() => {
-    void fetch('/api/event-controls')
-      .then(async (response) => {
-        const body = await readBody<
-          Partial<EventControls> & { error?: string }
-        >(response);
-        if (!response.ok)
-          throw new Error(body.error ?? 'Could not load event controls.');
-        setControls({
-          scoutingEnabled: body.scoutingEnabled ?? true,
-          outreachEnabled: body.outreachEnabled ?? true,
-        });
-      })
-      .catch((error: unknown) =>
-        setMessage(
-          error instanceof Error
-            ? error.message
-            : 'Could not load event controls.',
-        ),
-      );
-  }, []);
+  const [defaultControls, setDefaultControls] = useState<EventControls>({
+    scoutingEnabled: true,
+    outreachEnabled: true,
+  });
 
   async function changeControls(next: EventControls) {
     const previous = controls;
     setControls(next);
-    setMessage('');
+    const day = scheduleDays.find((item) => item.date === date);
+    if (!day) return;
     try {
-      const response = await fetch('/api/event-controls', {
+      const response = await fetch('/api/event-schedule-days', {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(next),
+        body: JSON.stringify({
+          date,
+          startHour,
+          endHour,
+          ...next,
+        }),
       });
       if (!response.ok) {
         const body = await readBody<{ error?: string }>(response);
-        throw new Error(body.error ?? 'Could not save event controls.');
+        throw new Error(body.error ?? 'Could not save day settings.');
       }
+      setScheduleDays((current) =>
+        current.map((item) =>
+          item.date === date ? { ...item, ...next } : item,
+        ),
+      );
     } catch (error) {
       setControls(previous);
       setMessage(
-        error instanceof Error
-          ? error.message
-          : 'Could not save event controls.',
+        error instanceof Error ? error.message : 'Could not save day settings.',
       );
     }
   }
 
   const load = useCallback(async () => {
-    const [rolesResponse, shiftsResponse, attendanceResponse, daysResponse] =
-      await Promise.all([
-        fetch('/api/event-schedule?all=1'),
-        fetch('/api/scout-shifts'),
-        fetch('/api/event-attendees'),
-        fetch('/api/event-schedule-days'),
-      ]);
+    const [
+      rolesResponse,
+      shiftsResponse,
+      attendanceResponse,
+      daysResponse,
+      controlsResponse,
+      publicationResponse,
+    ] = await Promise.all([
+      fetch('/api/event-schedule?all=1'),
+      fetch('/api/scout-shifts?all=1'),
+      fetch('/api/event-attendees'),
+      fetch('/api/event-schedule-days'),
+      fetch('/api/event-controls'),
+      fetch('/api/event-schedule-publish'),
+    ]);
     const rolesBody = await readBody<{
       assignments?: RoleItem[];
       error?: string;
@@ -481,6 +491,14 @@ export function EventScheduleBoard({
       days?: ScheduleDay[];
       error?: string;
     }>(daysResponse);
+    const controlsBody = await readBody<
+      Partial<EventControls> & { error?: string }
+    >(controlsResponse);
+    const publicationBody = await readBody<{
+      publishedAt?: number | null;
+      hasUnpublishedChanges?: boolean;
+      error?: string;
+    }>(publicationResponse);
     if (!rolesResponse.ok)
       throw new Error(rolesBody.error ?? 'Could not load event roles.');
     if (!shiftsResponse.ok)
@@ -491,6 +509,21 @@ export function EventScheduleBoard({
       );
     if (!daysResponse.ok)
       throw new Error(daysBody.error ?? 'Could not load event days.');
+    if (!controlsResponse.ok)
+      throw new Error(controlsBody.error ?? 'Could not load event controls.');
+    if (!publicationResponse.ok)
+      throw new Error(
+        publicationBody.error ?? 'Could not load publication status.',
+      );
+    setPublishedAt(publicationBody.publishedAt ?? null);
+    setHasUnpublishedChanges(
+      publicationBody.hasUnpublishedChanges ?? false,
+    );
+    const loadedDefaults = {
+      scoutingEnabled: controlsBody.scoutingEnabled ?? true,
+      outreachEnabled: controlsBody.outreachEnabled ?? true,
+    };
+    setDefaultControls(loadedDefaults);
     const loadedRoles = rolesBody.assignments ?? [];
     const loadedShifts = shiftsBody.shifts ?? [];
     setRoles(loadedRoles);
@@ -512,6 +545,16 @@ export function EventScheduleBoard({
       setDate(selected.date);
       setStartHour(selected.startHour);
       setEndHour(selected.endHour);
+      setControls({
+        scoutingEnabled: Boolean(
+          selected.scoutingEnabled ?? loadedDefaults.scoutingEnabled,
+        ),
+        outreachEnabled: Boolean(
+          selected.outreachEnabled ?? loadedDefaults.outreachEnabled,
+        ),
+      });
+    } else {
+      setControls(loadedDefaults);
     }
     freshLoadedRef.current = true;
     if (eventKey)
@@ -686,6 +729,7 @@ export function EventScheduleBoard({
       }
       if (!value) {
         void onChanged();
+        setHasUnpublishedChanges(true);
         return;
       }
       if (value.startsWith('station:')) {
@@ -694,6 +738,7 @@ export function EventScheduleBoard({
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
+            date,
             startsAt,
             endsAt,
             assignments: [{ station, scoutUserId: member.id }],
@@ -719,6 +764,7 @@ export function EventScheduleBoard({
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
+            date,
             userId: member.id,
             role,
             startsAt,
@@ -738,6 +784,7 @@ export function EventScheduleBoard({
           ]);
       }
       void onChanged();
+      setHasUnpublishedChanges(true);
     } catch (error) {
       await load().catch(() => undefined);
       setMessage(
@@ -796,7 +843,7 @@ export function EventScheduleBoard({
   }
 
   async function saveAttendance() {
-    setMessage('');
+    setRosterMessage('');
     const response = await fetch('/api/event-attendees', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
@@ -807,10 +854,11 @@ export function EventScheduleBoard({
       userIds?: string[];
     };
     if (!response.ok)
-      return setMessage(body.error ?? 'Could not save event attendance.');
+      return setRosterMessage(body.error ?? 'Could not save event attendance.');
     attendanceDirtyRef.current = false;
     setAttendeeIds(new Set(body.userIds ?? []));
-    setMessage('Event attendance saved.');
+    setRosterMessage('Saved');
+    setRosterOpen(false);
     await onChanged();
   }
 
@@ -818,6 +866,14 @@ export function EventScheduleBoard({
     setDate(day.date);
     setStartHour(day.startHour);
     setEndHour(day.endHour);
+    setControls({
+      scoutingEnabled: Boolean(
+        day.scoutingEnabled ?? defaultControls.scoutingEnabled,
+      ),
+      outreachEnabled: Boolean(
+        day.outreachEnabled ?? defaultControls.outreachEnabled,
+      ),
+    });
   }
 
   async function saveScheduleDay() {
@@ -825,7 +881,7 @@ export function EventScheduleBoard({
     const response = await fetch('/api/event-schedule-days', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ date, startHour, endHour }),
+      body: JSON.stringify({ date, startHour, endHour, ...controls }),
     });
     const body = (await response.json()) as {
       day?: ScheduleDay;
@@ -841,6 +897,28 @@ export function EventScheduleBoard({
       ),
     );
     setMessage('Event day saved.');
+  }
+
+  async function publishSchedule() {
+    setPublishing(true);
+    setMessage('');
+    const response = await fetch('/api/event-schedule-publish', {
+      method: 'POST',
+    });
+    const body = await readBody<{
+      publishedAt?: number;
+      hasUnpublishedChanges?: boolean;
+      error?: string;
+    }>(response);
+    setPublishing(false);
+    if (!response.ok || !body.publishedAt) {
+      setMessage(body.error ?? 'Could not publish the schedule.');
+      return;
+    }
+    setPublishedAt(body.publishedAt);
+    setHasUnpublishedChanges(false);
+    setMessage('Schedule published to the team.');
+    await onChanged();
   }
 
   async function removeScheduleDay(day: string) {
@@ -869,30 +947,24 @@ export function EventScheduleBoard({
   return (
     <Card className="mb-4 overflow-hidden">
       <CardContent className="space-y-3 px-0 sm:px-0">
-        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b px-3 pb-3 text-sm">
-          <span className="font-medium text-muted-foreground">
-            Open for assignment
-          </span>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <label className="flex items-center gap-2">
-              <Checkbox
-                checked={controls.scoutingEnabled}
-                onCheckedChange={(checked) =>
-                  void changeControls({ ...controls, scoutingEnabled: checked })
-                }
-              />
-              Scouting
-            </label>
-            <label className="flex items-center gap-2">
-              <Checkbox
-                checked={controls.outreachEnabled}
-                onCheckedChange={(checked) =>
-                  void changeControls({ ...controls, outreachEnabled: checked })
-                }
-              />
-              Outreach
-            </label>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-3 pb-3">
+          <div>
+            <p className="font-semibold">Draft schedule</p>
+            <p className="text-sm text-muted-foreground">
+              {hasUnpublishedChanges
+                ? 'Unpublished changes'
+                : publishedAt
+                  ? `Published ${new Date(publishedAt).toLocaleString()}`
+                  : 'Not published yet'}
+            </p>
           </div>
+          <Button
+            type="button"
+            disabled={publishing || (!hasUnpublishedChanges && publishedAt !== null)}
+            onClick={() => void publishSchedule()}
+          >
+            {publishing ? 'Publishing…' : publishedAt ? 'Publish changes' : 'Publish schedule'}
+          </Button>
         </div>
         <div className="grid gap-2 px-3 sm:grid-cols-3">
           <input
@@ -900,7 +972,15 @@ export function EventScheduleBoard({
             className="h-10 rounded-md border bg-background px-3"
             type="date"
             value={date}
-            onChange={(event) => setDate(event.target.value)}
+            onChange={(event) => {
+              const nextDate = event.target.value;
+              setDate(nextDate);
+              const existing = scheduleDays.find(
+                (day) => day.date === nextDate,
+              );
+              if (existing) selectScheduleDay(existing);
+              else setControls(defaultControls);
+            }}
           />
           <select
             aria-label="First displayed hour"
@@ -936,6 +1016,31 @@ export function EventScheduleBoard({
               </option>
             ))}
           </select>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-y px-3 py-2 text-sm">
+          <span className="font-medium text-muted-foreground">
+            Assignments for this day
+          </span>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <label className="flex items-center gap-2">
+              <Checkbox
+                checked={controls.scoutingEnabled}
+                onCheckedChange={(checked) =>
+                  void changeControls({ ...controls, scoutingEnabled: checked })
+                }
+              />
+              Scouting
+            </label>
+            <label className="flex items-center gap-2">
+              <Checkbox
+                checked={controls.outreachEnabled}
+                onCheckedChange={(checked) =>
+                  void changeControls({ ...controls, outreachEnabled: checked })
+                }
+              />
+              Outreach
+            </label>
+          </div>
         </div>
         <div className="flex items-center gap-2 px-3">
           {scheduleDays.length > 0 && (
@@ -991,9 +1096,18 @@ export function EventScheduleBoard({
             end.
           </p>
         )}
-        <details className="mx-3 rounded-lg border p-3">
+        <details
+          className="mx-3 rounded-lg border p-3"
+          open={rosterOpen}
+          onToggle={(event) => setRosterOpen(event.currentTarget.open)}
+        >
           <summary className="cursor-pointer font-semibold">
             People at this event · {activeMembers.length}
+            {rosterMessage && (
+              <span className="ml-3 font-normal text-muted-foreground">
+                {rosterMessage}
+              </span>
+            )}
           </summary>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button
@@ -1169,15 +1283,6 @@ export function EventScheduleBoard({
               ))}
             </tbody>
             <tfoot>
-              <tr className="border-t-2">
-                <td
-                  colSpan={hours.length + 4}
-                  className="bg-muted px-3 py-1 text-left text-xs font-semibold text-muted-foreground"
-                >
-                  Coverage per hour · amber means more people are needed; this
-                  is not an error
-                </td>
-              </tr>
               {coverageGrid.map(({ target, counts: perHour }) => (
                 <tr key={target.label}>
                   <th className="sticky left-0 z-20 whitespace-nowrap border-r border-b bg-background px-3 py-1 text-left text-xs font-medium">

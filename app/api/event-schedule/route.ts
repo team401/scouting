@@ -10,6 +10,10 @@ const createSchema = z.object({
   role: z.string().refine((value) => eventRoleNames.includes(value as never)),
   startsAt: z.number().int().positive(),
   endsAt: z.number().int().positive(),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
 });
 
 async function actor(request: Request) {
@@ -31,7 +35,9 @@ export async function GET(request: Request) {
       { status: 401 },
     );
   const event = await env.DB.prepare(
-    'SELECT id FROM events WHERE organization_id = ? AND is_current = 1 LIMIT 1',
+    `SELECT id, scouting_enabled AS scoutingEnabled,
+      outreach_enabled AS outreachEnabled
+     FROM events WHERE organization_id = ? AND is_current = 1 LIMIT 1`,
   )
     .bind(identity.membership.organizationId)
     .first<{ id: string }>();
@@ -39,12 +45,18 @@ export async function GET(request: Request) {
   const all =
     canManageAssignments(identity.membership.role) &&
     new URL(request.url).searchParams.get('all') === '1';
+  const assignmentTable = all
+    ? 'event_role_assignments'
+    : 'published_event_role_assignments';
   const result = await env.DB.prepare(
-    `SELECT era.id, era.user_id AS userId, users.name AS userName, era.role,
-      era.starts_at AS startsAt, era.ends_at AS endsAt
-     FROM event_role_assignments era JOIN users ON users.id = era.user_id
-     WHERE era.organization_id = ? AND era.event_id = ? ${all ? '' : 'AND era.user_id = ?'}
-     ORDER BY era.starts_at, users.name`,
+    `SELECT assignments.id, assignments.user_id AS userId,
+      users.name AS userName, assignments.role,
+      assignments.starts_at AS startsAt, assignments.ends_at AS endsAt
+     FROM ${assignmentTable} assignments
+     JOIN users ON users.id = assignments.user_id
+     WHERE assignments.organization_id = ? AND assignments.event_id = ?
+       ${all ? '' : 'AND assignments.user_id = ?'}
+     ORDER BY assignments.starts_at, users.name`,
   )
     .bind(
       ...(all
@@ -84,16 +96,31 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   const event = await env.DB.prepare(
-    'SELECT id FROM events WHERE organization_id = ? AND is_current = 1 LIMIT 1',
+    `SELECT id, scouting_enabled AS scoutingEnabled,
+      outreach_enabled AS outreachEnabled
+     FROM events WHERE organization_id = ? AND is_current = 1 LIMIT 1`,
   )
     .bind(identity.membership.organizationId)
     .first<{ id: string; scoutingEnabled: number; outreachEnabled: number }>();
   if (!event)
     return Response.json({ error: 'Load an event first.' }, { status: 409 });
+  const dayControls = parsed.data.date
+    ? await env.DB.prepare(
+        `SELECT scouting_enabled AS scoutingEnabled,
+          outreach_enabled AS outreachEnabled
+         FROM event_schedule_days WHERE event_id = ? AND date = ?`,
+      )
+        .bind(event.id, parsed.data.date)
+        .first<{ scoutingEnabled: number; outreachEnabled: number }>()
+    : null;
   if (
     !roleEnabled(parsed.data.role, {
-      scoutingEnabled: Boolean(event.scoutingEnabled),
-      outreachEnabled: Boolean(event.outreachEnabled),
+      scoutingEnabled: Boolean(
+        dayControls?.scoutingEnabled ?? event.scoutingEnabled,
+      ),
+      outreachEnabled: Boolean(
+        dayControls?.outreachEnabled ?? event.outreachEnabled,
+      ),
     })
   )
     return Response.json(
@@ -160,12 +187,12 @@ export async function POST(request: Request) {
     );
   const now = Date.now();
   const id = crypto.randomUUID();
-  await env.DB.prepare(
-    `INSERT INTO event_role_assignments
-     (id, organization_id, event_id, user_id, role, starts_at, ends_at, created_by, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  )
-    .bind(
+  await env.DB.batch([
+    env.DB.prepare(
+      `INSERT INTO event_role_assignments
+       (id, organization_id, event_id, user_id, role, starts_at, ends_at, created_by, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).bind(
       id,
       identity.membership.organizationId,
       event.id,
@@ -176,8 +203,12 @@ export async function POST(request: Request) {
       identity.session.user.id,
       now,
       now,
-    )
-    .run();
+    ),
+    env.DB.prepare(
+      `INSERT INTO event_schedule_publications (event_id, draft_updated_at)
+       VALUES (?, ?) ON CONFLICT(event_id) DO UPDATE SET draft_updated_at = excluded.draft_updated_at`,
+    ).bind(event.id, now),
+  ]);
   return Response.json({
     assignment: {
       id,
@@ -199,10 +230,22 @@ export async function DELETE(request: Request) {
   const id = new URL(request.url).searchParams.get('id');
   if (!id)
     return Response.json({ error: 'Choose a schedule item.' }, { status: 400 });
-  await env.DB.prepare(
-    'DELETE FROM event_role_assignments WHERE id = ? AND organization_id = ?',
+  const assignment = await env.DB.prepare(
+    'SELECT event_id AS eventId FROM event_role_assignments WHERE id = ? AND organization_id = ?',
   )
     .bind(id, identity.membership.organizationId)
-    .run();
+    .first<{ eventId: string }>();
+  if (!assignment)
+    return Response.json({ error: 'Schedule item not found.' }, { status: 404 });
+  const now = Date.now();
+  await env.DB.batch([
+    env.DB.prepare(
+      'DELETE FROM event_role_assignments WHERE id = ? AND organization_id = ?',
+    ).bind(id, identity.membership.organizationId),
+    env.DB.prepare(
+      `INSERT INTO event_schedule_publications (event_id, draft_updated_at)
+       VALUES (?, ?) ON CONFLICT(event_id) DO UPDATE SET draft_updated_at = excluded.draft_updated_at`,
+    ).bind(assignment.eventId, now),
+  ]);
   return Response.json({ deleted: true });
 }
