@@ -2153,44 +2153,46 @@ export default function Home() {
               {pageTitle}
             </h1>
           </div>
-          <div className="desktop-header-actions flex items-center gap-2">
-            <Badge variant="outline" className="status-badge">
-              {online ? <Cloud /> : <CloudOff />}
-              <span className="status-text">
-                {online ? 'Online' : 'Offline ready'}
-              </span>
-            </Badge>
-            {!isPending &&
-              (session ? (
-                <Button variant="outline" onClick={() => navigate('Account')}>
-                  <CircleUserRound />
-                  {session.user.name}
-                </Button>
-              ) : (
-                <Button nativeButton={false} render={<a href="/sign-in" />}>
-                  Sign in
-                </Button>
-              ))}
+          <div className="ml-auto flex items-center gap-2">
+            {!online && (
+              <Badge variant="outline" className="status-badge">
+                <CloudOff />
+                <span className="status-text">Offline ready</span>
+              </Badge>
+            )}
+            <div className="desktop-header-actions flex items-center gap-2">
+              {!isPending &&
+                (session ? (
+                  <Button variant="outline" onClick={() => navigate('Account')}>
+                    <CircleUserRound />
+                    {session.user.name}
+                  </Button>
+                ) : (
+                  <Button nativeButton={false} render={<a href="/sign-in" />}>
+                    Sign in
+                  </Button>
+                ))}
+              <Button
+                aria-label="Toggle color theme"
+                size="icon"
+                variant="ghost"
+                onClick={toggleTheme}
+              >
+                {dark ? <Sun /> : <Moon />}
+              </Button>
+            </div>
             <Button
-              aria-label="Toggle color theme"
+              type="button"
+              className="mobile-header-menu-button"
               size="icon"
               variant="ghost"
-              onClick={toggleTheme}
+              aria-label="Open navigation menu"
+              aria-expanded={mobileMenuOpen}
+              onClick={() => setMobileMenuOpen((open) => !open)}
             >
-              {dark ? <Sun /> : <Moon />}
+              <Menu />
             </Button>
           </div>
-          <Button
-            type="button"
-            className="mobile-header-menu-button"
-            size="icon"
-            variant="ghost"
-            aria-label="Open navigation menu"
-            aria-expanded={mobileMenuOpen}
-            onClick={() => setMobileMenuOpen((open) => !open)}
-          >
-            <Menu />
-          </Button>
         </header>
         {activeView === 'Home' && (
           <div className="mx-auto grid w-full max-w-3xl gap-4 p-4 sm:p-6">
