@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
+  ArrowDown,
+  ArrowUp,
   Check,
   ChevronRight,
   CircleUserRound,
@@ -212,6 +214,67 @@ function ordinal(value: number) {
   const mod100 = value % 100;
   if (mod100 >= 11 && mod100 <= 13) return `${value}th`;
   return `${value}${['th', 'st', 'nd', 'rd'][Math.min(value % 10, 4)] ?? 'th'}`;
+}
+
+type RankingSortKey =
+  | 'rank'
+  | 'team'
+  | 'xp'
+  | 'xAuto'
+  | 'xTele'
+  | 'epa'
+  | 'medianPoints'
+  | 'samples';
+
+const rankingColumns: Array<{ key: RankingSortKey; label: string }> = [
+  { key: 'rank', label: 'Rank' },
+  { key: 'team', label: 'Team' },
+  { key: 'xp', label: 'xP' },
+  { key: 'xAuto', label: 'Auto xP' },
+  { key: 'xTele', label: 'Tele xP' },
+  { key: 'epa', label: 'EPA' },
+  { key: 'medianPoints', label: 'Median pts' },
+  { key: 'samples', label: 'Matches scouted' },
+];
+
+function rankingValue(
+  team: TeamAnalysis,
+  key: RankingSortKey,
+): number | null | undefined {
+  switch (key) {
+    case 'rank':
+      return team.eventRank;
+    case 'team':
+      return team.teamNumber;
+    case 'xp':
+      return team.xp;
+    case 'xAuto':
+      return team.xAuto;
+    case 'xTele':
+      return team.xTele;
+    case 'epa':
+      return team.epa;
+    case 'medianPoints':
+      return team.medianPoints;
+    case 'samples':
+      return team.samples;
+  }
+}
+
+// Missing values always sort last, whichever direction is chosen.
+function compareRankingValues(
+  a: number | null | undefined,
+  b: number | null | undefined,
+  direction: 1 | -1,
+) {
+  if (typeof a !== 'number' && typeof b !== 'number') return 0;
+  if (typeof a !== 'number') return 1;
+  if (typeof b !== 'number') return -1;
+  return (a - b) * direction;
+}
+
+function formatRankingNumber(value: number | null | undefined) {
+  return typeof value === 'number' ? value.toFixed(1) : '—';
 }
 
 function eventMetricRank(
@@ -492,7 +555,20 @@ export default function Home() {
   const [teamsSection, setTeamsSection] = useState<
     'analysis' | 'picklist' | 'review'
   >('analysis');
-  const [rankingSort, setRankingSort] = useState<'rank' | 'team'>('rank');
+  const [rankingSort, setRankingSort] = useState<{
+    key: RankingSortKey;
+    direction: 'asc' | 'desc';
+  }>({ key: 'rank', direction: 'asc' });
+  function sortRankingBy(key: RankingSortKey) {
+    setRankingSort((current) =>
+      current.key === key
+        ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+        : {
+            key,
+            direction: key === 'rank' || key === 'team' ? 'asc' : 'desc',
+          },
+    );
+  }
   const navigationDepthRef = useRef(0);
   const selectedMatchKeyRef = useRef('');
   const scoutSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -1920,8 +1996,21 @@ export default function Home() {
 
   if (isPending || !session) return null;
 
+  const stationOptions = currentMatch
+    ? [
+        ...currentMatch.alliances.red.map((_, index) => `red${index + 1}`),
+        ...currentMatch.alliances.blue.map((_, index) => `blue${index + 1}`),
+      ]
+    : [];
+  const scoutAlliance =
+    activeView !== 'Scout' || !stationOptions.includes(selectedStation)
+      ? undefined
+      : selectedStation.startsWith('red')
+        ? 'red'
+        : 'blue';
+
   return (
-    <main className="app-shell">
+    <main className="app-shell" data-scout-alliance={scoutAlliance}>
       <aside className="desktop-nav">
         <button
           type="button"
@@ -2174,7 +2263,7 @@ export default function Home() {
                 if (target) moveToScoutingPhase(target);
               }}
             >
-              <div className="grid grid-cols-4 gap-1 rounded-xl border bg-card p-1">
+              <div className="grid grid-cols-4 gap-1">
                 {(
                   [
                     ['pre', 'Pre-match'],
@@ -2664,7 +2753,7 @@ export default function Home() {
           </div>
         )}
         {activeView === 'Pit' && (
-          <div className="pit-layout grid gap-4 p-4 sm:p-6 lg:grid-cols-[18rem_1fr]">
+          <div className="pit-layout grid gap-4 p-4 sm:p-6 lg:grid-cols-[28rem_1fr]">
             <Card className="pit-mobile-picker">
               <CardContent className="p-3">
                 <label className="grid gap-1 text-sm font-semibold">
@@ -2708,7 +2797,7 @@ export default function Home() {
               </CardContent>
             </Card>
             <Card className="pit-queue-card h-full min-h-0">
-              <CardHeader>
+              <CardHeader className="flex flex-wrap items-center gap-2">
                 <CardTitle>Pit queue</CardTitle>
                 <Badge variant="outline">
                   {eventPack?.pitEntries.length ?? 0}/{eventTeams.length}{' '}
@@ -2759,10 +2848,9 @@ export default function Home() {
               <CardHeader>
                 <CardTitle>
                   {pitTeam
-                    ? `Team ${pitTeam}${eventPack?.teams.find((item) => item.teamNumber === pitTeam)?.name ? ` — ${eventPack.teams.find((item) => item.teamNumber === pitTeam)?.name}` : ''} robot`
+                    ? `Team ${pitTeam}${eventPack?.teams.find((item) => item.teamNumber === pitTeam)?.name ? ` — ${eventPack.teams.find((item) => item.teamNumber === pitTeam)?.name}` : ''}`
                     : 'Choose a team'}
                 </CardTitle>
-                {pitTeam && <Badge variant="outline">Auto-saved offline</Badge>}
                 {pitTeam &&
                   eventPack?.pitEntries.find(
                     (entry) => entry.teamNumber === pitTeam,
@@ -2791,7 +2879,7 @@ export default function Home() {
               <CardContent className="space-y-4">
                 {pitTeam && (
                   <>
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="pit-form grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                       <label className="grid gap-1 text-sm">
                         Drivetrain
                         <select
@@ -2921,23 +3009,26 @@ export default function Home() {
                           <option value="Drum">Drum</option>
                         </select>
                       </label>
-                      <button
-                        type="button"
-                        className={
-                          pitDraft.adjustableHood
-                            ? 'choice selected self-end'
-                            : 'choice self-end'
-                        }
-                        onClick={() =>
-                          setPitDraft({
-                            ...pitDraft,
-                            adjustableHood: !pitDraft.adjustableHood,
-                          })
-                        }
-                      >
-                        {pitDraft.adjustableHood && <Check />}
-                        Adjustable hood
-                      </button>
+                      <div className="grid gap-1 text-sm">
+                        Hood
+                        <button
+                          type="button"
+                          className={
+                            pitDraft.adjustableHood
+                              ? 'choice selected'
+                              : 'choice'
+                          }
+                          onClick={() =>
+                            setPitDraft({
+                              ...pitDraft,
+                              adjustableHood: !pitDraft.adjustableHood,
+                            })
+                          }
+                        >
+                          {pitDraft.adjustableHood && <Check />}
+                          Adjustable
+                        </button>
+                      </div>
                     </div>
                     <div className="space-y-3 rounded-lg border p-3">
                       <div>
@@ -2993,17 +3084,9 @@ export default function Home() {
                     <div className="space-y-3 rounded-lg border p-3">
                       <div>
                         <p className="font-semibold">Autonomous capabilities</p>
-                        <p className="text-xs text-muted-foreground">
-                          Select every routine the robot can run.
-                        </p>
                       </div>
                       <div>
                         <p className="text-sm">Starting positions</p>
-                        <p className="mb-2 text-xs text-muted-foreground">
-                          Select every position the robot has an autonomous
-                          routine for. Left and right are viewed from the driver
-                          station.
-                        </p>
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
                           {[
                             'Left trench',
@@ -3118,7 +3201,12 @@ export default function Home() {
                       />
                     </label>
                     <div className="space-y-3 rounded-lg border p-3">
-                      <p className="font-semibold">Robot photo</p>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <p className="font-semibold">Robot photo</p>
+                        <p className="text-sm text-muted-foreground">
+                          JPEG, PNG, or WebP image up to 10 MB
+                        </p>
+                      </div>
                       {existingPitPhoto && (
                         <img
                           className="aspect-video w-full max-w-md rounded-md object-cover"
@@ -3126,10 +3214,6 @@ export default function Home() {
                           alt={`Team ${pitTeam} robot`}
                         />
                       )}
-                      <p className="text-sm text-muted-foreground">
-                        Take or choose a JPEG, PNG, or WebP image up to 10 MB.
-                        Photo upload requires a connection.
-                      </p>
                       <div className="flex flex-col gap-2 sm:flex-row">
                         <Input
                           type="file"
@@ -3531,53 +3615,56 @@ export default function Home() {
           isAdmin &&
           adminSection === 'assignments' && (
             <div className="p-4 sm:p-6">
-              <Card className="mb-4">
-                <CardContent className="space-y-3">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <label className="flex min-w-0 flex-1 items-center gap-3 text-sm font-medium">
-                      Event
-                      <select
-                        aria-label="Team 401 event"
-                        className="h-10 min-w-0 flex-1 truncate rounded-md border bg-background px-3"
-                        value={eventKey}
-                        onChange={(event) => setEventKey(event.target.value)}
-                        disabled={eventsLoading}
-                      >
-                        <option value="">
-                          {eventsLoading
-                            ? 'Loading events…'
-                            : 'Select an event'}
-                        </option>
-                        {eventChoices.map((event) => (
-                          <option value={event.key} key={event.key}>
-                            {event.name}
-                            {event.date ? ` · ${event.date}` : ''}
-                            {event.location ? ` · ${event.location}` : ''}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <Button
-                      className="w-full sm:w-auto"
-                      disabled={
-                        configuringEvent || !online || !session || !eventKey
-                      }
-                      onClick={configureEvent}
-                    >
-                      {configuringEvent ? 'Loading event…' : 'Use this event'}
-                    </Button>
-                  </div>
-                  {eventMessage && (
-                    <p className="text-sm text-muted-foreground" role="status">
-                      {eventMessage}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
               <EventScheduleBoard
                 members={eventPack?.members ?? []}
                 eventKey={eventPack?.event.key ?? ''}
                 onChanged={() => loadEventPack(false, true)}
+                eventPicker={
+                  <>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <label className="flex min-w-0 items-center gap-3 text-sm font-medium">
+                        Event
+                        <select
+                          aria-label="Team 401 event"
+                          className="h-10 truncate rounded-md border bg-background px-3"
+                          value={eventKey}
+                          onChange={(event) => setEventKey(event.target.value)}
+                          disabled={eventsLoading}
+                        >
+                          <option value="">
+                            {eventsLoading
+                              ? 'Loading events…'
+                              : 'Select an event'}
+                          </option>
+                          {eventChoices.map((event) => (
+                            <option value={event.key} key={event.key}>
+                              {event.name}
+                              {event.date ? ` · ${event.date}` : ''}
+                              {event.location ? ` · ${event.location}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <Button
+                        className="w-full sm:w-auto"
+                        disabled={
+                          configuringEvent || !online || !session || !eventKey
+                        }
+                        onClick={configureEvent}
+                      >
+                        {configuringEvent ? 'Loading event…' : 'Use this event'}
+                      </Button>
+                    </div>
+                    {eventMessage && (
+                      <p
+                        className="text-sm text-muted-foreground"
+                        role="status"
+                      >
+                        {eventMessage}
+                      </p>
+                    )}
+                  </>
+                }
               />
             </div>
           )}
@@ -3704,7 +3791,12 @@ export default function Home() {
         {activeView === 'Data' && teamsSection === 'analysis' && (
           <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
             <TeamComparison
-              teams={strategyTeams}
+              teams={strategyTeams.map((team) => ({
+                ...team,
+                name: eventPack?.teams.find(
+                  (item) => item.teamNumber === team.teamNumber,
+                )?.name,
+              }))}
               matches={(eventPack?.matches ?? []).map((match) => ({
                 key: match.key,
                 label: matchLabel(match),
@@ -3714,50 +3806,36 @@ export default function Home() {
             />
             <Card className="sm:col-span-2">
               <CardHeader>
-                <CardTitle>Event ranking workspace</CardTitle>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline">{strategyTeams.length} teams</Badge>
-                  <Button
-                    size="sm"
-                    variant={rankingSort === 'rank' ? 'default' : 'outline'}
-                    onClick={() => setRankingSort('rank')}
-                  >
-                    Event rank
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={rankingSort === 'team' ? 'default' : 'outline'}
-                    onClick={() => setRankingSort('team')}
-                  >
-                    Team number
-                  </Button>
-                  {eventPack && canReopenEntries(effectiveRole) && (
-                    <Button
-                      nativeButton={false}
-                      size="sm"
-                      variant="outline"
-                      render={<a href="/api/export/scouting" download />}
-                    >
-                      <Cloud />
-                      Export CSV
-                    </Button>
-                  )}
-                </div>
+                <CardTitle>Event Data</CardTitle>
               </CardHeader>
               <CardContent className="max-h-96 overflow-auto">
                 <div className="strategy-table">
-                  <strong>Rank</strong>
-                  <strong>Team</strong>
-                  <strong>Median pts</strong>
-                  <strong>Matches scouted</strong>
+                  {rankingColumns.map(({ key, label }) => (
+                    <strong key={key}>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 uppercase"
+                        onClick={() => sortRankingBy(key)}
+                      >
+                        {label}
+                        {rankingSort.key === key &&
+                          (rankingSort.direction === 'asc' ? (
+                            <ArrowUp className="size-3" aria-hidden="true" />
+                          ) : (
+                            <ArrowDown className="size-3" aria-hidden="true" />
+                          ))}
+                      </button>
+                    </strong>
+                  ))}
                   {[...strategyTeams]
-                    .sort((a, b) => {
-                      if (rankingSort === 'team')
-                        return a.teamNumber - b.teamNumber;
-                      if (a.eventRank === null) return 1;
-                      if (b.eventRank === null) return -1;
-                      return a.eventRank - b.eventRank;
-                    })
+                    .sort(
+                      (a, b) =>
+                        compareRankingValues(
+                          rankingValue(a, rankingSort.key),
+                          rankingValue(b, rankingSort.key),
+                          rankingSort.direction === 'asc' ? 1 : -1,
+                        ) || a.teamNumber - b.teamNumber,
+                    )
                     .map((team) => (
                       <button
                         key={team.teamNumber}
@@ -3775,6 +3853,10 @@ export default function Home() {
                             ? ` — ${eventPack.teams.find((item) => item.teamNumber === team.teamNumber)?.name}`
                             : ''}
                         </span>
+                        <span>{formatRankingNumber(team.xp)}</span>
+                        <span>{formatRankingNumber(team.xAuto)}</span>
+                        <span>{formatRankingNumber(team.xTele)}</span>
+                        <span>{formatRankingNumber(team.epa)}</span>
                         <span>{team.medianPoints.toFixed(1)}</span>
                         <span>
                           {team.samples}/{team.scheduledMatches}
@@ -3791,10 +3873,6 @@ export default function Home() {
                     ? `Team ${selectedTeam}${eventPack?.teams.find((item) => item.teamNumber === selectedTeam)?.name ? ` — ${eventPack.teams.find((item) => item.teamNumber === selectedTeam)?.name}` : ''} summary`
                     : 'Select a team above'}
                 </CardTitle>
-                <Badge variant="outline">
-                  {analysis?.samples ?? 0}/{analysis?.scheduledMatches ?? 0}{' '}
-                  matches scouted
-                </Badge>
               </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-[10rem_1fr] sm:items-start">
                 <TeamRobotPhoto

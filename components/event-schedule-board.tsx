@@ -1,9 +1,17 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ConfirmActionDialog } from '@/components/confirm-action-dialog';
 import {
   activeCoverageTargets,
   coverageCount,
@@ -391,10 +399,12 @@ export function EventScheduleBoard({
   members,
   eventKey,
   onChanged,
+  eventPicker,
 }: {
   members: Member[];
   eventKey: string;
   onChanged: () => void | Promise<void>;
+  eventPicker: ReactNode;
 }) {
   const [date, setDate] = useState(() => dateInputValue(Date.now()));
   const [startHour, setStartHour] = useState(7);
@@ -411,6 +421,7 @@ export function EventScheduleBoard({
   const [publishedAt, setPublishedAt] = useState<number | null>(null);
   const [hasUnpublishedChanges, setHasUnpublishedChanges] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [unpublishConfirmOpen, setUnpublishConfirmOpen] = useState(false);
   const attendanceDirtyRef = useRef(false);
   const freshLoadedRef = useRef(false);
   const [controls, setControls] = useState<EventControls>({
@@ -917,6 +928,24 @@ export function EventScheduleBoard({
     await onChanged();
   }
 
+  async function unpublishSchedule() {
+    setPublishing(true);
+    setMessage('');
+    const response = await fetch('/api/event-schedule-publish', {
+      method: 'DELETE',
+    });
+    const body = await readBody<{ error?: string }>(response);
+    setPublishing(false);
+    if (!response.ok) {
+      setMessage(body.error ?? 'Could not unpublish the schedule.');
+      return false;
+    }
+    setPublishedAt(null);
+    setHasUnpublishedChanges(true);
+    setMessage('Schedule unpublished. Your draft is still available.');
+    await onChanged();
+  }
+
   async function removeScheduleDay(day: string) {
     setMessage('');
     const response = await fetch(
@@ -941,386 +970,425 @@ export function EventScheduleBoard({
     (savedDay.startHour !== startHour || savedDay.endHour !== endHour);
 
   return (
-    <Card className="mb-4 overflow-hidden">
-      <CardContent className="space-y-3 px-0 sm:px-0">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-3 pb-3">
-          <div>
-            <p className="font-semibold">Draft schedule</p>
-            <p className="text-sm text-muted-foreground">
-              {hasUnpublishedChanges
-                ? 'Unpublished changes'
-                : publishedAt
-                  ? `Published ${new Date(publishedAt).toLocaleString()}`
-                  : 'Not published yet'}
-            </p>
-          </div>
-          <Button
-            type="button"
-            disabled={
-              publishing || (!hasUnpublishedChanges && publishedAt !== null)
-            }
-            onClick={() => void publishSchedule()}
+    <>
+      <Card className="mb-4">
+        <CardContent className="space-y-3">
+          {eventPicker}
+          <details
+            className="rounded-lg border p-3"
+            open={rosterOpen}
+            onToggle={(event) => setRosterOpen(event.currentTarget.open)}
           >
-            {publishing
-              ? 'Publishing…'
-              : publishedAt
-                ? 'Publish changes'
-                : 'Publish schedule'}
-          </Button>
-        </div>
-        <div className="grid gap-2 px-3 sm:grid-cols-3">
-          <input
-            aria-label="Schedule date"
-            className="h-10 rounded-md border bg-background px-3"
-            type="date"
-            value={date}
-            onChange={(event) => {
-              const nextDate = event.target.value;
-              setDate(nextDate);
-              const existing = scheduleDays.find(
-                (day) => day.date === nextDate,
-              );
-              if (existing) selectScheduleDay(existing);
-              else setControls(defaultControls);
-            }}
-          />
-          <select
-            aria-label="First displayed hour"
-            className="h-10 rounded-md border bg-background px-3"
-            value={startHour}
-            onChange={(event) =>
-              setStartHour(Math.min(Number(event.target.value), endHour - 1))
-            }
-          >
-            {Array.from({ length: 24 }, (_, hour) => (
-              <option value={hour} key={hour}>
-                Start{' '}
-                {new Date(2000, 0, 1, hour).toLocaleTimeString([], {
-                  hour: 'numeric',
-                })}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Last displayed hour"
-            className="h-10 rounded-md border bg-background px-3"
-            value={endHour}
-            onChange={(event) =>
-              setEndHour(Math.max(Number(event.target.value), startHour + 1))
-            }
-          >
-            {Array.from({ length: 24 }, (_, index) => index + 1).map((hour) => (
-              <option value={hour} key={hour}>
-                End{' '}
-                {new Date(2000, 0, 1, hour % 24).toLocaleTimeString([], {
-                  hour: 'numeric',
-                })}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-y px-3 py-2 text-sm">
-          <span className="font-medium text-muted-foreground">
-            Assignments for this day
-          </span>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <label className="flex items-center gap-2">
-              <Checkbox
-                checked={controls.scoutingEnabled}
-                onCheckedChange={(checked) =>
-                  void changeControls({ ...controls, scoutingEnabled: checked })
-                }
-              />
-              Scouting
-            </label>
-            <label className="flex items-center gap-2">
-              <Checkbox
-                checked={controls.outreachEnabled}
-                onCheckedChange={(checked) =>
-                  void changeControls({ ...controls, outreachEnabled: checked })
-                }
-              />
-              Outreach
-            </label>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 px-3">
-          {scheduleDays.length > 0 && (
-            <div
-              className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1"
-              aria-label="Event days"
-            >
-              {scheduleDays.map((day, index) => (
-                <Button
-                  type="button"
-                  variant={date === day.date ? 'default' : 'outline'}
-                  className="shrink-0"
-                  onClick={() => selectScheduleDay(day)}
-                  key={day.date}
-                >
-                  <span className="sm:hidden">Day {index + 1}</span>
-                  <span className="hidden sm:inline">
-                    {new Date(`${day.date}T12:00:00`).toLocaleDateString([], {
-                      weekday: 'short',
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </span>
-                </Button>
-              ))}
-            </div>
-          )}
-          <div className="ml-auto flex shrink-0 gap-2">
-            {!savedDay && (
-              <Button type="button" onClick={() => void saveScheduleDay()}>
-                Add day
-              </Button>
-            )}
-            {hoursChanged && (
-              <Button type="button" onClick={() => void saveScheduleDay()}>
-                Update day
-              </Button>
-            )}
-            {savedDay && (
+            <summary className="cursor-pointer font-semibold">
+              People at this event · {activeMembers.length}
+              {rosterMessage && (
+                <span className="ml-3 font-normal text-muted-foreground">
+                  {rosterMessage}
+                </span>
+              )}
+            </summary>
+            <div className="mt-3 flex flex-wrap gap-2">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => void removeScheduleDay(date)}
+                onClick={() => {
+                  attendanceDirtyRef.current = true;
+                  setAttendeeIds(
+                    new Set(
+                      members.filter(canSchedule).map((member) => member.id),
+                    ),
+                  );
+                }}
               >
-                Remove day
+                Select all
               </Button>
-            )}
-          </div>
-        </div>
-        {!scheduleDays.length && (
-          <p className="px-3 text-sm text-muted-foreground">
-            Add the first event day and choose when assignments can start and
-            end.
-          </p>
-        )}
-        <details
-          className="mx-3 rounded-lg border p-3"
-          open={rosterOpen}
-          onToggle={(event) => setRosterOpen(event.currentTarget.open)}
-        >
-          <summary className="cursor-pointer font-semibold">
-            People at this event · {activeMembers.length}
-            {rosterMessage && (
-              <span className="ml-3 font-normal text-muted-foreground">
-                {rosterMessage}
-              </span>
-            )}
-          </summary>
-          <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  attendanceDirtyRef.current = true;
+                  setAttendeeIds(new Set());
+                }}
+              >
+                Clear
+              </Button>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {members
+                .filter(canSchedule)
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((member) => {
+                  const checked =
+                    attendanceLoaded && attendeeIds.has(member.id);
+                  return (
+                    <label
+                      className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors ${checked ? 'border-primary/50 bg-primary/10' : 'hover:bg-muted/60'}`}
+                      key={member.id}
+                    >
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(nextChecked) =>
+                          setAttendeeIds((current) => {
+                            attendanceDirtyRef.current = true;
+                            const next = new Set(current);
+                            if (nextChecked) next.add(member.id);
+                            else next.delete(member.id);
+                            return next;
+                          })
+                        }
+                      />
+                      <span>{member.name}</span>
+                    </label>
+                  );
+                })}
+            </div>
             <Button
+              className="mt-3"
               type="button"
-              variant="outline"
-              onClick={() => {
-                attendanceDirtyRef.current = true;
-                setAttendeeIds(
-                  new Set(
-                    members.filter(canSchedule).map((member) => member.id),
-                  ),
-                );
-              }}
+              onClick={() => void saveAttendance()}
             >
-              Select all
+              Save event roster
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                attendanceDirtyRef.current = true;
-                setAttendeeIds(new Set());
-              }}
-            >
-              Clear
-            </Button>
-          </div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {members
-              .filter(canSchedule)
-              .sort((a, b) => a.name.localeCompare(b.name))
-              .map((member) => {
-                const checked = attendanceLoaded && attendeeIds.has(member.id);
-                return (
-                  <label
-                    className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors ${checked ? 'border-primary/50 bg-primary/10' : 'hover:bg-muted/60'}`}
-                    key={member.id}
+          </details>
+        </CardContent>
+      </Card>
+      <Card className="mb-4 overflow-hidden">
+        <CardContent className="space-y-3 px-0 sm:px-0">
+          <div className="flex flex-wrap items-center gap-3 border-b px-3 pb-3">
+            <div className="shrink-0">
+              <p className="font-semibold">Schedule Builder</p>
+              <p className="text-sm text-muted-foreground">
+                {publishedAt
+                  ? hasUnpublishedChanges
+                    ? 'Unpublished changes'
+                    : `Published ${new Date(publishedAt).toLocaleString()}`
+                  : 'Not published yet'}
+              </p>
+            </div>
+            {scheduleDays.length > 0 && (
+              <div
+                className="flex min-w-0 flex-wrap gap-2"
+                aria-label="Event days"
+              >
+                {scheduleDays.map((day, index) => (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={date === day.date ? 'default' : 'outline'}
+                    onClick={() => selectScheduleDay(day)}
+                    key={day.date}
                   >
-                    <Checkbox
-                      checked={checked}
-                      onCheckedChange={(nextChecked) =>
-                        setAttendeeIds((current) => {
-                          attendanceDirtyRef.current = true;
-                          const next = new Set(current);
-                          if (nextChecked) next.add(member.id);
-                          else next.delete(member.id);
-                          return next;
-                        })
-                      }
-                    />
-                    <span>{member.name}</span>
-                  </label>
-                );
-              })}
-          </div>
-          <Button
-            className="mt-3"
-            type="button"
-            onClick={() => void saveAttendance()}
-          >
-            Save event roster
-          </Button>
-        </details>
-        <p className="px-3 text-sm text-muted-foreground">
-          Type, paste, or choose a role in each time slot; a change saves when
-          you click out of the cell. Clear a cell to unassign it. Arrow keys
-          move between cells, Enter saves and moves down, and Escape cancels.
-          You can copy and paste single cells or rectangular spreadsheet ranges.
-        </p>
-        <div
-          className="max-h-[68dvh] overflow-auto border-y"
-          data-schedule-scroll
-        >
-          <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
-            <thead className="sticky top-0 z-30 bg-muted">
-              <tr>
-                <th
-                  className="whitespace-nowrap border-r border-b bg-muted px-3 py-2 text-left md:sticky md:left-0 md:z-40"
-                  style={{ width: `calc(${nameChars}ch + 1.5rem)` }}
+                    <span className="sm:hidden">Day {index + 1}</span>
+                    <span className="hidden sm:inline">
+                      {new Date(`${day.date}T12:00:00`).toLocaleDateString([], {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </span>
+                  </Button>
+                ))}
+              </div>
+            )}
+            <div className="ml-auto flex gap-2">
+              {publishedAt && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={publishing}
+                  onClick={() => setUnpublishConfirmOpen(true)}
                 >
-                  Person
-                </th>
-                {hours.map((hour) => (
-                  <th
-                    className="whitespace-nowrap border-r border-b px-1 py-2 text-center"
-                    key={hour}
-                    style={{ minWidth: hourColumnWidth }}
-                  >
+                  Unpublish
+                </Button>
+              )}
+              <Button
+                type="button"
+                disabled={
+                  publishing || (!hasUnpublishedChanges && publishedAt !== null)
+                }
+                onClick={() => void publishSchedule()}
+              >
+                {publishing
+                  ? 'Working…'
+                  : publishedAt
+                    ? 'Publish changes'
+                    : 'Publish schedule'}
+              </Button>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-y px-3 py-2 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                aria-label="Schedule date"
+                className="h-10 rounded-md border bg-background px-3"
+                type="date"
+                value={date}
+                onChange={(event) => {
+                  const nextDate = event.target.value;
+                  setDate(nextDate);
+                  const existing = scheduleDays.find(
+                    (day) => day.date === nextDate,
+                  );
+                  if (existing) selectScheduleDay(existing);
+                  else setControls(defaultControls);
+                }}
+              />
+              <select
+                aria-label="First displayed hour"
+                className="h-10 rounded-md border bg-background px-3"
+                value={startHour}
+                onChange={(event) =>
+                  setStartHour(
+                    Math.min(Number(event.target.value), endHour - 1),
+                  )
+                }
+              >
+                {Array.from({ length: 24 }, (_, hour) => (
+                  <option value={hour} key={hour}>
+                    Start{' '}
                     {new Date(2000, 0, 1, hour).toLocaleTimeString([], {
                       hour: 'numeric',
                     })}
-                    –
-                    {new Date(2000, 0, 1, (hour + 1) % 24).toLocaleTimeString(
-                      [],
-                      { hour: 'numeric' },
-                    )}
-                  </th>
+                  </option>
                 ))}
-                <th className="w-px border-b px-2 py-2 text-center">
-                  Scouting Shifts
-                </th>
-                <th className="w-px border-b px-2 py-2 text-center">
-                  Pit Shifts
-                </th>
-                <th className="w-px border-b border-l bg-muted px-2 py-2 text-center md:sticky md:right-0 md:z-40">
-                  Total Shifts
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {activeMembers.map((member, rowIndex) => (
-                <tr
-                  className={
-                    rowIndex % 2
-                      ? 'bg-[color-mix(in_srgb,var(--muted)_20%,var(--background))]'
-                      : 'bg-background'
+              </select>
+              <select
+                aria-label="Last displayed hour"
+                className="h-10 rounded-md border bg-background px-3"
+                value={endHour}
+                onChange={(event) =>
+                  setEndHour(
+                    Math.max(Number(event.target.value), startHour + 1),
+                  )
+                }
+              >
+                {Array.from({ length: 24 }, (_, index) => index + 1).map(
+                  (hour) => (
+                    <option value={hour} key={hour}>
+                      End{' '}
+                      {new Date(2000, 0, 1, hour % 24).toLocaleTimeString([], {
+                        hour: 'numeric',
+                      })}
+                    </option>
+                  ),
+                )}
+              </select>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+              <label className="flex items-center gap-2">
+                <Checkbox
+                  checked={controls.scoutingEnabled}
+                  onCheckedChange={(checked) =>
+                    void changeControls({
+                      ...controls,
+                      scoutingEnabled: checked,
+                    })
                   }
-                  key={member.id}
+                />
+                Scouting
+              </label>
+              <label className="flex items-center gap-2">
+                <Checkbox
+                  checked={controls.outreachEnabled}
+                  onCheckedChange={(checked) =>
+                    void changeControls({
+                      ...controls,
+                      outreachEnabled: checked,
+                    })
+                  }
+                />
+                Outreach
+              </label>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {!savedDay && (
+                <Button type="button" onClick={() => void saveScheduleDay()}>
+                  Add day
+                </Button>
+              )}
+              {hoursChanged && (
+                <Button type="button" onClick={() => void saveScheduleDay()}>
+                  Update day
+                </Button>
+              )}
+              {savedDay && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void removeScheduleDay(date)}
                 >
-                  <th className="whitespace-nowrap border-r border-b bg-inherit px-3 py-2 text-left font-medium md:sticky md:left-0 md:z-20">
-                    {member.name}
-                    {isGuestMember(member) && (
-                      <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal">
-                        Guest
-                      </span>
-                    )}
-                  </th>
-                  {hours.map((hour, columnIndex) => {
-                    const startsAt = slotTime(date, hour);
-                    const item = items.find(
-                      (candidate) =>
-                        candidate.userId === member.id &&
-                        candidate.startsAt <= startsAt &&
-                        candidate.endsAt > startsAt,
-                    );
-                    const key = `${member.id}:${startsAt}`;
-                    return (
-                      <td
-                        className="h-11 border-r border-b p-1"
-                        key={hour}
-                        style={{ minWidth: hourColumnWidth }}
-                      >
-                        <ScheduleRoleInput
-                          ariaLabel={`${member.name}, ${new Date(2000, 0, 1, hour).toLocaleTimeString([], { hour: 'numeric' })}`}
-                          busy={busyCell === key}
-                          choices={choices}
-                          cellId={`${columnIndex}:${rowIndex}`}
-                          label={item?.label ?? ''}
-                          onAdvance={() => focusCell(rowIndex + 1, columnIndex)}
-                          onCommit={(value) =>
-                            void changeCell(member, hour, value)
-                          }
-                          onInvalid={(text) =>
-                            setMessage(invalidRoleMessage(text))
-                          }
-                          onNavigate={(rowDelta, columnDelta) =>
-                            focusCell(
-                              rowIndex + rowDelta,
-                              columnIndex + columnDelta,
-                            )
-                          }
-                          onRangePaste={(text) =>
-                            void pasteCells(rowIndex, columnIndex, text)
-                          }
-                        />
-                      </td>
-                    );
-                  })}
-                  <td className="w-px border-b px-2 py-2 text-center">
-                    {(shiftCounts.get(member.id) ?? emptyShifts).scouting}
-                  </td>
-                  <td className="w-px border-b px-2 py-2 text-center">
-                    {(shiftCounts.get(member.id) ?? emptyShifts).pit}
-                  </td>
-                  <td className="w-px border-b border-l bg-inherit px-2 py-2 text-center font-semibold md:sticky md:right-0 md:z-20">
-                    {(shiftCounts.get(member.id) ?? emptyShifts).total}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              {coverageGrid.map(({ target, counts: perHour }) => (
-                <tr key={target.label}>
-                  <th className="whitespace-nowrap border-r border-b bg-background px-3 py-1 text-left text-xs font-medium md:sticky md:left-0 md:z-20">
-                    {target.label}
-                  </th>
-                  {perHour.map((have, index) => (
-                    <td
-                      className={`border-r border-b px-1 py-1 text-center text-xs font-semibold ${
-                        have >= target.need
-                          ? 'bg-emerald-300 text-emerald-950 dark:bg-emerald-400 dark:text-emerald-950'
-                          : 'bg-amber-300 text-amber-950 dark:bg-amber-400 dark:text-amber-950'
-                      }`}
-                      key={hours[index]}
-                      title={`${have} of ${target.need} ${target.label.toLowerCase()}`}
-                    >
-                      {have}/{target.need}
-                    </td>
-                  ))}
-                  <td colSpan={3} className="border-b" />
-                </tr>
-              ))}
-            </tfoot>
-          </table>
-        </div>
-        {message && (
-          <p className="px-3 text-sm text-destructive" role="status">
-            {message}
+                  Remove day
+                </Button>
+              )}
+            </div>
+          </div>
+          {!scheduleDays.length && (
+            <p className="px-3 text-sm text-muted-foreground">
+              Add the first event day and choose when assignments can start and
+              end.
+            </p>
+          )}
+          <p className="px-3 text-sm text-muted-foreground">
+            Type, paste, or choose a role in each time slot; a change saves when
+            you click out of the cell. Clear a cell to unassign it. Arrow keys
+            move between cells, Enter saves and moves down, and Escape cancels.
+            You can copy and paste single cells or rectangular spreadsheet
+            ranges.
           </p>
-        )}
-      </CardContent>
-    </Card>
+          <div
+            className="max-h-[68dvh] overflow-auto border-y"
+            data-schedule-scroll
+          >
+            <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
+              <thead className="sticky top-0 z-30 bg-muted">
+                <tr>
+                  <th
+                    className="whitespace-nowrap border-r border-b bg-muted px-3 py-2 text-left md:sticky md:left-0 md:z-40"
+                    style={{ width: `calc(${nameChars}ch + 1.5rem)` }}
+                  >
+                    Person
+                  </th>
+                  {hours.map((hour) => (
+                    <th
+                      className="whitespace-nowrap border-r border-b px-1 py-2 text-center"
+                      key={hour}
+                      style={{ minWidth: hourColumnWidth }}
+                    >
+                      {new Date(2000, 0, 1, hour).toLocaleTimeString([], {
+                        hour: 'numeric',
+                      })}
+                      –
+                      {new Date(2000, 0, 1, (hour + 1) % 24).toLocaleTimeString(
+                        [],
+                        { hour: 'numeric' },
+                      )}
+                    </th>
+                  ))}
+                  <th className="w-px border-b px-2 py-2 text-center">
+                    Scouting Shifts
+                  </th>
+                  <th className="w-px border-b px-2 py-2 text-center">
+                    Pit Shifts
+                  </th>
+                  <th className="w-px border-b border-l bg-muted px-2 py-2 text-center md:sticky md:right-0 md:z-40">
+                    Total Shifts
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {activeMembers.map((member, rowIndex) => (
+                  <tr
+                    className={
+                      rowIndex % 2
+                        ? 'bg-[color-mix(in_srgb,var(--muted)_20%,var(--background))]'
+                        : 'bg-background'
+                    }
+                    key={member.id}
+                  >
+                    <th className="whitespace-nowrap border-r border-b bg-inherit px-3 py-2 text-left font-medium md:sticky md:left-0 md:z-20">
+                      {member.name}
+                      {isGuestMember(member) && (
+                        <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal">
+                          Guest
+                        </span>
+                      )}
+                    </th>
+                    {hours.map((hour, columnIndex) => {
+                      const startsAt = slotTime(date, hour);
+                      const item = items.find(
+                        (candidate) =>
+                          candidate.userId === member.id &&
+                          candidate.startsAt <= startsAt &&
+                          candidate.endsAt > startsAt,
+                      );
+                      const key = `${member.id}:${startsAt}`;
+                      return (
+                        <td
+                          className="h-11 border-r border-b p-1"
+                          key={hour}
+                          style={{ minWidth: hourColumnWidth }}
+                        >
+                          <ScheduleRoleInput
+                            ariaLabel={`${member.name}, ${new Date(2000, 0, 1, hour).toLocaleTimeString([], { hour: 'numeric' })}`}
+                            busy={busyCell === key}
+                            choices={choices}
+                            cellId={`${columnIndex}:${rowIndex}`}
+                            label={item?.label ?? ''}
+                            onAdvance={() =>
+                              focusCell(rowIndex + 1, columnIndex)
+                            }
+                            onCommit={(value) =>
+                              void changeCell(member, hour, value)
+                            }
+                            onInvalid={(text) =>
+                              setMessage(invalidRoleMessage(text))
+                            }
+                            onNavigate={(rowDelta, columnDelta) =>
+                              focusCell(
+                                rowIndex + rowDelta,
+                                columnIndex + columnDelta,
+                              )
+                            }
+                            onRangePaste={(text) =>
+                              void pasteCells(rowIndex, columnIndex, text)
+                            }
+                          />
+                        </td>
+                      );
+                    })}
+                    <td className="w-px border-b px-2 py-2 text-center">
+                      {(shiftCounts.get(member.id) ?? emptyShifts).scouting}
+                    </td>
+                    <td className="w-px border-b px-2 py-2 text-center">
+                      {(shiftCounts.get(member.id) ?? emptyShifts).pit}
+                    </td>
+                    <td className="w-px border-b border-l bg-inherit px-2 py-2 text-center font-semibold md:sticky md:right-0 md:z-20">
+                      {(shiftCounts.get(member.id) ?? emptyShifts).total}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                {coverageGrid.map(({ target, counts: perHour }) => (
+                  <tr key={target.label}>
+                    <th className="whitespace-nowrap border-r border-b bg-background px-3 py-1 text-left text-xs font-medium md:sticky md:left-0 md:z-20">
+                      {target.label}
+                    </th>
+                    {perHour.map((have, index) => (
+                      <td
+                        className={`border-r border-b px-1 py-1 text-center text-xs font-semibold ${
+                          have >= target.need
+                            ? 'bg-emerald-300 text-emerald-950 dark:bg-emerald-400 dark:text-emerald-950'
+                            : 'bg-amber-300 text-amber-950 dark:bg-amber-400 dark:text-amber-950'
+                        }`}
+                        key={hours[index]}
+                        title={`${have} of ${target.need} ${target.label.toLowerCase()}`}
+                      >
+                        {have}/{target.need}
+                      </td>
+                    ))}
+                    <td colSpan={3} className="border-b" />
+                  </tr>
+                ))}
+              </tfoot>
+            </table>
+          </div>
+          {message && (
+            <p className="px-3 text-sm text-destructive" role="status">
+              {message}
+            </p>
+          )}
+          <ConfirmActionDialog
+            open={unpublishConfirmOpen}
+            onOpenChange={setUnpublishConfirmOpen}
+            title="Unpublish this schedule?"
+            description="The schedule will stop appearing for team members. Your draft assignments will be kept so you can edit and publish them again."
+            confirmLabel="Unpublish schedule"
+            destructive
+            onConfirm={unpublishSchedule}
+          />
+        </CardContent>
+      </Card>
+    </>
   );
 }

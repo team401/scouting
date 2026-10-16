@@ -50,6 +50,8 @@
   --ring: var(--primary);
   --destructive: oklch(0.59 0.22 26);
   --radius: 0.7rem;
+  --scout-red-background: oklch(0.955 0.03 25);
+  --scout-blue-background: oklch(0.955 0.03 255);
 }
 .dark {
   color-scheme: dark;
@@ -59,8 +61,8 @@
   --card-foreground: var(--foreground);
   --popover: #303538;
   --popover-foreground: var(--foreground);
-  --primary: #e09ab3;
-  --primary-foreground: #251118;
+  --primary: #861f41;
+  --primary-foreground: #ffffff;
   --secondary: #443139;
   --secondary-foreground: var(--foreground);
   --muted: #373d40;
@@ -70,6 +72,8 @@
   --border: #4a5155;
   --input: var(--border);
   --ring: var(--primary);
+  --scout-red-background: oklch(0.32 0.08 25);
+  --scout-blue-background: oklch(0.32 0.08 255);
 }
 * {
   border-color: var(--border);
@@ -84,6 +88,9 @@ button {
 select {
   color: var(--foreground);
   background-color: var(--card);
+  width: fit-content;
+  max-width: 100%;
+  justify-self: start;
 }
 select option {
   color: #202326;
@@ -102,6 +109,12 @@ select option {
   transition:
     background 0.2s,
     color 0.2s;
+}
+.app-shell[data-scout-alliance='red'] [data-slot='card'] {
+  background: var(--scout-red-background);
+}
+.app-shell[data-scout-alliance='blue'] [data-slot='card'] {
+  background: var(--scout-blue-background);
 }
 .desktop-nav {
   width: 76px;
@@ -268,6 +281,11 @@ select option {
   background: color-mix(in oklch, var(--primary) 13%, transparent);
   color: var(--primary);
 }
+.dark .choice.selected {
+  border-color: color-mix(in oklch, var(--foreground) 45%, transparent);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
 .choice svg {
   width: 15px;
 }
@@ -309,6 +327,9 @@ select option {
   margin-inline: -8px;
   width: calc(100% + 16px);
   padding: 6px 8px;
+  grid-template-columns: minmax(0, 1fr) 1.25rem;
+  row-gap: 2px;
+  column-gap: 8px;
   border-left: 4px solid transparent;
   border-radius: 8px;
   transition:
@@ -344,9 +365,33 @@ select option {
 .dark .pit-queue-needed > svg {
   color: oklch(0.82 0.13 75);
 }
+.pit-queue-row > strong {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pit-queue-row > .pit-queue-status {
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pit-queue-row > svg {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
 .pit-queue-status {
   font-size: 0.875rem;
   font-weight: 650;
+}
+.pit-form select,
+.pit-form input {
+  width: 100%;
+  height: 2.5rem;
+}
+.pit-form .choice {
+  min-height: 2.5rem;
 }
 .right-rail {
   display: grid;
@@ -522,11 +567,11 @@ select option {
 }
 .strategy-table {
   display: grid;
-  grid-template-columns: minmax(56px, 0.7fr) minmax(64px, 1fr) repeat(
-      2,
+  grid-template-columns: minmax(56px, 0.6fr) minmax(180px, 2fr) repeat(
+      6,
       minmax(76px, 1fr)
     );
-  min-width: 500px;
+  min-width: 860px;
   align-items: center;
 }
 .strategy-table > strong {

@@ -422,6 +422,25 @@ export function PickListWorkspace({
                 >
                   Team pick list
                 </Button>
+                {mode === 'official' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      setOfficial({
+                        entries: (response?.consensus ?? []).map((item) => ({
+                          teamNumber: item.teamNumber,
+                          note: '',
+                          tier: 'first',
+                        })),
+                        selections: official.selections,
+                        unavailable: official.unavailable ?? [],
+                      })
+                    }
+                  >
+                    Start from consensus
+                  </Button>
+                )}
               </>
             )}
           </div>
@@ -555,27 +574,6 @@ export function PickListWorkspace({
 
         {mode !== 'selection' && mode !== 'review' && (
           <>
-            {mode === 'official' && (
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    setOfficial({
-                      entries: (response?.consensus ?? []).map((item) => ({
-                        teamNumber: item.teamNumber,
-                        note: '',
-                        tier: 'first',
-                      })),
-                      selections: official.selections,
-                      unavailable: official.unavailable ?? [],
-                    })
-                  }
-                >
-                  Start from consensus
-                </Button>
-              </div>
-            )}
             <div className="grid h-[calc(100dvh-11rem)] min-h-[26rem] grid-rows-[minmax(0,2fr)_minmax(0,3fr)] gap-2 lg:h-auto lg:min-h-0 lg:grid-cols-[18rem_minmax(0,1fr)] lg:grid-rows-none lg:gap-3">
               <section className="flex h-full min-h-0 flex-col rounded-lg border border-l-4 border-l-muted-foreground/35 bg-muted/20 lg:h-[42rem]">
                 <div className="border-b bg-muted/60 p-2 sm:p-3">
@@ -938,7 +936,12 @@ export function PickListWorkspace({
                         {team.rank === null ? '—' : team.rank + 1}
                       </span>
                       <div className="min-w-0">
-                        <strong>{team.teamNumber}</strong>
+                        <p className="truncate">
+                          <strong>{team.teamNumber}</strong>
+                          <span className="ml-2 text-muted-foreground">
+                            {metrics.get(team.teamNumber)?.name}
+                          </span>
+                        </p>
                         <small className="block truncate text-muted-foreground">
                           xP{' '}
                           {metrics.get(team.teamNumber)?.xp?.toFixed(1) ?? '—'}

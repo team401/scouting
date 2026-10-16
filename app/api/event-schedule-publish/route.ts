@@ -94,3 +94,33 @@ export async function POST(request: Request) {
   );
   return Response.json({ publishedAt: now, hasUnpublishedChanges: false });
 }
+
+export async function DELETE(request: Request) {
+  const actor = await context(request);
+  if (!actor)
+    return Response.json(
+      { error: 'Admin access is required.' },
+      { status: 403 },
+    );
+  if (!actor.event)
+    return Response.json({ error: 'Load an event first.' }, { status: 409 });
+
+  await env.DB.batch([
+    env.DB.prepare(
+      'DELETE FROM published_event_role_assignments WHERE event_id = ?',
+    ).bind(actor.event.id),
+    env.DB.prepare(
+      'DELETE FROM published_scout_shifts WHERE event_id = ?',
+    ).bind(actor.event.id),
+    env.DB.prepare(
+      `UPDATE event_schedule_publications SET published_at = NULL
+       WHERE event_id = ?`,
+    ).bind(actor.event.id),
+  ]);
+  await reconcileShiftAssignments(
+    env.DB,
+    actor.membership.organizationId,
+    actor.event.id,
+  );
+  return Response.json({ publishedAt: null, hasUnpublishedChanges: true });
+}
