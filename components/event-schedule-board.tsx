@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ConfirmActionDialog } from '@/components/confirm-action-dialog';
 import {
   activeCoverageTargets,
   coverageCount,
@@ -411,6 +412,7 @@ export function EventScheduleBoard({
   const [publishedAt, setPublishedAt] = useState<number | null>(null);
   const [hasUnpublishedChanges, setHasUnpublishedChanges] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [unpublishConfirmOpen, setUnpublishConfirmOpen] = useState(false);
   const attendanceDirtyRef = useRef(false);
   const freshLoadedRef = useRef(false);
   const [controls, setControls] = useState<EventControls>({
@@ -917,6 +919,24 @@ export function EventScheduleBoard({
     await onChanged();
   }
 
+  async function unpublishSchedule() {
+    setPublishing(true);
+    setMessage('');
+    const response = await fetch('/api/event-schedule-publish', {
+      method: 'DELETE',
+    });
+    const body = await readBody<{ error?: string }>(response);
+    setPublishing(false);
+    if (!response.ok) {
+      setMessage(body.error ?? 'Could not unpublish the schedule.');
+      return false;
+    }
+    setPublishedAt(null);
+    setHasUnpublishedChanges(true);
+    setMessage('Schedule unpublished. Your draft is still available.');
+    await onChanged();
+  }
+
   async function removeScheduleDay(day: string) {
     setMessage('');
     const response = await fetch(
@@ -947,26 +967,38 @@ export function EventScheduleBoard({
           <div>
             <p className="font-semibold">Draft schedule</p>
             <p className="text-sm text-muted-foreground">
-              {hasUnpublishedChanges
-                ? 'Unpublished changes'
-                : publishedAt
-                  ? `Published ${new Date(publishedAt).toLocaleString()}`
-                  : 'Not published yet'}
+              {publishedAt
+                ? hasUnpublishedChanges
+                  ? 'Unpublished changes'
+                  : `Published ${new Date(publishedAt).toLocaleString()}`
+                : 'Not published yet'}
             </p>
           </div>
-          <Button
-            type="button"
-            disabled={
-              publishing || (!hasUnpublishedChanges && publishedAt !== null)
-            }
-            onClick={() => void publishSchedule()}
-          >
-            {publishing
-              ? 'Publishing…'
-              : publishedAt
-                ? 'Publish changes'
-                : 'Publish schedule'}
-          </Button>
+          <div className="flex gap-2">
+            {publishedAt && (
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={publishing}
+                onClick={() => setUnpublishConfirmOpen(true)}
+              >
+                Unpublish
+              </Button>
+            )}
+            <Button
+              type="button"
+              disabled={
+                publishing || (!hasUnpublishedChanges && publishedAt !== null)
+              }
+              onClick={() => void publishSchedule()}
+            >
+              {publishing
+                ? 'Working…'
+                : publishedAt
+                  ? 'Publish changes'
+                  : 'Publish schedule'}
+            </Button>
+          </div>
         </div>
         <div className="grid gap-2 px-3 sm:grid-cols-3">
           <input
@@ -1320,6 +1352,15 @@ export function EventScheduleBoard({
             {message}
           </p>
         )}
+        <ConfirmActionDialog
+          open={unpublishConfirmOpen}
+          onOpenChange={setUnpublishConfirmOpen}
+          title="Unpublish this schedule?"
+          description="The schedule will stop appearing for team members. Your draft assignments will be kept so you can edit and publish them again."
+          confirmLabel="Unpublish schedule"
+          destructive
+          onConfirm={unpublishSchedule}
+        />
       </CardContent>
     </Card>
   );

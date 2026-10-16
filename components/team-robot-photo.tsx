@@ -107,55 +107,52 @@ export function TeamRobotPhoto({
         <span className="sr-only">View robot photo full screen</span>
       </button>
       <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
-        <DialogContent
-          className="grid h-dvh w-screen max-w-none place-items-center rounded-none bg-black p-4 text-white ring-0 sm:max-w-none [&_[data-slot=dialog-close]]:bg-black/70 [&_[data-slot=dialog-close]]:text-white [&_[data-slot=dialog-close]]:hover:bg-black"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) setViewerOpen(false);
-          }}
-        >
+        <DialogContent className="flex h-dvh w-screen max-w-none rounded-none bg-black p-0 text-white ring-0 sm:max-w-none [&_[data-slot=dialog-close]]:bg-black/70 [&_[data-slot=dialog-close]]:text-white [&_[data-slot=dialog-close]]:hover:bg-black">
           <DialogTitle className="sr-only">
             Team {teamNumber} robot photo
           </DialogTitle>
-          <img
-            className="max-h-full max-w-full object-contain"
-            src={source}
-            alt={`Team ${teamNumber} robot, full screen`}
-            onClick={(event) => event.stopPropagation()}
-          />
-          {sources.length > 1 && (
-            <>
-              <button
-                type="button"
-                className="absolute top-1/2 left-4 grid size-12 -translate-y-1/2 place-items-center rounded-full bg-black/65 text-white hover:bg-black/85"
-                aria-label="Previous robot photo"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  movePhoto(-1);
-                }}
-              >
-                <ChevronLeft aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className="absolute top-1/2 right-4 grid size-12 -translate-y-1/2 place-items-center rounded-full bg-black/65 text-white hover:bg-black/85"
-                aria-label="Next robot photo"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  movePhoto(1);
-                }}
-              >
-                <ChevronRight aria-hidden="true" />
-              </button>
-              <div className="pointer-events-none absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-2">
-                {sources.map((_, index) => (
-                  <span
-                    className={`size-2 rounded-full ${index === photoIndex ? 'bg-white' : 'bg-white/40'}`}
-                    key={index}
-                  />
-                ))}
-              </div>
-            </>
-          )}
+          {/* Full-viewport layer: any click on its empty area closes the viewer. */}
+          <div
+            role="presentation"
+            className="relative flex h-full w-full items-center justify-center p-4"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) setViewerOpen(false);
+            }}
+          >
+            <img
+              className="max-h-full max-w-full object-contain"
+              src={source}
+              alt={`Team ${teamNumber} robot, full screen`}
+            />
+            {sources.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  className="absolute top-1/2 left-4 grid size-12 -translate-y-1/2 place-items-center rounded-full bg-black/65 text-white hover:bg-black/85"
+                  aria-label="Previous robot photo"
+                  onClick={() => movePhoto(-1)}
+                >
+                  <ChevronLeft aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  className="absolute top-1/2 right-4 grid size-12 -translate-y-1/2 place-items-center rounded-full bg-black/65 text-white hover:bg-black/85"
+                  aria-label="Next robot photo"
+                  onClick={() => movePhoto(1)}
+                >
+                  <ChevronRight aria-hidden="true" />
+                </button>
+                <div className="pointer-events-none absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-2">
+                  {sources.map((_, index) => (
+                    <span
+                      className={`size-2 rounded-full ${index === photoIndex ? 'bg-white' : 'bg-white/40'}`}
+                      key={index}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </>
