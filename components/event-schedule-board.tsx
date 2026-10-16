@@ -1141,27 +1141,29 @@ export function EventScheduleBoard({
             {members
               .filter(canSchedule)
               .sort((a, b) => a.name.localeCompare(b.name))
-              .map((member) => (
-                <label
-                  className="flex min-h-10 items-center gap-2 rounded-md border px-3 py-2"
-                  key={member.id}
-                >
-                  <input
-                    type="checkbox"
-                    checked={attendanceLoaded && attendeeIds.has(member.id)}
-                    onChange={(event) =>
-                      setAttendeeIds((current) => {
-                        attendanceDirtyRef.current = true;
-                        const next = new Set(current);
-                        if (event.target.checked) next.add(member.id);
-                        else next.delete(member.id);
-                        return next;
-                      })
-                    }
-                  />
-                  <span>{member.name}</span>
-                </label>
-              ))}
+              .map((member) => {
+                const checked = attendanceLoaded && attendeeIds.has(member.id);
+                return (
+                  <label
+                    className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors ${checked ? 'border-primary/50 bg-primary/10' : 'hover:bg-muted/60'}`}
+                    key={member.id}
+                  >
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={(nextChecked) =>
+                        setAttendeeIds((current) => {
+                          attendanceDirtyRef.current = true;
+                          const next = new Set(current);
+                          if (nextChecked) next.add(member.id);
+                          else next.delete(member.id);
+                          return next;
+                        })
+                      }
+                    />
+                    <span>{member.name}</span>
+                  </label>
+                );
+              })}
           </div>
           <Button
             className="mt-3"
@@ -1185,7 +1187,7 @@ export function EventScheduleBoard({
             <thead className="sticky top-0 z-30 bg-muted">
               <tr>
                 <th
-                  className="sticky left-0 z-40 whitespace-nowrap border-r border-b bg-muted px-3 py-2 text-left"
+                  className="whitespace-nowrap border-r border-b bg-muted px-3 py-2 text-left md:sticky md:left-0 md:z-40"
                   style={{ width: `calc(${nameChars}ch + 1.5rem)` }}
                 >
                   Person
@@ -1212,7 +1214,7 @@ export function EventScheduleBoard({
                 <th className="w-px border-b px-2 py-2 text-center">
                   Pit Shifts
                 </th>
-                <th className="sticky right-0 z-40 w-px border-b border-l bg-muted px-2 py-2 text-center">
+                <th className="w-px border-b border-l bg-muted px-2 py-2 text-center md:sticky md:right-0 md:z-40">
                   Total Shifts
                 </th>
               </tr>
@@ -1227,7 +1229,7 @@ export function EventScheduleBoard({
                   }
                   key={member.id}
                 >
-                  <th className="sticky left-0 z-20 whitespace-nowrap border-r border-b bg-inherit px-3 py-2 text-left font-medium">
+                  <th className="whitespace-nowrap border-r border-b bg-inherit px-3 py-2 text-left font-medium md:sticky md:left-0 md:z-20">
                     {member.name}
                     {isGuestMember(member) && (
                       <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal">
@@ -1282,7 +1284,7 @@ export function EventScheduleBoard({
                   <td className="w-px border-b px-2 py-2 text-center">
                     {(shiftCounts.get(member.id) ?? emptyShifts).pit}
                   </td>
-                  <td className="sticky right-0 z-20 w-px border-b border-l bg-inherit px-2 py-2 text-center font-semibold">
+                  <td className="w-px border-b border-l bg-inherit px-2 py-2 text-center font-semibold md:sticky md:right-0 md:z-20">
                     {(shiftCounts.get(member.id) ?? emptyShifts).total}
                   </td>
                 </tr>
@@ -1291,7 +1293,7 @@ export function EventScheduleBoard({
             <tfoot>
               {coverageGrid.map(({ target, counts: perHour }) => (
                 <tr key={target.label}>
-                  <th className="sticky left-0 z-20 whitespace-nowrap border-r border-b bg-background px-3 py-1 text-left text-xs font-medium">
+                  <th className="whitespace-nowrap border-r border-b bg-background px-3 py-1 text-left text-xs font-medium md:sticky md:left-0 md:z-20">
                     {target.label}
                   </th>
                   {perHour.map((have, index) => (
