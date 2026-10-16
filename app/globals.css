@@ -242,7 +242,6 @@ select option {
 }
 .counter-controls {
   display: grid;
-  grid-template-columns: 48px 52px 48px 48px 48px;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;

@@ -529,18 +529,25 @@ function Counter({
   value,
   onChange,
   quickAdds = [],
+  quickAddSlots = quickAdds.length,
 }: {
   label: string;
   value: number;
   onChange: (value: number) => void;
   quickAdds?: number[];
+  quickAddSlots?: number;
 }) {
   return (
     <div className="counter-row">
       <div>
         <p className="font-semibold">{label}</p>
       </div>
-      <div className="counter-controls">
+      <div
+        className="counter-controls"
+        style={{
+          gridTemplateColumns: `48px 52px repeat(${1 + quickAddSlots}, 48px)`,
+        }}
+      >
         <Button
           type="button"
           aria-label={`Remove one ${label}`}
@@ -571,7 +578,7 @@ function Counter({
         >
           <Plus />
         </Button>
-        {[0, 1].map((index) => {
+        {Array.from({ length: quickAddSlots }, (_, index) => {
           const amount = quickAdds[index];
           return amount ? (
             <Button
@@ -2532,11 +2539,13 @@ export default function Home() {
                       value={autoFuel}
                       onChange={setAutoFuel}
                       quickAdds={[5]}
+                      quickAddSlots={1}
                     />
                     <Counter
                       label="Center swipes"
                       value={centerSwipes}
                       onChange={setCenterSwipes}
+                      quickAddSlots={1}
                     />
                     <div className="grid grid-cols-2 gap-2 px-4 py-3">
                       <button
@@ -2560,6 +2569,7 @@ export default function Home() {
                       label="Penalties"
                       value={autoPenalties}
                       onChange={setAutoPenalties}
+                      quickAddSlots={1}
                     />
                     <div className="flex items-center justify-between gap-3 px-4 py-3">
                       <strong>Auto tower</strong>
@@ -2593,17 +2603,20 @@ export default function Home() {
                       value={activeFuel}
                       onChange={setActiveFuel}
                       quickAdds={[5, 10]}
+                      quickAddSlots={2}
                     />
                     <Counter
                       label="Fuel passed"
                       value={passedFuel}
                       onChange={setPassedFuel}
                       quickAdds={[5]}
+                      quickAddSlots={2}
                     />
                     <Counter
                       label="Penalties"
                       value={teleopPenalties}
                       onChange={setTeleopPenalties}
+                      quickAddSlots={2}
                     />
                   </CardContent>
                 </Card>
