@@ -1091,13 +1091,6 @@ export function EventScheduleBoard({
           <div className="flex flex-wrap items-center gap-3 border-b px-3 pb-3">
             <div className="shrink-0">
               <p className="font-semibold">Schedule Builder</p>
-              <p className="text-sm text-muted-foreground">
-                {publishedAt
-                  ? hasUnpublishedChanges
-                    ? 'Unpublished changes'
-                    : `Published ${new Date(publishedAt).toLocaleString()}`
-                  : 'Not published yet'}
-              </p>
             </div>
             {scheduleDays.length > 0 && (
               <div
@@ -1124,7 +1117,7 @@ export function EventScheduleBoard({
                 ))}
               </div>
             )}
-            <div className="ml-auto flex gap-2">
+            <div className="ml-auto flex items-start gap-2">
               {publishedAt && (
                 <Button
                   type="button"
@@ -1135,19 +1128,29 @@ export function EventScheduleBoard({
                   Unpublish
                 </Button>
               )}
-              <Button
-                type="button"
-                disabled={
-                  publishing || (!hasUnpublishedChanges && publishedAt !== null)
-                }
-                onClick={() => void publishSchedule()}
-              >
-                {publishing
-                  ? 'Working…'
-                  : publishedAt
-                    ? 'Publish changes'
-                    : 'Publish schedule'}
-              </Button>
+              <div className="flex flex-col items-end gap-1">
+                <Button
+                  type="button"
+                  disabled={
+                    publishing ||
+                    (!hasUnpublishedChanges && publishedAt !== null)
+                  }
+                  onClick={() => void publishSchedule()}
+                >
+                  {publishing
+                    ? 'Working…'
+                    : publishedAt
+                      ? 'Publish changes'
+                      : 'Publish schedule'}
+                </Button>
+                <p className="text-right text-xs text-muted-foreground">
+                  {publishedAt
+                    ? hasUnpublishedChanges
+                      ? 'Unpublished changes'
+                      : `Published ${new Date(publishedAt).toLocaleString()}`
+                    : 'Not published yet'}
+                </p>
+              </div>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-y px-3 py-2 text-sm">
