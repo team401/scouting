@@ -2848,10 +2848,9 @@ export default function Home() {
               <CardHeader>
                 <CardTitle>
                   {pitTeam
-                    ? `Team ${pitTeam}${eventPack?.teams.find((item) => item.teamNumber === pitTeam)?.name ? ` — ${eventPack.teams.find((item) => item.teamNumber === pitTeam)?.name}` : ''} robot`
+                    ? `Team ${pitTeam}${eventPack?.teams.find((item) => item.teamNumber === pitTeam)?.name ? ` — ${eventPack.teams.find((item) => item.teamNumber === pitTeam)?.name}` : ''}`
                     : 'Choose a team'}
                 </CardTitle>
-                {pitTeam && <Badge variant="outline">Auto-saved offline</Badge>}
                 {pitTeam &&
                   eventPack?.pitEntries.find(
                     (entry) => entry.teamNumber === pitTeam,
