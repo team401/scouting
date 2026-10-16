@@ -3805,39 +3805,8 @@ export default function Home() {
             />
             <Card className="sm:col-span-2">
               <CardHeader>
-                <CardTitle>Event ranking workspace</CardTitle>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline">{strategyTeams.length} teams</Badge>
-                  <Button
-                    size="sm"
-                    variant={rankingSort.key === 'rank' ? 'default' : 'outline'}
-                    onClick={() =>
-                      setRankingSort({ key: 'rank', direction: 'asc' })
-                    }
-                  >
-                    Event rank
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={rankingSort.key === 'team' ? 'default' : 'outline'}
-                    onClick={() =>
-                      setRankingSort({ key: 'team', direction: 'asc' })
-                    }
-                  >
-                    Team number
-                  </Button>
-                  {eventPack && canReopenEntries(effectiveRole) && (
-                    <Button
-                      nativeButton={false}
-                      size="sm"
-                      variant="outline"
-                      render={<a href="/api/export/scouting" download />}
-                    >
-                      <Cloud />
-                      Export CSV
-                    </Button>
-                  )}
-                </div>
+                <CardTitle>Event Data</CardTitle>
+                <Badge variant="outline">{strategyTeams.length} teams</Badge>
               </CardHeader>
               <CardContent className="max-h-96 overflow-auto">
                 <div className="strategy-table">
