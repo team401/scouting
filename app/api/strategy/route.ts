@@ -90,6 +90,7 @@ export async function GET(request: Request) {
     }
   >();
   const xps = new Map<number, number>();
+  const match13Oprs = new Map<number, number>();
   const phaseXps = new Map<
     number,
     { xAuto: number | null; xTele: number | null; xEnd: number | null }
@@ -146,6 +147,8 @@ export async function GET(request: Request) {
         const xp = finiteNumber(row.xpEnd) ?? finiteNumber(row.xpMean);
         if (row.teamNumber) {
           if (xp !== null) xps.set(row.teamNumber, xp);
+          const opr = finiteNumber(row.opr);
+          if (opr !== null) match13Oprs.set(row.teamNumber, opr);
           phaseXps.set(row.teamNumber, {
             xAuto: finiteNumber(row.xAuto),
             xTele: finiteNumber(row.xTele),
@@ -170,7 +173,10 @@ export async function GET(request: Request) {
         xAuto: phaseXps.get(teamNumber)?.xAuto ?? null,
         xTele: phaseXps.get(teamNumber)?.xTele ?? null,
         xEnd: phaseXps.get(teamNumber)?.xEnd ?? null,
-        opr: finiteNumber(oprs[`frc${teamNumber}`]),
+        opr:
+          finiteNumber(oprs[`frc${teamNumber}`]) ??
+          match13Oprs.get(teamNumber) ??
+          null,
         eventRank: rankings.get(teamNumber)?.eventRank ?? null,
         matchesPlayed: rankings.get(teamNumber)?.matchesPlayed ?? 0,
         wins: rankings.get(teamNumber)?.wins ?? 0,
