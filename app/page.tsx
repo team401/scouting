@@ -2084,7 +2084,7 @@ export default function Home() {
         ? `${matchHeaderLabel(currentMatch)}${selectedStation ? ` · ${selectedStation.replace('red', 'Red ').replace('blue', 'Blue ')}` : ''}${selectedTeam ? ` · Team ${selectedTeam}` : ''}`
         : 'Choose an assignment'
       : activeView === 'Pit'
-        ? `Pit Scouting · ${eventPack?.pitEntries.length ?? 0}/${eventTeams.length} Complete`
+        ? `Pit Scouting · ${eventPack?.pitEntries.length ?? 0}/${eventTeams.length}`
         : activeView === 'Plan' && currentPlanningMatch
           ? `Plan · ${matchHeaderLabel(currentPlanningMatch)}`
           : activeView;
