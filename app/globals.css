@@ -396,6 +396,12 @@ select option {
   width: 60%;
   min-width: 0;
 }
+@media (min-width: 521px) {
+  .pit-form > label > span:first-child,
+  .pit-form > div > span:first-child {
+    text-align: right;
+  }
+}
 .right-rail {
   display: grid;
   align-content: start;
