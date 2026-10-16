@@ -3016,7 +3016,7 @@ export default function Home() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle className="w-full text-center">
+                <CardTitle className="w-full justify-center text-center">
                   {pitTeam
                     ? `Team ${pitTeam}${eventPack?.teams.find((item) => item.teamNumber === pitTeam)?.name ? ` — ${eventPack.teams.find((item) => item.teamNumber === pitTeam)?.name}` : ''}`
                     : 'Choose a team'}
