@@ -48,6 +48,7 @@ import { TeamRobotPhoto } from '@/components/team-robot-photo';
 import { TeamTrendChart, type TeamTrend } from '@/components/team-trend-chart';
 import { ScoutingOperations } from '@/components/scouting-operations';
 import { PersonalEventSchedule } from '@/components/event-role-scheduler';
+import { DriveTeamPlanner } from '@/components/drive-team-planner';
 import { EventScheduleBoard } from '@/components/event-schedule-board';
 import { EventTeamAliases } from '@/components/event-team-aliases';
 import { QrRelay } from '@/components/qr-relay';
@@ -3840,6 +3841,7 @@ export default function Home() {
                   </>
                 }
               />
+              <DriveTeamPlanner members={eventPack?.members ?? []} />
             </div>
           )}
         {activeView === 'Data' && (

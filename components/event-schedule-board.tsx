@@ -958,7 +958,7 @@ export function EventScheduleBoard({
     }
     setPublishedAt(body.publishedAt);
     setHasUnpublishedChanges(false);
-    setMessage('Schedule published to the team.');
+    setMessage('Shifts published to the team.');
     await onChanged();
   }
 
@@ -976,7 +976,7 @@ export function EventScheduleBoard({
     }
     setPublishedAt(null);
     setHasUnpublishedChanges(true);
-    setMessage('Schedule unpublished. Your draft is still available.');
+    setMessage('Shifts unpublished. Your draft is still available.');
     await onChanged();
   }
 
@@ -1140,8 +1140,8 @@ export function EventScheduleBoard({
                   {publishing
                     ? 'Working…'
                     : publishedAt
-                      ? 'Publish changes'
-                      : 'Publish schedule'}
+                      ? 'Publish shift changes'
+                      : 'Publish shifts'}
                 </Button>
                 <p className="text-right text-xs text-muted-foreground">
                   {publishedAt
@@ -1442,9 +1442,9 @@ export function EventScheduleBoard({
           <ConfirmActionDialog
             open={unpublishConfirmOpen}
             onOpenChange={setUnpublishConfirmOpen}
-            title="Unpublish this schedule?"
-            description="The schedule will stop appearing for team members. Your draft assignments will be kept so you can edit and publish them again."
-            confirmLabel="Unpublish schedule"
+            title="Unpublish shifts?"
+            description="The shift schedule will stop appearing for team members. Your draft assignments will be kept so you can edit and publish them again."
+            confirmLabel="Unpublish shifts"
             destructive
             onConfirm={unpublishSchedule}
           />
