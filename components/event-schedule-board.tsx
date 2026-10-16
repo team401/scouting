@@ -291,7 +291,7 @@ function ScheduleRoleInput({
         ref={inputRef}
         aria-label={ariaLabel}
         autoComplete="off"
-        className={`h-9 w-full rounded-md border px-1 text-center text-xs font-medium ${label && !open ? assignmentClass(label) : 'bg-background text-foreground'}`}
+        className={`h-9 w-full rounded-md border px-1 text-center text-xs font-medium transition-colors ${label && !open ? assignmentClass(label) : 'border-slate-300 bg-white text-foreground hover:border-slate-400 hover:bg-slate-50 focus:border-primary dark:border-border dark:bg-background dark:hover:border-muted-foreground dark:hover:bg-muted/40'}`}
         disabled={busy}
         data-schedule-cell={cellId}
         value={busy ? 'Saving…' : query}
@@ -1324,21 +1324,21 @@ export function EventScheduleBoard({
             </p>
           )}
           <div
-            className="max-h-[68dvh] overflow-auto border-y"
+            className="max-h-[68dvh] overflow-auto border-y border-slate-300 bg-slate-100 dark:border-border dark:bg-background"
             data-schedule-scroll
           >
             <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
-              <thead className="sticky top-0 z-30 bg-muted">
+              <thead className="sticky top-0 z-30 bg-slate-200 dark:bg-muted">
                 <tr>
                   <th
-                    className="whitespace-nowrap border-r border-b bg-muted px-3 py-2 text-left md:sticky md:left-0 md:z-40"
+                    className="whitespace-nowrap border-r border-b border-slate-300 bg-slate-200 px-3 py-2 text-left dark:border-border dark:bg-muted md:sticky md:left-0 md:z-40"
                     style={{ width: `calc(${nameChars}ch + 1.5rem)` }}
                   >
                     Person
                   </th>
                   {hours.map((hour) => (
                     <th
-                      className="whitespace-nowrap border-r border-b px-1 py-2 text-center"
+                      className="whitespace-nowrap border-r border-b border-slate-300 px-1 py-2 text-center dark:border-border"
                       key={hour}
                       style={{ minWidth: hourColumnWidth }}
                     >
@@ -1352,13 +1352,13 @@ export function EventScheduleBoard({
                       )}
                     </th>
                   ))}
-                  <th className="w-px border-b px-2 py-2 text-center">
+                  <th className="w-px border-b border-slate-300 px-2 py-2 text-center dark:border-border">
                     Scouting Shifts
                   </th>
-                  <th className="w-px border-b px-2 py-2 text-center">
+                  <th className="w-px border-b border-slate-300 px-2 py-2 text-center dark:border-border">
                     Pit Shifts
                   </th>
-                  <th className="w-px border-b border-l bg-muted px-2 py-2 text-center md:sticky md:right-0 md:z-40">
+                  <th className="w-px border-b border-l border-slate-300 bg-slate-200 px-2 py-2 text-center dark:border-border dark:bg-muted md:sticky md:right-0 md:z-40">
                     Total Shifts
                   </th>
                 </tr>
@@ -1368,12 +1368,12 @@ export function EventScheduleBoard({
                   <tr
                     className={
                       rowIndex % 2
-                        ? 'bg-[color-mix(in_srgb,var(--muted)_20%,var(--background))]'
-                        : 'bg-background'
+                        ? 'bg-slate-100 dark:bg-[color-mix(in_srgb,var(--muted)_20%,var(--background))]'
+                        : 'bg-white dark:bg-background'
                     }
                     key={member.scheduleRowKey}
                   >
-                    <th className="whitespace-nowrap border-r border-b bg-inherit px-3 py-2 text-left font-medium md:sticky md:left-0 md:z-20">
+                    <th className="whitespace-nowrap border-r border-b border-slate-300 bg-inherit px-3 py-2 text-left font-medium dark:border-border md:sticky md:left-0 md:z-20">
                       {scheduleMemberName(member)}
                       {isGuestMember(member) && (
                         <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal">
@@ -1395,7 +1395,7 @@ export function EventScheduleBoard({
                       const key = `${member.scheduleRowKey}:${startsAt}`;
                       return (
                         <td
-                          className="h-11 border-r border-b p-1"
+                          className="h-11 border-r border-b border-slate-300 p-1 dark:border-border"
                           key={hour}
                           style={{ minWidth: hourColumnWidth }}
                         >
@@ -1427,13 +1427,13 @@ export function EventScheduleBoard({
                         </td>
                       );
                     })}
-                    <td className="w-px border-b px-2 py-2 text-center">
+                    <td className="w-px border-b border-slate-300 px-2 py-2 text-center dark:border-border">
                       {(shiftCounts.get(member.id) ?? emptyShifts).scouting}
                     </td>
-                    <td className="w-px border-b px-2 py-2 text-center">
+                    <td className="w-px border-b border-slate-300 px-2 py-2 text-center dark:border-border">
                       {(shiftCounts.get(member.id) ?? emptyShifts).pit}
                     </td>
-                    <td className="w-px border-b border-l bg-inherit px-2 py-2 text-center font-semibold md:sticky md:right-0 md:z-20">
+                    <td className="w-px border-b border-l border-slate-300 bg-inherit px-2 py-2 text-center font-semibold dark:border-border md:sticky md:right-0 md:z-20">
                       {(shiftCounts.get(member.id) ?? emptyShifts).total}
                     </td>
                   </tr>
