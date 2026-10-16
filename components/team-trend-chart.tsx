@@ -54,14 +54,14 @@ export function TeamTrendChart({ trends }: { trends: TeamTrend[] }) {
             <Line
               type="monotone"
               dataKey="activeFuel"
-              name="Active FUEL"
+              name="Active Fuel"
               stroke="#f59e0b"
               strokeWidth={2}
             />
             <Line
               type="monotone"
               dataKey="autoFuel"
-              name="Autonomous FUEL"
+              name="Autonomous Fuel"
               stroke="#22c55e"
               strokeWidth={2}
             />

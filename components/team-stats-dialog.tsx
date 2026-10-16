@@ -198,7 +198,7 @@ export function TeamStatsDialog({
               metricRank(eventSummaries, teamNumber, 'medianPoints'),
             ],
             [
-              'Median active FUEL',
+              'Median active Fuel',
               number(stats.medianActiveFuel),
               metricRank(eventSummaries, teamNumber, 'medianActiveFuel'),
             ],

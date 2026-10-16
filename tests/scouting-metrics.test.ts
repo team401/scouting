@@ -6,7 +6,7 @@ import {
   summarizeEntries,
 } from '../lib/scouting-metrics.ts';
 
-void test('calculates observed REBUILT points', () => {
+void test('calculates observed Rebuilt points', () => {
   assert.equal(
     observedPoints({
       autoFuel: 5,

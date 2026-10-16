@@ -613,6 +613,52 @@ function Counter({
   );
 }
 
+type PlanSection = 'auto' | 'teleop' | 'metrics';
+
+function PlanSectionButtons({
+  value,
+  onChange,
+}: {
+  value: PlanSection;
+  onChange: (section: PlanSection) => void;
+}) {
+  return (
+    <div
+      aria-label="Plan view"
+      className="ml-auto flex w-max max-w-full shrink-0 flex-nowrap items-center gap-1"
+      role="group"
+    >
+      <Button
+        type="button"
+        size="sm"
+        variant={value === 'auto' ? 'default' : 'ghost'}
+        aria-pressed={value === 'auto'}
+        onClick={() => onChange('auto')}
+      >
+        Auto Plan
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant={value === 'teleop' ? 'default' : 'ghost'}
+        aria-pressed={value === 'teleop'}
+        onClick={() => onChange('teleop')}
+      >
+        Tele Plan
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant={value === 'metrics' ? 'default' : 'ghost'}
+        aria-pressed={value === 'metrics'}
+        onClick={() => onChange('metrics')}
+      >
+        Team metrics
+      </Button>
+    </div>
+  );
+}
+
 export default function Home() {
   const { data: session, isPending } = authClient.useSession();
   const [activeView, setActiveView] = useState<View>('Home');
@@ -2123,6 +2169,10 @@ export default function Home() {
       (entry) =>
         (entry.payload as MatchDraft & { reopened?: boolean }).reopened,
     ) ?? [];
+  const planTeamNumbers = new Set([
+    ...(eventPack?.teams.map((team) => team.teamNumber) ?? []),
+    ...strategyTeams.map((team) => team.teamNumber),
+  ]);
   const planTeams = currentPlanningMatch
     ? [
         ...currentPlanningMatch.alliances.red,
@@ -2136,7 +2186,15 @@ export default function Home() {
         pit: eventPack?.pitEntries.find((item) => item.teamNumber === team),
         name: eventPack?.teams?.find((item) => item.teamNumber === team)?.name,
       }))
-    : [];
+    : [...planTeamNumbers]
+        .sort((a, b) => a - b)
+        .map((team) => ({
+          team,
+          alliance: null,
+          stats: strategyTeams.find((item) => item.teamNumber === team),
+          pit: eventPack?.pitEntries.find((item) => item.teamNumber === team),
+          name: eventPack?.teams.find((item) => item.teamNumber === team)?.name,
+        }));
   const selectedStrategyTeam = strategyTeams.find(
     (team) => team.teamNumber === selectedTeam,
   );
@@ -3128,7 +3186,7 @@ export default function Home() {
                         </span>
                       </label>
                       <label className="flex items-center justify-between gap-3 text-sm">
-                        <span>FUEL capacity</span>
+                        <span>Fuel capacity</span>
                         <Input
                           className="pit-field-control"
                           type="number"
@@ -3473,8 +3531,8 @@ export default function Home() {
             <Card
               className={
                 planFullscreen
-                  ? 'min-h-dvh rounded-none border-0'
-                  : 'rounded-none sm:rounded-xl'
+                  ? 'min-h-dvh rounded-none border-0 pt-0'
+                  : 'rounded-none pt-0 sm:rounded-xl'
               }
               onClick={() => {
                 if (planFullscreen) setPlanFullscreen(false);
@@ -3510,34 +3568,6 @@ export default function Home() {
                         </select>
                       </div>
                     )}
-                    <div className="grid grid-cols-3 gap-1">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={planSection === 'auto' ? 'default' : 'ghost'}
-                        onClick={() => setPlanSection('auto')}
-                      >
-                        Auto Plan
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={planSection === 'teleop' ? 'default' : 'ghost'}
-                        onClick={() => setPlanSection('teleop')}
-                      >
-                        Tele Plan
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={
-                          planSection === 'metrics' ? 'default' : 'ghost'
-                        }
-                        onClick={() => setPlanSection('metrics')}
-                      >
-                        Team metrics
-                      </Button>
-                    </div>
                   </>
                 )}
                 {planSection !== 'metrics' && (
@@ -3568,6 +3598,12 @@ export default function Home() {
                           >
                             {planFullscreen ? <Minimize2 /> : <Maximize2 />}
                           </Button>
+                        }
+                        toolbarEnd={
+                          <PlanSectionButtons
+                            value={planSection}
+                            onChange={setPlanSection}
+                          />
                         }
                         onChange={(board) =>
                           setMatchPlan(
@@ -3612,186 +3648,207 @@ export default function Home() {
                 )}
                 {planSection === 'metrics' && (
                   <div className="grid gap-3 border-t pt-4 sm:grid-cols-2 xl:grid-cols-3">
-                    {planTeams.map(({ team, alliance, stats, pit, name }) => (
-                      <div
-                        className={
-                          alliance === 'red'
-                            ? 'rounded-lg border border-l-8 border-red-500 bg-red-50 p-3 text-red-950 dark:bg-red-950/30 dark:text-red-50'
-                            : 'rounded-lg border border-l-8 border-blue-500 bg-blue-50 p-3 text-blue-950 dark:bg-blue-950/30 dark:text-blue-50'
-                        }
-                        key={team}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <strong>
-                              Team {team}
-                              {name ? ` - ${name}` : ''}
-                            </strong>
-                            {matchPlan.absentTeams.includes(team) && (
-                              <Badge className="ml-2" variant="destructive">
-                                Not playing
-                              </Badge>
+                    {planTeams.length === 0 ? (
+                      <p className="col-span-full rounded-lg border p-6 text-center text-sm text-muted-foreground">
+                        No teams are available for this event yet.
+                      </p>
+                    ) : (
+                      planTeams.map(({ team, alliance, stats, pit, name }) => (
+                        <div
+                          className={
+                            alliance === 'red'
+                              ? 'rounded-lg border border-l-8 border-red-500 bg-red-50 p-3 text-red-950 dark:bg-red-950/30 dark:text-red-50'
+                              : alliance === 'blue'
+                                ? 'rounded-lg border border-l-8 border-blue-500 bg-blue-50 p-3 text-blue-950 dark:bg-blue-950/30 dark:text-blue-50'
+                                : 'rounded-lg border bg-card p-3'
+                          }
+                          key={team}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <strong>
+                                Team {team}
+                                {name ? ` - ${name}` : ''}
+                              </strong>
+                              {currentPlanningMatch &&
+                                matchPlan.absentTeams.includes(team) && (
+                                  <Badge className="ml-2" variant="destructive">
+                                    Not playing
+                                  </Badge>
+                                )}
+                            </div>
+                            {alliance && (
+                              <span
+                                aria-label={`${alliance} alliance`}
+                                className={
+                                  alliance === 'red'
+                                    ? 'size-4 rounded-full bg-red-600 ring-2 ring-red-200'
+                                    : 'size-4 rounded-full bg-blue-600 ring-2 ring-blue-200'
+                                }
+                              />
                             )}
                           </div>
-                          <span
-                            aria-label={`${alliance} alliance`}
-                            className={
-                              alliance === 'red'
-                                ? 'size-4 rounded-full bg-red-600 ring-2 ring-red-200'
-                                : 'size-4 rounded-full bg-blue-600 ring-2 ring-blue-200'
-                            }
-                          />
-                        </div>
-                        {planCanEdit && (
+                          {planCanEdit && currentPlanningMatch && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="mt-2"
+                              onClick={() => {
+                                const isAbsent =
+                                  matchPlan.absentTeams.includes(team);
+                                const absentTeams = isAbsent
+                                  ? matchPlan.absentTeams.filter(
+                                      (item) => item !== team,
+                                    )
+                                  : [...matchPlan.absentTeams, team];
+                                const defaultMarkers = initialRobotMarkers(
+                                  currentPlanningMatch?.alliances.red ?? [],
+                                  currentPlanningMatch?.alliances.blue ?? [],
+                                );
+                                const robots = isAbsent
+                                  ? [
+                                      ...matchPlan.board.robots,
+                                      ...defaultMarkers.filter(
+                                        (robot) => robot.team === team,
+                                      ),
+                                    ]
+                                  : matchPlan.board.robots.filter(
+                                      (robot) => robot.team !== team,
+                                    );
+                                const autoRobots = isAbsent
+                                  ? [
+                                      ...matchPlan.autoBoard.robots,
+                                      ...defaultMarkers.filter(
+                                        (robot) => robot.team === team,
+                                      ),
+                                    ]
+                                  : matchPlan.autoBoard.robots.filter(
+                                      (robot) => robot.team !== team,
+                                    );
+                                setMatchPlan({
+                                  ...matchPlan,
+                                  absentTeams,
+                                  board: { ...matchPlan.board, robots },
+                                  autoBoard: {
+                                    ...matchPlan.autoBoard,
+                                    robots: autoRobots,
+                                  },
+                                });
+                              }}
+                            >
+                              {matchPlan.absentTeams.includes(team)
+                                ? 'Return robot to field'
+                                : 'Robot not playing'}
+                            </Button>
+                          )}
+                          <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                            <span>
+                              <strong>{stats?.xp?.toFixed(1) ?? '—'}</strong>
+                              <small className="block text-muted-foreground">
+                                Match13 xP
+                              </small>
+                            </span>
+                            <span>
+                              <strong>{stats?.epa?.toFixed(1) ?? '—'}</strong>
+                              <small className="block text-muted-foreground">
+                                EPA
+                              </small>
+                            </span>
+                            <span>
+                              <strong>
+                                {stats?.medianPoints.toFixed(1) ?? '—'}
+                              </strong>
+                              <small className="block text-muted-foreground">
+                                median pts
+                              </small>
+                            </span>
+                            <span>
+                              <strong>{stats?.disabledMatches ?? 0}</strong>
+                              <small className="block text-muted-foreground">
+                                disabled matches
+                              </small>
+                            </span>
+                          </div>
+                          <div className="mt-3 border-t pt-2 text-xs">
+                            <p className="font-semibold">Pit summary</p>
+                            {pit ? (
+                              <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-muted-foreground">
+                                <span>
+                                  {pit.drivetrain ?? 'Unknown'}
+                                  {pit.swerveModule
+                                    ? ` · ${pit.swerveModule}`
+                                    : ''}
+                                </span>
+                                <span>
+                                  {pit.weightLbs
+                                    ? `${pit.weightLbs} lb`
+                                    : 'Weight —'}
+                                </span>
+                                <span>
+                                  Capacity {pit.payload.fuelCapacity ?? '—'}
+                                </span>
+                                <span>
+                                  Climb {pit.payload.climbCapability ?? '—'}
+                                </span>
+                                <span>
+                                  Access {pit.payload.fieldAccess ?? '—'}
+                                </span>
+                                <span>
+                                  Shooter {shooterSummary(pit.payload)}
+                                </span>
+                                <span className="col-span-2 line-clamp-2">
+                                  Auto:{' '}
+                                  {[
+                                    normalizeSelections(
+                                      pit.payload.autonomousStart,
+                                      'Unknown',
+                                    ).join(', '),
+                                    normalizeSelections(
+                                      pit.payload.autonomousSwipe,
+                                      'None',
+                                    )
+                                      .filter((item) => item !== 'None')
+                                      .join(', ') || null,
+                                    pit.payload.autonomousDepot
+                                      ? 'Depot'
+                                      : null,
+                                    pit.payload.autonomousOutpost
+                                      ? 'Outpost'
+                                      : null,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(' · ') || '—'}
+                                </span>
+                              </div>
+                            ) : (
+                              <p className="mt-1 text-muted-foreground">
+                                No pit report
+                              </p>
+                            )}
+                          </div>
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            {stats?.samples ?? 0}/{stats?.scheduledMatches ?? 0}{' '}
+                            matches scouted
+                          </p>
                           <Button
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="mt-2"
-                            onClick={() => {
-                              const isAbsent =
-                                matchPlan.absentTeams.includes(team);
-                              const absentTeams = isAbsent
-                                ? matchPlan.absentTeams.filter(
-                                    (item) => item !== team,
-                                  )
-                                : [...matchPlan.absentTeams, team];
-                              const defaultMarkers = initialRobotMarkers(
-                                currentPlanningMatch?.alliances.red ?? [],
-                                currentPlanningMatch?.alliances.blue ?? [],
-                              );
-                              const robots = isAbsent
-                                ? [
-                                    ...matchPlan.board.robots,
-                                    ...defaultMarkers.filter(
-                                      (robot) => robot.team === team,
-                                    ),
-                                  ]
-                                : matchPlan.board.robots.filter(
-                                    (robot) => robot.team !== team,
-                                  );
-                              const autoRobots = isAbsent
-                                ? [
-                                    ...matchPlan.autoBoard.robots,
-                                    ...defaultMarkers.filter(
-                                      (robot) => robot.team === team,
-                                    ),
-                                  ]
-                                : matchPlan.autoBoard.robots.filter(
-                                    (robot) => robot.team !== team,
-                                  );
-                              setMatchPlan({
-                                ...matchPlan,
-                                absentTeams,
-                                board: { ...matchPlan.board, robots },
-                                autoBoard: {
-                                  ...matchPlan.autoBoard,
-                                  robots: autoRobots,
-                                },
-                              });
-                            }}
+                            className="mt-3 w-full bg-background/70"
+                            onClick={() => setPlanStatsTeam(team)}
                           >
-                            {matchPlan.absentTeams.includes(team)
-                              ? 'Return robot to field'
-                              : 'Robot not playing'}
+                            View stats for team {team}
                           </Button>
-                        )}
-                        <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                          <span>
-                            <strong>{stats?.xp?.toFixed(1) ?? '—'}</strong>
-                            <small className="block text-muted-foreground">
-                              Match13 xP
-                            </small>
-                          </span>
-                          <span>
-                            <strong>{stats?.epa?.toFixed(1) ?? '—'}</strong>
-                            <small className="block text-muted-foreground">
-                              EPA
-                            </small>
-                          </span>
-                          <span>
-                            <strong>
-                              {stats?.medianPoints.toFixed(1) ?? '—'}
-                            </strong>
-                            <small className="block text-muted-foreground">
-                              median pts
-                            </small>
-                          </span>
-                          <span>
-                            <strong>{stats?.disabledMatches ?? 0}</strong>
-                            <small className="block text-muted-foreground">
-                              disabled matches
-                            </small>
-                          </span>
                         </div>
-                        <div className="mt-3 border-t pt-2 text-xs">
-                          <p className="font-semibold">Pit summary</p>
-                          {pit ? (
-                            <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-muted-foreground">
-                              <span>
-                                {pit.drivetrain ?? 'Unknown'}
-                                {pit.swerveModule
-                                  ? ` · ${pit.swerveModule}`
-                                  : ''}
-                              </span>
-                              <span>
-                                {pit.weightLbs
-                                  ? `${pit.weightLbs} lb`
-                                  : 'Weight —'}
-                              </span>
-                              <span>
-                                Capacity {pit.payload.fuelCapacity ?? '—'}
-                              </span>
-                              <span>
-                                Climb {pit.payload.climbCapability ?? '—'}
-                              </span>
-                              <span>
-                                Access {pit.payload.fieldAccess ?? '—'}
-                              </span>
-                              <span>Shooter {shooterSummary(pit.payload)}</span>
-                              <span className="col-span-2 line-clamp-2">
-                                Auto:{' '}
-                                {[
-                                  normalizeSelections(
-                                    pit.payload.autonomousStart,
-                                    'Unknown',
-                                  ).join(', '),
-                                  normalizeSelections(
-                                    pit.payload.autonomousSwipe,
-                                    'None',
-                                  )
-                                    .filter((item) => item !== 'None')
-                                    .join(', ') || null,
-                                  pit.payload.autonomousDepot ? 'Depot' : null,
-                                  pit.payload.autonomousOutpost
-                                    ? 'Outpost'
-                                    : null,
-                                ]
-                                  .filter(Boolean)
-                                  .join(' · ') || '—'}
-                              </span>
-                            </div>
-                          ) : (
-                            <p className="mt-1 text-muted-foreground">
-                              No pit report
-                            </p>
-                          )}
-                        </div>
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          {stats?.samples ?? 0}/{stats?.scheduledMatches ?? 0}{' '}
-                          matches scouted
-                        </p>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="mt-3 w-full bg-background/70"
-                          onClick={() => setPlanStatsTeam(team)}
-                        >
-                          View stats for team {team}
-                        </Button>
-                      </div>
-                    ))}
+                      ))
+                    )}
+                    <div className="col-span-full flex justify-end">
+                      <PlanSectionButtons
+                        value={planSection}
+                        onChange={setPlanSection}
+                      />
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -4165,7 +4222,7 @@ export default function Home() {
                     <div className="mini-stats sm:!grid-cols-3">
                       <span>
                         <strong>{analysis?.medianActiveFuel ?? 0}</strong>{' '}
-                        median active FUEL
+                        median active Fuel
                       </span>
                       <span>
                         <strong>
@@ -4335,8 +4392,8 @@ export default function Home() {
               </CardHeader>
               <CardContent>
                 <p className="mb-3 text-sm text-muted-foreground">
-                  Match-by-match observed points, autonomous FUEL, teleoperated
-                  FUEL, and defense rating (0–4).
+                  Match-by-match observed points, autonomous Fuel, teleoperated
+                  Fuel, and defense rating (0–4).
                 </p>
                 <TeamTrendChart trends={analysis?.trends ?? []} />
               </CardContent>

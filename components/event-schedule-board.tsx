@@ -1331,7 +1331,7 @@ export function EventScheduleBoard({
               <thead className="sticky top-0 z-30 bg-slate-200 dark:bg-muted">
                 <tr>
                   <th
-                    className="whitespace-nowrap border-r border-b border-slate-300 bg-slate-200 px-3 py-2 text-left dark:border-border dark:bg-muted md:sticky md:left-0 md:z-40"
+                    className="sticky left-0 z-40 whitespace-nowrap border-r border-b border-slate-300 bg-slate-200 px-3 py-2 text-left dark:border-border dark:bg-muted"
                     style={{ width: `calc(${nameChars}ch + 1.5rem)` }}
                   >
                     Person
@@ -1373,7 +1373,7 @@ export function EventScheduleBoard({
                     }
                     key={member.scheduleRowKey}
                   >
-                    <th className="whitespace-nowrap border-r border-b border-slate-300 bg-inherit px-3 py-2 text-left font-medium dark:border-border md:sticky md:left-0 md:z-20">
+                    <th className="sticky left-0 z-20 whitespace-nowrap border-r border-b border-slate-300 bg-inherit px-3 py-2 text-left font-medium dark:border-border">
                       {scheduleMemberName(member)}
                       {isGuestMember(member) && (
                         <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal">
@@ -1442,7 +1442,7 @@ export function EventScheduleBoard({
               <tfoot>
                 {coverageGrid.map(({ target, counts: perHour }) => (
                   <tr key={target.label}>
-                    <th className="whitespace-nowrap border-r border-b bg-background px-3 py-1 text-left text-xs font-medium md:sticky md:left-0 md:z-20">
+                    <th className="sticky left-0 z-20 whitespace-nowrap border-r border-b bg-background px-3 py-1 text-left text-xs font-medium">
                       {target.label}
                     </th>
                     {perHour.map((have, index) => (

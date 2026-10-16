@@ -320,7 +320,7 @@ export function ScoutingOperations({
                 {issue.scoutName}
                 {issue.points === null
                   ? ''
-                  : ` · ${issue.points} pts · ${issue.activeFuel} teleop FUEL · ${issue.centerSwipes} center swipes · ${issue.passedFuel} FUEL passed`}
+                  : ` · ${issue.points} pts · ${issue.activeFuel} teleop Fuel · ${issue.centerSwipes} center swipes · ${issue.passedFuel} Fuel passed`}
                 {' · '}
                 {issue.flags.join(' · ')}
               </span>
