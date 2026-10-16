@@ -106,16 +106,31 @@ export async function synchronizeOpsRoster(
     rosterUsers.set(profile.uid, userId);
     if (existing)
       await env.DB.prepare(
-        'UPDATE users SET firebase_uid = ?, email = ?, name = ?, email_verified = 1, updated_at = ? WHERE id = ?',
+        'UPDATE users SET firebase_uid = ?, email = ?, name = ?, ops_role = ?, email_verified = 1, updated_at = ? WHERE id = ?',
       )
-        .bind(profile.uid, profile.email, profile.displayName, now, userId)
+        .bind(
+          profile.uid,
+          profile.email,
+          profile.displayName,
+          profile.role,
+          now,
+          userId,
+        )
         .run();
     else
       await env.DB.prepare(
-        `INSERT INTO users (id, firebase_uid, email, name, email_verified, created_at, updated_at)
-         VALUES (?, ?, ?, ?, 1, ?, ?)`,
+        `INSERT INTO users (id, firebase_uid, email, name, ops_role, email_verified, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 1, ?, ?)`,
       )
-        .bind(userId, profile.uid, profile.email, profile.displayName, now, now)
+        .bind(
+          userId,
+          profile.uid,
+          profile.email,
+          profile.displayName,
+          profile.role,
+          now,
+          now,
+        )
         .run();
   }
   const user = await env.DB.prepare(
@@ -176,10 +191,7 @@ export async function synchronizeOpsRoster(
      WHERE memberships.organization_id = 'team-401' AND users.firebase_uid IS NOT NULL`,
   ).all<{ userId: string; role: string; firebaseUid: string }>();
   for (const membership of linkedMemberships.results) {
-    if (
-      rosterUids.has(membership.firebaseUid) ||
-      membership.role === 'owner'
-    )
+    if (rosterUids.has(membership.firebaseUid) || membership.role === 'owner')
       continue;
     await env.DB.batch([
       env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(

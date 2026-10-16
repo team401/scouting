@@ -7,6 +7,8 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
@@ -33,6 +35,8 @@
   --foreground: #202326;
   --card: #ffffff;
   --card-foreground: var(--foreground);
+  --popover: #ffffff;
+  --popover-foreground: var(--foreground);
   --primary: #861f41;
   --primary-foreground: #ffffff;
   --secondary: #f1e7eb;
@@ -49,19 +53,21 @@
 }
 .dark {
   color-scheme: dark;
-  --background: #171a1c;
-  --foreground: #f2f4f5;
-  --card: #202426;
+  --background: #24282b;
+  --foreground: #f4f5f6;
+  --card: #2c3134;
   --card-foreground: var(--foreground);
+  --popover: #303538;
+  --popover-foreground: var(--foreground);
   --primary: #e09ab3;
   --primary-foreground: #251118;
-  --secondary: #38262d;
+  --secondary: #443139;
   --secondary-foreground: var(--foreground);
-  --muted: #292e31;
-  --muted-foreground: #aab1b6;
-  --accent: #3e2a23;
+  --muted: #373d40;
+  --muted-foreground: #bdc3c7;
+  --accent: #49352e;
   --accent-foreground: var(--foreground);
-  --border: #363c40;
+  --border: #4a5155;
   --input: var(--border);
   --ring: var(--primary);
 }
@@ -982,5 +988,17 @@ select option {
   }
   .pick-list-controls {
     display: none !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .scout-form .choice,
+  .scout-form button {
+    min-height: 44px;
+  }
+
+  .scout-form .counter-input {
+    min-height: 44px;
+    font-size: 1.125rem;
   }
 }

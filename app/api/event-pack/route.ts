@@ -110,7 +110,7 @@ export async function GET(request: Request) {
     .first<{ teamNumber: number | null }>();
   const organizationTeamNumber = organization?.teamNumber ?? 401;
   const members = await env.DB.prepare(
-    'SELECT users.id, users.name, users.email, memberships.role, memberships.disabled FROM memberships JOIN users ON users.id = memberships.user_id WHERE memberships.organization_id = ? ORDER BY users.name',
+    'SELECT users.id, users.name, users.email, users.ops_role AS opsRole, memberships.role, memberships.disabled FROM memberships JOIN users ON users.id = memberships.user_id WHERE memberships.organization_id = ? ORDER BY users.name',
   )
     .bind(identity.membership.organization_id)
     .all();
@@ -126,6 +126,7 @@ export async function GET(request: Request) {
       teams: [],
       assignments: [],
       members: members.results,
+      attendingUserIds: null,
       pitEntries: [],
       scoutEntries: [],
       scoutShifts: [],
@@ -165,6 +166,16 @@ export async function GET(request: Request) {
   )
     .bind(identity.membership.organization_id, event.id)
     .all();
+  const attendees = await env.DB.prepare(
+    'SELECT user_id AS userId FROM event_attendees WHERE event_id = ?',
+  )
+    .bind(event.id)
+    .all<{ userId: string }>();
+  const attendanceSetting = await env.DB.prepare(
+    'SELECT 1 FROM event_attendance_settings WHERE event_id = ?',
+  )
+    .bind(event.id)
+    .first();
   const pitEntries = await env.DB.prepare(
     `SELECT pit_entries.team_number AS teamNumber,
       pit_entries.scout_user_id AS scoutUserId, users.name AS scoutName,
@@ -198,7 +209,7 @@ export async function GET(request: Request) {
     }>();
   const scoutShifts = await env.DB.prepare(
     `SELECT id, station, starts_at AS startsAt, ends_at AS endsAt
-     FROM scout_shifts WHERE organization_id = ? AND event_id = ? AND scout_user_id = ?
+     FROM published_scout_shifts WHERE organization_id = ? AND event_id = ? AND scout_user_id = ?
      ORDER BY starts_at`,
   )
     .bind(
@@ -241,6 +252,10 @@ export async function GET(request: Request) {
     teams: teams.results,
     assignments: assignments.results,
     members: members.results,
+    attendingUserIds:
+      attendanceSetting || attendees.results.length > 0
+        ? attendees.results.map((attendee) => attendee.userId)
+        : null,
     pitEntries: pitEntries.results.map((entry) => ({
       ...entry,
       motorTypes: entry.motorTypes ? JSON.parse(entry.motorTypes) : [],

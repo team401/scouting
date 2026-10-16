@@ -3,13 +3,9 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import QRCode from 'qrcode';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { PendingMutation } from '@/lib/offline-db';
-import {
-  createRelayFrames,
-  ensureRelayDeviceRegistered,
-} from '@/lib/qr-relay';
+import { createRelayFrames, ensureRelayDeviceRegistered } from '@/lib/qr-relay';
 
 export function MatchSubmissionQr({
   mutation,
@@ -68,7 +64,6 @@ export function MatchSubmissionQr({
     <Card>
       <CardHeader>
         <CardTitle>Match handoff</CardTitle>
-        <Badge variant="outline">One match</Badge>
       </CardHeader>
       <CardContent className="space-y-3 text-center">
         {image && (

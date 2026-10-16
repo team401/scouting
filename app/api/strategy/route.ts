@@ -123,8 +123,9 @@ export async function GET(request: Request) {
       ],
     );
     if (tbaResult.status === 'fulfilled' && tbaResult.value.ok) {
-      const data = (await tbaResult.value.json()) as TbaOprs;
-      oprs = data.oprs ?? {};
+      // TBA returns null for events without OPR data.
+      const data = (await tbaResult.value.json()) as TbaOprs | null;
+      oprs = data?.oprs ?? {};
     }
     if (rankingsResult.status === 'fulfilled' && rankingsResult.value.ok) {
       const data = (await rankingsResult.value.json()) as TbaRankings | null;
