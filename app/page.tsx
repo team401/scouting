@@ -717,6 +717,9 @@ export default function Home() {
       ),
     ) ?? [];
   const videoMatches = planningMatches;
+  const currentPlanningMatch = planningMatches.find(
+    (match) => match.key === selectedMatchKey,
+  );
   const currentMatch = eventPack?.matches.find(
     (match) => match.key === selectedMatchKey,
   );
@@ -1167,15 +1170,15 @@ export default function Home() {
   }, [activeView, selectedVideoMatchKey, videoMatches]);
 
   useEffect(() => {
-    if (activeView !== 'Plan' || !currentMatch || !session) return;
+    if (activeView !== 'Plan' || !currentPlanningMatch || !session) return;
     let cancelled = false;
     loadedPlanMatchIdRef.current = '';
     setPlanMessage('');
     setPlanAuthor('');
     setPlanUpdatedAt(null);
-    setMatchPlan(planForMatch(null, currentMatch));
-    const cacheId = `match-plan:${currentMatch.id}`;
-    const draftId = `match-plan-draft:${currentMatch.id}`;
+    setMatchPlan(planForMatch(null, currentPlanningMatch));
+    const cacheId = `match-plan:${currentPlanningMatch.id}`;
+    const draftId = `match-plan-draft:${currentPlanningMatch.id}`;
     void Promise.all([
       getDraft<MatchPlan>(draftId),
       getCachedValue<{
@@ -1186,8 +1189,10 @@ export default function Home() {
       }>(cacheId),
     ]).then(([draft, cached]) => {
       if (cancelled) return;
-      if (draft) setMatchPlan(planForMatch(draft.payload, currentMatch));
-      else if (cached) setMatchPlan(planForMatch(cached.plan, currentMatch));
+      if (draft)
+        setMatchPlan(planForMatch(draft.payload, currentPlanningMatch));
+      else if (cached)
+        setMatchPlan(planForMatch(cached.plan, currentPlanningMatch));
       if (cached) {
         setPlanCanEdit(cached.canEdit);
         setPlanAuthor(cached.authorName ?? '');
@@ -1197,14 +1202,16 @@ export default function Home() {
         setPlanMessage(
           'Showing the match plan saved on this device. Changes will remain a local draft until reconnected.',
         );
-        loadedPlanMatchIdRef.current = currentMatch.id;
+        loadedPlanMatchIdRef.current = currentPlanningMatch.id;
       }
     });
     if (!online)
       return () => {
         cancelled = true;
       };
-    fetch(`/api/match-plans?matchId=${encodeURIComponent(currentMatch.id)}`)
+    fetch(
+      `/api/match-plans?matchId=${encodeURIComponent(currentPlanningMatch.id)}`,
+    )
       .then(async (response) => {
         const result = (await response.json()) as {
           plan: MatchPlan | null;
@@ -1217,7 +1224,8 @@ export default function Home() {
           throw new Error(result.error ?? 'Unable to load this match plan.');
         const draft = await getDraft<MatchPlan>(draftId).catch(() => undefined);
         if (cancelled) return;
-        if (!draft) setMatchPlan(planForMatch(result.plan, currentMatch));
+        if (!draft)
+          setMatchPlan(planForMatch(result.plan, currentPlanningMatch));
         setPlanCanEdit(result.canEdit);
         setPlanAuthor(result.authorName ?? '');
         setPlanUpdatedAt(result.updatedAt);
@@ -1230,7 +1238,7 @@ export default function Home() {
       })
       .catch((error) => {
         if (cancelled) return;
-        setMatchPlan(planForMatch(null, currentMatch));
+        setMatchPlan(planForMatch(null, currentPlanningMatch));
         setPlanCanEdit(false);
         setPlanMessage(
           error instanceof Error
@@ -1239,20 +1247,31 @@ export default function Home() {
         );
       })
       .finally(() => {
-        if (!cancelled) loadedPlanMatchIdRef.current = currentMatch.id;
+        if (!cancelled) loadedPlanMatchIdRef.current = currentPlanningMatch.id;
       });
     return () => {
       cancelled = true;
     };
-  }, [activeView, currentMatch, online, session]);
+  }, [activeView, currentPlanningMatch, online, session]);
 
   useEffect(() => {
-    if (activeView !== 'Plan' || !currentMatch || !session) return;
+    if (currentPlanningMatch) return;
+    loadedPlanMatchIdRef.current = '';
+    setMatchPlan(emptyMatchPlan);
+    setPlanCanEdit(false);
+    setPlanMessage('');
+    setPlanAuthor('');
+    setPlanUpdatedAt(null);
+    setPlanStats([]);
+  }, [currentPlanningMatch, eventPack?.event.key]);
+
+  useEffect(() => {
+    if (activeView !== 'Plan' || !currentPlanningMatch || !session) return;
     const matchTeams = new Set([
-      ...currentMatch.alliances.red,
-      ...currentMatch.alliances.blue,
+      ...currentPlanningMatch.alliances.red,
+      ...currentPlanningMatch.alliances.blue,
     ]);
-    const statsCacheId = `match-stats:${currentMatch.id}`;
+    const statsCacheId = `match-stats:${currentPlanningMatch.id}`;
     void getCachedValue<TeamAnalysis[]>(statsCacheId).then((cached) => {
       if (cached) setPlanStats(cached);
     });
@@ -1272,28 +1291,28 @@ export default function Home() {
         await saveCachedValue(statsCacheId, stats);
       })
       .catch(() => setPlanStats([]));
-  }, [activeView, currentMatch, online, session]);
+  }, [activeView, currentPlanningMatch, online, session]);
 
   useEffect(() => {
-    if (activeView !== 'Plan' || !currentMatch || !planCanEdit) return;
+    if (activeView !== 'Plan' || !currentPlanningMatch || !planCanEdit) return;
     const timer = window.setTimeout(
       () =>
         void saveDraft({
-          id: `match-plan-draft:${currentMatch.id}`,
+          id: `match-plan-draft:${currentPlanningMatch.id}`,
           payload: matchPlan,
           updatedAt: Date.now(),
         }),
       300,
     );
     return () => window.clearTimeout(timer);
-  }, [activeView, currentMatch, matchPlan, planCanEdit]);
+  }, [activeView, currentPlanningMatch, matchPlan, planCanEdit]);
 
   useEffect(() => {
     if (
       activeView !== 'Plan' ||
-      !currentMatch ||
+      !currentPlanningMatch ||
       !planCanEdit ||
-      loadedPlanMatchIdRef.current !== currentMatch.id
+      loadedPlanMatchIdRef.current !== currentPlanningMatch.id
     )
       return;
 
@@ -1305,7 +1324,7 @@ export default function Home() {
     setPlanMessage('Saving changes…');
     const timer = window.setTimeout(() => void saveMatchPlan(), 700);
     return () => window.clearTimeout(timer);
-  }, [activeView, currentMatch, matchPlan, online, planCanEdit]);
+  }, [activeView, currentPlanningMatch, matchPlan, online, planCanEdit]);
 
   useEffect(() => {
     if (!draftReady || !draftId) return;
@@ -1888,7 +1907,7 @@ export default function Home() {
   }
 
   async function saveMatchPlan() {
-    if (!currentMatch) {
+    if (!currentPlanningMatch) {
       setPlanMessage('Choose a match first.');
       return;
     }
@@ -1897,7 +1916,10 @@ export default function Home() {
       const response = await fetch('/api/match-plans', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ matchId: currentMatch.id, ...matchPlan }),
+        body: JSON.stringify({
+          matchId: currentPlanningMatch.id,
+          ...matchPlan,
+        }),
       });
       const result = (await response.json()) as {
         error?: string;
@@ -1909,14 +1931,14 @@ export default function Home() {
       setPlanAuthor(result.authorName ?? session?.user.name ?? '');
       const savedAt = result.updatedAt ?? Date.now();
       setPlanUpdatedAt(savedAt);
-      await saveCachedValue(`match-plan:${currentMatch.id}`, {
+      await saveCachedValue(`match-plan:${currentPlanningMatch.id}`, {
         plan: matchPlan,
         canEdit: true,
         authorName: result.authorName ?? session?.user.name ?? null,
         updatedAt: savedAt,
       });
       await saveDraft({
-        id: `match-plan-draft:${currentMatch.id}`,
+        id: `match-plan-draft:${currentPlanningMatch.id}`,
         payload: matchPlan,
         updatedAt: Date.now(),
       });
@@ -2020,19 +2042,19 @@ export default function Home() {
       (entry) =>
         (entry.payload as MatchDraft & { reopened?: boolean }).reopened,
     ) ?? [];
-  const planTeams = currentMatch
-    ? [...currentMatch.alliances.red, ...currentMatch.alliances.blue].map(
-        (team) => ({
-          team,
-          alliance: currentMatch.alliances.red.includes(team)
-            ? ('red' as const)
-            : ('blue' as const),
-          stats: planStats.find((item) => item.teamNumber === team),
-          pit: eventPack?.pitEntries.find((item) => item.teamNumber === team),
-          name: eventPack?.teams?.find((item) => item.teamNumber === team)
-            ?.name,
-        }),
-      )
+  const planTeams = currentPlanningMatch
+    ? [
+        ...currentPlanningMatch.alliances.red,
+        ...currentPlanningMatch.alliances.blue,
+      ].map((team) => ({
+        team,
+        alliance: currentPlanningMatch.alliances.red.includes(team)
+          ? ('red' as const)
+          : ('blue' as const),
+        stats: planStats.find((item) => item.teamNumber === team),
+        pit: eventPack?.pitEntries.find((item) => item.teamNumber === team),
+        name: eventPack?.teams?.find((item) => item.teamNumber === team)?.name,
+      }))
     : [];
   const selectedStrategyTeam = strategyTeams.find(
     (team) => team.teamNumber === selectedTeam,
@@ -2061,8 +2083,8 @@ export default function Home() {
         : 'Choose an assignment'
       : activeView === 'Pit'
         ? 'Pit Scouting'
-        : activeView === 'Plan' && currentMatch
-          ? `Plan · ${matchHeaderLabel(currentMatch)}`
+        : activeView === 'Plan' && currentPlanningMatch
+          ? `Plan · ${matchHeaderLabel(currentPlanningMatch)}`
           : activeView;
 
   useEffect(() => {
@@ -3371,31 +3393,40 @@ export default function Home() {
               <CardContent className="flex flex-col gap-5">
                 {!planFullscreen && (
                   <>
-                    <div className="flex items-center gap-3">
-                      <label
-                        className="shrink-0 font-semibold"
-                        htmlFor="plan-match"
-                      >
-                        Match
-                      </label>
-                      <select
-                        id="plan-match"
-                        aria-label="Match to plan"
-                        className="h-11 min-w-0 flex-1 rounded-md border bg-transparent px-3"
-                        value={selectedMatchKey}
-                        onChange={(event) =>
-                          setSelectedMatchKey(event.target.value)
-                        }
-                      >
-                        {planningMatches.map((match) => (
-                          <option value={match.key} key={match.key}>
-                            {matchLabel(match)} ·{' '}
-                            {match.alliances.red.join(', ')} vs{' '}
-                            {match.alliances.blue.join(', ')}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    {planningMatches.length > 0 ? (
+                      <div className="flex items-center gap-3">
+                        <label
+                          className="shrink-0 font-semibold"
+                          htmlFor="plan-match"
+                        >
+                          Match
+                        </label>
+                        <select
+                          id="plan-match"
+                          aria-label="Match to plan"
+                          className="h-11 min-w-0 flex-1 rounded-md border bg-transparent px-3"
+                          value={selectedMatchKey}
+                          onChange={(event) =>
+                            setSelectedMatchKey(event.target.value)
+                          }
+                        >
+                          {planningMatches.map((match) => (
+                            <option value={match.key} key={match.key}>
+                              {matchLabel(match)} ·{' '}
+                              {match.alliances.red.join(', ')} vs{' '}
+                              {match.alliances.blue.join(', ')}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="font-semibold">One-off strategy board</p>
+                        <p className="text-sm text-muted-foreground">
+                          Temporary drawing; it won&apos;t be saved.
+                        </p>
+                      </div>
+                    )}
                     <div className="grid grid-cols-3 gap-1">
                       <Button
                         type="button"
@@ -3424,12 +3455,6 @@ export default function Home() {
                         Team metrics
                       </Button>
                     </div>
-                    {eventPack && planningMatches.length === 0 && (
-                      <p className="text-sm text-muted-foreground">
-                        Team {organizationTeamNumber} is not scheduled for any
-                        matches in this event pack.
-                      </p>
-                    )}
                   </>
                 )}
                 {planSection !== 'metrics' && (
@@ -3445,7 +3470,7 @@ export default function Home() {
                             ? matchPlan.autoBoard
                             : matchPlan.board
                         }
-                        readOnly={!planCanEdit}
+                        readOnly={Boolean(currentPlanningMatch && !planCanEdit)}
                         toolbarStart={
                           <Button
                             type="button"
@@ -3549,8 +3574,8 @@ export default function Home() {
                                   )
                                 : [...matchPlan.absentTeams, team];
                               const defaultMarkers = initialRobotMarkers(
-                                currentMatch?.alliances.red ?? [],
-                                currentMatch?.alliances.blue ?? [],
+                                currentPlanningMatch?.alliances.red ?? [],
+                                currentPlanningMatch?.alliances.blue ?? [],
                               );
                               const robots = isAbsent
                                 ? [
