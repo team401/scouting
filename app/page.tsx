@@ -3736,11 +3736,6 @@ export default function Home() {
           isAdmin &&
           adminSection === 'assignments' && (
             <div className="grid gap-4 p-4 sm:p-6">
-              <EventTeamAliases
-                eventType={eventPack?.event.eventType ?? null}
-                teams={eventPack?.teams ?? []}
-                onChanged={() => loadEventPack(false, true)}
-              />
               <EventScheduleBoard
                 members={eventPack?.members ?? []}
                 eventKey={eventPack?.event.key ?? ''}
@@ -3838,6 +3833,11 @@ export default function Home() {
                         {eventMessage}
                       </p>
                     )}
+                    <EventTeamAliases
+                      eventType={eventPack?.event.eventType ?? null}
+                      teams={eventPack?.teams ?? []}
+                      onChanged={() => loadEventPack(false, true)}
+                    />
                   </>
                 }
               />
