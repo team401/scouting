@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -1010,17 +1011,27 @@ export function EventScheduleBoard({
           {eventPicker}
         </CardContent>
         <details
-          className="border-t"
+          className="group border-t"
           open={rosterOpen}
           onToggle={(event) => setRosterOpen(event.currentTarget.open)}
         >
-          <summary className="cursor-pointer px-(--card-spacing) py-3 font-semibold">
-            Event Roster · {activeMembers.length}
+          <summary className="flex cursor-pointer list-none items-center gap-3 px-(--card-spacing) py-3 font-semibold transition-colors hover:bg-muted/60 [&::-webkit-details-marker]:hidden">
+            <span>
+              Event Roster · {activeMembers.length}{' '}
+              {activeMembers.length === 1 ? 'person' : 'people'}
+            </span>
             {rosterMessage && (
-              <span className="ml-3 font-normal text-muted-foreground">
+              <span className="font-normal text-muted-foreground">
                 {rosterMessage}
               </span>
             )}
+            <span className="ml-auto flex items-center gap-1 text-sm font-normal text-muted-foreground">
+              {rosterOpen ? 'Hide' : 'Show'}
+              <ChevronDown
+                className="size-5 transition-transform group-open:rotate-180"
+                aria-hidden="true"
+              />
+            </span>
           </summary>
           <div className="px-(--card-spacing) pb-(--card-spacing)">
             <div className="flex flex-wrap gap-2">
