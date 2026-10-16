@@ -1117,7 +1117,14 @@ export function EventScheduleBoard({
                 ))}
               </div>
             )}
-            <div className="ml-auto flex items-start gap-2">
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+              <p className="text-right text-xs text-muted-foreground">
+                {publishedAt
+                  ? hasUnpublishedChanges
+                    ? 'Unpublished changes'
+                    : `Published ${new Date(publishedAt).toLocaleString()}`
+                  : 'Not published yet'}
+              </p>
               {publishedAt && (
                 <Button
                   type="button"
@@ -1128,29 +1135,19 @@ export function EventScheduleBoard({
                   Unpublish
                 </Button>
               )}
-              <div className="flex flex-col items-end gap-1">
-                <Button
-                  type="button"
-                  disabled={
-                    publishing ||
-                    (!hasUnpublishedChanges && publishedAt !== null)
-                  }
-                  onClick={() => void publishSchedule()}
-                >
-                  {publishing
-                    ? 'Working…'
-                    : publishedAt
-                      ? 'Publish shift changes'
-                      : 'Publish shifts'}
-                </Button>
-                <p className="text-right text-xs text-muted-foreground">
-                  {publishedAt
-                    ? hasUnpublishedChanges
-                      ? 'Unpublished changes'
-                      : `Published ${new Date(publishedAt).toLocaleString()}`
-                    : 'Not published yet'}
-                </p>
-              </div>
+              <Button
+                type="button"
+                disabled={
+                  publishing || (!hasUnpublishedChanges && publishedAt !== null)
+                }
+                onClick={() => void publishSchedule()}
+              >
+                {publishing
+                  ? 'Working…'
+                  : publishedAt
+                    ? 'Publish shift changes'
+                    : 'Publish shifts'}
+              </Button>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-y px-3 py-2 text-sm">

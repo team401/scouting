@@ -376,11 +376,11 @@ export function DriveTeamPlanner({ members }: { members: PlannerMember[] }) {
   function renderSection(phase: DrivePhase) {
     const phaseSlots = slots.filter((slot) => slot.phase === phase);
     return (
-      <section className="space-y-3" key={phase}>
-        <div className="flex flex-wrap items-end justify-between gap-3">
+      <section className="space-y-2" key={phase}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="font-semibold">{phaseTitle[phase]}</h3>
-          <div className="flex items-end gap-2">
-            <label className="grid gap-1 text-sm font-medium">
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-sm font-medium">
               Expected matches
               <input
                 aria-label={`Expected ${phaseTitle[phase]} matches`}
@@ -481,47 +481,40 @@ export function DriveTeamPlanner({ members }: { members: PlannerMember[] }) {
 
   return (
     <Card className="mb-4">
-      <CardHeader>
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
         <CardTitle>Drive Team</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex justify-end">
-          <div className="ml-auto flex items-start gap-2">
-            {publishedAt && (
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={busy}
-                onClick={() => setUnpublishConfirmOpen(true)}
-              >
-                Unpublish
-              </Button>
-            )}
-            <div className="flex flex-col items-end gap-1">
-              <Button
-                type="button"
-                disabled={
-                  busy || (publishedAt !== null && !hasUnpublishedChanges)
-                }
-                onClick={() => void publishDriveTeams()}
-              >
-                {busy
-                  ? 'Working…'
-                  : publishedAt
-                    ? 'Publish drive team changes'
-                    : 'Publish drive teams'}
-              </Button>
-              <p className="text-right text-xs text-muted-foreground">
-                {publishedAt
-                  ? hasUnpublishedChanges
-                    ? 'Unpublished changes'
-                    : `Published ${new Date(publishedAt).toLocaleString()}`
-                  : 'Not published yet'}
-              </p>
-            </div>
-          </div>
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+          <p className="text-right text-xs text-muted-foreground">
+            {publishedAt
+              ? hasUnpublishedChanges
+                ? 'Unpublished changes'
+                : `Published ${new Date(publishedAt).toLocaleString()}`
+              : 'Not published yet'}
+          </p>
+          {publishedAt && (
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={busy}
+              onClick={() => setUnpublishConfirmOpen(true)}
+            >
+              Unpublish
+            </Button>
+          )}
+          <Button
+            type="button"
+            disabled={busy || (publishedAt !== null && !hasUnpublishedChanges)}
+            onClick={() => void publishDriveTeams()}
+          >
+            {busy
+              ? 'Working…'
+              : publishedAt
+                ? 'Publish drive team changes'
+                : 'Publish drive teams'}
+          </Button>
         </div>
-
+      </CardHeader>
+      <CardContent className="space-y-4">
         {message && (
           <p className="text-sm text-muted-foreground" role="status">
             {message}
