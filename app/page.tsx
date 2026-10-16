@@ -2880,48 +2880,38 @@ export default function Home() {
         )}
         {activeView === 'Pit' && (
           <div className="pit-layout grid gap-4 p-4 sm:p-6 xl:grid-cols-[28rem_1fr]">
-            <Card className="pit-mobile-picker">
-              <CardContent className="p-3">
-                <label className="grid gap-1 text-sm font-semibold">
-                  Team to pit scout
-                  <select
-                    className="h-11 w-full rounded-md border bg-background px-3 text-foreground"
-                    value={pitTeam ?? ''}
-                    onChange={(event) =>
-                      setPitTeam(
-                        event.target.value ? Number(event.target.value) : null,
-                      )
-                    }
-                  >
-                    <option value="">Choose a team</option>
-                    {eventTeams.map((team) => {
-                      const entry = eventPack?.pitEntries.find(
-                        (entry) => entry.teamNumber === team,
-                      );
-                      return (
-                        <option value={team} key={team}>
-                          Team {team}
-                          {eventPack?.teams.find(
-                            (item) => item.teamNumber === team,
-                          )?.name
-                            ? ` — ${eventPack.teams.find((item) => item.teamNumber === team)?.name}`
-                            : ''}
-                          {' — '}
-                          {entry
-                            ? `Scouted by ${entry.scoutName}`
-                            : 'Needs scouting'}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </label>
-                {pitTeam && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Team {pitTeam} selected · changes save on this device
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+            <div className="pit-mobile-picker min-w-0">
+              <select
+                aria-label="Team to pit scout"
+                className="h-11 w-full min-w-0 max-w-full truncate rounded-md border bg-background px-3 text-foreground"
+                value={pitTeam ?? ''}
+                onChange={(event) =>
+                  setPitTeam(
+                    event.target.value ? Number(event.target.value) : null,
+                  )
+                }
+              >
+                <option value="">Choose a team</option>
+                {eventTeams.map((team) => {
+                  const entry = eventPack?.pitEntries.find(
+                    (entry) => entry.teamNumber === team,
+                  );
+                  return (
+                    <option value={team} key={team}>
+                      Team {team}
+                      {eventPack?.teams.find((item) => item.teamNumber === team)
+                        ?.name
+                        ? ` — ${eventPack.teams.find((item) => item.teamNumber === team)?.name}`
+                        : ''}
+                      {' — '}
+                      {entry
+                        ? `Scouted by ${entry.scoutName}`
+                        : 'Needs scouting'}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
             <Card className="pit-queue-card h-full min-h-0">
               <CardContent className="min-h-0 flex-1 space-y-1 overflow-auto">
                 {eventTeams.map((team) => {
