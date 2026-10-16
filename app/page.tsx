@@ -3364,6 +3364,9 @@ export default function Home() {
                   ? 'min-h-dvh rounded-none border-0'
                   : 'rounded-none sm:rounded-xl'
               }
+              onClick={() => {
+                if (planFullscreen) setPlanFullscreen(false);
+              }}
             >
               <CardContent className="flex flex-col gap-5">
                 {!planFullscreen && (
@@ -3431,7 +3434,11 @@ export default function Home() {
                 )}
                 {planSection !== 'metrics' && (
                   <>
-                    <div className="order-first -mx-(--card-spacing)">
+                    <div
+                      role="presentation"
+                      className="order-first -mx-(--card-spacing)"
+                      onClick={(event) => event.stopPropagation()}
+                    >
                       <TacticalBoard
                         value={
                           planSection === 'auto'
