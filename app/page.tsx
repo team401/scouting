@@ -3432,7 +3432,7 @@ export default function Home() {
                             : matchPlan.board
                         }
                         readOnly={!planCanEdit}
-                        toolbarEnd={
+                        toolbarStart={
                           <Button
                             type="button"
                             size="icon-sm"
