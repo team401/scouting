@@ -214,7 +214,7 @@ export function TeamComparison({
             </label>
             <select
               id="comparison-match"
-              className="h-9 min-w-32 flex-1 rounded-md border px-3 text-sm"
+              className="h-9 rounded-md border px-3 text-sm"
               value={selectedMatchKey}
               onChange={(event) => setSelectedMatchKey(event.target.value)}
             >

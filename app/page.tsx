@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
+  ArrowDown,
+  ArrowUp,
   Check,
   ChevronRight,
   CircleUserRound,
@@ -212,6 +214,67 @@ function ordinal(value: number) {
   const mod100 = value % 100;
   if (mod100 >= 11 && mod100 <= 13) return `${value}th`;
   return `${value}${['th', 'st', 'nd', 'rd'][Math.min(value % 10, 4)] ?? 'th'}`;
+}
+
+type RankingSortKey =
+  | 'rank'
+  | 'team'
+  | 'xp'
+  | 'xAuto'
+  | 'xTele'
+  | 'epa'
+  | 'medianPoints'
+  | 'samples';
+
+const rankingColumns: Array<{ key: RankingSortKey; label: string }> = [
+  { key: 'rank', label: 'Rank' },
+  { key: 'team', label: 'Team' },
+  { key: 'xp', label: 'xP' },
+  { key: 'xAuto', label: 'Auto xP' },
+  { key: 'xTele', label: 'Tele xP' },
+  { key: 'epa', label: 'EPA' },
+  { key: 'medianPoints', label: 'Median pts' },
+  { key: 'samples', label: 'Matches scouted' },
+];
+
+function rankingValue(
+  team: TeamAnalysis,
+  key: RankingSortKey,
+): number | null | undefined {
+  switch (key) {
+    case 'rank':
+      return team.eventRank;
+    case 'team':
+      return team.teamNumber;
+    case 'xp':
+      return team.xp;
+    case 'xAuto':
+      return team.xAuto;
+    case 'xTele':
+      return team.xTele;
+    case 'epa':
+      return team.epa;
+    case 'medianPoints':
+      return team.medianPoints;
+    case 'samples':
+      return team.samples;
+  }
+}
+
+// Missing values always sort last, whichever direction is chosen.
+function compareRankingValues(
+  a: number | null | undefined,
+  b: number | null | undefined,
+  direction: 1 | -1,
+) {
+  if (typeof a !== 'number' && typeof b !== 'number') return 0;
+  if (typeof a !== 'number') return 1;
+  if (typeof b !== 'number') return -1;
+  return (a - b) * direction;
+}
+
+function formatRankingNumber(value: number | null | undefined) {
+  return typeof value === 'number' ? value.toFixed(1) : '—';
 }
 
 function eventMetricRank(
@@ -492,7 +555,20 @@ export default function Home() {
   const [teamsSection, setTeamsSection] = useState<
     'analysis' | 'picklist' | 'review'
   >('analysis');
-  const [rankingSort, setRankingSort] = useState<'rank' | 'team'>('rank');
+  const [rankingSort, setRankingSort] = useState<{
+    key: RankingSortKey;
+    direction: 'asc' | 'desc';
+  }>({ key: 'rank', direction: 'asc' });
+  function sortRankingBy(key: RankingSortKey) {
+    setRankingSort((current) =>
+      current.key === key
+        ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+        : {
+            key,
+            direction: key === 'rank' || key === 'team' ? 'asc' : 'desc',
+          },
+    );
+  }
   const navigationDepthRef = useRef(0);
   const selectedMatchKeyRef = useRef('');
   const scoutSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -1920,8 +1996,17 @@ export default function Home() {
 
   if (isPending || !session) return null;
 
+  const scoutAlliance =
+    activeView !== 'Scout'
+      ? undefined
+      : selectedStation.startsWith('red')
+        ? 'red'
+        : selectedStation.startsWith('blue')
+          ? 'blue'
+          : undefined;
+
   return (
-    <main className="app-shell">
+    <main className="app-shell" data-scout-alliance={scoutAlliance}>
       <aside className="desktop-nav">
         <button
           type="button"
@@ -2174,7 +2259,7 @@ export default function Home() {
                 if (target) moveToScoutingPhase(target);
               }}
             >
-              <div className="grid grid-cols-4 gap-1 rounded-xl border bg-card p-1">
+              <div className="grid grid-cols-4 gap-1">
                 {(
                   [
                     ['pre', 'Pre-match'],
@@ -2664,7 +2749,7 @@ export default function Home() {
           </div>
         )}
         {activeView === 'Pit' && (
-          <div className="pit-layout grid gap-4 p-4 sm:p-6 lg:grid-cols-[18rem_1fr]">
+          <div className="pit-layout grid gap-4 p-4 sm:p-6 lg:grid-cols-[24rem_1fr]">
             <Card className="pit-mobile-picker">
               <CardContent className="p-3">
                 <label className="grid gap-1 text-sm font-semibold">
@@ -3531,53 +3616,56 @@ export default function Home() {
           isAdmin &&
           adminSection === 'assignments' && (
             <div className="p-4 sm:p-6">
-              <Card className="mb-4">
-                <CardContent className="space-y-3">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <label className="flex min-w-0 flex-1 items-center gap-3 text-sm font-medium">
-                      Event
-                      <select
-                        aria-label="Team 401 event"
-                        className="h-10 min-w-0 flex-1 truncate rounded-md border bg-background px-3"
-                        value={eventKey}
-                        onChange={(event) => setEventKey(event.target.value)}
-                        disabled={eventsLoading}
-                      >
-                        <option value="">
-                          {eventsLoading
-                            ? 'Loading events…'
-                            : 'Select an event'}
-                        </option>
-                        {eventChoices.map((event) => (
-                          <option value={event.key} key={event.key}>
-                            {event.name}
-                            {event.date ? ` · ${event.date}` : ''}
-                            {event.location ? ` · ${event.location}` : ''}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <Button
-                      className="w-full sm:w-auto"
-                      disabled={
-                        configuringEvent || !online || !session || !eventKey
-                      }
-                      onClick={configureEvent}
-                    >
-                      {configuringEvent ? 'Loading event…' : 'Use this event'}
-                    </Button>
-                  </div>
-                  {eventMessage && (
-                    <p className="text-sm text-muted-foreground" role="status">
-                      {eventMessage}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
               <EventScheduleBoard
                 members={eventPack?.members ?? []}
                 eventKey={eventPack?.event.key ?? ''}
                 onChanged={() => loadEventPack(false, true)}
+                eventPicker={
+                  <>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <label className="flex min-w-0 items-center gap-3 text-sm font-medium">
+                        Event
+                        <select
+                          aria-label="Team 401 event"
+                          className="h-10 truncate rounded-md border bg-background px-3"
+                          value={eventKey}
+                          onChange={(event) => setEventKey(event.target.value)}
+                          disabled={eventsLoading}
+                        >
+                          <option value="">
+                            {eventsLoading
+                              ? 'Loading events…'
+                              : 'Select an event'}
+                          </option>
+                          {eventChoices.map((event) => (
+                            <option value={event.key} key={event.key}>
+                              {event.name}
+                              {event.date ? ` · ${event.date}` : ''}
+                              {event.location ? ` · ${event.location}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <Button
+                        className="w-full sm:w-auto"
+                        disabled={
+                          configuringEvent || !online || !session || !eventKey
+                        }
+                        onClick={configureEvent}
+                      >
+                        {configuringEvent ? 'Loading event…' : 'Use this event'}
+                      </Button>
+                    </div>
+                    {eventMessage && (
+                      <p
+                        className="text-sm text-muted-foreground"
+                        role="status"
+                      >
+                        {eventMessage}
+                      </p>
+                    )}
+                  </>
+                }
               />
             </div>
           )}
@@ -3719,15 +3807,19 @@ export default function Home() {
                   <Badge variant="outline">{strategyTeams.length} teams</Badge>
                   <Button
                     size="sm"
-                    variant={rankingSort === 'rank' ? 'default' : 'outline'}
-                    onClick={() => setRankingSort('rank')}
+                    variant={rankingSort.key === 'rank' ? 'default' : 'outline'}
+                    onClick={() =>
+                      setRankingSort({ key: 'rank', direction: 'asc' })
+                    }
                   >
                     Event rank
                   </Button>
                   <Button
                     size="sm"
-                    variant={rankingSort === 'team' ? 'default' : 'outline'}
-                    onClick={() => setRankingSort('team')}
+                    variant={rankingSort.key === 'team' ? 'default' : 'outline'}
+                    onClick={() =>
+                      setRankingSort({ key: 'team', direction: 'asc' })
+                    }
                   >
                     Team number
                   </Button>
@@ -3746,18 +3838,32 @@ export default function Home() {
               </CardHeader>
               <CardContent className="max-h-96 overflow-auto">
                 <div className="strategy-table">
-                  <strong>Rank</strong>
-                  <strong>Team</strong>
-                  <strong>Median pts</strong>
-                  <strong>Matches scouted</strong>
+                  {rankingColumns.map(({ key, label }) => (
+                    <strong key={key}>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 uppercase"
+                        onClick={() => sortRankingBy(key)}
+                      >
+                        {label}
+                        {rankingSort.key === key &&
+                          (rankingSort.direction === 'asc' ? (
+                            <ArrowUp className="size-3" aria-hidden="true" />
+                          ) : (
+                            <ArrowDown className="size-3" aria-hidden="true" />
+                          ))}
+                      </button>
+                    </strong>
+                  ))}
                   {[...strategyTeams]
-                    .sort((a, b) => {
-                      if (rankingSort === 'team')
-                        return a.teamNumber - b.teamNumber;
-                      if (a.eventRank === null) return 1;
-                      if (b.eventRank === null) return -1;
-                      return a.eventRank - b.eventRank;
-                    })
+                    .sort(
+                      (a, b) =>
+                        compareRankingValues(
+                          rankingValue(a, rankingSort.key),
+                          rankingValue(b, rankingSort.key),
+                          rankingSort.direction === 'asc' ? 1 : -1,
+                        ) || a.teamNumber - b.teamNumber,
+                    )
                     .map((team) => (
                       <button
                         key={team.teamNumber}
@@ -3775,6 +3881,10 @@ export default function Home() {
                             ? ` — ${eventPack.teams.find((item) => item.teamNumber === team.teamNumber)?.name}`
                             : ''}
                         </span>
+                        <span>{formatRankingNumber(team.xp)}</span>
+                        <span>{formatRankingNumber(team.xAuto)}</span>
+                        <span>{formatRankingNumber(team.xTele)}</span>
+                        <span>{formatRankingNumber(team.epa)}</span>
                         <span>{team.medianPoints.toFixed(1)}</span>
                         <span>
                           {team.samples}/{team.scheduledMatches}

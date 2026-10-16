@@ -50,6 +50,8 @@
   --ring: var(--primary);
   --destructive: oklch(0.59 0.22 26);
   --radius: 0.7rem;
+  --scout-red-background: oklch(0.955 0.03 25);
+  --scout-blue-background: oklch(0.955 0.03 255);
 }
 .dark {
   color-scheme: dark;
@@ -59,8 +61,8 @@
   --card-foreground: var(--foreground);
   --popover: #303538;
   --popover-foreground: var(--foreground);
-  --primary: #e09ab3;
-  --primary-foreground: #251118;
+  --primary: #861f41;
+  --primary-foreground: #ffffff;
   --secondary: #443139;
   --secondary-foreground: var(--foreground);
   --muted: #373d40;
@@ -70,6 +72,8 @@
   --border: #4a5155;
   --input: var(--border);
   --ring: var(--primary);
+  --scout-red-background: oklch(0.3 0.05 25);
+  --scout-blue-background: oklch(0.3 0.05 255);
 }
 * {
   border-color: var(--border);
@@ -84,6 +88,9 @@ button {
 select {
   color: var(--foreground);
   background-color: var(--card);
+  width: fit-content;
+  max-width: 100%;
+  justify-self: start;
 }
 select option {
   color: #202326;
@@ -102,6 +109,12 @@ select option {
   transition:
     background 0.2s,
     color 0.2s;
+}
+.app-shell[data-scout-alliance='red'] {
+  background: var(--scout-red-background);
+}
+.app-shell[data-scout-alliance='blue'] {
+  background: var(--scout-blue-background);
 }
 .desktop-nav {
   width: 76px;
@@ -522,11 +535,11 @@ select option {
 }
 .strategy-table {
   display: grid;
-  grid-template-columns: minmax(56px, 0.7fr) minmax(64px, 1fr) repeat(
-      2,
+  grid-template-columns: minmax(56px, 0.6fr) minmax(180px, 2fr) repeat(
+      6,
       minmax(76px, 1fr)
     );
-  min-width: 500px;
+  min-width: 860px;
   align-items: center;
 }
 .strategy-table > strong {

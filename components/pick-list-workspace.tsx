@@ -938,7 +938,12 @@ export function PickListWorkspace({
                         {team.rank === null ? '—' : team.rank + 1}
                       </span>
                       <div className="min-w-0">
-                        <strong>{team.teamNumber}</strong>
+                        <p className="truncate">
+                          <strong>{team.teamNumber}</strong>
+                          <span className="ml-2 text-muted-foreground">
+                            {metrics.get(team.teamNumber)?.name}
+                          </span>
+                        </p>
                         <small className="block truncate text-muted-foreground">
                           xP{' '}
                           {metrics.get(team.teamNumber)?.xp?.toFixed(1) ?? '—'}
