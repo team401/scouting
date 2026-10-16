@@ -4335,8 +4335,8 @@ export default function Home() {
               </CardHeader>
               <CardContent>
                 <p className="mb-3 text-sm text-muted-foreground">
-                  Match-by-match observed points, autonomous FUEL, teleoperated
-                  FUEL, and defense rating (0–4).
+                  Match-by-match observed points, autonomous Fuel, teleoperated
+                  Fuel, and defense rating (0–4).
                 </p>
                 <TeamTrendChart trends={analysis?.trends ?? []} />
               </CardContent>
