@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowDown,
   ArrowUp,
@@ -35,6 +35,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
+  initialPlaceholderRobotMarkers,
   initialRobotMarkers,
   TacticalBoard,
   type TacticalBoardData,
@@ -48,6 +49,7 @@ import { TeamTrendChart, type TeamTrend } from '@/components/team-trend-chart';
 import { ScoutingOperations } from '@/components/scouting-operations';
 import { PersonalEventSchedule } from '@/components/event-role-scheduler';
 import { EventScheduleBoard } from '@/components/event-schedule-board';
+import { EventTeamAliases } from '@/components/event-team-aliases';
 import { QrRelay } from '@/components/qr-relay';
 import { MatchSubmissionQr } from '@/components/match-submission-qr';
 import { GuestPassManager } from '@/components/guest-pass-manager';
@@ -103,9 +105,15 @@ type EventPack = {
     name: string;
     updatedAt: number;
     timezone: string | null;
+    eventType: number | null;
   };
   matches: EventMatch[];
-  teams: { teamNumber: number; name: string }[];
+  teams: {
+    teamNumber: number;
+    name: string;
+    sourceName: string;
+    customName: string | null;
+  }[];
   assignments: {
     matchId: string;
     teamNumber: number;
@@ -208,6 +216,33 @@ function displaySelections(value: unknown, fallback = 'Unknown') {
     return selections.length ? selections.join(', ') : fallback;
   }
   return typeof value === 'string' && value ? value : fallback;
+}
+
+function formatDeviceName(userAgent: string | null) {
+  if (!userAgent) return 'Unknown device';
+  const platform = /iPhone|iPad/.test(userAgent)
+    ? /iPad/.test(userAgent)
+      ? 'iPad'
+      : 'iPhone'
+    : /Android/.test(userAgent)
+      ? 'Android'
+      : /Windows/.test(userAgent)
+        ? 'Windows'
+        : /Macintosh|Mac OS/.test(userAgent)
+          ? 'Mac'
+          : /Linux/.test(userAgent)
+            ? 'Linux'
+            : 'device';
+  const browser = /Edg\//.test(userAgent)
+    ? 'Edge'
+    : /Firefox\//.test(userAgent)
+      ? 'Firefox'
+      : /CriOS|Chrome\//.test(userAgent)
+        ? 'Chrome'
+        : /Safari\//.test(userAgent)
+          ? 'Safari'
+          : 'Browser';
+  return `${browser} on ${platform}`;
 }
 
 function ordinal(value: number) {
@@ -410,8 +445,8 @@ type MatchPlan = {
 const emptyMatchPlan: MatchPlan = {
   notes: '',
   absentTeams: [],
-  board: { robots: [], strokes: [] },
-  autoBoard: { robots: [], strokes: [] },
+  board: { robots: initialPlaceholderRobotMarkers(), strokes: [] },
+  autoBoard: { robots: initialPlaceholderRobotMarkers(), strokes: [] },
 };
 
 function planForMatch(
@@ -608,6 +643,10 @@ export default function Home() {
   const [configuringEvent, setConfiguringEvent] = useState(false);
   const [eventChoices, setEventChoices] = useState<TbaEventChoice[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
+  const [eventTeamInput, setEventTeamInput] = useState('401');
+  const [eventTeamNumber, setEventTeamNumber] = useState(401);
+  const [baseTeamNumber, setBaseTeamNumber] = useState(401);
+  const [testTeamNumber, setTestTeamNumber] = useState<number | null>(null);
   const [eventPack, setEventPack] = useState<EventPack | null>(null);
   const [packLoading, setPackLoading] = useState(false);
   const [_packError, setPackError] = useState('');
@@ -635,7 +674,7 @@ export default function Home() {
   const [accountSessions, setAccountSessions] = useState<
     Array<{
       id: string;
-      ipAddress: string | null;
+      location: string | null;
       userAgent: string | null;
       createdAt: number;
       updatedAt: number;
@@ -679,6 +718,9 @@ export default function Home() {
       ),
     ) ?? [];
   const videoMatches = planningMatches;
+  const currentPlanningMatch = planningMatches.find(
+    (match) => match.key === selectedMatchKey,
+  );
   const currentMatch = eventPack?.matches.find(
     (match) => match.key === selectedMatchKey,
   );
@@ -1056,19 +1098,27 @@ export default function Home() {
       setTeamsSection('analysis');
   }, [canUseStrategy, isGuest, teamsSection]);
 
-  useEffect(() => {
-    if (activeView !== 'Admin' || !isAdmin || !online) return;
+  const loadTeamEventChoices = useCallback(async (requestedTeam?: number) => {
     setEventsLoading(true);
     setEventMessage('');
-    fetch('/api/tba-events')
+    const query = requestedTeam ? `?team=${requestedTeam}` : '';
+    return fetch(`/api/tba-events${query}`)
       .then(async (response) => {
         const result = (await response.json()) as {
           events?: TbaEventChoice[];
+          teamNumber?: number;
+          baseTeamNumber?: number;
+          testTeamNumber?: number | null;
           error?: string;
         };
         if (!response.ok)
           throw new Error(result.error ?? 'Unable to load Team 401 events.');
         setEventChoices(result.events ?? []);
+        const loadedTeam = result.teamNumber ?? requestedTeam ?? 401;
+        setEventTeamNumber(loadedTeam);
+        setEventTeamInput(String(loadedTeam));
+        setBaseTeamNumber(result.baseTeamNumber ?? 401);
+        setTestTeamNumber(result.testTeamNumber ?? null);
       })
       .catch((error) => {
         setEventChoices([]);
@@ -1079,7 +1129,12 @@ export default function Home() {
         );
       })
       .finally(() => setEventsLoading(false));
-  }, [activeView, isAdmin, online]);
+  }, []);
+
+  useEffect(() => {
+    if (activeView !== 'Admin' || !isAdmin || !online) return;
+    void loadTeamEventChoices();
+  }, [activeView, isAdmin, loadTeamEventChoices, online]);
 
   useEffect(() => {
     if (activeView !== 'Account' || !session || !online) return;
@@ -1116,15 +1171,15 @@ export default function Home() {
   }, [activeView, selectedVideoMatchKey, videoMatches]);
 
   useEffect(() => {
-    if (activeView !== 'Plan' || !currentMatch || !session) return;
+    if (activeView !== 'Plan' || !currentPlanningMatch || !session) return;
     let cancelled = false;
     loadedPlanMatchIdRef.current = '';
     setPlanMessage('');
     setPlanAuthor('');
     setPlanUpdatedAt(null);
-    setMatchPlan(planForMatch(null, currentMatch));
-    const cacheId = `match-plan:${currentMatch.id}`;
-    const draftId = `match-plan-draft:${currentMatch.id}`;
+    setMatchPlan(planForMatch(null, currentPlanningMatch));
+    const cacheId = `match-plan:${currentPlanningMatch.id}`;
+    const draftId = `match-plan-draft:${currentPlanningMatch.id}`;
     void Promise.all([
       getDraft<MatchPlan>(draftId),
       getCachedValue<{
@@ -1135,8 +1190,10 @@ export default function Home() {
       }>(cacheId),
     ]).then(([draft, cached]) => {
       if (cancelled) return;
-      if (draft) setMatchPlan(planForMatch(draft.payload, currentMatch));
-      else if (cached) setMatchPlan(planForMatch(cached.plan, currentMatch));
+      if (draft)
+        setMatchPlan(planForMatch(draft.payload, currentPlanningMatch));
+      else if (cached)
+        setMatchPlan(planForMatch(cached.plan, currentPlanningMatch));
       if (cached) {
         setPlanCanEdit(cached.canEdit);
         setPlanAuthor(cached.authorName ?? '');
@@ -1146,14 +1203,16 @@ export default function Home() {
         setPlanMessage(
           'Showing the match plan saved on this device. Changes will remain a local draft until reconnected.',
         );
-        loadedPlanMatchIdRef.current = currentMatch.id;
+        loadedPlanMatchIdRef.current = currentPlanningMatch.id;
       }
     });
     if (!online)
       return () => {
         cancelled = true;
       };
-    fetch(`/api/match-plans?matchId=${encodeURIComponent(currentMatch.id)}`)
+    fetch(
+      `/api/match-plans?matchId=${encodeURIComponent(currentPlanningMatch.id)}`,
+    )
       .then(async (response) => {
         const result = (await response.json()) as {
           plan: MatchPlan | null;
@@ -1166,7 +1225,8 @@ export default function Home() {
           throw new Error(result.error ?? 'Unable to load this match plan.');
         const draft = await getDraft<MatchPlan>(draftId).catch(() => undefined);
         if (cancelled) return;
-        if (!draft) setMatchPlan(planForMatch(result.plan, currentMatch));
+        if (!draft)
+          setMatchPlan(planForMatch(result.plan, currentPlanningMatch));
         setPlanCanEdit(result.canEdit);
         setPlanAuthor(result.authorName ?? '');
         setPlanUpdatedAt(result.updatedAt);
@@ -1179,7 +1239,7 @@ export default function Home() {
       })
       .catch((error) => {
         if (cancelled) return;
-        setMatchPlan(planForMatch(null, currentMatch));
+        setMatchPlan(planForMatch(null, currentPlanningMatch));
         setPlanCanEdit(false);
         setPlanMessage(
           error instanceof Error
@@ -1188,20 +1248,31 @@ export default function Home() {
         );
       })
       .finally(() => {
-        if (!cancelled) loadedPlanMatchIdRef.current = currentMatch.id;
+        if (!cancelled) loadedPlanMatchIdRef.current = currentPlanningMatch.id;
       });
     return () => {
       cancelled = true;
     };
-  }, [activeView, currentMatch, online, session]);
+  }, [activeView, currentPlanningMatch, online, session]);
 
   useEffect(() => {
-    if (activeView !== 'Plan' || !currentMatch || !session) return;
+    if (currentPlanningMatch) return;
+    loadedPlanMatchIdRef.current = '';
+    setMatchPlan(emptyMatchPlan);
+    setPlanCanEdit(false);
+    setPlanMessage('');
+    setPlanAuthor('');
+    setPlanUpdatedAt(null);
+    setPlanStats([]);
+  }, [currentPlanningMatch, eventPack?.event.key]);
+
+  useEffect(() => {
+    if (activeView !== 'Plan' || !currentPlanningMatch || !session) return;
     const matchTeams = new Set([
-      ...currentMatch.alliances.red,
-      ...currentMatch.alliances.blue,
+      ...currentPlanningMatch.alliances.red,
+      ...currentPlanningMatch.alliances.blue,
     ]);
-    const statsCacheId = `match-stats:${currentMatch.id}`;
+    const statsCacheId = `match-stats:${currentPlanningMatch.id}`;
     void getCachedValue<TeamAnalysis[]>(statsCacheId).then((cached) => {
       if (cached) setPlanStats(cached);
     });
@@ -1221,28 +1292,28 @@ export default function Home() {
         await saveCachedValue(statsCacheId, stats);
       })
       .catch(() => setPlanStats([]));
-  }, [activeView, currentMatch, online, session]);
+  }, [activeView, currentPlanningMatch, online, session]);
 
   useEffect(() => {
-    if (activeView !== 'Plan' || !currentMatch || !planCanEdit) return;
+    if (activeView !== 'Plan' || !currentPlanningMatch || !planCanEdit) return;
     const timer = window.setTimeout(
       () =>
         void saveDraft({
-          id: `match-plan-draft:${currentMatch.id}`,
+          id: `match-plan-draft:${currentPlanningMatch.id}`,
           payload: matchPlan,
           updatedAt: Date.now(),
         }),
       300,
     );
     return () => window.clearTimeout(timer);
-  }, [activeView, currentMatch, matchPlan, planCanEdit]);
+  }, [activeView, currentPlanningMatch, matchPlan, planCanEdit]);
 
   useEffect(() => {
     if (
       activeView !== 'Plan' ||
-      !currentMatch ||
+      !currentPlanningMatch ||
       !planCanEdit ||
-      loadedPlanMatchIdRef.current !== currentMatch.id
+      loadedPlanMatchIdRef.current !== currentPlanningMatch.id
     )
       return;
 
@@ -1254,7 +1325,7 @@ export default function Home() {
     setPlanMessage('Saving changes…');
     const timer = window.setTimeout(() => void saveMatchPlan(), 700);
     return () => window.clearTimeout(timer);
-  }, [activeView, currentMatch, matchPlan, online, planCanEdit]);
+  }, [activeView, currentPlanningMatch, matchPlan, online, planCanEdit]);
 
   useEffect(() => {
     if (!draftReady || !draftId) return;
@@ -1837,7 +1908,7 @@ export default function Home() {
   }
 
   async function saveMatchPlan() {
-    if (!currentMatch) {
+    if (!currentPlanningMatch) {
       setPlanMessage('Choose a match first.');
       return;
     }
@@ -1846,7 +1917,10 @@ export default function Home() {
       const response = await fetch('/api/match-plans', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ matchId: currentMatch.id, ...matchPlan }),
+        body: JSON.stringify({
+          matchId: currentPlanningMatch.id,
+          ...matchPlan,
+        }),
       });
       const result = (await response.json()) as {
         error?: string;
@@ -1858,14 +1932,14 @@ export default function Home() {
       setPlanAuthor(result.authorName ?? session?.user.name ?? '');
       const savedAt = result.updatedAt ?? Date.now();
       setPlanUpdatedAt(savedAt);
-      await saveCachedValue(`match-plan:${currentMatch.id}`, {
+      await saveCachedValue(`match-plan:${currentPlanningMatch.id}`, {
         plan: matchPlan,
         canEdit: true,
         authorName: result.authorName ?? session?.user.name ?? null,
         updatedAt: savedAt,
       });
       await saveDraft({
-        id: `match-plan-draft:${currentMatch.id}`,
+        id: `match-plan-draft:${currentPlanningMatch.id}`,
         payload: matchPlan,
         updatedAt: Date.now(),
       });
@@ -1886,22 +1960,59 @@ export default function Home() {
       const response = await fetch('/api/event-pack', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ eventKey: eventKey.trim().toLowerCase() }),
+        body: JSON.stringify({
+          eventKey: eventKey.trim().toLowerCase(),
+          teamNumber: eventTeamNumber,
+        }),
       });
       const result = (await response.json()) as {
         error?: string;
         event?: { name: string };
         matchCount?: number;
+        organizationTeamNumber?: number;
       };
       if (!response.ok)
         throw new Error(result.error ?? 'Unable to load this event.');
       setEventMessage(
         `${result.event?.name ?? eventKey} is current. Cached ${result.matchCount ?? 0} matches.`,
       );
+      setTestTeamNumber(
+        result.organizationTeamNumber !== baseTeamNumber
+          ? (result.organizationTeamNumber ?? eventTeamNumber)
+          : null,
+      );
       await loadEventPack();
     } catch (error) {
       setEventMessage(
         error instanceof Error ? error.message : 'Unable to load this event.',
+      );
+    } finally {
+      setConfiguringEvent(false);
+    }
+  }
+
+  async function stopTeamTestMode() {
+    setConfiguringEvent(true);
+    setEventMessage('');
+    try {
+      const response = await fetch('/api/event-pack', { method: 'DELETE' });
+      const result = (await response.json()) as { error?: string };
+      if (!response.ok)
+        throw new Error(result.error ?? 'Unable to stop team test mode.');
+      setTestTeamNumber(null);
+      setEventTeamNumber(baseTeamNumber);
+      setEventTeamInput(String(baseTeamNumber));
+      setEventKey('');
+      setEventMessage(`Returned to Team ${baseTeamNumber}.`);
+      await Promise.all([
+        loadEventPack(),
+        loadTeamEventChoices(baseTeamNumber),
+      ]);
+    } catch (error) {
+      setEventMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to stop team test mode.',
       );
     } finally {
       setConfiguringEvent(false);
@@ -1932,19 +2043,19 @@ export default function Home() {
       (entry) =>
         (entry.payload as MatchDraft & { reopened?: boolean }).reopened,
     ) ?? [];
-  const planTeams = currentMatch
-    ? [...currentMatch.alliances.red, ...currentMatch.alliances.blue].map(
-        (team) => ({
-          team,
-          alliance: currentMatch.alliances.red.includes(team)
-            ? ('red' as const)
-            : ('blue' as const),
-          stats: planStats.find((item) => item.teamNumber === team),
-          pit: eventPack?.pitEntries.find((item) => item.teamNumber === team),
-          name: eventPack?.teams?.find((item) => item.teamNumber === team)
-            ?.name,
-        }),
-      )
+  const planTeams = currentPlanningMatch
+    ? [
+        ...currentPlanningMatch.alliances.red,
+        ...currentPlanningMatch.alliances.blue,
+      ].map((team) => ({
+        team,
+        alliance: currentPlanningMatch.alliances.red.includes(team)
+          ? ('red' as const)
+          : ('blue' as const),
+        stats: planStats.find((item) => item.teamNumber === team),
+        pit: eventPack?.pitEntries.find((item) => item.teamNumber === team),
+        name: eventPack?.teams?.find((item) => item.teamNumber === team)?.name,
+      }))
     : [];
   const selectedStrategyTeam = strategyTeams.find(
     (team) => team.teamNumber === selectedTeam,
@@ -1972,9 +2083,9 @@ export default function Home() {
         ? `${matchHeaderLabel(currentMatch)}${selectedStation ? ` · ${selectedStation.replace('red', 'Red ').replace('blue', 'Blue ')}` : ''}${selectedTeam ? ` · Team ${selectedTeam}` : ''}`
         : 'Choose an assignment'
       : activeView === 'Pit'
-        ? 'Pit Scouting'
-        : activeView === 'Plan' && currentMatch
-          ? `Plan · ${matchHeaderLabel(currentMatch)}`
+        ? `Pit Scouting · ${eventPack?.pitEntries.length ?? 0}/${eventTeams.length} Complete`
+        : activeView === 'Plan' && currentPlanningMatch
+          ? `Plan · ${matchHeaderLabel(currentPlanningMatch)}`
           : activeView;
 
   useEffect(() => {
@@ -2065,44 +2176,46 @@ export default function Home() {
               {pageTitle}
             </h1>
           </div>
-          <div className="desktop-header-actions flex items-center gap-2">
-            <Badge variant="outline" className="status-badge">
-              {online ? <Cloud /> : <CloudOff />}
-              <span className="status-text">
-                {online ? 'Online' : 'Offline ready'}
-              </span>
-            </Badge>
-            {!isPending &&
-              (session ? (
-                <Button variant="outline" onClick={() => navigate('Account')}>
-                  <CircleUserRound />
-                  {session.user.name}
-                </Button>
-              ) : (
-                <Button nativeButton={false} render={<a href="/sign-in" />}>
-                  Sign in
-                </Button>
-              ))}
+          <div className="ml-auto flex items-center gap-2">
+            {!online && (
+              <Badge variant="outline" className="status-badge">
+                <CloudOff />
+                <span className="status-text">Offline ready</span>
+              </Badge>
+            )}
+            <div className="desktop-header-actions flex items-center gap-2">
+              {!isPending &&
+                (session ? (
+                  <Button variant="outline" onClick={() => navigate('Account')}>
+                    <CircleUserRound />
+                    {session.user.name}
+                  </Button>
+                ) : (
+                  <Button nativeButton={false} render={<a href="/sign-in" />}>
+                    Sign in
+                  </Button>
+                ))}
+              <Button
+                aria-label="Toggle color theme"
+                size="icon"
+                variant="ghost"
+                onClick={toggleTheme}
+              >
+                {dark ? <Sun /> : <Moon />}
+              </Button>
+            </div>
             <Button
-              aria-label="Toggle color theme"
+              type="button"
+              className="mobile-header-menu-button"
               size="icon"
               variant="ghost"
-              onClick={toggleTheme}
+              aria-label="Open navigation menu"
+              aria-expanded={mobileMenuOpen}
+              onClick={() => setMobileMenuOpen((open) => !open)}
             >
-              {dark ? <Sun /> : <Moon />}
+              <Menu />
             </Button>
           </div>
-          <Button
-            type="button"
-            className="mobile-header-menu-button"
-            size="icon"
-            variant="ghost"
-            aria-label="Open navigation menu"
-            aria-expanded={mobileMenuOpen}
-            onClick={() => setMobileMenuOpen((open) => !open)}
-          >
-            <Menu />
-          </Button>
         </header>
         {activeView === 'Home' && (
           <div className="mx-auto grid w-full max-w-3xl gap-4 p-4 sm:p-6">
@@ -2797,13 +2910,6 @@ export default function Home() {
               </CardContent>
             </Card>
             <Card className="pit-queue-card h-full min-h-0">
-              <CardHeader className="flex flex-wrap items-center gap-2">
-                <CardTitle>Pit queue</CardTitle>
-                <Badge variant="outline">
-                  {eventPack?.pitEntries.length ?? 0}/{eventTeams.length}{' '}
-                  complete
-                </Badge>
-              </CardHeader>
               <CardContent className="min-h-0 flex-1 space-y-1 overflow-auto">
                 {eventTeams.map((team) => {
                   const entry = eventPack?.pitEntries.find(
@@ -3274,75 +3380,85 @@ export default function Home() {
                   ? 'min-h-dvh rounded-none border-0'
                   : 'rounded-none sm:rounded-xl'
               }
+              onClick={() => {
+                if (planFullscreen) setPlanFullscreen(false);
+              }}
             >
               <CardContent className="flex flex-col gap-5">
-                <div className="flex items-center gap-3">
-                  <label
-                    className="shrink-0 font-semibold"
-                    htmlFor="plan-match"
-                  >
-                    Match
-                  </label>
-                  <select
-                    id="plan-match"
-                    aria-label="Match to plan"
-                    className="h-11 min-w-0 flex-1 rounded-md border bg-transparent px-3"
-                    value={selectedMatchKey}
-                    onChange={(event) =>
-                      setSelectedMatchKey(event.target.value)
-                    }
-                  >
-                    {planningMatches.map((match) => (
-                      <option value={match.key} key={match.key}>
-                        {matchLabel(match)} · {match.alliances.red.join(', ')}{' '}
-                        vs {match.alliances.blue.join(', ')}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="grid grid-cols-3 gap-1 rounded-lg border p-1">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={planSection === 'auto' ? 'default' : 'ghost'}
-                    onClick={() => setPlanSection('auto')}
-                  >
-                    Auto Plan
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={planSection === 'teleop' ? 'default' : 'ghost'}
-                    onClick={() => setPlanSection('teleop')}
-                  >
-                    Tele Plan
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={planSection === 'metrics' ? 'default' : 'ghost'}
-                    onClick={() => setPlanSection('metrics')}
-                  >
-                    Team metrics
-                  </Button>
-                </div>
-                {eventPack && planningMatches.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    Team {organizationTeamNumber} is not scheduled for any
-                    matches in this event pack.
-                  </p>
+                {!planFullscreen && (
+                  <>
+                    {planningMatches.length > 0 && (
+                      <div className="flex items-center gap-3">
+                        <label
+                          className="shrink-0 font-semibold"
+                          htmlFor="plan-match"
+                        >
+                          Match
+                        </label>
+                        <select
+                          id="plan-match"
+                          aria-label="Match to plan"
+                          className="h-11 min-w-0 flex-1 rounded-md border bg-transparent px-3"
+                          value={selectedMatchKey}
+                          onChange={(event) =>
+                            setSelectedMatchKey(event.target.value)
+                          }
+                        >
+                          {planningMatches.map((match) => (
+                            <option value={match.key} key={match.key}>
+                              {matchLabel(match)} ·{' '}
+                              {match.alliances.red.join(', ')} vs{' '}
+                              {match.alliances.blue.join(', ')}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-3 gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={planSection === 'auto' ? 'default' : 'ghost'}
+                        onClick={() => setPlanSection('auto')}
+                      >
+                        Auto Plan
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={planSection === 'teleop' ? 'default' : 'ghost'}
+                        onClick={() => setPlanSection('teleop')}
+                      >
+                        Tele Plan
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={
+                          planSection === 'metrics' ? 'default' : 'ghost'
+                        }
+                        onClick={() => setPlanSection('metrics')}
+                      >
+                        Team metrics
+                      </Button>
+                    </div>
+                  </>
                 )}
                 {planSection !== 'metrics' && (
                   <>
-                    <div className="order-first -mx-(--card-spacing)">
+                    <div
+                      role="presentation"
+                      className="order-first -mx-(--card-spacing)"
+                      onClick={(event) => event.stopPropagation()}
+                    >
                       <TacticalBoard
                         value={
                           planSection === 'auto'
                             ? matchPlan.autoBoard
                             : matchPlan.board
                         }
-                        readOnly={!planCanEdit}
-                        toolbarEnd={
+                        readOnly={Boolean(currentPlanningMatch && !planCanEdit)}
+                        toolbarStart={
                           <Button
                             type="button"
                             size="icon-sm"
@@ -3366,7 +3482,11 @@ export default function Home() {
                         }
                       />
                     </div>
-                    <div className="space-y-3 border-t pt-4">
+                    <div
+                      className={
+                        planFullscreen ? 'hidden' : 'space-y-3 border-t pt-4'
+                      }
+                    >
                       <textarea
                         aria-label="Match plan notes"
                         className="min-h-20 w-full rounded-md border bg-transparent p-3"
@@ -3441,8 +3561,8 @@ export default function Home() {
                                   )
                                 : [...matchPlan.absentTeams, team];
                               const defaultMarkers = initialRobotMarkers(
-                                currentMatch?.alliances.red ?? [],
-                                currentMatch?.alliances.blue ?? [],
+                                currentPlanningMatch?.alliances.red ?? [],
+                                currentPlanningMatch?.alliances.blue ?? [],
                               );
                               const robots = isAbsent
                                 ? [
@@ -3614,18 +3734,68 @@ export default function Home() {
         {activeView === 'Admin' &&
           isAdmin &&
           adminSection === 'assignments' && (
-            <div className="p-4 sm:p-6">
+            <div className="grid gap-4 p-4 sm:p-6">
+              <EventTeamAliases
+                eventType={eventPack?.event.eventType ?? null}
+                teams={eventPack?.teams ?? []}
+                onChanged={() => loadEventPack(false, true)}
+              />
               <EventScheduleBoard
                 members={eventPack?.members ?? []}
                 eventKey={eventPack?.event.key ?? ''}
                 onChanged={() => loadEventPack(false, true)}
                 eventPicker={
                   <>
+                    {testTeamNumber && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-400/60 bg-amber-100 px-3 py-2 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">
+                        <strong>Testing as Team {testTeamNumber}</strong>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={configuringEvent}
+                          onClick={() => void stopTeamTestMode()}
+                        >
+                          Return to Team {baseTeamNumber}
+                        </Button>
+                      </div>
+                    )}
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <label className="flex items-center gap-2 text-sm font-medium">
+                        Team
+                        <Input
+                          className="w-24"
+                          min={1}
+                          max={99999}
+                          inputMode="numeric"
+                          type="number"
+                          value={eventTeamInput}
+                          onChange={(event) =>
+                            setEventTeamInput(event.target.value)
+                          }
+                        />
+                      </label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={
+                          eventsLoading ||
+                          !online ||
+                          !Number.isInteger(Number(eventTeamInput)) ||
+                          Number(eventTeamInput) <= 0
+                        }
+                        onClick={() => {
+                          const teamNumber = Number(eventTeamInput);
+                          setEventKey('');
+                          void loadTeamEventChoices(teamNumber);
+                        }}
+                      >
+                        Find events
+                      </Button>
                       <label className="flex min-w-0 items-center gap-3 text-sm font-medium">
                         Event
                         <select
-                          aria-label="Team 401 event"
+                          aria-label={`Team ${eventTeamNumber} event`}
                           className="h-10 truncate rounded-md border bg-background px-3"
                           value={eventKey}
                           onChange={(event) => setEventKey(event.target.value)}
@@ -3652,7 +3822,11 @@ export default function Home() {
                         }
                         onClick={configureEvent}
                       >
-                        {configuringEvent ? 'Loading event…' : 'Use this event'}
+                        {configuringEvent
+                          ? 'Loading event…'
+                          : eventTeamNumber === baseTeamNumber
+                            ? 'Use this event'
+                            : `Test as Team ${eventTeamNumber}`}
                       </Button>
                     </div>
                     {eventMessage && (
@@ -3866,7 +4040,7 @@ export default function Home() {
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="sm:col-span-2">
               <CardHeader>
                 <CardTitle>
                   {selectedTeam
@@ -3874,115 +4048,118 @@ export default function Home() {
                     : 'Select a team above'}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-4 sm:grid-cols-[10rem_1fr] sm:items-start">
-                <TeamRobotPhoto
-                  teamNumber={selectedTeam}
-                  hasPitPhoto={Boolean(analysis?.pit?.photoObjectKey)}
-                  className="w-full"
-                />
-                <div>
-                  <p className="score-number">{analysis?.medianPoints ?? 0}</p>
-                  <p className="text-sm text-muted-foreground">
-                    median observed points
-                  </p>
-                  <div className="mini-stats">
-                    <span>
-                      <strong>{analysis?.medianActiveFuel ?? 0}</strong> median
-                      active FUEL
-                    </span>
-                    <span>
-                      <strong>
-                        {analysis?.pointStdDev.toFixed(1) ?? '0.0'}
-                      </strong>{' '}
-                      point deviation
-                    </span>
-                    <span>
-                      <strong>
-                        {analysis?.averageDefense.toFixed(1) ?? '0.0'}
-                      </strong>{' '}
-                      defense rating
-                    </span>
+              <CardContent className="grid gap-5 lg:grid-cols-3 lg:items-start">
+                <div className="grid gap-4 sm:grid-cols-[10rem_1fr] lg:grid-cols-[8rem_1fr]">
+                  <TeamRobotPhoto
+                    teamNumber={selectedTeam}
+                    hasPitPhoto={Boolean(analysis?.pit?.photoObjectKey)}
+                    className="w-full"
+                  />
+                  <div>
+                    <p className="score-number">
+                      {analysis?.medianPoints ?? 0}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      median observed points
+                    </p>
+                    <div className="mini-stats">
+                      <span>
+                        <strong>{analysis?.medianActiveFuel ?? 0}</strong>{' '}
+                        median active FUEL
+                      </span>
+                      <span>
+                        <strong>
+                          {analysis?.pointStdDev.toFixed(1) ?? '0.0'}
+                        </strong>{' '}
+                        point deviation
+                      </span>
+                      <span>
+                        <strong>
+                          {analysis?.averageDefense.toFixed(1) ?? '0.0'}
+                        </strong>{' '}
+                        defense rating
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>TBA and external ratings</CardTitle>
-              </CardHeader>
-              <CardContent className="mini-stats">
-                <span>
-                  <strong>
-                    {selectedStrategyTeam?.epa?.toFixed(1) ?? '—'}
-                  </strong>{' '}
-                  Match13 EPA
-                  {eventMetricRank(strategyTeams, selectedTeam, 'epa')
-                    ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'epa')}`
-                    : ''}
-                </span>
-                <span>
-                  <strong>{selectedStrategyTeam?.xp?.toFixed(1) ?? '—'}</strong>{' '}
-                  Match13 total xP
-                  {eventMetricRank(strategyTeams, selectedTeam, 'xp')
-                    ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xp')}`
-                    : ''}
-                </span>
-                <span>
-                  <strong>
-                    {selectedStrategyTeam?.xAuto?.toFixed(1) ?? '—'}
-                  </strong>{' '}
-                  auto xP
-                  {eventMetricRank(strategyTeams, selectedTeam, 'xAuto')
-                    ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xAuto')}`
-                    : ''}
-                </span>
-                <span>
-                  <strong>
-                    {selectedStrategyTeam?.xTele?.toFixed(1) ?? '—'}
-                  </strong>{' '}
-                  teleop xP
-                  {eventMetricRank(strategyTeams, selectedTeam, 'xTele')
-                    ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xTele')}`
-                    : ''}
-                </span>
-                <span>
-                  <strong>
-                    {selectedStrategyTeam?.xEnd?.toFixed(1) ?? '—'}
-                  </strong>{' '}
-                  endgame xP
-                  {eventMetricRank(strategyTeams, selectedTeam, 'xEnd')
-                    ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xEnd')}`
-                    : ''}
-                </span>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Reliability and coverage</CardTitle>
-              </CardHeader>
-              <CardContent className="mini-stats">
-                <span>
-                  <strong>
-                    L1 {analysis?.towerLevelCounts.level1 ?? 0} · L2{' '}
-                    {analysis?.towerLevelCounts.level2 ?? 0} · L3{' '}
-                    {analysis?.towerLevelCounts.level3 ?? 0}
-                  </strong>{' '}
-                  tower successes
-                </span>
-                <span>
-                  <strong>{analysis?.disabledMatches ?? 0}</strong> disabled
-                  matches
-                </span>
-                <span>
-                  <strong>
-                    {analysis?.samples ?? 0}/{analysis?.scheduledMatches ?? 0}
-                  </strong>{' '}
-                  matches scouted
-                </span>
-                <span>
-                  <strong>{analysis?.scheduledMatches ?? 0}</strong> scheduled
-                  matches
-                </span>
+                <section className="space-y-3">
+                  <h3 className="font-semibold">TBA and external ratings</h3>
+                  <div className="mini-stats">
+                    <span>
+                      <strong>
+                        {selectedStrategyTeam?.epa?.toFixed(1) ?? '—'}
+                      </strong>{' '}
+                      Match13 EPA
+                      {eventMetricRank(strategyTeams, selectedTeam, 'epa')
+                        ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'epa')}`
+                        : ''}
+                    </span>
+                    <span>
+                      <strong>
+                        {selectedStrategyTeam?.xp?.toFixed(1) ?? '—'}
+                      </strong>{' '}
+                      Match13 total xP
+                      {eventMetricRank(strategyTeams, selectedTeam, 'xp')
+                        ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xp')}`
+                        : ''}
+                    </span>
+                    <span>
+                      <strong>
+                        {selectedStrategyTeam?.xAuto?.toFixed(1) ?? '—'}
+                      </strong>{' '}
+                      auto xP
+                      {eventMetricRank(strategyTeams, selectedTeam, 'xAuto')
+                        ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xAuto')}`
+                        : ''}
+                    </span>
+                    <span>
+                      <strong>
+                        {selectedStrategyTeam?.xTele?.toFixed(1) ?? '—'}
+                      </strong>{' '}
+                      teleop xP
+                      {eventMetricRank(strategyTeams, selectedTeam, 'xTele')
+                        ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xTele')}`
+                        : ''}
+                    </span>
+                    <span>
+                      <strong>
+                        {selectedStrategyTeam?.xEnd?.toFixed(1) ?? '—'}
+                      </strong>{' '}
+                      endgame xP
+                      {eventMetricRank(strategyTeams, selectedTeam, 'xEnd')
+                        ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xEnd')}`
+                        : ''}
+                    </span>
+                  </div>
+                </section>
+                <section className="space-y-3">
+                  <h3 className="font-semibold">Reliability and coverage</h3>
+                  <div className="mini-stats">
+                    <span>
+                      <strong>
+                        L1 {analysis?.towerLevelCounts.level1 ?? 0} · L2{' '}
+                        {analysis?.towerLevelCounts.level2 ?? 0} · L3{' '}
+                        {analysis?.towerLevelCounts.level3 ?? 0}
+                      </strong>{' '}
+                      tower successes
+                    </span>
+                    <span>
+                      <strong>{analysis?.disabledMatches ?? 0}</strong> disabled
+                      matches
+                    </span>
+                    <span>
+                      <strong>
+                        {analysis?.samples ?? 0}/
+                        {analysis?.scheduledMatches ?? 0}
+                      </strong>{' '}
+                      matches scouted
+                    </span>
+                    <span>
+                      <strong>{analysis?.scheduledMatches ?? 0}</strong>{' '}
+                      scheduled matches
+                    </span>
+                  </div>
+                </section>
               </CardContent>
             </Card>
             <Card className="sm:col-span-2">
@@ -4342,18 +4519,22 @@ export default function Home() {
               <CardHeader>
                 <CardTitle>Other signed-in devices</CardTitle>
               </CardHeader>
-              <CardContent className="account-sessions grid gap-3 sm:grid-cols-2">
+              <CardContent className="account-sessions grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                 {accountSessions
                   .filter((item) => item.id !== currentSessionId)
                   .map((item) => (
-                    <div className="rounded-lg border p-3" key={item.id}>
-                      <p className="break-words text-sm">
-                        {item.userAgent?.split(' ').slice(0, 4).join(' ') ??
-                          'Unknown device'}
-                        {item.ipAddress ? ` · ${item.ipAddress}` : ''}
+                    <div className="rounded-lg border p-2.5" key={item.id}>
+                      <p
+                        className="truncate text-sm font-medium"
+                        title={item.userAgent ?? undefined}
+                      >
+                        {formatDeviceName(item.userAgent)}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        {item.location ?? 'Location unavailable'}
                       </p>
                       <Button
-                        className="mt-3 w-full"
+                        className="mt-2 w-full"
                         size="sm"
                         variant="outline"
                         onClick={() => void revokeSession(item.id)}

@@ -123,9 +123,12 @@ export async function POST(request: Request) {
       { error: 'One or more selected scouts are not on this event roster.' },
       { status: 400 },
     );
+  const individualAssignments = parsed.data.assignments.filter(
+    (item) => !item.scoutUserId.startsWith('guest:'),
+  );
   if (
-    new Set(parsed.data.assignments.map((item) => item.scoutUserId)).size !==
-    parsed.data.assignments.length
+    new Set(individualAssignments.map((item) => item.scoutUserId)).size !==
+    individualAssignments.length
   )
     return Response.json(
       { error: 'A scout cannot cover two stations during the same shift.' },
@@ -152,7 +155,13 @@ export async function POST(request: Request) {
       { status: 409 },
     );
   const busyScouts = new Set(overlaps.results.map((item) => item.scoutUserId));
-  if (parsed.data.assignments.some((item) => busyScouts.has(item.scoutUserId)))
+  if (
+    parsed.data.assignments.some(
+      (item) =>
+        !item.scoutUserId.startsWith('guest:') &&
+        busyScouts.has(item.scoutUserId),
+    )
+  )
     return Response.json(
       { error: 'A selected scout already has a station during this time.' },
       { status: 409 },

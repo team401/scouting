@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 export type BoardPoint = { x: number; y: number };
 export type RobotMarker = BoardPoint & {
   team: number;
+  label?: string;
   station: string;
   alliance: 'red' | 'blue';
 };
@@ -49,17 +50,24 @@ export function initialRobotMarkers(
   ];
 }
 
+export function initialPlaceholderRobotMarkers(): RobotMarker[] {
+  return initialRobotMarkers([1, 2, 3], [4, 5, 6]).map((robot) => ({
+    ...robot,
+    label: 'Robot',
+  }));
+}
+
 export function TacticalBoard({
   value,
   onChange,
   readOnly = false,
-  toolbarEnd,
+  toolbarStart,
 }: {
   value: TacticalBoardData;
   onChange: (value: TacticalBoardData) => void;
   readOnly?: boolean;
-  // Extra controls shown at the end of the tools row, such as full screen.
-  toolbarEnd?: ReactNode;
+  // Extra controls shown before the board tools, such as full screen.
+  toolbarStart?: ReactNode;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<
@@ -117,6 +125,10 @@ export function TacticalBoard({
   }
 
   function resetRobots() {
+    if (value.robots.some((robot) => robot.label)) {
+      onChange({ ...value, robots: initialPlaceholderRobotMarkers() });
+      return;
+    }
     const red = value.robots
       .filter((robot) => robot.alliance === 'red')
       .map((robot) => robot.team);
@@ -129,7 +141,8 @@ export function TacticalBoard({
   return (
     // The field is drawn first; the tools sit below it (order-last).
     <div className="tactical-board flex flex-col gap-3">
-      <div className="tactical-board-tools order-last flex flex-wrap items-center gap-2">
+      <div className="tactical-board-tools order-last flex flex-wrap items-center gap-2 px-(--card-spacing)">
+        {toolbarStart}
         <Button
           type="button"
           size="sm"
@@ -210,7 +223,6 @@ export function TacticalBoard({
           <RotateCcw />
           Reset robots
         </Button>
-        {toolbarEnd && <div className="ml-auto shrink-0">{toolbarEnd}</div>}
       </div>
       <div className="tactical-board-viewport">
         <svg
@@ -632,7 +644,7 @@ export function TacticalBoard({
                 fontSize="25"
                 fontWeight="700"
               >
-                {robot.team}
+                {robot.label ?? robot.team}
               </text>
               <text y="22" textAnchor="middle" fill="white" fontSize="16">
                 {robot.station}

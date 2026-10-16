@@ -184,13 +184,7 @@ export function TeamComparison({
   return (
     <Card className="sm:col-span-2">
       <CardHeader>
-        <div>
-          <CardTitle>Team comparison</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Compare scouting output, external ratings, reliability, and trends.
-          </p>
-        </div>
-        <Badge variant="outline">{selected.length}/6 selected</Badge>
+        <CardTitle>Team comparison</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">

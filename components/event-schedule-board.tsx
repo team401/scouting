@@ -11,6 +11,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverTitle,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { ConfirmActionDialog } from '@/components/confirm-action-dialog';
 import {
   activeCoverageTargets,
@@ -30,6 +37,10 @@ type Member = {
   role: string;
   opsRole?: string | null;
   disabled?: boolean | number;
+};
+type ScheduleMember = Member & {
+  scheduleRowKey: string;
+  guestSlot?: number;
 };
 type RoleItem = {
   id: string;
@@ -158,6 +169,12 @@ function isGuestMember(member: Member) {
 
 function canSchedule(member: Member) {
   return !member.disabled && member.opsRole !== 'coach';
+}
+
+function scheduleMemberName(member: ScheduleMember) {
+  return member.guestSlot === undefined
+    ? member.name
+    : `${member.name} · Scout ${member.guestSlot + 1}`;
 }
 
 export function assignmentClass(label: string) {
@@ -641,6 +658,15 @@ export function EventScheduleBoard({
           (a, b) =>
             Number(isGuestMember(a)) - Number(isGuestMember(b)) ||
             a.name.localeCompare(b.name),
+        )
+        .flatMap<ScheduleMember>((member) =>
+          isGuestMember(member)
+            ? Array.from({ length: 3 }, (_, guestSlot) => ({
+                ...member,
+                guestSlot,
+                scheduleRowKey: `${member.id}:${guestSlot}`,
+              }))
+            : [{ ...member, scheduleRowKey: member.id }],
         ),
     [attendeeIds, members],
   );
@@ -673,7 +699,8 @@ export function EventScheduleBoard({
   const nameChars = Math.max(
     0,
     ...activeMembers.map(
-      (member) => member.name.length + (isGuestMember(member) ? 8 : 0),
+      (member) =>
+        scheduleMemberName(member).length + (isGuestMember(member) ? 8 : 0),
     ),
   );
   const coverageTargets = useMemo(
@@ -700,16 +727,23 @@ export function EventScheduleBoard({
     [coverageTargets, hourItems],
   );
 
-  async function changeCell(member: Member, hour: number, value: string) {
+  async function changeCell(
+    member: ScheduleMember,
+    hour: number,
+    value: string,
+  ) {
     const startsAt = slotTime(date, hour);
     const endsAt = startsAt + 60 * 60_000;
-    const existing = items.find(
-      (item) =>
-        item.userId === member.id &&
-        item.startsAt <= startsAt &&
-        item.endsAt > startsAt,
-    );
-    const key = `${member.id}:${startsAt}`;
+    const memberItems = items
+      .filter(
+        (item) =>
+          item.userId === member.id &&
+          item.startsAt <= startsAt &&
+          item.endsAt > startsAt,
+      )
+      .sort((a, b) => a.label.localeCompare(b.label));
+    const existing = memberItems[member.guestSlot ?? 0];
+    const key = `${member.scheduleRowKey}:${startsAt}`;
     setBusyCell(key);
     setMessage('');
     try {
@@ -1057,13 +1091,6 @@ export function EventScheduleBoard({
           <div className="flex flex-wrap items-center gap-3 border-b px-3 pb-3">
             <div className="shrink-0">
               <p className="font-semibold">Schedule Builder</p>
-              <p className="text-sm text-muted-foreground">
-                {publishedAt
-                  ? hasUnpublishedChanges
-                    ? 'Unpublished changes'
-                    : `Published ${new Date(publishedAt).toLocaleString()}`
-                  : 'Not published yet'}
-              </p>
             </div>
             {scheduleDays.length > 0 && (
               <div
@@ -1090,7 +1117,7 @@ export function EventScheduleBoard({
                 ))}
               </div>
             )}
-            <div className="ml-auto flex gap-2">
+            <div className="ml-auto flex items-start gap-2">
               {publishedAt && (
                 <Button
                   type="button"
@@ -1101,19 +1128,29 @@ export function EventScheduleBoard({
                   Unpublish
                 </Button>
               )}
-              <Button
-                type="button"
-                disabled={
-                  publishing || (!hasUnpublishedChanges && publishedAt !== null)
-                }
-                onClick={() => void publishSchedule()}
-              >
-                {publishing
-                  ? 'Working…'
-                  : publishedAt
-                    ? 'Publish changes'
-                    : 'Publish schedule'}
-              </Button>
+              <div className="flex flex-col items-end gap-1">
+                <Button
+                  type="button"
+                  disabled={
+                    publishing ||
+                    (!hasUnpublishedChanges && publishedAt !== null)
+                  }
+                  onClick={() => void publishSchedule()}
+                >
+                  {publishing
+                    ? 'Working…'
+                    : publishedAt
+                      ? 'Publish changes'
+                      : 'Publish schedule'}
+                </Button>
+                <p className="text-right text-xs text-muted-foreground">
+                  {publishedAt
+                    ? hasUnpublishedChanges
+                      ? 'Unpublished changes'
+                      : `Published ${new Date(publishedAt).toLocaleString()}`
+                    : 'Not published yet'}
+                </p>
+              </div>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-y px-3 py-2 text-sm">
@@ -1221,6 +1258,34 @@ export function EventScheduleBoard({
                 </Button>
               )}
             </div>
+            <Popover>
+              <PopoverTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="ml-auto rounded-full text-base"
+                    aria-label="How to edit event assignments"
+                  />
+                }
+              >
+                ?
+              </PopoverTrigger>
+              <PopoverContent
+                align="end"
+                className="w-80 max-w-[calc(100vw-2rem)]"
+              >
+                <PopoverTitle>Editing assignments</PopoverTitle>
+                <PopoverDescription className="leading-relaxed">
+                  Type, paste, or choose a role in each time slot; a change
+                  saves when you click out of the cell. Clear a cell to unassign
+                  it. Arrow keys move between cells, Enter saves and moves down,
+                  and Escape cancels. You can copy and paste single cells or
+                  rectangular spreadsheet ranges.
+                </PopoverDescription>
+              </PopoverContent>
+            </Popover>
           </div>
           {!scheduleDays.length && (
             <p className="px-3 text-sm text-muted-foreground">
@@ -1228,13 +1293,6 @@ export function EventScheduleBoard({
               end.
             </p>
           )}
-          <p className="px-3 text-sm text-muted-foreground">
-            Type, paste, or choose a role in each time slot; a change saves when
-            you click out of the cell. Clear a cell to unassign it. Arrow keys
-            move between cells, Enter saves and moves down, and Escape cancels.
-            You can copy and paste single cells or rectangular spreadsheet
-            ranges.
-          </p>
           <div
             className="max-h-[68dvh] overflow-auto border-y"
             data-schedule-scroll
@@ -1283,10 +1341,10 @@ export function EventScheduleBoard({
                         ? 'bg-[color-mix(in_srgb,var(--muted)_20%,var(--background))]'
                         : 'bg-background'
                     }
-                    key={member.id}
+                    key={member.scheduleRowKey}
                   >
                     <th className="whitespace-nowrap border-r border-b bg-inherit px-3 py-2 text-left font-medium md:sticky md:left-0 md:z-20">
-                      {member.name}
+                      {scheduleMemberName(member)}
                       {isGuestMember(member) && (
                         <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal">
                           Guest
@@ -1295,13 +1353,16 @@ export function EventScheduleBoard({
                     </th>
                     {hours.map((hour, columnIndex) => {
                       const startsAt = slotTime(date, hour);
-                      const item = items.find(
-                        (candidate) =>
-                          candidate.userId === member.id &&
-                          candidate.startsAt <= startsAt &&
-                          candidate.endsAt > startsAt,
-                      );
-                      const key = `${member.id}:${startsAt}`;
+                      const memberItems = items
+                        .filter(
+                          (candidate) =>
+                            candidate.userId === member.id &&
+                            candidate.startsAt <= startsAt &&
+                            candidate.endsAt > startsAt,
+                        )
+                        .sort((a, b) => a.label.localeCompare(b.label));
+                      const item = memberItems[member.guestSlot ?? 0];
+                      const key = `${member.scheduleRowKey}:${startsAt}`;
                       return (
                         <td
                           className="h-11 border-r border-b p-1"
@@ -1309,7 +1370,7 @@ export function EventScheduleBoard({
                           style={{ minWidth: hourColumnWidth }}
                         >
                           <ScheduleRoleInput
-                            ariaLabel={`${member.name}, ${new Date(2000, 0, 1, hour).toLocaleTimeString([], { hour: 'numeric' })}`}
+                            ariaLabel={`${scheduleMemberName(member)}, ${new Date(2000, 0, 1, hour).toLocaleTimeString([], { hour: 'numeric' })}`}
                             busy={busyCell === key}
                             choices={choices}
                             cellId={`${columnIndex}:${rowIndex}`}
