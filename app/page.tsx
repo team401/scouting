@@ -1078,7 +1078,28 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (session) void loadEventPack();
+    if (!session) return;
+    let cancelled = false;
+    void (async () => {
+      const cached = await getCachedValue<EventPack>(
+        `current-event-pack:${session.user.id}`,
+      ).catch(() => undefined);
+      if (cached && !cancelled) {
+        const pack = {
+          ...cached,
+          pitEntries: cached.pitEntries ?? [],
+          scoutEntries: cached.scoutEntries ?? [],
+          scoutShifts: cached.scoutShifts ?? [],
+          organizationId: cached.organizationId ?? 'team-401',
+        };
+        setEventPack(pack);
+        setEventKey(pack.event.key);
+      }
+      if (!cancelled) await loadEventPack(Boolean(cached));
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [session]);
 
   useEffect(() => {
@@ -1179,37 +1200,63 @@ export default function Home() {
     setEventsLoading(true);
     setEventMessage('');
     const query = requestedTeam ? `?team=${requestedTeam}` : '';
-    return fetch(`/api/tba-events${query}`)
-      .then(async (response) => {
-        const result = (await response.json()) as {
-          events?: TbaEventChoice[];
-          teamNumber?: number;
-          baseTeamNumber?: number;
-          testTeamNumber?: number | null;
-          error?: string;
-        };
-        if (!response.ok)
-          throw new Error(result.error ?? 'Unable to load Team 401 events.');
-        setEventChoices(result.events ?? []);
-        const loadedTeam = result.teamNumber ?? requestedTeam ?? 401;
-        setEventTeamNumber(loadedTeam);
-        setEventTeamInput(String(loadedTeam));
-        setBaseTeamNumber(result.baseTeamNumber ?? 401);
-        setTestTeamNumber(result.testTeamNumber ?? null);
-      })
-      .catch((error) => {
-        setEventChoices([]);
-        setEventMessage(
-          error instanceof Error
+    const cacheId = `team-event-choices:${requestedTeam ?? 'current'}`;
+    const cached = await getCachedValue<{
+      events: TbaEventChoice[];
+      teamNumber: number;
+      baseTeamNumber: number;
+      testTeamNumber: number | null;
+    }>(cacheId).catch(() => undefined);
+    if (cached) {
+      setEventChoices(cached.events);
+      setEventTeamNumber(cached.teamNumber);
+      setEventTeamInput(String(cached.teamNumber));
+      setBaseTeamNumber(cached.baseTeamNumber);
+      setTestTeamNumber(cached.testTeamNumber);
+    }
+    if (!navigator.onLine) {
+      setEventsLoading(false);
+      return;
+    }
+    try {
+      const response = await fetch(`/api/tba-events${query}`);
+      const result = (await response.json()) as {
+        events?: TbaEventChoice[];
+        teamNumber?: number;
+        baseTeamNumber?: number;
+        testTeamNumber?: number | null;
+        error?: string;
+      };
+      if (!response.ok)
+        throw new Error(result.error ?? 'Unable to load Team 401 events.');
+      setEventChoices(result.events ?? []);
+      const loadedTeam = result.teamNumber ?? requestedTeam ?? 401;
+      setEventTeamNumber(loadedTeam);
+      setEventTeamInput(String(loadedTeam));
+      setBaseTeamNumber(result.baseTeamNumber ?? 401);
+      setTestTeamNumber(result.testTeamNumber ?? null);
+      await saveCachedValue(cacheId, {
+        events: result.events ?? [],
+        teamNumber: loadedTeam,
+        baseTeamNumber: result.baseTeamNumber ?? 401,
+        testTeamNumber: result.testTeamNumber ?? null,
+      });
+    } catch (error) {
+      if (!cached) setEventChoices([]);
+      setEventMessage(
+        cached
+          ? 'Showing the event list cached on this device.'
+          : error instanceof Error
             ? error.message
             : 'Unable to load Team 401 events.',
-        );
-      })
-      .finally(() => setEventsLoading(false));
+      );
+    } finally {
+      setEventsLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    if (activeView !== 'Admin' || !isAdmin || !online) return;
+    if (activeView !== 'Admin' || !isAdmin) return;
     void loadTeamEventChoices();
   }, [activeView, isAdmin, loadTeamEventChoices, online]);
 
@@ -1772,7 +1819,8 @@ export default function Home() {
       } as EventPack;
       setEventPack(pack);
       setEventKey(pack.event.key);
-      await saveCachedValue('current-event-pack', pack);
+      if (session)
+        await saveCachedValue(`current-event-pack:${session.user.id}`, pack);
       if (!selectedMatchKeyRef.current && pack.matches.length > 0) {
         const mine = pack.assignments
           .filter((assignment) => assignment.scoutUserId === pack.userId)
@@ -1795,9 +1843,11 @@ export default function Home() {
         setSelectedStation(mine?.station ?? 'red1');
       }
     } catch (error) {
-      const cached = await getCachedValue<EventPack>(
-        'current-event-pack',
-      ).catch(() => undefined);
+      const cached = session
+        ? await getCachedValue<EventPack>(
+            `current-event-pack:${session.user.id}`,
+          ).catch(() => undefined)
+        : undefined;
       if (cached) {
         const pack = {
           ...cached,
@@ -3984,7 +4034,10 @@ export default function Home() {
                   </>
                 }
               />
-              <DriveTeamPlanner members={eventPack?.members ?? []} />
+              <DriveTeamPlanner
+                members={eventPack?.members ?? []}
+                eventKey={eventPack?.event.key ?? ''}
+              />
             </div>
           )}
         {activeView === 'Data' && (
