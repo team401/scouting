@@ -30,13 +30,20 @@ it in `.env.local`. Do not commit environment files or production credentials.
 Before submitting changes, run:
 
 ```sh
+npm run format:check
+npm run lint
 npm run typecheck
+npm test -- --run
 npm run build
 ```
 
 See [the architecture notes](docs/architecture.md) for the data and offline
 design and [the deployment guide](docs/cloudflare-deployment.md) for production
 configuration.
+
+Dependency updates are managed by Renovate through Team 401's shared preset.
+Renovate targets `staging`, while security updates may run outside the normal
+Monday schedule.
 
 ## License
 

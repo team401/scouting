@@ -2,13 +2,19 @@
 
 ## Decision summary
 
-Use a Cloudflare-first stack: Next.js/TypeScript through Vinext on Workers, D1 for relational application data, R2 for robot photos and match video, and Worker route handlers for the API, scheduled TBA refresh, webhook ingestion, exports, and signed upload URLs. Keep the TBA key and webhook secret server-side.
+Use a Cloudflare-first stack: Next.js/TypeScript through Vinext on Workers, D1 for relational application data, R2 for robot photos and match video, and Worker route handlers for the API, scheduled TBA refresh, webhook ingestion, exports, and multipart uploads. Keep the TBA key and webhook secret server-side.
 
 The application and its data services stay in one Cloudflare account. D1 provides the relational model needed for event analysis, rankings, and stable exports, while IndexedDB provides explicit offline storage and synchronization on scouting devices.
 
 Authentication uses the Firebase Email/Password accounts and Firestore user roster managed by Team 401 Ops. A successful login links the Firebase UID to an existing D1 user by email, or creates a new local user, then issues a secure HTTP-only scouting session cookie. D1 remains authoritative for scouting-specific roles and disabled status. New Ops roster members default to scout; owner, admin, strategy, scout, and video roles are managed in the scouting Admin view. Authorization is always checked server-side against `memberships`. Never accept an organization ID from the client without validating membership.
 
-Owner and admin users can also issue named, expiring guest passes for partner-team scouts. Only a SHA-256 hash of each high-entropy pass is stored. A guest receives an individual D1 identity and scout membership so their submissions remain attributable. Revocation disables that identity and deletes all of its active sessions; guest sessions cannot outlive the pass expiration.
+Owner and admin users can also issue named, expiring guest passes for
+partner-team scouts. A SHA-256 hash is used for verification, while the readable
+code is retained so administrators can resend it. The admin-only route is the
+only API that returns stored codes. A guest receives an individual D1 identity
+and scout membership so submissions remain attributable. Revocation disables
+that identity and deletes all active sessions; guest sessions cannot outlive the
+pass expiration.
 
 On Cloudflare Workers, Better Auth reads `CF-Connecting-IP` for per-client rate
 limits. Cloudflare replaces this header at the edge, so clients cannot select
@@ -18,14 +24,20 @@ ephemeral `rate_limits` table without affecting users or sessions.
 Authentication endpoints use D1-backed rate limiting so limits are consistent
 across Worker isolates. Owners and admins may disable or remove memberships;
 both actions revoke active sessions while retaining historical scouting records.
-Users can inspect and revoke their own device sessions. Email verification and
-password reset remain blocked on selecting and configuring a transactional
-email provider; they must not be presented as working features until delivery
-is configured and tested for `team401.org`.
+Users can inspect and revoke their own device sessions. Password reset uses
+Firebase's email delivery and deliberately returns the same response whether an
+address exists or not.
 
 ## Offline model
 
-The PWA service worker caches the app shell and recently used read data. IndexedDB stores current-event schedule and team records, drafts, and an append-only mutation outbox. Every mutation has a client-generated UUID, organization ID, client timestamp, schema version, and idempotency key.
+The PWA service worker caches the app shell plus recently viewed robot and pit
+photos. IndexedDB stores current-event schedule and team records, personal and
+administrative schedules, drafts, and an append-only mutation outbox. Shared
+scouting tablets intentionally retain event data and media when users sign out
+so the next scout does not have to download the competition again. User-owned
+records use user- and event-scoped cache keys; the session credential itself is
+not placed in the service-worker cache. Every mutation has a client-generated
+UUID, organization ID, client timestamp, schema version, and idempotency key.
 
 When online, the client sends queued mutations in order. The server performs idempotent upserts and returns an authoritative sync version. Match scouting is immutable after submission for scouts unless reopened by strategy/admin; this removes most conflict ambiguity. Draft conflicts use last-write-wins only within the same user-owned draft. Official pick lists, alliance state, and match plans use optimistic concurrency and reject stale versions for an explicit reload/merge.
 
@@ -57,9 +69,22 @@ Exports are ZIP bundles containing `manifest.json`, `teams.csv`, `matches.csv`, 
 
 ## TBA integration
 
-An admin chooses a centrally stored `currentEventId`; clients never choose their own TBA event key. Initial sync fetches event and matches through the server. The current implementation treats the D1 event pack as the shared source of truth: the first online request after its 60-second freshness window reconciles schedules, predicted times, final scores, and results with TBA. Visible clients poll that shared cache every 45 seconds, and users can request an immediate refresh. Devices continue using their last IndexedDB event pack while offline.
+An administrator chooses the centrally stored current event, with an explicit
+temporary team/event test mode for previewing other competitions. Initial sync
+fetches event and matches through the server. D1 is the shared source of truth:
+the first online request after its 60-second freshness window reconciles
+schedules, predicted times, final scores, and results with TBA. Visible clients
+poll that shared cache every 45 seconds, and users can request an immediate
+refresh. Devices continue using their last IndexedDB event pack while offline.
 
-TBA webhooks validate `X-TBA-HMAC` against the exact raw request body, then refresh every organization currently using the referenced event through the same reconciliation path. Webhooks accelerate updates rather than replace polling; offline devices still catch up during their next sync. A scheduled Worker remains a future fallback for times when no clients are open and TBA does not send a delivery.
+TBA webhooks validate `X-TBA-HMAC` against the exact raw request body, then
+refresh every organization currently using the referenced event through the
+same reconciliation path. Webhooks accelerate updates rather than replace
+polling; offline devices still catch up during their next sync. A Worker cron
+runs every 15 minutes. It refreshes current events on every run from seven days
+before the event through one day afterward, and at most every six hours outside
+that window. Cron results are emitted as structured Worker logs and failures are
+surfaced to Cloudflare Issues.
 
 Scouting quality review combines assignment coverage, correction history, team
 trend checks, and completed-match results. TBA comparisons are deliberately
@@ -71,14 +96,20 @@ and reopened entries retain an audit trail when corrected.
 
 ## Media
 
-The video role records outside the browser camera UI or through a simple capture input, then uploads directly to R2 using a short-lived signed URL. D1 stores ownership, match/team linkage, MIME type, byte count, checksum, and processing state. Uploads are resumable and queued until Wi-Fi is available. Apply an organization quota, default compression guidance, and retention policy before enabling full-match video broadly.
+The video role records in the browser or selects an existing file. New browser
+recordings use a reduced bitrate, and uploads use multipart R2 transfers with
+progress reporting and abort cleanup. D1 stores ownership, match linkage, MIME
+type, byte count, object key, and processing state. Video uploads require a
+connection; they are not placed in the offline scouting outbox. Organization
+quotas and an automated retention policy remain operational follow-up work.
 
 ## Product phases
 
 1. Foundation: accounts, organizations/roles, current event, TBA event pack, offline shell/outbox, 2025 match form, assignments, and CSV/JSON export.
 2. Decisions: team summaries, data-quality coverage, comparison/radar views, custom weights, personal and official pick lists, and alliance-selection board.
 3. Operations: pit scouting/photos, tablet match planning, notifications, TBA webhooks, audit log, and admin sync controls.
-4. Media and hardening: video upload/playback, quotas/retention, load testing, backup/export restore, accessibility checks, and a real-event offline drill.
+4. Hardening: media quotas/retention, load testing, backup/export restore,
+   accessibility checks, browser-level tests, and a real-event offline drill.
 
 ## Analysis views
 

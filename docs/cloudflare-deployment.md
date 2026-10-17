@@ -72,8 +72,22 @@ short database lease collapses simultaneous requests from multiple clients into
 one upstream request, conditional requests reuse Match13 `ETag` values, and
 stale ratings remain available during upstream errors or rate-limit backoff.
 
-Each deployment applies D1 migrations before publishing. Migration `0014`
-adds the Firebase UID used to link shared accounts.
+Each deployment applies every pending D1 migration before publishing the new
+Worker.
+
+## Monitoring and scheduled refresh
+
+Worker logs, invocation logs, sampled traces, and Cloudflare real-time Issues
+are enabled in the generated Wrangler configuration. Query logs by
+`source=scheduled-tba-refresh` to inspect cron activity. The cron runs every 15
+minutes; current events refresh on every run during the event window and every
+six hours otherwise. A failed refresh writes a structured error and rejects the
+scheduled invocation so it appears in Cloudflare Issues.
+
+In each Cloudflare environment, configure a **Workers script errors**
+notification for the corresponding Worker and select the desired email or
+webhook recipients. Notification recipients are account-level Cloudflare
+settings and cannot be declared safely in this repository.
 
 ## Shared Team 401 Ops accounts
 
@@ -91,12 +105,13 @@ remain owners. Staging and production roles remain independent because their D1
 databases are independent.
 
 Owners and admins can create named guest passes under **Admin → Team and
-event** when scouting with partner teams. Each pass is displayed only once,
-expires automatically, and can be revoked immediately. Guest identities and
-scouting entries remain attributable in D1; guests do not need Ops accounts.
+event** when scouting with partner teams. Active codes remain visible to
+administrators so they can be resent, expire automatically, and can be revoked
+immediately. D1 stores both the readable code and its verification hash. Guest
+identities and scouting entries remain attributable; guests do not need Ops
+accounts.
 
-After this change deploys, old scouting sessions no longer work. Sign in with
-the email and password used by Team 401 Ops. For local development, copy
+Sign in with the email and password used by Team 401 Ops. For local development, copy
 `.env.example` to `.env.local`, fill in the same Firebase project values, and
 run `npm run dev`.
 
@@ -122,9 +137,21 @@ iPad, use Safari’s **Share → Add to Home Screen** action.
 Open the app online once after each deployment so the service worker can cache
 the current app shell. The last authenticated session and event pack remain on
 the device, match and pit entries are queued in IndexedDB, and queued entries
-synchronize automatically when connectivity returns. API responses and
-credentials are never stored in the service-worker cache.
+synchronize automatically when connectivity returns. Recently viewed robot and
+pit photos are cached for offline use and refreshed in the background. Session
+credentials and general authenticated API responses are not stored in the
+service-worker cache. Event caches intentionally survive sign-out on shared
+scouting tablets.
 
 To verify a release, load the installed app online, switch the browser or device
 offline, close and reopen the app, complete a test entry, then reconnect and
 confirm that the pending entry synchronizes.
+
+## Dependency updates
+
+`renovate.json` extends `github>team401/renovate-config` and targets `staging`.
+The Renovate GitHub App must be installed for the repository and its onboarding
+pull request must be merged. Routine updates run before 9 AM Monday in
+`America/New_York`; vulnerability alerts may open at any time. Renovate pull
+requests use the same formatting, lint, test, typecheck, and build checks as
+other changes and are never automerged by the shared policy.
