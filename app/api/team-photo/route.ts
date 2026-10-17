@@ -43,6 +43,18 @@ type TbaMedia = {
   preferred?: boolean;
 };
 
+function metadataResponse(count: number) {
+  return Response.json(
+    { count },
+    {
+      headers: {
+        'cache-control':
+          'private, max-age=604800, stale-while-revalidate=2592000',
+      },
+    },
+  );
+}
+
 function detectedImageType(bytes: ArrayBuffer) {
   const data = new Uint8Array(bytes);
   if (data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff)
@@ -121,7 +133,7 @@ async function waitForCachedResponse(
       return new Response('Not found', { status: 404 });
     if (await cacheIsComplete(refreshedPayload))
       return metadataOnly
-        ? Response.json({ count: refreshedPayload.images?.length ?? 0 })
+        ? metadataResponse(refreshedPayload.images?.length ?? 0)
         : cachedResponse(refreshedPayload, index);
     if (refreshed.refreshingUntil <= Date.now()) return null;
   }
@@ -192,7 +204,7 @@ export async function GET(request: Request) {
   if (row.fetchedAt > now - validFor) {
     if (payload.missing) return new Response('Not found', { status: 404 });
     if (metadataOnly && completeCache)
-      return Response.json({ count: payload.images?.length ?? 0 });
+      return metadataResponse(payload.images?.length ?? 0);
     const response = await cachedResponse(payload, imageIndex);
     if (response) return response;
     // D1 can outlive local or deployed object storage. A missing object makes
@@ -209,7 +221,7 @@ export async function GET(request: Request) {
     .run();
   if (!lock.meta.changes) {
     if (metadataOnly && completeCache && payload.images?.length)
-      return Response.json({ count: payload.images.length });
+      return metadataResponse(payload.images.length);
     const stale = await cachedResponse(payload, imageIndex);
     if (stale) return stale;
     const refreshed = await waitForCachedResponse(
@@ -240,8 +252,7 @@ export async function GET(request: Request) {
       )
         .bind(now, provider, cacheKey)
         .run();
-      if (metadataOnly)
-        return Response.json({ count: payload.images?.length ?? 0 });
+      if (metadataOnly) return metadataResponse(payload.images?.length ?? 0);
       const response = await cachedResponse(payload, imageIndex);
       if (response) return response;
       if (payload.missing) return new Response('Not found', { status: 404 });
@@ -355,7 +366,7 @@ export async function GET(request: Request) {
         cacheKey,
       )
       .run();
-    if (metadataOnly) return Response.json({ count: images.length });
+    if (metadataOnly) return metadataResponse(images.length);
     return (
       (await cachedResponse(payload, imageIndex)) ??
       new Response('Not found', { status: 404 })
@@ -368,7 +379,7 @@ export async function GET(request: Request) {
       .bind(provider, cacheKey)
       .run();
     if (metadataOnly && payload.images?.length)
-      return Response.json({ count: payload.images.length });
+      return metadataResponse(payload.images.length);
     const stale = await cachedResponse(payload, imageIndex);
     if (stale) return stale;
     console.error('Could not cache TBA team photo', error);

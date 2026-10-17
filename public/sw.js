@@ -107,6 +107,20 @@ async function cacheFirst(request) {
   return response;
 }
 
+async function staleWhileRevalidate(request, event) {
+  const cache = await caches.open(ASSET_CACHE);
+  const cached = await cache.match(request);
+  const update = fetch(request).then(async (response) => {
+    if (isCacheable(response)) await cache.put(request, response.clone());
+    return response;
+  });
+  if (cached) {
+    event.waitUntil(update.catch(() => undefined));
+    return cached;
+  }
+  return update;
+}
+
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET') return;
@@ -115,7 +129,7 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (url.pathname === '/api/team-photo' || url.pathname === '/api/pit-photo') {
-    event.respondWith(networkFirst(request, ASSET_CACHE, []));
+    event.respondWith(staleWhileRevalidate(request, event));
     return;
   }
 

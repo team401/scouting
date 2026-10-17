@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
+const knownPhotoCounts = new Map<number, number>();
+
 export function TeamRobotPhoto({
   teamNumber,
   hasPitPhoto = false,
@@ -14,12 +16,16 @@ export function TeamRobotPhoto({
   hasPitPhoto?: boolean;
   className?: string;
 }) {
-  // Wait for metadata before rendering a TBA URL. Starting metadata and image
-  // requests together makes both race for the server-side cache refresh lock.
-  const [tbaPhotoCount, setTbaPhotoCount] = useState(0);
+  // Reuse confirmed metadata during this page session. For a new team, wait
+  // for metadata so the metadata and image requests do not race for the
+  // server-side cache refresh lock.
+  const knownPhotoCount = teamNumber
+    ? knownPhotoCounts.get(teamNumber)
+    : undefined;
+  const [tbaPhotoCount, setTbaPhotoCount] = useState(knownPhotoCount ?? 0);
   const [photoLookupState, setPhotoLookupState] = useState<
     'loading' | 'ready' | 'error'
-  >(teamNumber ? 'loading' : 'ready');
+  >(teamNumber && knownPhotoCount === undefined ? 'loading' : 'ready');
   const sources = useMemo(() => {
     if (!teamNumber) return [];
     return [
@@ -40,8 +46,13 @@ export function TeamRobotPhoto({
 
   useEffect(() => {
     let cancelled = false;
-    setTbaPhotoCount(0);
-    setPhotoLookupState(teamNumber ? 'loading' : 'ready');
+    const rememberedCount = teamNumber
+      ? knownPhotoCounts.get(teamNumber)
+      : undefined;
+    setTbaPhotoCount(rememberedCount ?? 0);
+    setPhotoLookupState(
+      teamNumber && rememberedCount === undefined ? 'loading' : 'ready',
+    );
     if (teamNumber)
       void fetch(`/api/team-photo?team=${teamNumber}&meta=1&v=3`)
         .then(async (response) => {
@@ -51,12 +62,15 @@ export function TeamRobotPhoto({
         })
         .then((body) => {
           if (!cancelled) {
-            setTbaPhotoCount(Math.max(0, body.count ?? 0));
+            const count = Math.max(0, body.count ?? 0);
+            knownPhotoCounts.set(teamNumber, count);
+            setTbaPhotoCount(count);
             setPhotoLookupState('ready');
           }
         })
         .catch(() => {
-          if (!cancelled) setPhotoLookupState('error');
+          if (!cancelled && rememberedCount === undefined)
+            setPhotoLookupState('error');
         });
     return () => {
       cancelled = true;
