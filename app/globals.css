@@ -705,6 +705,11 @@ select option {
   border-radius: 8px;
   background: var(--background);
   padding: 0 8px;
+  text-align: center;
+  text-align-last: center;
+}
+.member-card-role select option {
+  text-align: center;
 }
 .member-card-role [data-slot='badge'] {
   width: fit-content;
