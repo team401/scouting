@@ -702,13 +702,13 @@ function PlanSectionButtons({
   return (
     <div
       aria-label="Plan view"
-      className="ml-auto flex min-w-0 max-w-full flex-1 flex-nowrap items-center justify-end gap-1"
+      className="ml-auto flex w-full min-w-0 flex-wrap items-center justify-end gap-1 sm:flex-nowrap xl:w-auto xl:min-w-[36rem] xl:flex-1"
       role="group"
     >
       {matches.length > 0 && (
         <select
           aria-label="Match to plan"
-          className="mr-1 h-8 min-w-28 flex-1 rounded-md border bg-background px-2 text-sm sm:max-w-72"
+          className="mr-1 h-8 min-w-0 basis-full rounded-md border bg-background px-2 text-sm sm:w-80 sm:flex-none sm:basis-auto"
           value={selectedMatchKey}
           onChange={(event) => onMatchChange(event.target.value)}
         >
