@@ -99,6 +99,35 @@ async function cacheIsComplete(payload: CachePayload) {
   return objects.every(Boolean);
 }
 
+async function waitForCachedResponse(
+  providerName: string,
+  key: string,
+  index: number,
+  metadataOnly: boolean,
+) {
+  // Another request for this team may be filling R2. Give it a brief chance to
+  // finish so concurrent cards do not expose cache coordination as a 503.
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const refreshed = await env.DB.prepare(
+      `SELECT payload, refreshing_until AS refreshingUntil
+       FROM external_api_cache WHERE provider = ? AND cache_key = ?`,
+    )
+      .bind(providerName, key)
+      .first<{ payload: string | null; refreshingUntil: number }>();
+    if (!refreshed) return null;
+    const refreshedPayload = parsePayload(refreshed.payload);
+    if (refreshedPayload.missing)
+      return new Response('Not found', { status: 404 });
+    if (await cacheIsComplete(refreshedPayload))
+      return metadataOnly
+        ? Response.json({ count: refreshedPayload.images?.length ?? 0 })
+        : cachedResponse(refreshedPayload, index);
+    if (refreshed.refreshingUntil <= Date.now()) return null;
+  }
+  return null;
+}
+
 async function cachedResponse(payload: CachePayload, index: number) {
   const image = payload.images?.[index];
   if (!image) return null;
@@ -183,6 +212,13 @@ export async function GET(request: Request) {
       return Response.json({ count: payload.images.length });
     const stale = await cachedResponse(payload, imageIndex);
     if (stale) return stale;
+    const refreshed = await waitForCachedResponse(
+      provider,
+      cacheKey,
+      imageIndex,
+      metadataOnly,
+    );
+    if (refreshed) return refreshed;
     return new Response('Photo is being cached', {
       status: 503,
       headers: { 'retry-after': '2' },

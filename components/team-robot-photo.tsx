@@ -14,7 +14,9 @@ export function TeamRobotPhoto({
   hasPitPhoto?: boolean;
   className?: string;
 }) {
-  const [tbaPhotoCount, setTbaPhotoCount] = useState(teamNumber ? 1 : 0);
+  // Wait for metadata before rendering a TBA URL. Starting metadata and image
+  // requests together makes both race for the server-side cache refresh lock.
+  const [tbaPhotoCount, setTbaPhotoCount] = useState(0);
   const sources = useMemo(() => {
     if (!teamNumber) return [];
     return [
@@ -34,7 +36,7 @@ export function TeamRobotPhoto({
 
   useEffect(() => {
     let cancelled = false;
-    setTbaPhotoCount(teamNumber ? 1 : 0);
+    setTbaPhotoCount(0);
     if (teamNumber)
       void fetch(`/api/team-photo?team=${teamNumber}&meta=1&v=3`)
         .then(async (response) => {
