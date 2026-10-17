@@ -1,6 +1,9 @@
 # Audit notes: feature/admin-event-assignment-polish
 
-Branch is local only. Nothing has been pushed.
+> Historical record: this file captures an earlier feature-branch audit. Its
+> branch status, test counts, open findings, and verification notes are not the
+> current project status. Use `README.md`, `docs/architecture.md`, and
+> `docs/cloudflare-deployment.md` for current behavior and operations.
 
 ## Commits (oldest first)
 

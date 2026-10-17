@@ -462,6 +462,64 @@ export const eventSchedulePublications = sqliteTable(
   },
 );
 
+export const driveTeamSlots = sqliteTable(
+  'drive_team_slots',
+  {
+    id: text('id').primaryKey(),
+    organizationId: text('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    eventId: text('event_id')
+      .notNull()
+      .references(() => events.id, { onDelete: 'cascade' }),
+    phase: text('phase').notNull().default('qual'),
+    slotNumber: integer('slot_number').notNull(),
+    driverUserId: text('driver_user_id'),
+    operatorUserId: text('operator_user_id'),
+    technicianUserId: text('technician_user_id'),
+    humanPlayerUserId: text('human_player_user_id'),
+    coachUserId: text('coach_user_id'),
+    matchId: text('match_id'),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex('idx_drive_team_slots_event_phase_slot').on(
+      table.eventId,
+      table.phase,
+      table.slotNumber,
+    ),
+  ],
+);
+
+export const publishedDriveTeamSlots = sqliteTable(
+  'published_drive_team_slots',
+  {
+    id: text('id').primaryKey(),
+    organizationId: text('organization_id').notNull(),
+    eventId: text('event_id').notNull(),
+    phase: text('phase').notNull().default('qual'),
+    slotNumber: integer('slot_number').notNull(),
+    driverUserId: text('driver_user_id'),
+    operatorUserId: text('operator_user_id'),
+    technicianUserId: text('technician_user_id'),
+    humanPlayerUserId: text('human_player_user_id'),
+    coachUserId: text('coach_user_id'),
+    matchId: text('match_id'),
+    ...timestamps,
+  },
+  (table) => [
+    index('idx_published_drive_team_event').on(table.eventId, table.slotNumber),
+  ],
+);
+
+export const driveTeamPublications = sqliteTable('drive_team_publications', {
+  eventId: text('event_id').primaryKey(),
+  publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
+  draftUpdatedAt: integer('draft_updated_at', {
+    mode: 'timestamp_ms',
+  }).notNull(),
+});
+
 export const eventAttendees = sqliteTable(
   'event_attendees',
   {

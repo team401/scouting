@@ -62,12 +62,14 @@ export function TacticalBoard({
   onChange,
   readOnly = false,
   toolbarStart,
+  toolbarEnd,
 }: {
   value: TacticalBoardData;
   onChange: (value: TacticalBoardData) => void;
   readOnly?: boolean;
-  // Extra controls shown before the board tools, such as full screen.
+  // Extra controls shown at the start and end of the wrapping board toolbar.
   toolbarStart?: ReactNode;
+  toolbarEnd?: ReactNode;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<
@@ -223,6 +225,7 @@ export function TacticalBoard({
           <RotateCcw />
           Reset robots
         </Button>
+        {toolbarEnd}
       </div>
       <div className="tactical-board-viewport">
         <svg
@@ -252,7 +255,7 @@ export function TacticalBoard({
             strokeWidth="5"
             pointerEvents="none"
           />
-          {/* 2026 REBUILT field: 651.2 in x 317.7 in, scaled to this viewBox. */}
+          {/* 2026 Rebuilt field: 651.2 in x 317.7 in, scaled to this viewBox. */}
           <rect
             x="12"
             y="12"
@@ -299,7 +302,7 @@ export function TacticalBoard({
             pointerEvents="none"
           />
           <g pointerEvents="none">
-            {/* HUBS, centered between the paired BUMPS. */}
+            {/* Hubs, centered between the paired Bumps. */}
             <rect
               x="344"
               y="341"
@@ -326,7 +329,7 @@ export function TacticalBoard({
               fontSize="20"
               fontWeight="700"
             >
-              HUB
+              Hub
             </text>
             <rect
               x="1191"
@@ -354,10 +357,10 @@ export function TacticalBoard({
               fontSize="20"
               fontWeight="700"
             >
-              HUB
+              Hub
             </text>
 
-            {/* Wall → TRENCH → BUMP → HUB → BUMP → TRENCH → wall. */}
+            {/* Wall → Trench → Bump → Hub → Bump → Trench → wall. */}
             {[112, 464].map((y) => (
               <g key={`red-bump-${y}`}>
                 <rect
@@ -378,7 +381,7 @@ export function TacticalBoard({
                   fontSize="18"
                   fontWeight="700"
                 >
-                  BUMP
+                  Bump
                 </text>
               </g>
             ))}
@@ -402,7 +405,7 @@ export function TacticalBoard({
                   fontSize="14"
                   fontWeight="700"
                 >
-                  TRENCH
+                  Trench
                 </text>
               </g>
             ))}
@@ -427,7 +430,7 @@ export function TacticalBoard({
                   fontSize="18"
                   fontWeight="700"
                 >
-                  BUMP
+                  Bump
                 </text>
               </g>
             ))}
@@ -451,7 +454,7 @@ export function TacticalBoard({
                   fontSize="14"
                   fontWeight="700"
                 >
-                  TRENCH
+                  Trench
                 </text>
               </g>
             ))}
@@ -475,7 +478,7 @@ export function TacticalBoard({
               fontWeight="800"
               transform="rotate(-90 47 735)"
             >
-              OUTPOST
+              Outpost
             </text>
             <rect
               x="12"
@@ -495,7 +498,7 @@ export function TacticalBoard({
               fontWeight="800"
               transform="rotate(-90 48 208)"
             >
-              DEPOT
+              Depot
             </text>
             <path
               d="M 12 332 H 98 V 468 H 12 Z M 98 350 L 126 400 L 98 450 Z"
@@ -513,7 +516,7 @@ export function TacticalBoard({
               fontWeight="700"
               transform="rotate(-90 58 407)"
             >
-              TOWER
+              Tower
             </text>
 
             <rect
@@ -534,7 +537,7 @@ export function TacticalBoard({
               fontWeight="800"
               transform="rotate(90 1608 80)"
             >
-              OUTPOST
+              Outpost
             </text>
             <rect
               x="1554"
@@ -554,7 +557,7 @@ export function TacticalBoard({
               fontWeight="800"
               transform="rotate(90 1598 608)"
             >
-              DEPOT
+              Depot
             </text>
             <path
               d="M 1642 332 H 1556 V 468 H 1642 Z M 1556 350 L 1528 400 L 1556 450 Z"
@@ -572,7 +575,7 @@ export function TacticalBoard({
               fontWeight="700"
               transform="rotate(90 1596 407)"
             >
-              TOWER
+              Tower
             </text>
           </g>
           {value.strokes.map((stroke) => {

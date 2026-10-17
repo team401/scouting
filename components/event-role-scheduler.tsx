@@ -14,7 +14,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { assignmentClass } from '@/components/event-schedule-board';
+import { assignmentClass } from '@/lib/assignment-class';
+import { matchLabel, plannedLabel, type DrivePhase } from '@/lib/drive-team';
 import { getCachedValue, saveCachedValue } from '@/lib/offline-db';
 import {
   eventRoleDescription,
@@ -226,7 +227,8 @@ type ScheduleEntry = {
   label: string;
   color: string;
   startsAt: number;
-  endsAt: number;
+  // Null for a single-time entry, such as a match start.
+  endsAt: number | null;
 };
 
 type PersonalSchedule = { items: Assignment[]; shifts: ScoutShift[] };
@@ -263,6 +265,15 @@ function ScheduleRoleBadge({ entry }: { entry: ScheduleEntry }) {
   );
 }
 
+type DriveTeamAssignment = {
+  phase: DrivePhase;
+  slotNumber: number;
+  position: string;
+  matchNumber: number | null;
+  compLevel: string | null;
+  startsAt: number | null;
+};
+
 export function PersonalEventSchedule({
   name,
   scoutShifts,
@@ -285,6 +296,7 @@ export function PersonalEventSchedule({
 }) {
   const [items, setItems] = useState<Assignment[]>([]);
   const [previewShifts, setPreviewShifts] = useState<ScoutShift[]>([]);
+  const [driveTeam, setDriveTeam] = useState<DriveTeamAssignment[]>([]);
   const [permission, setPermission] = useState<
     NotificationPermission | 'unsupported'
   >(() =>
@@ -355,6 +367,39 @@ export function PersonalEventSchedule({
   }, [cacheId, previewUserId]);
 
   useEffect(() => {
+    let cancelled = false;
+    const driveCacheId = cacheId ? `${cacheId}:drive-team` : null;
+    if (driveCacheId)
+      void getCachedValue<DriveTeamAssignment[]>(driveCacheId)
+        .then((cached) => {
+          if (!cancelled && cached) setDriveTeam(cached);
+        })
+        .catch(() => undefined);
+    const query = previewUserId
+      ? `?userId=${encodeURIComponent(previewUserId)}`
+      : '';
+    void fetch(`/api/drive-team${query}`)
+      .then(async (response) => {
+        if (!response.ok) return;
+        const body = (await response.json()) as {
+          assignments?: DriveTeamAssignment[];
+        };
+        if (!cancelled) {
+          const assignments = body.assignments ?? [];
+          setDriveTeam(assignments);
+          if (driveCacheId)
+            void saveCachedValue(driveCacheId, assignments).catch(
+              () => undefined,
+            );
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [cacheId, previewUserId]);
+
+  useEffect(() => {
     // Reminders are for the signed-in user, not for a previewed member.
     if (permission !== 'granted' || previewUserId) return;
     const notify = () => {
@@ -417,6 +462,19 @@ export function PersonalEventSchedule({
           endsAt: shift.endsAt,
         };
       }),
+      ...driveTeam.flatMap((assignment) =>
+        assignment.startsAt === null
+          ? []
+          : [
+              {
+                id: `drive:${assignment.slotNumber}:${assignment.position}`,
+                label: `${assignment.position} · ${matchLabel(assignment.matchNumber, assignment.compLevel)}`,
+                color: assignmentClass('Drive Team'),
+                startsAt: assignment.startsAt,
+                endsAt: null,
+              },
+            ],
+      ),
     ].sort((a, b) => a.startsAt - b.startsAt);
     const grouped = new Map<string, typeof combined>();
     for (const item of combined) {
@@ -428,7 +486,10 @@ export function PersonalEventSchedule({
       grouped.set(key, [...(grouped.get(key) ?? []), item]);
     }
     return [...grouped.entries()];
-  }, [items, shifts]);
+  }, [items, shifts, driveTeam]);
+
+  // Matches without a time cannot go on the day timeline, so they stay here.
+  const untimedDriveTeam = driveTeam.filter((item) => item.startsAt === null);
 
   const formatTime = (value: number) =>
     new Date(value).toLocaleTimeString([], {
@@ -472,7 +533,9 @@ export function PersonalEventSchedule({
                       </span>
                     )}
                     <span className="shrink-0 text-sm whitespace-nowrap text-muted-foreground tabular-nums">
-                      {formatTime(entry.startsAt)}–{formatTime(entry.endsAt)}
+                      {entry.endsAt === null
+                        ? formatTime(entry.startsAt)
+                        : `${formatTime(entry.startsAt)}–${formatTime(entry.endsAt)}`}
                     </span>
                   </div>
                 ))}
@@ -486,6 +549,28 @@ export function PersonalEventSchedule({
           )}
         </CardContent>
       </Card>
+      {untimedDriveTeam.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Drive team</CardTitle>
+          </CardHeader>
+          <CardContent className="divide-y">
+            {untimedDriveTeam.map((item) => (
+              <div
+                key={`${item.slotNumber}:${item.position}`}
+                className="flex items-center justify-between gap-3 py-2.5"
+              >
+                <span className="font-semibold">{item.position}</span>
+                <span className="text-sm whitespace-nowrap text-muted-foreground">
+                  {item.matchNumber === null
+                    ? `${plannedLabel(item.phase, item.slotNumber)} · not released yet`
+                    : `${matchLabel(item.matchNumber, item.compLevel)} · time TBA`}
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
       {permission === 'default' && (
         <Card className="border-primary/30 bg-primary/5 py-0">
           <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">

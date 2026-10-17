@@ -2,14 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { isOffseasonDemoTeam } from '@/lib/event-team-aliases';
 
 type EventTeam = {
   teamNumber: number;
   name: string;
-  sourceName?: string;
   customName?: string | null;
 };
 
@@ -70,59 +68,46 @@ export function EventTeamAliases({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Offseason B teams</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <p className="text-sm text-muted-foreground">
-          Match each FMS demo number to the team actually using it at this
-          event.
-        </p>
-        <div className="grid gap-2 lg:grid-cols-2">
-          {demoTeams.map((team) => {
-            const value = drafts[team.teamNumber] ?? '';
-            const saved = team.customName ?? '';
-            return (
-              <div
-                className="grid gap-2 rounded-lg border p-3 sm:grid-cols-[auto_1fr_auto] sm:items-center"
-                key={team.teamNumber}
+    <section className="space-y-3">
+      <h3 className="font-semibold">Offseason Teams</h3>
+      <div className="divide-y">
+        {demoTeams.map((team) => {
+          const value = drafts[team.teamNumber] ?? '';
+          const saved = team.customName ?? '';
+          return (
+            <div
+              className="grid gap-2 py-2 first:pt-0 last:pb-0 sm:grid-cols-[auto_1fr_auto] sm:items-center"
+              key={team.teamNumber}
+            >
+              <strong>Team {team.teamNumber}</strong>
+              <Input
+                aria-label={`Actual name for Team ${team.teamNumber}`}
+                placeholder="Example: Team 401 B"
+                value={value}
+                onChange={(event) =>
+                  setDrafts((current) => ({
+                    ...current,
+                    [team.teamNumber]: event.target.value,
+                  }))
+                }
+              />
+              <Button
+                type="button"
+                variant={value.trim() === saved ? 'outline' : 'default'}
+                disabled={savingTeam !== null || value.trim() === saved}
+                onClick={() => void save(team)}
               >
-                <div>
-                  <strong>Team {team.teamNumber}</strong>
-                  <span className="block text-xs text-muted-foreground">
-                    {team.sourceName ?? team.name}
-                  </span>
-                </div>
-                <Input
-                  aria-label={`Actual name for Team ${team.teamNumber}`}
-                  placeholder="Example: Team 401 B"
-                  value={value}
-                  onChange={(event) =>
-                    setDrafts((current) => ({
-                      ...current,
-                      [team.teamNumber]: event.target.value,
-                    }))
-                  }
-                />
-                <Button
-                  type="button"
-                  variant={value.trim() === saved ? 'outline' : 'default'}
-                  disabled={savingTeam !== null || value.trim() === saved}
-                  onClick={() => void save(team)}
-                >
-                  {savingTeam === team.teamNumber ? 'Saving…' : 'Save'}
-                </Button>
-              </div>
-            );
-          })}
-        </div>
-        {message && (
-          <p className="text-sm text-muted-foreground" role="status">
-            {message}
-          </p>
-        )}
-      </CardContent>
-    </Card>
+                {savingTeam === team.teamNumber ? 'Saving…' : 'Save'}
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+      {message && (
+        <p className="text-sm text-muted-foreground" role="status">
+          {message}
+        </p>
+      )}
+    </section>
   );
 }

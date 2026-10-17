@@ -43,8 +43,8 @@ const pitPayloadSchema = z.object({
   drivetrain: z.string().min(1).max(60),
   swerveModule: z.string().max(80),
   motorTypes: z.array(z.string().max(80)).max(12),
-  weightLbs: z.number().nonnegative().max(500),
-  fuelCapacity: z.number().int().nonnegative().max(500),
+  weightLbs: z.number().nonnegative().max(500).nullable(),
+  fuelCapacity: z.number().int().nonnegative().max(500).nullable(),
   climbCapability: z.string().max(120),
   fieldAccess: z.enum(['Trench', 'Bump', 'Both']).default('Both'),
   fieldAccessPreference: z
@@ -73,6 +73,8 @@ const pitPayloadSchema = z.object({
     .max(3)
     .default(['None']),
   autonomousDepot: z.boolean().default(false),
+  autonomousOutpost: z.boolean().default(false),
+  complete: z.boolean().default(false),
   autonomousNotes: z.string().max(500).default(''),
   notes: z.string().max(2000),
 });

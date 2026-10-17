@@ -241,14 +241,13 @@ select option {
   padding: 14px 16px;
 }
 .counter-controls {
-  display: flex;
+  display: grid;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  flex-wrap: wrap;
 }
 .counter-input {
-  width: 58px;
+  width: 52px;
   height: 48px;
   border: 1px solid var(--border);
   border-radius: 9px;
@@ -393,6 +392,27 @@ select option {
 .pit-form .choice {
   min-height: 2.5rem;
 }
+.pit-form .pit-field-control {
+  width: 60%;
+  min-width: 0;
+}
+@media (min-width: 521px) {
+  .pit-form > label,
+  .pit-form > div {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    align-items: center;
+    gap: 12px;
+  }
+  .pit-form > label > span:first-child,
+  .pit-form > div > span:first-child {
+    text-align: right;
+    white-space: nowrap;
+  }
+  .pit-form .pit-field-control {
+    width: 100%;
+  }
+}
 .right-rail {
   display: grid;
   align-content: start;
@@ -412,6 +432,24 @@ select option {
 .mobile-more-backdrop,
 .team-comparison-cards {
   display: none;
+}
+
+/* Tablet portrait widths do not leave enough room for both the full team
+   queue and a usable scouting form. Use the compact team picker until the
+   viewport can comfortably support the two-pane desktop layout. */
+@media (max-width: 1279px) {
+  .pit-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pit-queue-card {
+    display: none;
+  }
+  .pit-mobile-picker {
+    position: sticky;
+    top: 8px;
+    z-index: 5;
+    display: block;
+  }
 }
 .pick-list-mobile-editor {
   display: none;
@@ -652,18 +690,13 @@ select option {
 .member-card-email {
   overflow-wrap: anywhere;
 }
-.member-card-email,
-.member-card-role > span {
+.member-card-email {
   color: var(--muted-foreground);
 }
 .member-card-role {
   display: grid;
   gap: 5px;
   margin-top: auto;
-}
-.member-card-role > span {
-  font-size: 12px;
-  font-weight: 600;
 }
 .member-card-role select {
   width: 100%;
@@ -675,6 +708,19 @@ select option {
 }
 .member-card-role [data-slot='badge'] {
   width: fit-content;
+}
+.member-owner-role {
+  display: flex;
+  width: 100%;
+  height: 36px;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--primary) 65%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--primary) 18%, var(--background));
+  padding: 0 8px;
+  color: var(--foreground);
+  font-size: 0.875rem;
+  font-weight: 650;
 }
 .member-card-actions {
   display: flex;
@@ -829,12 +875,8 @@ select option {
     flex: none;
   }
   .tactical-board-tools {
-    flex-wrap: nowrap;
-    overflow-x: auto;
+    align-items: flex-start;
     padding-bottom: 4px;
-  }
-  .tactical-board-tools > * {
-    flex: none;
   }
   .tactical-board-viewport svg {
     width: 720px;
@@ -960,17 +1002,16 @@ select option {
   }
   .scout-form .counter-controls {
     gap: 5px;
-    flex-wrap: nowrap;
   }
   .scout-form .counter-controls [data-slot='button'] {
-    width: 40px;
-    height: 40px;
-    min-height: 40px;
+    width: 48px;
+    height: 48px;
+    min-height: 48px;
     padding-inline: 8px;
   }
   .scout-form .counter-input {
-    width: 48px;
-    height: 40px;
+    width: 52px;
+    height: 48px;
     font-size: 1.1rem;
   }
   .scout-form .choice {
@@ -992,17 +1033,31 @@ select option {
   }
 }
 @media (max-width: 520px) {
+  .pit-form > label,
+  .pit-form > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+    justify-content: stretch;
+  }
+  .pit-form > label > input,
+  .pit-form > label > select,
+  .pit-form > div > .choice,
+  .pit-form .pit-field-control {
+    width: 100%;
+  }
   .scout-form .counter-row {
-    align-items: center;
-    flex-direction: row;
+    align-items: stretch;
+    flex-direction: column;
   }
   .scout-form .counter-row > div:first-child {
-    min-width: 5.25rem;
+    min-width: 0;
   }
   .scout-form .counter-controls {
-    width: auto;
+    width: 100%;
     min-width: 0;
-    margin-left: auto;
+    margin-left: 0;
+    justify-content: end;
   }
 }
 @media (max-width: 390px) {

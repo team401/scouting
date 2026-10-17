@@ -1,6 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   ArrowDown,
   ArrowUp,
@@ -8,7 +16,6 @@ import {
   ChevronRight,
   CircleUserRound,
   ClipboardList,
-  Cloud,
   CloudOff,
   Film,
   Maximize2,
@@ -40,19 +47,9 @@ import {
   TacticalBoard,
   type TacticalBoardData,
 } from '@/components/tactical-board';
-import { PickListWorkspace } from '@/components/pick-list-workspace';
-import { MatchVideoLibrary } from '@/components/match-video-library';
-import { TeamComparison } from '@/components/team-comparison';
-import { TeamStatsDialog } from '@/components/team-stats-dialog';
 import { TeamRobotPhoto } from '@/components/team-robot-photo';
 import { TeamTrendChart, type TeamTrend } from '@/components/team-trend-chart';
-import { ScoutingOperations } from '@/components/scouting-operations';
 import { PersonalEventSchedule } from '@/components/event-role-scheduler';
-import { EventScheduleBoard } from '@/components/event-schedule-board';
-import { EventTeamAliases } from '@/components/event-team-aliases';
-import { QrRelay } from '@/components/qr-relay';
-import { MatchSubmissionQr } from '@/components/match-submission-qr';
-import { GuestPassManager } from '@/components/guest-pass-manager';
 import { ConfirmActionDialog } from '@/components/confirm-action-dialog';
 import { PwaInstallButton } from '@/components/service-worker-register';
 import {
@@ -66,11 +63,85 @@ import {
   type PendingMutation,
 } from '@/lib/offline-db';
 import { observedPoints, type ScoutingPayload } from '@/lib/scouting-metrics';
+import { isPitReportComplete } from '@/lib/pit-scouting';
 import {
   canManageAssignments,
   canReopenEntries,
   scoutEntryMutationId,
 } from '@/lib/scouting-policy';
+
+const PickListWorkspace = lazy(() =>
+  import('@/components/pick-list-workspace').then((module) => ({
+    default: module.PickListWorkspace,
+  })),
+);
+const MatchVideoLibrary = lazy(() =>
+  import('@/components/match-video-library').then((module) => ({
+    default: module.MatchVideoLibrary,
+  })),
+);
+const TeamComparison = lazy(() =>
+  import('@/components/team-comparison').then((module) => ({
+    default: module.TeamComparison,
+  })),
+);
+const TeamStatsDialog = lazy(() =>
+  import('@/components/team-stats-dialog').then((module) => ({
+    default: module.TeamStatsDialog,
+  })),
+);
+const ScoutingOperations = lazy(() =>
+  import('@/components/scouting-operations').then((module) => ({
+    default: module.ScoutingOperations,
+  })),
+);
+const DriveTeamPlanner = lazy(() =>
+  import('@/components/drive-team-planner').then((module) => ({
+    default: module.DriveTeamPlanner,
+  })),
+);
+const EventScheduleBoard = lazy(() =>
+  import('@/components/event-schedule-board').then((module) => ({
+    default: module.EventScheduleBoard,
+  })),
+);
+const EventTeamAliases = lazy(() =>
+  import('@/components/event-team-aliases').then((module) => ({
+    default: module.EventTeamAliases,
+  })),
+);
+const QrRelay = lazy(() =>
+  import('@/components/qr-relay').then((module) => ({
+    default: module.QrRelay,
+  })),
+);
+const MatchSubmissionQr = lazy(() =>
+  import('@/components/match-submission-qr').then((module) => ({
+    default: module.MatchSubmissionQr,
+  })),
+);
+const GuestPassManager = lazy(() =>
+  import('@/components/guest-pass-manager').then((module) => ({
+    default: module.GuestPassManager,
+  })),
+);
+
+function DeferredSection({ children }: { children: ReactNode }) {
+  return (
+    <Suspense
+      fallback={
+        <div
+          className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground"
+          role="status"
+        >
+          Loading…
+        </div>
+      }
+    >
+      {children}
+    </Suspense>
+  );
+}
 
 type View =
   | 'Home'
@@ -153,8 +224,8 @@ type PitDraft = {
   drivetrain: string;
   swerveModule: string;
   motorTypes: string;
-  weightLbs: number;
-  fuelCapacity: number;
+  weightLbs: number | null;
+  fuelCapacity: number | null;
   climbCapability: string;
   fieldAccess: string;
   fieldAccessPreference: string;
@@ -164,6 +235,7 @@ type PitDraft = {
   autonomousStart: string[];
   autonomousSwipe: string[];
   autonomousDepot: boolean;
+  autonomousOutpost: boolean;
   autonomousNotes: string;
   notes: string;
 };
@@ -175,7 +247,7 @@ type PitEntry = {
   swerveModule: string | null;
   motorTypes: string[];
   weightLbs: number | null;
-  payload: Partial<PitDraft>;
+  payload: Partial<PitDraft> & { complete?: boolean };
   photoObjectKey: string | null;
   updatedAt: number;
 };
@@ -183,8 +255,8 @@ const emptyPitDraft: PitDraft = {
   drivetrain: 'Swerve',
   swerveModule: '',
   motorTypes: '',
-  weightLbs: 0,
-  fuelCapacity: 0,
+  weightLbs: null,
+  fuelCapacity: null,
   climbCapability: 'None',
   fieldAccess: 'Both',
   fieldAccessPreference: 'No preference',
@@ -194,9 +266,22 @@ const emptyPitDraft: PitDraft = {
   autonomousStart: ['Unknown'],
   autonomousSwipe: ['None'],
   autonomousDepot: false,
+  autonomousOutpost: false,
   autonomousNotes: '',
   notes: '',
 };
+
+function isPitEntryComplete(entry: PitEntry) {
+  if (typeof entry.payload.complete === 'boolean')
+    return entry.payload.complete;
+  return isPitReportComplete({
+    ...entry.payload,
+    drivetrain: entry.drivetrain,
+    swerveModule: entry.swerveModule,
+    motorTypes: entry.motorTypes,
+    weightLbs: entry.weightLbs,
+  });
+}
 
 function normalizeSelections(value: unknown, fallback: string): string[] {
   if (Array.isArray(value)) {
@@ -528,33 +613,31 @@ function Counter({
   value,
   onChange,
   quickAdds = [],
+  quickAddSlots = quickAdds.length,
 }: {
   label: string;
   value: number;
   onChange: (value: number) => void;
   quickAdds?: number[];
+  quickAddSlots?: number;
 }) {
   return (
     <div className="counter-row">
       <div>
         <p className="font-semibold">{label}</p>
       </div>
-      <div className="counter-controls">
-        {quickAdds.map((amount) => (
-          <Button
-            type="button"
-            key={amount}
-            variant="outline"
-            onClick={() => onChange(value + amount)}
-          >
-            +{amount}
-          </Button>
-        ))}
+      <div
+        className="counter-controls"
+        style={{
+          gridTemplateColumns: `48px 52px repeat(${1 + quickAddSlots}, 48px)`,
+        }}
+      >
         <Button
           type="button"
           aria-label={`Remove one ${label}`}
           size="icon-lg"
           variant="outline"
+          className="size-12"
           onClick={() => onChange(Math.max(0, value - 1))}
         >
           <Minus />
@@ -574,11 +657,74 @@ function Counter({
           type="button"
           aria-label={`Add one ${label}`}
           size="icon-lg"
+          className="size-12"
           onClick={() => onChange(value + 1)}
         >
           <Plus />
         </Button>
+        {Array.from({ length: quickAddSlots }, (_, index) => {
+          const amount = quickAdds[index];
+          return amount ? (
+            <Button
+              type="button"
+              key={index}
+              variant="outline"
+              className="h-12 min-w-12 px-3 text-base"
+              onClick={() => onChange(value + amount)}
+            >
+              +{amount}
+            </Button>
+          ) : (
+            <span className="size-12" aria-hidden="true" key={index} />
+          );
+        })}
       </div>
+    </div>
+  );
+}
+
+type PlanSection = 'auto' | 'teleop' | 'metrics';
+
+function PlanSectionButtons({
+  value,
+  onChange,
+}: {
+  value: PlanSection;
+  onChange: (section: PlanSection) => void;
+}) {
+  return (
+    <div
+      aria-label="Plan view"
+      className="ml-auto flex w-max max-w-full shrink-0 flex-nowrap items-center gap-1"
+      role="group"
+    >
+      <Button
+        type="button"
+        size="sm"
+        variant={value === 'auto' ? 'default' : 'ghost'}
+        aria-pressed={value === 'auto'}
+        onClick={() => onChange('auto')}
+      >
+        Auto Plan
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant={value === 'teleop' ? 'default' : 'ghost'}
+        aria-pressed={value === 'teleop'}
+        onClick={() => onChange('teleop')}
+      >
+        Tele Plan
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant={value === 'metrics' ? 'default' : 'ghost'}
+        aria-pressed={value === 'metrics'}
+        onClick={() => onChange('metrics')}
+      >
+        Team metrics
+      </Button>
     </div>
   );
 }
@@ -696,6 +842,7 @@ export default function Home() {
   const [pitDraft, setPitDraft] = useState<PitDraft>(emptyPitDraft);
   const [pitReady, setPitReady] = useState(false);
   const [pitMessage, setPitMessage] = useState('');
+  const pitSavedSnapshotRef = useRef('');
   const [pitPhoto, setPitPhoto] = useState<File | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoVersion, setPhotoVersion] = useState(0);
@@ -1001,7 +1148,28 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (session) void loadEventPack();
+    if (!session) return;
+    let cancelled = false;
+    void (async () => {
+      const cached = await getCachedValue<EventPack>(
+        `current-event-pack:${session.user.id}`,
+      ).catch(() => undefined);
+      if (cached && !cancelled) {
+        const pack = {
+          ...cached,
+          pitEntries: cached.pitEntries ?? [],
+          scoutEntries: cached.scoutEntries ?? [],
+          scoutShifts: cached.scoutShifts ?? [],
+          organizationId: cached.organizationId ?? 'team-401',
+        };
+        setEventPack(pack);
+        setEventKey(pack.event.key);
+      }
+      if (!cancelled) await loadEventPack(Boolean(cached));
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [session]);
 
   useEffect(() => {
@@ -1102,37 +1270,63 @@ export default function Home() {
     setEventsLoading(true);
     setEventMessage('');
     const query = requestedTeam ? `?team=${requestedTeam}` : '';
-    return fetch(`/api/tba-events${query}`)
-      .then(async (response) => {
-        const result = (await response.json()) as {
-          events?: TbaEventChoice[];
-          teamNumber?: number;
-          baseTeamNumber?: number;
-          testTeamNumber?: number | null;
-          error?: string;
-        };
-        if (!response.ok)
-          throw new Error(result.error ?? 'Unable to load Team 401 events.');
-        setEventChoices(result.events ?? []);
-        const loadedTeam = result.teamNumber ?? requestedTeam ?? 401;
-        setEventTeamNumber(loadedTeam);
-        setEventTeamInput(String(loadedTeam));
-        setBaseTeamNumber(result.baseTeamNumber ?? 401);
-        setTestTeamNumber(result.testTeamNumber ?? null);
-      })
-      .catch((error) => {
-        setEventChoices([]);
-        setEventMessage(
-          error instanceof Error
+    const cacheId = `team-event-choices:${requestedTeam ?? 'current'}`;
+    const cached = await getCachedValue<{
+      events: TbaEventChoice[];
+      teamNumber: number;
+      baseTeamNumber: number;
+      testTeamNumber: number | null;
+    }>(cacheId).catch(() => undefined);
+    if (cached) {
+      setEventChoices(cached.events);
+      setEventTeamNumber(cached.teamNumber);
+      setEventTeamInput(String(cached.teamNumber));
+      setBaseTeamNumber(cached.baseTeamNumber);
+      setTestTeamNumber(cached.testTeamNumber);
+    }
+    if (!navigator.onLine) {
+      setEventsLoading(false);
+      return;
+    }
+    try {
+      const response = await fetch(`/api/tba-events${query}`);
+      const result = (await response.json()) as {
+        events?: TbaEventChoice[];
+        teamNumber?: number;
+        baseTeamNumber?: number;
+        testTeamNumber?: number | null;
+        error?: string;
+      };
+      if (!response.ok)
+        throw new Error(result.error ?? 'Unable to load Team 401 events.');
+      setEventChoices(result.events ?? []);
+      const loadedTeam = result.teamNumber ?? requestedTeam ?? 401;
+      setEventTeamNumber(loadedTeam);
+      setEventTeamInput(String(loadedTeam));
+      setBaseTeamNumber(result.baseTeamNumber ?? 401);
+      setTestTeamNumber(result.testTeamNumber ?? null);
+      await saveCachedValue(cacheId, {
+        events: result.events ?? [],
+        teamNumber: loadedTeam,
+        baseTeamNumber: result.baseTeamNumber ?? 401,
+        testTeamNumber: result.testTeamNumber ?? null,
+      });
+    } catch (error) {
+      if (!cached) setEventChoices([]);
+      setEventMessage(
+        cached
+          ? 'Showing the event list cached on this device.'
+          : error instanceof Error
             ? error.message
             : 'Unable to load Team 401 events.',
-        );
-      })
-      .finally(() => setEventsLoading(false));
+      );
+    } finally {
+      setEventsLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    if (activeView !== 'Admin' || !isAdmin || !online) return;
+    if (activeView !== 'Admin' || !isAdmin) return;
     void loadTeamEventChoices();
   }, [activeView, isAdmin, loadTeamEventChoices, online]);
 
@@ -1377,7 +1571,7 @@ export default function Home() {
               drivetrain: serverEntry.drivetrain ?? 'Swerve',
               swerveModule: serverEntry.swerveModule ?? '',
               motorTypes: serverEntry.motorTypes.join(', '),
-              weightLbs: serverEntry.weightLbs ?? 0,
+              weightLbs: serverEntry.weightLbs ?? null,
             }
           : emptyPitDraft;
         const savedDraft = draft?.payload ?? serverDraft;
@@ -1385,7 +1579,7 @@ export default function Home() {
           ...emptyPitDraft,
           ...savedDraft,
         };
-        setPitDraft({
+        const normalizedDraft = {
           ...loadedDraft,
           shooterMount:
             (savedDraft as Partial<PitDraft>).shooterMount ?? 'Fixed',
@@ -1397,15 +1591,18 @@ export default function Home() {
             loadedDraft.autonomousSwipe,
             'None',
           ),
-        });
+        };
+        pitSavedSnapshotRef.current = JSON.stringify(normalizedDraft);
+        setPitDraft(normalizedDraft);
         setPitReady(true);
       })
       .catch(() => {
+        pitSavedSnapshotRef.current = JSON.stringify(emptyPitDraft);
         setPitDraft(emptyPitDraft);
         setPitReady(true);
         setPitMessage('Offline storage is unavailable on this device.');
       });
-  }, [eventPack, pitDraftId, pitTeam]);
+  }, [eventPack?.event.key, pitDraftId, pitTeam]);
 
   useEffect(() => {
     if (!pitReady || !pitDraftId) return;
@@ -1420,6 +1617,17 @@ export default function Home() {
     );
     return () => window.clearTimeout(timer);
   }, [pitDraft, pitDraftId, pitReady]);
+
+  useEffect(() => {
+    if (!pitReady || !pitDraftId || !eventPack || !pitTeam) return;
+    const snapshot = JSON.stringify(pitDraft);
+    if (snapshot === pitSavedSnapshotRef.current) return;
+    const timer = window.setTimeout(() => {
+      pitSavedSnapshotRef.current = snapshot;
+      void savePitReport(pitDraft, true);
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [eventPack, pitDraft, pitDraftId, pitReady, pitTeam]);
 
   async function submitMatch() {
     if (!draftId || !eventPack || !currentMatch || !selectedTeam) {
@@ -1523,16 +1731,13 @@ export default function Home() {
     }
   }
 
-  async function submitPit() {
+  async function savePitReport(draft: PitDraft, automatic = false) {
     if (!eventPack || !pitTeam) {
       setPitMessage('Choose a team first.');
-      return;
-    }
-    if (pitDraft.weightLbs <= 0) {
-      setPitMessage('Enter the robot weight before saving the pit report.');
-      return;
+      return false;
     }
     const id = `pit:${eventPack.event.key}:${pitTeam}`;
+    const complete = isPitReportComplete(draft);
     try {
       await queueMutation({
         id,
@@ -1546,22 +1751,60 @@ export default function Home() {
           teamNumber: pitTeam,
           seasonYear: eventPack.event.year,
           schemaVersion: 1,
-          ...pitDraft,
-          motorTypes: pitDraft.motorTypes
+          ...draft,
+          complete,
+          motorTypes: draft.motorTypes
             .split(',')
             .map((motor) => motor.trim())
             .filter(Boolean),
         },
       });
       setQueuedCount((await getPendingMutations()).length);
+      const updatedAt = Date.now();
+      setEventPack((current) => {
+        if (!current) return current;
+        const existing = current.pitEntries.find(
+          (entry) => entry.teamNumber === pitTeam,
+        );
+        const entry: PitEntry = {
+          teamNumber: pitTeam,
+          scoutUserId: current.userId,
+          scoutName: session?.user.name ?? 'You',
+          drivetrain: draft.drivetrain,
+          swerveModule: draft.swerveModule || null,
+          motorTypes: draft.motorTypes
+            .split(',')
+            .map((motor) => motor.trim())
+            .filter(Boolean),
+          weightLbs: draft.weightLbs,
+          payload: { ...draft, complete },
+          photoObjectKey: existing?.photoObjectKey ?? null,
+          updatedAt,
+        };
+        return {
+          ...current,
+          pitEntries: [
+            ...current.pitEntries.filter(
+              (candidate) => candidate.teamNumber !== pitTeam,
+            ),
+            entry,
+          ],
+        };
+      });
       setPitMessage(
-        online
-          ? 'Pit report queued and ready to synchronize.'
-          : 'Pit report saved offline. It will synchronize when connected.',
+        automatic
+          ? complete
+            ? 'Saved automatically.'
+            : 'Saved automatically · In Progress'
+          : online
+            ? 'Pit report queued and ready to synchronize.'
+            : 'Pit report saved offline. It will synchronize when connected.',
       );
       if (online) await syncNow();
+      return true;
     } catch {
       setPitMessage('Could not save this pit report.');
+      return false;
     }
   }
 
@@ -1579,7 +1822,7 @@ export default function Home() {
     setPhotoUploading(true);
     setPitMessage('Saving the pit report before uploading…');
     try {
-      await submitPit();
+      if (!(await savePitReport(pitDraft))) return;
       const form = new FormData();
       form.set('teamNumber', String(pitTeam));
       form.set('photo', pitPhoto);
@@ -1646,7 +1889,8 @@ export default function Home() {
       } as EventPack;
       setEventPack(pack);
       setEventKey(pack.event.key);
-      await saveCachedValue('current-event-pack', pack);
+      if (session)
+        await saveCachedValue(`current-event-pack:${session.user.id}`, pack);
       if (!selectedMatchKeyRef.current && pack.matches.length > 0) {
         const mine = pack.assignments
           .filter((assignment) => assignment.scoutUserId === pack.userId)
@@ -1669,9 +1913,11 @@ export default function Home() {
         setSelectedStation(mine?.station ?? 'red1');
       }
     } catch (error) {
-      const cached = await getCachedValue<EventPack>(
-        'current-event-pack',
-      ).catch(() => undefined);
+      const cached = session
+        ? await getCachedValue<EventPack>(
+            `current-event-pack:${session.user.id}`,
+          ).catch(() => undefined)
+        : undefined;
       if (cached) {
         const pack = {
           ...cached,
@@ -2043,6 +2289,10 @@ export default function Home() {
       (entry) =>
         (entry.payload as MatchDraft & { reopened?: boolean }).reopened,
     ) ?? [];
+  const planTeamNumbers = new Set([
+    ...(eventPack?.teams.map((team) => team.teamNumber) ?? []),
+    ...strategyTeams.map((team) => team.teamNumber),
+  ]);
   const planTeams = currentPlanningMatch
     ? [
         ...currentPlanningMatch.alliances.red,
@@ -2056,7 +2306,15 @@ export default function Home() {
         pit: eventPack?.pitEntries.find((item) => item.teamNumber === team),
         name: eventPack?.teams?.find((item) => item.teamNumber === team)?.name,
       }))
-    : [];
+    : [...planTeamNumbers]
+        .sort((a, b) => a - b)
+        .map((team) => ({
+          team,
+          alliance: null,
+          stats: strategyTeams.find((item) => item.teamNumber === team),
+          pit: eventPack?.pitEntries.find((item) => item.teamNumber === team),
+          name: eventPack?.teams.find((item) => item.teamNumber === team)?.name,
+        }));
   const selectedStrategyTeam = strategyTeams.find(
     (team) => team.teamNumber === selectedTeam,
   );
@@ -2079,11 +2337,11 @@ export default function Home() {
 
   const pageTitle =
     activeView === 'Scout'
-      ? currentMatch
-        ? `${matchHeaderLabel(currentMatch)}${selectedStation ? ` · ${selectedStation.replace('red', 'Red ').replace('blue', 'Blue ')}` : ''}${selectedTeam ? ` · Team ${selectedTeam}` : ''}`
-        : 'Choose an assignment'
+      ? currentMatch && selectedStation
+        ? `${matchHeaderLabel(currentMatch)} · ${selectedStation.replace('red', 'Red ').replace('blue', 'Blue ')}${selectedTeam ? ` · Team ${selectedTeam}` : ''}`
+        : 'Choose a station'
       : activeView === 'Pit'
-        ? `Pit Scouting · ${eventPack?.pitEntries.length ?? 0}/${eventTeams.length} Complete`
+        ? `Pit Scouting · ${eventPack?.pitEntries.filter(isPitEntryComplete).length ?? 0}/${eventTeams.length}`
         : activeView === 'Plan' && currentPlanningMatch
           ? `Plan · ${matchHeaderLabel(currentPlanningMatch)}`
           : activeView;
@@ -2337,13 +2595,15 @@ export default function Home() {
                       allowFullScreen
                     />
                   ) : (
-                    <MatchVideoLibrary
-                      matchId={currentMatch?.id ?? null}
-                      matchLabel={
-                        currentMatch ? matchLabel(currentMatch) : 'this match'
-                      }
-                      playbackOnly
-                    />
+                    <DeferredSection>
+                      <MatchVideoLibrary
+                        matchId={currentMatch?.id ?? null}
+                        matchLabel={
+                          currentMatch ? matchLabel(currentMatch) : 'this match'
+                        }
+                        playbackOnly
+                      />
+                    </DeferredSection>
                   )}
                   <p className="text-sm text-muted-foreground">
                     Play, pause, and scrub the match while completing the normal
@@ -2401,11 +2661,8 @@ export default function Home() {
               </div>
 
               {scoutingPhase === 'pre' && (
-                <Card>
-                  <CardHeader className="border-b">
-                    <CardTitle>Pre-match</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-5 pt-4">
+                <Card className="py-0">
+                  <CardContent className="space-y-5 py-4">
                     <div className="scout-assignment-selectors grid gap-3 sm:grid-cols-2">
                       <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-sm font-medium">
                         <span>Match</span>
@@ -2519,21 +2776,20 @@ export default function Home() {
               )}
 
               {scoutingPhase === 'auto' && (
-                <Card>
-                  <CardHeader className="border-b">
-                    <CardTitle>Autonomous</CardTitle>
-                  </CardHeader>
-                  <CardContent className="divide-y divide-border p-0">
+                <Card className="py-0">
+                  <CardContent className="p-0">
                     <Counter
                       label="Fuel scored"
                       value={autoFuel}
                       onChange={setAutoFuel}
                       quickAdds={[5]}
+                      quickAddSlots={1}
                     />
                     <Counter
                       label="Center swipes"
                       value={centerSwipes}
                       onChange={setCenterSwipes}
+                      quickAddSlots={1}
                     />
                     <div className="grid grid-cols-2 gap-2 px-4 py-3">
                       <button
@@ -2557,6 +2813,7 @@ export default function Home() {
                       label="Penalties"
                       value={autoPenalties}
                       onChange={setAutoPenalties}
+                      quickAddSlots={1}
                     />
                     <div className="flex items-center justify-between gap-3 px-4 py-3">
                       <strong>Auto tower</strong>
@@ -2568,8 +2825,8 @@ export default function Home() {
                             key={item}
                             className={
                               autoTower === item
-                                ? 'choice selected h-9 min-h-0 px-3 text-sm'
-                                : 'choice h-9 min-h-0 px-3 text-sm'
+                                ? 'choice selected h-12 min-h-12 px-4 text-base'
+                                : 'choice h-12 min-h-12 px-4 text-base'
                             }
                           >
                             {autoTower === item && <Check />}
@@ -2583,152 +2840,134 @@ export default function Home() {
               )}
 
               {scoutingPhase === 'tele' && (
-                <Card>
-                  <CardHeader className="border-b">
-                    <CardTitle>Teleoperated</CardTitle>
-                  </CardHeader>
-                  <CardContent className="divide-y divide-border p-0">
+                <Card className="py-0">
+                  <CardContent className="p-0">
                     <Counter
                       label="Fuel scored"
                       value={activeFuel}
                       onChange={setActiveFuel}
                       quickAdds={[5, 10]}
+                      quickAddSlots={2}
                     />
                     <Counter
                       label="Fuel passed"
                       value={passedFuel}
                       onChange={setPassedFuel}
                       quickAdds={[5]}
+                      quickAddSlots={2}
                     />
                     <Counter
                       label="Penalties"
                       value={teleopPenalties}
                       onChange={setTeleopPenalties}
+                      quickAddSlots={2}
                     />
                   </CardContent>
                 </Card>
               )}
 
               {scoutingPhase === 'post' && (
-                <>
-                  {noShow ? (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>No-show report</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
+                <Card>
+                  <CardContent className="space-y-5">
+                    {noShow ? (
+                      <section className="space-y-2">
+                        <h2 className="font-semibold">No-show report</h2>
                         <p>
                           This report will submit with match observations set to
                           zero.
                         </p>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <>
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Field movement</CardTitle>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-3 gap-2">
-                          {['Trench', 'Bump', 'Both'].map((item) => (
-                            <button
-                              key={item}
-                              onClick={() => setPath(item)}
-                              className={
-                                path === item ? 'choice selected' : 'choice'
-                              }
-                            >
-                              {path === item && <Check />}
-                              {item}
-                            </button>
-                          ))}
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Played defense</CardTitle>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                          {[
-                            { value: null, label: 'N/A' },
-                            { value: 1, label: 'Ineffective' },
-                            { value: 2, label: 'Some impact' },
-                            { value: 3, label: 'Effective' },
-                            { value: 4, label: 'Dominant' },
-                          ].map(({ value, label }) => (
-                            <button
-                              type="button"
-                              onClick={() => setDefenseRating(value)}
-                              aria-pressed={defenseRating === value}
-                              className={
-                                defenseRating === value
-                                  ? 'choice selected min-h-16 flex-col gap-1 px-2 text-center text-sm'
-                                  : 'choice min-h-16 flex-col gap-1 px-2 text-center text-sm'
-                              }
-                              key={label}
-                            >
-                              <strong className="text-lg">{value}</strong>
-                              <span>{label}</span>
-                            </button>
-                          ))}
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardHeader className="border-b">
-                          <CardTitle>Scoring profile</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4 pt-4">
-                          <div>
-                            <p className="mb-2 font-semibold">
-                              Typical shooting range
-                            </p>
-                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                              {['Near', 'Midfield', 'Far', 'Mixed'].map(
-                                (item) => (
-                                  <button
-                                    className={
-                                      shootingRange === item
-                                        ? 'choice selected'
-                                        : 'choice'
-                                    }
-                                    onClick={() => setShootingRange(item)}
-                                    key={item}
-                                  >
-                                    {shootingRange === item && <Check />}
-                                    {item}
-                                  </button>
-                                ),
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardHeader className="border-b">
-                          <CardTitle>Endgame tower</CardTitle>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                          {['None', 'Level 1', 'Level 2', 'Level 3'].map(
-                            (item) => (
+                      </section>
+                    ) : (
+                      <>
+                        <section className="space-y-2">
+                          <h2 className="font-semibold">Field movement</h2>
+                          <div className="grid grid-cols-3 gap-2">
+                            {['Trench', 'Bump', 'Both'].map((item) => (
                               <button
-                                onClick={() => setTower(item)}
                                 key={item}
+                                onClick={() => setPath(item)}
                                 className={
-                                  tower === item ? 'choice selected' : 'choice'
+                                  path === item ? 'choice selected' : 'choice'
                                 }
                               >
-                                {tower === item && <Check />}
+                                {path === item && <Check />}
                                 {item}
                               </button>
-                            ),
-                          )}
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Reliability and notes</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
+                            ))}
+                          </div>
+                        </section>
+                        <section className="space-y-2">
+                          <h2 className="font-semibold">Played defense</h2>
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                            {[
+                              { value: null, label: 'N/A' },
+                              { value: 1, label: 'Ineffective' },
+                              { value: 2, label: 'Some impact' },
+                              { value: 3, label: 'Effective' },
+                              { value: 4, label: 'Dominant' },
+                            ].map(({ value, label }) => (
+                              <button
+                                type="button"
+                                onClick={() => setDefenseRating(value)}
+                                aria-pressed={defenseRating === value}
+                                className={
+                                  defenseRating === value
+                                    ? 'choice selected min-h-16 flex-col gap-1 px-2 text-center text-sm'
+                                    : 'choice min-h-16 flex-col gap-1 px-2 text-center text-sm'
+                                }
+                                key={label}
+                              >
+                                <strong className="text-lg">{value}</strong>
+                                <span>{label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </section>
+                        <section>
+                          <p className="mb-2 font-semibold">
+                            Typical shooting range
+                          </p>
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            {['Near', 'Midfield', 'Far', 'Mixed'].map(
+                              (item) => (
+                                <button
+                                  className={
+                                    shootingRange === item
+                                      ? 'choice selected'
+                                      : 'choice'
+                                  }
+                                  onClick={() => setShootingRange(item)}
+                                  key={item}
+                                >
+                                  {shootingRange === item && <Check />}
+                                  {item}
+                                </button>
+                              ),
+                            )}
+                          </div>
+                        </section>
+                        <section>
+                          <p className="mb-2 font-semibold">Endgame tower</p>
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            {['None', 'Level 1', 'Level 2', 'Level 3'].map(
+                              (item) => (
+                                <button
+                                  onClick={() => setTower(item)}
+                                  key={item}
+                                  className={
+                                    tower === item
+                                      ? 'choice selected'
+                                      : 'choice'
+                                  }
+                                >
+                                  {tower === item && <Check />}
+                                  {item}
+                                </button>
+                              ),
+                            )}
+                          </div>
+                        </section>
+                        <section className="space-y-3">
                           <div>
                             <p className="mb-2 font-semibold">
                               Robot reliability
@@ -2761,11 +3000,11 @@ export default function Home() {
                             onChange={(event) => setNotes(event.target.value)}
                             placeholder="Strategy-relevant observations, failure details, defense quality…"
                           />
-                        </CardContent>
-                      </Card>
-                    </>
-                  )}
-                </>
+                        </section>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
               )}
 
               <div className="grid grid-cols-2 gap-2">
@@ -2841,12 +3080,14 @@ export default function Home() {
                 submissionStatus === 'synchronized') && (
                 <>
                   {submittedMatchMutation && eventPack && (
-                    <MatchSubmissionQr
-                      mutation={submittedMatchMutation}
-                      organizationId={eventPack.organizationId}
-                      eventKey={eventPack.event.key}
-                      online={online}
-                    />
+                    <DeferredSection>
+                      <MatchSubmissionQr
+                        mutation={submittedMatchMutation}
+                        organizationId={eventPack.organizationId}
+                        eventKey={eventPack.event.key}
+                        online={online}
+                      />
+                    </DeferredSection>
                   )}
                   <Button
                     className="h-12 w-full text-base"
@@ -2866,56 +3107,43 @@ export default function Home() {
           </div>
         )}
         {activeView === 'Pit' && (
-          <div className="pit-layout grid gap-4 p-4 sm:p-6 lg:grid-cols-[28rem_1fr]">
-            <Card className="pit-mobile-picker">
-              <CardContent className="p-3">
-                <label className="grid gap-1 text-sm font-semibold">
-                  Team to pit scout
-                  <select
-                    className="h-11 w-full rounded-md border bg-background px-3 text-foreground"
-                    value={pitTeam ?? ''}
-                    onChange={(event) =>
-                      setPitTeam(
-                        event.target.value ? Number(event.target.value) : null,
-                      )
-                    }
-                  >
-                    <option value="">Choose a team</option>
-                    {eventTeams.map((team) => {
-                      const entry = eventPack?.pitEntries.find(
-                        (entry) => entry.teamNumber === team,
-                      );
-                      return (
-                        <option value={team} key={team}>
-                          Team {team}
-                          {eventPack?.teams.find(
-                            (item) => item.teamNumber === team,
-                          )?.name
-                            ? ` — ${eventPack.teams.find((item) => item.teamNumber === team)?.name}`
-                            : ''}
-                          {' — '}
-                          {entry
-                            ? `Scouted by ${entry.scoutName}`
-                            : 'Needs scouting'}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </label>
-                {pitTeam && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Team {pitTeam} selected · changes save on this device
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+          <div className="pit-layout grid gap-4 p-4 sm:p-6 xl:grid-cols-[28rem_1fr]">
+            <div className="pit-mobile-picker min-w-0">
+              <select
+                aria-label="Team to pit scout"
+                className="h-11 w-full min-w-0 max-w-full truncate rounded-md border bg-background px-3 text-center text-foreground [text-align-last:center]"
+                value={pitTeam ?? ''}
+                onChange={(event) =>
+                  setPitTeam(
+                    event.target.value ? Number(event.target.value) : null,
+                  )
+                }
+              >
+                <option value="">Choose a team</option>
+                {eventTeams.map((team) => {
+                  const entry = eventPack?.pitEntries.find(
+                    (entry) => entry.teamNumber === team,
+                  );
+                  return (
+                    <option value={team} key={team}>
+                      Team {team} -{' '}
+                      {entry
+                        ? isPitEntryComplete(entry)
+                          ? `Scouted by ${entry.scoutName}`
+                          : 'In Progress'
+                        : 'Needs Scouting'}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
             <Card className="pit-queue-card h-full min-h-0">
               <CardContent className="min-h-0 flex-1 space-y-1 overflow-auto">
                 {eventTeams.map((team) => {
                   const entry = eventPack?.pitEntries.find(
                     (entry) => entry.teamNumber === team,
                   );
-                  const complete = Boolean(entry);
+                  const complete = entry ? isPitEntryComplete(entry) : false;
                   return (
                     <button
                       type="button"
@@ -2925,18 +3153,24 @@ export default function Home() {
                       onClick={() => setPitTeam(team)}
                       key={team}
                     >
-                      <strong>
-                        Team {team}
+                      <strong>Team {team}</strong>
+                      <span className="pit-queue-status">
                         {eventPack?.teams.find(
                           (item) => item.teamNumber === team,
-                        )?.name
-                          ? ` — ${eventPack.teams.find((item) => item.teamNumber === team)?.name}`
-                          : ''}
-                      </strong>
-                      <span className="pit-queue-status">
-                        {entry
-                          ? `Scouted by ${entry.scoutName} · ${new Date(entry.updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
-                          : 'Needs scouting'}
+                        )?.name && (
+                          <span className="block truncate text-muted-foreground">
+                            {
+                              eventPack.teams.find(
+                                (item) => item.teamNumber === team,
+                              )?.name
+                            }
+                          </span>
+                        )}
+                        <span className="block">
+                          {entry
+                            ? `${complete ? `Scouted by ${entry.scoutName}` : `In Progress · ${entry.scoutName}`} · ${new Date(entry.updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
+                            : 'Needs scouting'}
+                        </span>
                       </span>
                       {complete ? <Check /> : <ChevronRight />}
                     </button>
@@ -2951,8 +3185,8 @@ export default function Home() {
               </CardContent>
             </Card>
             <Card>
-              <CardHeader>
-                <CardTitle>
+              <CardHeader className="text-center">
+                <CardTitle className="w-full text-center">
                   {pitTeam
                     ? `Team ${pitTeam}${eventPack?.teams.find((item) => item.teamNumber === pitTeam)?.name ? ` — ${eventPack.teams.find((item) => item.teamNumber === pitTeam)?.name}` : ''}`
                     : 'Choose a team'}
@@ -2962,7 +3196,13 @@ export default function Home() {
                     (entry) => entry.teamNumber === pitTeam,
                   ) && (
                     <p className="text-sm text-muted-foreground">
-                      Scouted by{' '}
+                      {isPitEntryComplete(
+                        eventPack.pitEntries.find(
+                          (entry) => entry.teamNumber === pitTeam,
+                        )!,
+                      )
+                        ? 'Scouted by '
+                        : 'In Progress · '}
                       {
                         eventPack.pitEntries.find(
                           (entry) => entry.teamNumber === pitTeam,
@@ -2986,10 +3226,10 @@ export default function Home() {
                 {pitTeam && (
                   <>
                     <div className="pit-form grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      <label className="grid gap-1 text-sm">
-                        Drivetrain
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>Drivetrain</span>
                         <select
-                          className="h-10 rounded-md border bg-transparent px-3"
+                          className="pit-field-control h-10 rounded-md border bg-transparent px-3"
                           value={pitDraft.drivetrain}
                           onChange={(event) =>
                             setPitDraft({
@@ -3004,9 +3244,10 @@ export default function Home() {
                           <option>Other</option>
                         </select>
                       </label>
-                      <label className="grid gap-1 text-sm">
-                        Swerve module
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>Swerve module</span>
                         <Input
+                          className="pit-field-control"
                           disabled={pitDraft.drivetrain !== 'Swerve'}
                           value={pitDraft.swerveModule}
                           onChange={(event) =>
@@ -3018,9 +3259,10 @@ export default function Home() {
                           placeholder="MK4i, MAXSwerve…"
                         />
                       </label>
-                      <label className="grid gap-1 text-sm">
-                        Motor types
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>Motor types</span>
                         <Input
+                          className="pit-field-control"
                           value={pitDraft.motorTypes}
                           onChange={(event) =>
                             setPitDraft({
@@ -3031,41 +3273,52 @@ export default function Home() {
                           placeholder="Kraken X60, NEO…"
                         />
                       </label>
-                      <label className="grid gap-1 text-sm">
-                        Weight (lb)
-                        <Input
-                          type="number"
-                          min="1"
-                          inputMode="decimal"
-                          required
-                          value={pitDraft.weightLbs || ''}
-                          onChange={(event) =>
-                            setPitDraft({
-                              ...pitDraft,
-                              weightLbs: Number(event.target.value),
-                            })
-                          }
-                        />
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>Weight</span>
+                        <span className="pit-field-control relative">
+                          <Input
+                            className="w-full pr-10"
+                            type="number"
+                            min="1"
+                            inputMode="decimal"
+                            required
+                            value={pitDraft.weightLbs ?? ''}
+                            onChange={(event) =>
+                              setPitDraft({
+                                ...pitDraft,
+                                weightLbs: event.target.value
+                                  ? Number(event.target.value)
+                                  : null,
+                              })
+                            }
+                          />
+                          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
+                            lb
+                          </span>
+                        </span>
                       </label>
-                      <label className="grid gap-1 text-sm">
-                        FUEL capacity
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>Fuel capacity</span>
                         <Input
+                          className="pit-field-control"
                           type="number"
                           min="0"
                           inputMode="numeric"
-                          value={pitDraft.fuelCapacity || ''}
+                          value={pitDraft.fuelCapacity ?? ''}
                           onChange={(event) =>
                             setPitDraft({
                               ...pitDraft,
-                              fuelCapacity: Number(event.target.value),
+                              fuelCapacity: event.target.value
+                                ? Number(event.target.value)
+                                : null,
                             })
                           }
                         />
                       </label>
-                      <label className="grid gap-1 text-sm">
-                        Tower capability
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>Tower capability</span>
                         <select
-                          className="h-10 rounded-md border bg-transparent px-3"
+                          className="pit-field-control h-10 rounded-md border bg-transparent px-3"
                           value={pitDraft.climbCapability}
                           onChange={(event) =>
                             setPitDraft({
@@ -3081,10 +3334,10 @@ export default function Home() {
                           <option>Multiple levels</option>
                         </select>
                       </label>
-                      <label className="grid gap-1 text-sm">
-                        Shooter mounting
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>Shooter mounting</span>
                         <select
-                          className="h-10 rounded-md border bg-transparent px-3"
+                          className="pit-field-control h-10 rounded-md border bg-transparent px-3"
                           value={pitDraft.shooterMount}
                           onChange={(event) =>
                             setPitDraft({
@@ -3097,10 +3350,10 @@ export default function Home() {
                           <option>Turreted</option>
                         </select>
                       </label>
-                      <label className="grid gap-1 text-sm">
-                        Shooter barrels
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>Shooter barrels</span>
                         <select
-                          className="h-10 rounded-md border bg-transparent px-3"
+                          className="pit-field-control h-10 rounded-md border bg-transparent px-3"
                           value={pitDraft.shooterBarrels}
                           onChange={(event) =>
                             setPitDraft({
@@ -3115,14 +3368,14 @@ export default function Home() {
                           <option value="Drum">Drum</option>
                         </select>
                       </label>
-                      <div className="grid gap-1 text-sm">
-                        Hood
+                      <div className="flex items-center justify-between gap-3 text-sm">
+                        <span>Hood</span>
                         <button
                           type="button"
                           className={
                             pitDraft.adjustableHood
-                              ? 'choice selected'
-                              : 'choice'
+                              ? 'choice selected pit-field-control'
+                              : 'choice pit-field-control'
                           }
                           onClick={() =>
                             setPitDraft({
@@ -3136,7 +3389,7 @@ export default function Home() {
                         </button>
                       </div>
                     </div>
-                    <div className="space-y-3 rounded-lg border p-3">
+                    <div className="space-y-3">
                       <div>
                         <p className="mb-2 font-semibold">Field access</p>
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -3187,7 +3440,7 @@ export default function Home() {
                         </div>
                       </div>
                     </div>
-                    <div className="space-y-3 rounded-lg border p-3">
+                    <div className="space-y-3">
                       <div>
                         <p className="font-semibold">Autonomous capabilities</p>
                       </div>
@@ -3262,38 +3515,59 @@ export default function Home() {
                           )}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        className={
-                          pitDraft.autonomousDepot
-                            ? 'choice selected w-full'
-                            : 'choice w-full'
-                        }
-                        onClick={() =>
-                          setPitDraft({
-                            ...pitDraft,
-                            autonomousDepot: !pitDraft.autonomousDepot,
-                          })
-                        }
-                      >
-                        {pitDraft.autonomousDepot && <Check />}
-                        Uses depot in autonomous
-                      </button>
-                      <textarea
-                        aria-label="Additional autonomous notes"
-                        className="min-h-20 w-full rounded-md border bg-transparent p-3"
-                        value={pitDraft.autonomousNotes}
-                        onChange={(event) =>
-                          setPitDraft({
-                            ...pitDraft,
-                            autonomousNotes: event.target.value,
-                          })
-                        }
-                        placeholder="Additional autonomous notes…"
-                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          className={
+                            pitDraft.autonomousDepot
+                              ? 'choice selected'
+                              : 'choice'
+                          }
+                          onClick={() =>
+                            setPitDraft({
+                              ...pitDraft,
+                              autonomousDepot: !pitDraft.autonomousDepot,
+                            })
+                          }
+                        >
+                          {pitDraft.autonomousDepot && <Check />}
+                          Auto Depot
+                        </button>
+                        <button
+                          type="button"
+                          className={
+                            pitDraft.autonomousOutpost
+                              ? 'choice selected'
+                              : 'choice'
+                          }
+                          onClick={() =>
+                            setPitDraft({
+                              ...pitDraft,
+                              autonomousOutpost: !pitDraft.autonomousOutpost,
+                            })
+                          }
+                        >
+                          {pitDraft.autonomousOutpost && <Check />}
+                          Auto Outpost
+                        </button>
+                      </div>
+                      <label className="grid gap-1 text-sm">
+                        Auto Notes
+                        <textarea
+                          className="min-h-20 w-full rounded-md border bg-transparent p-3"
+                          value={pitDraft.autonomousNotes}
+                          onChange={(event) =>
+                            setPitDraft({
+                              ...pitDraft,
+                              autonomousNotes: event.target.value,
+                            })
+                          }
+                          placeholder="Additional autonomous notes…"
+                        />
+                      </label>
                     </div>
                     <label className="grid gap-1 text-sm">
-                      Notes
+                      General Notes
                       <textarea
                         className="min-h-24 rounded-md border bg-transparent p-3"
                         value={pitDraft.notes}
@@ -3306,7 +3580,7 @@ export default function Home() {
                         placeholder="Mechanisms, reliability concerns, programming notes…"
                       />
                     </label>
-                    <div className="space-y-3 rounded-lg border p-3">
+                    <div className="space-y-3">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         <p className="font-semibold">Robot photo</p>
                         <p className="text-sm text-muted-foreground">
@@ -3344,14 +3618,6 @@ export default function Home() {
                         </Button>
                       </div>
                     </div>
-                    <Button
-                      className="w-full sm:w-auto"
-                      disabled={!pitReady}
-                      onClick={() => void submitPit()}
-                    >
-                      <Cloud />
-                      Save pit report
-                    </Button>
                     {pitMessage && (
                       <p
                         className="text-sm text-muted-foreground"
@@ -3377,8 +3643,8 @@ export default function Home() {
             <Card
               className={
                 planFullscreen
-                  ? 'min-h-dvh rounded-none border-0'
-                  : 'rounded-none sm:rounded-xl'
+                  ? 'min-h-dvh rounded-none border-0 pt-0'
+                  : 'rounded-none pt-0 sm:rounded-xl'
               }
               onClick={() => {
                 if (planFullscreen) setPlanFullscreen(false);
@@ -3414,34 +3680,6 @@ export default function Home() {
                         </select>
                       </div>
                     )}
-                    <div className="grid grid-cols-3 gap-1">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={planSection === 'auto' ? 'default' : 'ghost'}
-                        onClick={() => setPlanSection('auto')}
-                      >
-                        Auto Plan
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={planSection === 'teleop' ? 'default' : 'ghost'}
-                        onClick={() => setPlanSection('teleop')}
-                      >
-                        Tele Plan
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={
-                          planSection === 'metrics' ? 'default' : 'ghost'
-                        }
-                        onClick={() => setPlanSection('metrics')}
-                      >
-                        Team metrics
-                      </Button>
-                    </div>
                   </>
                 )}
                 {planSection !== 'metrics' && (
@@ -3472,6 +3710,12 @@ export default function Home() {
                           >
                             {planFullscreen ? <Minimize2 /> : <Maximize2 />}
                           </Button>
+                        }
+                        toolbarEnd={
+                          <PlanSectionButtons
+                            value={planSection}
+                            onChange={setPlanSection}
+                          />
                         }
                         onChange={(board) =>
                           setMatchPlan(
@@ -3516,205 +3760,232 @@ export default function Home() {
                 )}
                 {planSection === 'metrics' && (
                   <div className="grid gap-3 border-t pt-4 sm:grid-cols-2 xl:grid-cols-3">
-                    {planTeams.map(({ team, alliance, stats, pit, name }) => (
-                      <div
-                        className={
-                          alliance === 'red'
-                            ? 'rounded-lg border border-l-8 border-red-500 bg-red-50 p-3 text-red-950 dark:bg-red-950/30 dark:text-red-50'
-                            : 'rounded-lg border border-l-8 border-blue-500 bg-blue-50 p-3 text-blue-950 dark:bg-blue-950/30 dark:text-blue-50'
-                        }
-                        key={team}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <strong>
-                              Team {team}
-                              {name ? ` - ${name}` : ''}
-                            </strong>
-                            {matchPlan.absentTeams.includes(team) && (
-                              <Badge className="ml-2" variant="destructive">
-                                Not playing
-                              </Badge>
+                    {planTeams.length === 0 ? (
+                      <p className="col-span-full rounded-lg border p-6 text-center text-sm text-muted-foreground">
+                        No teams are available for this event yet.
+                      </p>
+                    ) : (
+                      planTeams.map(({ team, alliance, stats, pit, name }) => (
+                        <div
+                          className={
+                            alliance === 'red'
+                              ? 'rounded-lg border border-l-8 border-red-500 bg-red-50 p-3 text-red-950 dark:bg-red-950/30 dark:text-red-50'
+                              : alliance === 'blue'
+                                ? 'rounded-lg border border-l-8 border-blue-500 bg-blue-50 p-3 text-blue-950 dark:bg-blue-950/30 dark:text-blue-50'
+                                : 'rounded-lg border bg-card p-3'
+                          }
+                          key={team}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <strong>
+                                Team {team}
+                                {name ? ` - ${name}` : ''}
+                              </strong>
+                              {currentPlanningMatch &&
+                                matchPlan.absentTeams.includes(team) && (
+                                  <Badge className="ml-2" variant="destructive">
+                                    Not playing
+                                  </Badge>
+                                )}
+                            </div>
+                            {alliance && (
+                              <span
+                                aria-label={`${alliance} alliance`}
+                                className={
+                                  alliance === 'red'
+                                    ? 'size-4 rounded-full bg-red-600 ring-2 ring-red-200'
+                                    : 'size-4 rounded-full bg-blue-600 ring-2 ring-blue-200'
+                                }
+                              />
                             )}
                           </div>
-                          <span
-                            aria-label={`${alliance} alliance`}
-                            className={
-                              alliance === 'red'
-                                ? 'size-4 rounded-full bg-red-600 ring-2 ring-red-200'
-                                : 'size-4 rounded-full bg-blue-600 ring-2 ring-blue-200'
-                            }
-                          />
-                        </div>
-                        {planCanEdit && (
+                          {planCanEdit && currentPlanningMatch && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="mt-2"
+                              onClick={() => {
+                                const isAbsent =
+                                  matchPlan.absentTeams.includes(team);
+                                const absentTeams = isAbsent
+                                  ? matchPlan.absentTeams.filter(
+                                      (item) => item !== team,
+                                    )
+                                  : [...matchPlan.absentTeams, team];
+                                const defaultMarkers = initialRobotMarkers(
+                                  currentPlanningMatch?.alliances.red ?? [],
+                                  currentPlanningMatch?.alliances.blue ?? [],
+                                );
+                                const robots = isAbsent
+                                  ? [
+                                      ...matchPlan.board.robots,
+                                      ...defaultMarkers.filter(
+                                        (robot) => robot.team === team,
+                                      ),
+                                    ]
+                                  : matchPlan.board.robots.filter(
+                                      (robot) => robot.team !== team,
+                                    );
+                                const autoRobots = isAbsent
+                                  ? [
+                                      ...matchPlan.autoBoard.robots,
+                                      ...defaultMarkers.filter(
+                                        (robot) => robot.team === team,
+                                      ),
+                                    ]
+                                  : matchPlan.autoBoard.robots.filter(
+                                      (robot) => robot.team !== team,
+                                    );
+                                setMatchPlan({
+                                  ...matchPlan,
+                                  absentTeams,
+                                  board: { ...matchPlan.board, robots },
+                                  autoBoard: {
+                                    ...matchPlan.autoBoard,
+                                    robots: autoRobots,
+                                  },
+                                });
+                              }}
+                            >
+                              {matchPlan.absentTeams.includes(team)
+                                ? 'Return robot to field'
+                                : 'Robot not playing'}
+                            </Button>
+                          )}
+                          <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                            <span>
+                              <strong>{stats?.xp?.toFixed(1) ?? '—'}</strong>
+                              <small className="block text-muted-foreground">
+                                Match13 xP
+                              </small>
+                            </span>
+                            <span>
+                              <strong>{stats?.epa?.toFixed(1) ?? '—'}</strong>
+                              <small className="block text-muted-foreground">
+                                EPA
+                              </small>
+                            </span>
+                            <span>
+                              <strong>
+                                {stats?.medianPoints.toFixed(1) ?? '—'}
+                              </strong>
+                              <small className="block text-muted-foreground">
+                                median pts
+                              </small>
+                            </span>
+                            <span>
+                              <strong>{stats?.disabledMatches ?? 0}</strong>
+                              <small className="block text-muted-foreground">
+                                disabled matches
+                              </small>
+                            </span>
+                          </div>
+                          <div className="mt-3 border-t pt-2 text-xs">
+                            <p className="font-semibold">Pit summary</p>
+                            {pit ? (
+                              <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-muted-foreground">
+                                <span>
+                                  {pit.drivetrain ?? 'Unknown'}
+                                  {pit.swerveModule
+                                    ? ` · ${pit.swerveModule}`
+                                    : ''}
+                                </span>
+                                <span>
+                                  {pit.weightLbs
+                                    ? `${pit.weightLbs} lb`
+                                    : 'Weight —'}
+                                </span>
+                                <span>
+                                  Capacity {pit.payload.fuelCapacity ?? '—'}
+                                </span>
+                                <span>
+                                  Climb {pit.payload.climbCapability ?? '—'}
+                                </span>
+                                <span>
+                                  Access {pit.payload.fieldAccess ?? '—'}
+                                </span>
+                                <span>
+                                  Shooter {shooterSummary(pit.payload)}
+                                </span>
+                                <span className="col-span-2 line-clamp-2">
+                                  Auto:{' '}
+                                  {[
+                                    normalizeSelections(
+                                      pit.payload.autonomousStart,
+                                      'Unknown',
+                                    ).join(', '),
+                                    normalizeSelections(
+                                      pit.payload.autonomousSwipe,
+                                      'None',
+                                    )
+                                      .filter((item) => item !== 'None')
+                                      .join(', ') || null,
+                                    pit.payload.autonomousDepot
+                                      ? 'Depot'
+                                      : null,
+                                    pit.payload.autonomousOutpost
+                                      ? 'Outpost'
+                                      : null,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(' · ') || '—'}
+                                </span>
+                              </div>
+                            ) : (
+                              <p className="mt-1 text-muted-foreground">
+                                No pit report
+                              </p>
+                            )}
+                          </div>
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            {stats?.samples ?? 0}/{stats?.scheduledMatches ?? 0}{' '}
+                            matches scouted
+                          </p>
                           <Button
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="mt-2"
-                            onClick={() => {
-                              const isAbsent =
-                                matchPlan.absentTeams.includes(team);
-                              const absentTeams = isAbsent
-                                ? matchPlan.absentTeams.filter(
-                                    (item) => item !== team,
-                                  )
-                                : [...matchPlan.absentTeams, team];
-                              const defaultMarkers = initialRobotMarkers(
-                                currentPlanningMatch?.alliances.red ?? [],
-                                currentPlanningMatch?.alliances.blue ?? [],
-                              );
-                              const robots = isAbsent
-                                ? [
-                                    ...matchPlan.board.robots,
-                                    ...defaultMarkers.filter(
-                                      (robot) => robot.team === team,
-                                    ),
-                                  ]
-                                : matchPlan.board.robots.filter(
-                                    (robot) => robot.team !== team,
-                                  );
-                              const autoRobots = isAbsent
-                                ? [
-                                    ...matchPlan.autoBoard.robots,
-                                    ...defaultMarkers.filter(
-                                      (robot) => robot.team === team,
-                                    ),
-                                  ]
-                                : matchPlan.autoBoard.robots.filter(
-                                    (robot) => robot.team !== team,
-                                  );
-                              setMatchPlan({
-                                ...matchPlan,
-                                absentTeams,
-                                board: { ...matchPlan.board, robots },
-                                autoBoard: {
-                                  ...matchPlan.autoBoard,
-                                  robots: autoRobots,
-                                },
-                              });
-                            }}
+                            className="mt-3 w-full bg-background/70"
+                            onClick={() => setPlanStatsTeam(team)}
                           >
-                            {matchPlan.absentTeams.includes(team)
-                              ? 'Return robot to field'
-                              : 'Robot not playing'}
+                            View stats for team {team}
                           </Button>
-                        )}
-                        <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                          <span>
-                            <strong>{stats?.xp?.toFixed(1) ?? '—'}</strong>
-                            <small className="block text-muted-foreground">
-                              Match13 xP
-                            </small>
-                          </span>
-                          <span>
-                            <strong>{stats?.epa?.toFixed(1) ?? '—'}</strong>
-                            <small className="block text-muted-foreground">
-                              EPA
-                            </small>
-                          </span>
-                          <span>
-                            <strong>
-                              {stats?.medianPoints.toFixed(1) ?? '—'}
-                            </strong>
-                            <small className="block text-muted-foreground">
-                              median pts
-                            </small>
-                          </span>
-                          <span>
-                            <strong>{stats?.disabledMatches ?? 0}</strong>
-                            <small className="block text-muted-foreground">
-                              disabled matches
-                            </small>
-                          </span>
                         </div>
-                        <div className="mt-3 border-t pt-2 text-xs">
-                          <p className="font-semibold">Pit summary</p>
-                          {pit ? (
-                            <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-muted-foreground">
-                              <span>
-                                {pit.drivetrain ?? 'Unknown'}
-                                {pit.swerveModule
-                                  ? ` · ${pit.swerveModule}`
-                                  : ''}
-                              </span>
-                              <span>
-                                {pit.weightLbs
-                                  ? `${pit.weightLbs} lb`
-                                  : 'Weight —'}
-                              </span>
-                              <span>
-                                Capacity {pit.payload.fuelCapacity ?? '—'}
-                              </span>
-                              <span>
-                                Climb {pit.payload.climbCapability ?? '—'}
-                              </span>
-                              <span>
-                                Access {pit.payload.fieldAccess ?? '—'}
-                              </span>
-                              <span>Shooter {shooterSummary(pit.payload)}</span>
-                              <span className="col-span-2 line-clamp-2">
-                                Auto:{' '}
-                                {[
-                                  normalizeSelections(
-                                    pit.payload.autonomousStart,
-                                    'Unknown',
-                                  ).join(', '),
-                                  normalizeSelections(
-                                    pit.payload.autonomousSwipe,
-                                    'None',
-                                  )
-                                    .filter((item) => item !== 'None')
-                                    .join(', ') || null,
-                                  pit.payload.autonomousDepot ? 'Depot' : null,
-                                ]
-                                  .filter(Boolean)
-                                  .join(' · ') || '—'}
-                              </span>
-                            </div>
-                          ) : (
-                            <p className="mt-1 text-muted-foreground">
-                              No pit report
-                            </p>
-                          )}
-                        </div>
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          {stats?.samples ?? 0}/{stats?.scheduledMatches ?? 0}{' '}
-                          matches scouted
-                        </p>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="mt-3 w-full bg-background/70"
-                          onClick={() => setPlanStatsTeam(team)}
-                        >
-                          View stats for team {team}
-                        </Button>
-                      </div>
-                    ))}
+                      ))
+                    )}
+                    <div className="col-span-full flex justify-end">
+                      <PlanSectionButtons
+                        value={planSection}
+                        onChange={setPlanSection}
+                      />
+                    </div>
                   </div>
                 )}
               </CardContent>
             </Card>
           </div>
         )}
-        <TeamStatsDialog
-          teamNumber={planStatsTeam}
-          teamName={
-            eventPack?.teams.find((team) => team.teamNumber === planStatsTeam)
-              ?.name
-          }
-          summary={
-            planStatsTeam
-              ? planStats.find((team) => team.teamNumber === planStatsTeam)
-              : undefined
-          }
-          eventSummaries={planStats}
-          onOpenChange={(open) => {
-            if (!open) setPlanStatsTeam(null);
-          }}
-        />
+        {planStatsTeam && (
+          <DeferredSection>
+            <TeamStatsDialog
+              teamNumber={planStatsTeam}
+              teamName={
+                eventPack?.teams.find(
+                  (team) => team.teamNumber === planStatsTeam,
+                )?.name
+              }
+              summary={planStats.find(
+                (team) => team.teamNumber === planStatsTeam,
+              )}
+              eventSummaries={planStats}
+              onOpenChange={(open) => {
+                if (!open) setPlanStatsTeam(null);
+              }}
+            />
+          </DeferredSection>
+        )}
         {activeView === 'Admin' && isAdmin && (
           <div className="section-tabs flex gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
             <Button
@@ -3734,113 +4005,121 @@ export default function Home() {
         {activeView === 'Admin' &&
           isAdmin &&
           adminSection === 'assignments' && (
-            <div className="grid gap-4 p-4 sm:p-6">
-              <EventTeamAliases
-                eventType={eventPack?.event.eventType ?? null}
-                teams={eventPack?.teams ?? []}
-                onChanged={() => loadEventPack(false, true)}
-              />
-              <EventScheduleBoard
-                members={eventPack?.members ?? []}
-                eventKey={eventPack?.event.key ?? ''}
-                onChanged={() => loadEventPack(false, true)}
-                eventPicker={
-                  <>
-                    {testTeamNumber && (
-                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-400/60 bg-amber-100 px-3 py-2 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">
-                        <strong>Testing as Team {testTeamNumber}</strong>
+            <DeferredSection>
+              <div className="grid gap-4 p-4 sm:p-6">
+                <EventScheduleBoard
+                  members={eventPack?.members ?? []}
+                  eventKey={eventPack?.event.key ?? ''}
+                  onChanged={() => loadEventPack(false, true)}
+                  eventPicker={
+                    <>
+                      {testTeamNumber && (
+                        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-400/60 bg-amber-100 px-3 py-2 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">
+                          <strong>Testing as Team {testTeamNumber}</strong>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={configuringEvent}
+                            onClick={() => void stopTeamTestMode()}
+                          >
+                            Return to Team {baseTeamNumber}
+                          </Button>
+                        </div>
+                      )}
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <label className="flex items-center gap-2 text-sm font-medium">
+                          Team
+                          <Input
+                            className="w-24"
+                            min={1}
+                            max={99999}
+                            inputMode="numeric"
+                            type="number"
+                            value={eventTeamInput}
+                            onChange={(event) =>
+                              setEventTeamInput(event.target.value)
+                            }
+                          />
+                        </label>
                         <Button
                           type="button"
-                          size="sm"
                           variant="outline"
-                          disabled={configuringEvent}
-                          onClick={() => void stopTeamTestMode()}
+                          disabled={
+                            eventsLoading ||
+                            !online ||
+                            !Number.isInteger(Number(eventTeamInput)) ||
+                            Number(eventTeamInput) <= 0
+                          }
+                          onClick={() => {
+                            const teamNumber = Number(eventTeamInput);
+                            setEventKey('');
+                            void loadTeamEventChoices(teamNumber);
+                          }}
                         >
-                          Return to Team {baseTeamNumber}
+                          Find events
+                        </Button>
+                        <label className="flex min-w-0 items-center gap-3 text-sm font-medium">
+                          Event
+                          <select
+                            aria-label={`Team ${eventTeamNumber} event`}
+                            className="h-10 truncate rounded-md border bg-background px-3"
+                            value={eventKey}
+                            onChange={(event) =>
+                              setEventKey(event.target.value)
+                            }
+                            disabled={eventsLoading}
+                          >
+                            <option value="">
+                              {eventsLoading
+                                ? 'Loading events…'
+                                : 'Select an event'}
+                            </option>
+                            {eventChoices.map((event) => (
+                              <option value={event.key} key={event.key}>
+                                {event.name}
+                                {event.date ? ` · ${event.date}` : ''}
+                                {event.location ? ` · ${event.location}` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <Button
+                          className="w-full sm:w-auto"
+                          disabled={
+                            configuringEvent || !online || !session || !eventKey
+                          }
+                          onClick={configureEvent}
+                        >
+                          {configuringEvent
+                            ? 'Loading event…'
+                            : eventTeamNumber === baseTeamNumber
+                              ? 'Use this event'
+                              : `Test as Team ${eventTeamNumber}`}
                         </Button>
                       </div>
-                    )}
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                      <label className="flex items-center gap-2 text-sm font-medium">
-                        Team
-                        <Input
-                          className="w-24"
-                          min={1}
-                          max={99999}
-                          inputMode="numeric"
-                          type="number"
-                          value={eventTeamInput}
-                          onChange={(event) =>
-                            setEventTeamInput(event.target.value)
-                          }
-                        />
-                      </label>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={
-                          eventsLoading ||
-                          !online ||
-                          !Number.isInteger(Number(eventTeamInput)) ||
-                          Number(eventTeamInput) <= 0
-                        }
-                        onClick={() => {
-                          const teamNumber = Number(eventTeamInput);
-                          setEventKey('');
-                          void loadTeamEventChoices(teamNumber);
-                        }}
-                      >
-                        Find events
-                      </Button>
-                      <label className="flex min-w-0 items-center gap-3 text-sm font-medium">
-                        Event
-                        <select
-                          aria-label={`Team ${eventTeamNumber} event`}
-                          className="h-10 truncate rounded-md border bg-background px-3"
-                          value={eventKey}
-                          onChange={(event) => setEventKey(event.target.value)}
-                          disabled={eventsLoading}
+                      {eventMessage && (
+                        <p
+                          className="text-sm text-muted-foreground"
+                          role="status"
                         >
-                          <option value="">
-                            {eventsLoading
-                              ? 'Loading events…'
-                              : 'Select an event'}
-                          </option>
-                          {eventChoices.map((event) => (
-                            <option value={event.key} key={event.key}>
-                              {event.name}
-                              {event.date ? ` · ${event.date}` : ''}
-                              {event.location ? ` · ${event.location}` : ''}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <Button
-                        className="w-full sm:w-auto"
-                        disabled={
-                          configuringEvent || !online || !session || !eventKey
-                        }
-                        onClick={configureEvent}
-                      >
-                        {configuringEvent
-                          ? 'Loading event…'
-                          : eventTeamNumber === baseTeamNumber
-                            ? 'Use this event'
-                            : `Test as Team ${eventTeamNumber}`}
-                      </Button>
-                    </div>
-                    {eventMessage && (
-                      <p
-                        className="text-sm text-muted-foreground"
-                        role="status"
-                      >
-                        {eventMessage}
-                      </p>
-                    )}
-                  </>
-                }
-              />
-            </div>
+                          {eventMessage}
+                        </p>
+                      )}
+                      <EventTeamAliases
+                        eventType={eventPack?.event.eventType ?? null}
+                        teams={eventPack?.teams ?? []}
+                        onChanged={() => loadEventPack(false, true)}
+                      />
+                    </>
+                  }
+                />
+                <DriveTeamPlanner
+                  members={eventPack?.members ?? []}
+                  eventKey={eventPack?.event.key ?? ''}
+                />
+              </div>
+            </DeferredSection>
           )}
         {activeView === 'Data' && (
           <div className="section-tabs flex gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
@@ -3871,18 +4150,20 @@ export default function Home() {
           teamsSection === 'picklist' && (
             <div className="p-4 sm:p-6">
               {eventPack && (
-                <PickListWorkspace
-                  teams={strategyTeams.map((team) => ({
-                    ...team,
-                    name: eventPack.teams.find(
-                      (item) => item.teamNumber === team.teamNumber,
-                    )?.name,
-                  }))}
-                  eventKey={eventPack.event.key}
-                  organizationTeamNumber={organizationTeamNumber}
-                  userId={eventPack.userId}
-                  initialMode="personal"
-                />
+                <DeferredSection>
+                  <PickListWorkspace
+                    teams={strategyTeams.map((team) => ({
+                      ...team,
+                      name: eventPack.teams.find(
+                        (item) => item.teamNumber === team.teamNumber,
+                      )?.name,
+                    }))}
+                    eventKey={eventPack.event.key}
+                    organizationTeamNumber={organizationTeamNumber}
+                    userId={eventPack.userId}
+                    initialMode="personal"
+                  />
+                </DeferredSection>
               )}
             </div>
           )}
@@ -3890,10 +4171,12 @@ export default function Home() {
           canUseStrategy &&
           teamsSection === 'review' && (
             <div className="grid gap-4 p-4 sm:p-6">
-              <ScoutingOperations
-                mode="review"
-                onVideoReview={startVideoReview}
-              />
+              <DeferredSection>
+                <ScoutingOperations
+                  mode="review"
+                  onVideoReview={startVideoReview}
+                />
+              </DeferredSection>
             </div>
           )}
         {activeView === 'Video' && (
@@ -3927,15 +4210,17 @@ export default function Home() {
                 )}
               </CardContent>
             </Card>
-            <MatchVideoLibrary
-              matchId={selectedVideoMatch?.id ?? null}
-              matchLabel={
-                selectedVideoMatch
-                  ? matchLabel(selectedVideoMatch)
-                  : 'this match'
-              }
-              externalVideos={selectedVideoMatch?.videos ?? []}
-            />
+            <DeferredSection>
+              <MatchVideoLibrary
+                matchId={selectedVideoMatch?.id ?? null}
+                matchLabel={
+                  selectedVideoMatch
+                    ? matchLabel(selectedVideoMatch)
+                    : 'this match'
+                }
+                externalVideos={selectedVideoMatch?.videos ?? []}
+              />
+            </DeferredSection>
           </div>
         )}
         {activeView === 'Alliance' && canUseStrategy && (
@@ -3947,37 +4232,41 @@ export default function Home() {
                 </CardContent>
               </Card>
             ) : eventPack ? (
-              <PickListWorkspace
-                teams={strategyTeams.map((team) => ({
-                  ...team,
-                  name: eventPack.teams.find(
-                    (item) => item.teamNumber === team.teamNumber,
-                  )?.name,
-                }))}
-                eventKey={eventPack.event.key}
-                organizationTeamNumber={organizationTeamNumber}
-                userId={eventPack.userId}
-                initialMode="selection"
-              />
+              <DeferredSection>
+                <PickListWorkspace
+                  teams={strategyTeams.map((team) => ({
+                    ...team,
+                    name: eventPack.teams.find(
+                      (item) => item.teamNumber === team.teamNumber,
+                    )?.name,
+                  }))}
+                  eventKey={eventPack.event.key}
+                  organizationTeamNumber={organizationTeamNumber}
+                  userId={eventPack.userId}
+                  initialMode="selection"
+                />
+              </DeferredSection>
             ) : null}
           </div>
         )}
         {activeView === 'Data' && teamsSection === 'analysis' && (
           <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
-            <TeamComparison
-              teams={strategyTeams.map((team) => ({
-                ...team,
-                name: eventPack?.teams.find(
-                  (item) => item.teamNumber === team.teamNumber,
-                )?.name,
-              }))}
-              matches={(eventPack?.matches ?? []).map((match) => ({
-                key: match.key,
-                label: matchLabel(match),
-                red: match.alliances.red,
-                blue: match.alliances.blue,
-              }))}
-            />
+            <DeferredSection>
+              <TeamComparison
+                teams={strategyTeams.map((team) => ({
+                  ...team,
+                  name: eventPack?.teams.find(
+                    (item) => item.teamNumber === team.teamNumber,
+                  )?.name,
+                }))}
+                matches={(eventPack?.matches ?? []).map((match) => ({
+                  key: match.key,
+                  label: matchLabel(match),
+                  red: match.alliances.red,
+                  blue: match.alliances.blue,
+                }))}
+              />
+            </DeferredSection>
             <Card className="sm:col-span-2">
               <CardHeader>
                 <CardTitle>Event Data</CardTitle>
@@ -4048,8 +4337,8 @@ export default function Home() {
                     : 'Select a team above'}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-5 lg:grid-cols-3 lg:items-start">
-                <div className="grid gap-4 sm:grid-cols-[10rem_1fr] lg:grid-cols-[8rem_1fr]">
+              <CardContent className="space-y-5">
+                <div className="grid gap-4 sm:grid-cols-[12rem_1fr] sm:items-start">
                   <TeamRobotPhoto
                     teamNumber={selectedTeam}
                     hasPitPhoto={Boolean(analysis?.pit?.photoObjectKey)}
@@ -4062,10 +4351,10 @@ export default function Home() {
                     <p className="text-sm text-muted-foreground">
                       median observed points
                     </p>
-                    <div className="mini-stats">
+                    <div className="mini-stats sm:!grid-cols-3">
                       <span>
                         <strong>{analysis?.medianActiveFuel ?? 0}</strong>{' '}
-                        median active FUEL
+                        median active Fuel
                       </span>
                       <span>
                         <strong>
@@ -4082,9 +4371,9 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-                <section className="space-y-3">
+                <section className="space-y-3 border-t pt-5">
                   <h3 className="font-semibold">TBA and external ratings</h3>
-                  <div className="mini-stats">
+                  <div className="mini-stats !mt-0 sm:!grid-cols-3 xl:!grid-cols-5">
                     <span>
                       <strong>
                         {selectedStrategyTeam?.epa?.toFixed(1) ?? '—'}
@@ -4132,9 +4421,9 @@ export default function Home() {
                     </span>
                   </div>
                 </section>
-                <section className="space-y-3">
+                <section className="space-y-3 border-t pt-5">
                   <h3 className="font-semibold">Reliability and coverage</h3>
-                  <div className="mini-stats">
+                  <div className="mini-stats !mt-0 sm:!grid-cols-2 lg:!grid-cols-4">
                     <span>
                       <strong>
                         L1 {analysis?.towerLevelCounts.level1 ?? 0} · L2{' '}
@@ -4235,8 +4524,8 @@ export default function Home() {
               </CardHeader>
               <CardContent>
                 <p className="mb-3 text-sm text-muted-foreground">
-                  Match-by-match observed points, autonomous FUEL, teleoperated
-                  FUEL, and defense rating (0–4).
+                  Match-by-match observed points, autonomous Fuel, teleoperated
+                  Fuel, and defense rating (0–4).
                 </p>
                 <TeamTrendChart trends={analysis?.trends ?? []} />
               </CardContent>
@@ -4281,7 +4570,9 @@ export default function Home() {
         )}
         {activeView === 'Admin' && isAdmin && adminSection === 'settings' && (
           <div className="grid gap-4 p-4 sm:p-6">
-            <GuestPassManager />
+            <DeferredSection>
+              <GuestPassManager />
+            </DeferredSection>
             <Card>
               <CardHeader>
                 <CardTitle>Team members and roles</CardTitle>
@@ -4327,11 +4618,10 @@ export default function Home() {
                           {guest ? 'Temporary partner access' : member.email}
                         </small>
                         <div className="member-card-role">
-                          <span>Scouting role</span>
                           {guest ? (
                             <Badge variant="outline">Guest scout</Badge>
                           ) : member.role === 'owner' ? (
-                            <Badge>Owner</Badge>
+                            <div className="member-owner-role">Owner</div>
                           ) : (
                             <select
                               aria-label={`Scouting role for ${member.name}`}
@@ -4399,7 +4689,7 @@ export default function Home() {
           </div>
         )}
         {activeView === 'Account' && (
-          <div className="grid gap-4 p-4 sm:p-6">
+          <div className="grid items-start gap-4 p-4 sm:p-6 lg:grid-cols-3">
             <Card>
               <CardHeader>
                 <CardTitle>Account</CardTitle>
@@ -4515,7 +4805,7 @@ export default function Home() {
                 </form>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="lg:col-span-3">
               <CardHeader>
                 <CardTitle>Other signed-in devices</CardTitle>
               </CardHeader>
@@ -4523,18 +4813,23 @@ export default function Home() {
                 {accountSessions
                   .filter((item) => item.id !== currentSessionId)
                   .map((item) => (
-                    <div className="rounded-lg border p-2.5" key={item.id}>
-                      <p
-                        className="truncate text-sm font-medium"
-                        title={item.userAgent ?? undefined}
-                      >
-                        {formatDeviceName(item.userAgent)}
-                      </p>
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {item.location ?? 'Location unavailable'}
-                      </p>
+                    <div
+                      className="flex min-w-0 items-center gap-3 rounded-lg border p-2.5"
+                      key={item.id}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className="truncate text-sm font-medium"
+                          title={item.userAgent ?? undefined}
+                        >
+                          {formatDeviceName(item.userAgent)}
+                        </p>
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                          {item.location ?? 'Location unavailable'}
+                        </p>
+                      </div>
                       <Button
-                        className="mt-2 w-full"
+                        className="shrink-0"
                         size="sm"
                         variant="outline"
                         onClick={() => void revokeSession(item.id)}
@@ -4580,7 +4875,9 @@ export default function Home() {
                 </p>
               </CardContent>
             </Card>
-            <QrRelay online={online} />
+            <DeferredSection>
+              <QrRelay online={online} />
+            </DeferredSection>
           </div>
         )}
       </section>

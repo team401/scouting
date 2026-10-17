@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -154,10 +153,6 @@ export function TeamStatsDialog({
             Team {teamNumber ?? ''}
             {teamName ? ` — ${teamName}` : ''}
           </DialogTitle>
-          <DialogDescription>
-            Scouting, external ratings, reliability, and pit data for the
-            current event.
-          </DialogDescription>
         </DialogHeader>
 
         {error && <p className="text-sm text-destructive">{error}</p>}
@@ -198,7 +193,7 @@ export function TeamStatsDialog({
               metricRank(eventSummaries, teamNumber, 'medianPoints'),
             ],
             [
-              'Median active FUEL',
+              'Median active Fuel',
               number(stats.medianActiveFuel),
               metricRank(eventSummaries, teamNumber, 'medianActiveFuel'),
             ],
@@ -329,6 +324,12 @@ export function TeamStatsDialog({
                     {pit.payload.autonomousDepot ? 'Yes' : 'No'}
                   </strong>
                   visits depot in auto
+                </span>
+                <span>
+                  <strong className="block">
+                    {pit.payload.autonomousOutpost ? 'Yes' : 'No'}
+                  </strong>
+                  visits outpost in auto
                 </span>
                 {typeof pit.payload.notes === 'string' && pit.payload.notes ? (
                   <span className="col-span-2 sm:col-span-4">
