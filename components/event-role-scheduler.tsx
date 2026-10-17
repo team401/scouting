@@ -367,9 +367,11 @@ export function PersonalEventSchedule({
   }, [cacheId, previewUserId]);
 
   useEffect(() => {
-    if (previewUserId) return;
     let cancelled = false;
-    void fetch('/api/drive-team')
+    const query = previewUserId
+      ? `?userId=${encodeURIComponent(previewUserId)}`
+      : '';
+    void fetch(`/api/drive-team${query}`)
       .then(async (response) => {
         if (!response.ok) return;
         const body = (await response.json()) as {

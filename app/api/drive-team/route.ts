@@ -124,9 +124,15 @@ export async function GET(request: Request) {
       { status: 401 },
     );
   const organizationId = actor.membership.organizationId;
+  const requestUrl = new URL(request.url);
   const all =
     canManageAssignments(actor.membership.role) &&
-    new URL(request.url).searchParams.get('all') === '1';
+    requestUrl.searchParams.get('all') === '1';
+  const requestedUserId = requestUrl.searchParams.get('userId');
+  const viewedUserId =
+    requestedUserId && canManageAssignments(actor.membership.role)
+      ? requestedUserId
+      : actor.session.user.id;
   const eventId = await currentEventId(organizationId);
   if (!eventId) return Response.json(all ? { slots: [] } : { assignments: [] });
 
@@ -167,11 +173,11 @@ export async function GET(request: Request) {
          slots.human_player_user_id, slots.technician_user_id, slots.coach_user_id)
      ORDER BY CASE slots.phase WHEN 'qual' THEN 0 ELSE 1 END, slots.slot_number`,
   )
-    .bind(organizationId, eventId, actor.session.user.id)
+    .bind(organizationId, eventId, viewedUserId)
     .all<PublishedRow>();
   const assignments = rows.results.flatMap((row) =>
     drivePositions
-      .filter((position) => row[position.key] === actor.session.user.id)
+      .filter((position) => row[position.key] === viewedUserId)
       .map((position) => ({
         phase: row.phase,
         slotNumber: row.slotNumber,
