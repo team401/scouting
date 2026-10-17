@@ -70,13 +70,13 @@ export function EventTeamAliases({
   return (
     <section className="space-y-3">
       <h3 className="font-semibold">Offseason Teams</h3>
-      <div className="divide-y">
+      <div className="grid gap-x-6 gap-y-2 md:grid-cols-2 2xl:grid-cols-3">
         {demoTeams.map((team) => {
           const value = drafts[team.teamNumber] ?? '';
           const saved = team.customName ?? '';
           return (
             <div
-              className="grid gap-2 py-2 first:pt-0 last:pb-0 sm:grid-cols-[auto_1fr_auto] sm:items-center"
+              className="grid min-w-0 gap-2 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center"
               key={team.teamNumber}
             >
               <strong>Team {team.teamNumber}</strong>
