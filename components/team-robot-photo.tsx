@@ -1,6 +1,11 @@
 'use client';
 
-import { ChevronLeft, ChevronRight, LoaderCircle } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  LoaderCircle,
+  Maximize2,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
@@ -84,13 +89,13 @@ export function TeamRobotPhoto({
   }, [hasPitPhoto, teamNumber]);
 
   useEffect(() => {
-    if (!viewerOpen || availableSources.length < 2) return;
+    if (availableSources.length < 2) return;
     const timer = window.setInterval(
       () => setPhotoIndex((current) => (current + 1) % availableSources.length),
       5000,
     );
     return () => window.clearInterval(timer);
-  }, [availableSources.length, viewerOpen]);
+  }, [availableSources.length]);
 
   const source = availableSources[photoIndex % availableSources.length];
 
@@ -133,27 +138,31 @@ export function TeamRobotPhoto({
 
   return (
     <>
-      <button
-        type="button"
+      <div
         className={cn(
-          'group relative aspect-square cursor-zoom-in overflow-hidden rounded-lg border bg-muted outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          'group relative aspect-square overflow-hidden rounded-lg border bg-muted',
           className,
         )}
-        onClick={() => setViewerOpen(true)}
-        title={`View Team ${teamNumber} robot photo full screen`}
       >
-        <img
-          className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
-          src={source}
-          alt={`Team ${teamNumber} robot`}
-          onLoad={() => setImageLoading(false)}
-          onError={() => {
-            setFailedSources((current) => new Set(current).add(source));
-            setPhotoIndex(0);
-          }}
-        />
+        <button
+          type="button"
+          className="absolute inset-0 cursor-zoom-in outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          onClick={() => setViewerOpen(true)}
+          aria-label={`View Team ${teamNumber} robot photo full screen`}
+        >
+          <img
+            className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+            src={source}
+            alt={`Team ${teamNumber} robot`}
+            onLoad={() => setImageLoading(false)}
+            onError={() => {
+              setFailedSources((current) => new Set(current).add(source));
+              setPhotoIndex(0);
+            }}
+          />
+        </button>
         {imageLoading && (
-          <span className="absolute inset-0 grid place-items-center bg-muted text-sm text-muted-foreground">
+          <span className="pointer-events-none absolute inset-0 grid place-items-center bg-muted text-sm text-muted-foreground">
             <span className="flex items-center gap-2">
               <LoaderCircle
                 className="size-4 animate-spin"
@@ -163,14 +172,36 @@ export function TeamRobotPhoto({
             </span>
           </span>
         )}
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute right-2 bottom-2 rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white"
+        {availableSources.length > 1 && (
+          <div className="absolute bottom-2 left-2 flex gap-1">
+            <button
+              type="button"
+              className="grid size-9 place-items-center rounded-full bg-black/70 text-white hover:bg-black/90"
+              aria-label="Previous robot photo"
+              onClick={() => movePhoto(-1)}
+            >
+              <ChevronLeft className="size-5" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="grid size-9 place-items-center rounded-full bg-black/70 text-white hover:bg-black/90"
+              aria-label="Next robot photo"
+              onClick={() => movePhoto(1)}
+            >
+              <ChevronRight className="size-5" aria-hidden="true" />
+            </button>
+          </div>
+        )}
+        <button
+          type="button"
+          className="absolute right-2 bottom-2 grid size-9 place-items-center rounded-full bg-black/70 text-white hover:bg-black/90"
+          onClick={() => setViewerOpen(true)}
+          aria-label="View robot photo full screen"
+          title="View full screen"
         >
-          View full screen
-        </span>
-        <span className="sr-only">View robot photo full screen</span>
-      </button>
+          <Maximize2 className="size-4" aria-hidden="true" />
+        </button>
+      </div>
       <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
         <DialogContent className="flex h-dvh w-screen max-w-none rounded-none bg-black p-0 text-white ring-0 sm:max-w-none [&_[data-slot=dialog-close]]:bg-black/70 [&_[data-slot=dialog-close]]:text-white [&_[data-slot=dialog-close]]:hover:bg-black">
           <DialogTitle className="sr-only">
