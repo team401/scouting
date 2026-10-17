@@ -173,10 +173,10 @@ export function TeamRobotPhoto({
           </span>
         )}
         {availableSources.length > 1 && (
-          <div className="absolute bottom-2 left-2 flex gap-1">
+          <>
             <button
               type="button"
-              className="grid size-9 place-items-center rounded-full bg-black/70 text-white hover:bg-black/90"
+              className="absolute top-1/2 left-1 grid size-9 -translate-y-1/2 place-items-center rounded-full bg-black/30 text-white/80 opacity-75 backdrop-blur-[1px] transition hover:bg-black/55 hover:text-white hover:opacity-100 focus-visible:opacity-100"
               aria-label="Previous robot photo"
               onClick={() => movePhoto(-1)}
             >
@@ -184,13 +184,13 @@ export function TeamRobotPhoto({
             </button>
             <button
               type="button"
-              className="grid size-9 place-items-center rounded-full bg-black/70 text-white hover:bg-black/90"
+              className="absolute top-1/2 right-1 grid size-9 -translate-y-1/2 place-items-center rounded-full bg-black/30 text-white/80 opacity-75 backdrop-blur-[1px] transition hover:bg-black/55 hover:text-white hover:opacity-100 focus-visible:opacity-100"
               aria-label="Next robot photo"
               onClick={() => movePhoto(1)}
             >
               <ChevronRight className="size-5" aria-hidden="true" />
             </button>
-          </div>
+          </>
         )}
         <button
           type="button"
