@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import {
   canFillDrivePosition,
+  defaultPlayoffMatches,
   drivePhases,
   drivePositions,
   hasDuplicateDriveMember,
@@ -120,6 +121,42 @@ async function runInChunks(statements: D1PreparedStatement[]) {
     await env.DB.batch(statements.slice(index, index + 50));
 }
 
+async function ensurePlayoffSlots(organizationId: string, eventId: string) {
+  const existing = await env.DB.prepare(
+    `SELECT slot_number AS slotNumber FROM drive_team_slots
+     WHERE event_id = ? AND phase = 'playoff'`,
+  )
+    .bind(eventId)
+    .all<{ slotNumber: number }>();
+  const existingNumbers = new Set(
+    existing.results.map((row) => row.slotNumber),
+  );
+  const missing = Array.from(
+    { length: defaultPlayoffMatches },
+    (_, index) => index + 1,
+  ).filter((slotNumber) => !existingNumbers.has(slotNumber));
+  if (!missing.length) return;
+
+  const now = Date.now();
+  await runInChunks([
+    ...missing.map((slotNumber) =>
+      env.DB.prepare(
+        `INSERT OR IGNORE INTO drive_team_slots
+         (id, organization_id, event_id, phase, slot_number, created_at, updated_at)
+         VALUES (?, ?, ?, 'playoff', ?, ?, ?)`,
+      ).bind(
+        crypto.randomUUID(),
+        organizationId,
+        eventId,
+        slotNumber,
+        now,
+        now,
+      ),
+    ),
+    markDraftChanged(eventId, now),
+  ]);
+}
+
 export async function GET(request: Request) {
   const actor = await identity(request);
   if (!actor)
@@ -141,6 +178,7 @@ export async function GET(request: Request) {
   if (!eventId) return Response.json(all ? { slots: [] } : { assignments: [] });
 
   if (all) {
+    await ensurePlayoffSlots(organizationId, eventId);
     const slots = await draftSlotsWithMatches(env.DB, organizationId, eventId);
     return Response.json({
       slots: slots.map((slot) => ({
@@ -215,6 +253,11 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Load an event first.' }, { status: 409 });
   const { phase } = parsed.data;
   const count = parsed.data.expectedMatches;
+  if (phase === 'playoff' && count !== defaultPlayoffMatches)
+    return Response.json(
+      { error: `Playoff plans always use ${defaultPlayoffMatches} matches.` },
+      { status: 400 },
+    );
 
   const existing = await env.DB.prepare(
     `SELECT slot_number AS slotNumber,

@@ -6,6 +6,7 @@ import {
   drivePositionClasses,
   drivePositionClassForLabel,
   drivePositions,
+  defaultPlayoffMatches,
   emptyDriveTeamMembers,
   hasDuplicateDriveMember,
   matchLabel,
@@ -214,4 +215,8 @@ void test('match labels describe qualification and playoff matches', () => {
 void test('planned labels distinguish quals from playoffs', () => {
   assert.equal(plannedLabel('qual', 4), 'Planned match 4');
   assert.equal(plannedLabel('playoff', 2), 'Planned playoff 2');
+});
+
+void test('drive team planning always reserves six playoff matches', () => {
+  assert.equal(defaultPlayoffMatches, 6);
 });

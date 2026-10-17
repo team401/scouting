@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   canFillDrivePosition,
+  defaultPlayoffMatches,
   drivePositionClasses,
   drivePositions,
   matchLabel,
@@ -216,9 +217,7 @@ export function DriveTeamPlanner({
   eventKey: string;
 }) {
   const [slots, setSlots] = useState<PlannedSlot[]>([]);
-  const [expectedInput, setExpectedInput] = useState<
-    Record<DrivePhase, string>
-  >({ qual: '', playoff: '' });
+  const [expectedInput, setExpectedInput] = useState('');
   const [publishedAt, setPublishedAt] = useState<number | null>(null);
   const [hasUnpublishedChanges, setHasUnpublishedChanges] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -229,14 +228,11 @@ export function DriveTeamPlanner({
 
   const applyCache = useCallback((cached: DrivePlannerCache) => {
     setSlots(cached.slots);
-    setExpectedInput({
-      qual: cached.slots.some((slot) => slot.phase === 'qual')
+    setExpectedInput(
+      cached.slots.some((slot) => slot.phase === 'qual')
         ? String(cached.slots.filter((slot) => slot.phase === 'qual').length)
         : '',
-      playoff: cached.slots.some((slot) => slot.phase === 'playoff')
-        ? String(cached.slots.filter((slot) => slot.phase === 'playoff').length)
-        : '',
-    });
+    );
     setPublishedAt(cached.publishedAt);
     setHasUnpublishedChanges(cached.hasUnpublishedChanges);
   }, []);
@@ -366,8 +362,8 @@ export function DriveTeamPlanner({
     setHasUnpublishedChanges(true);
   }
 
-  async function setExpectedMatches(phase: DrivePhase) {
-    const count = Number(expectedInput[phase]);
+  async function setExpectedMatches() {
+    const count = Number(expectedInput);
     if (!Number.isInteger(count) || count < 1 || count > maxExpectedMatches) {
       setMessage(`Choose between 1 and ${maxExpectedMatches} matches.`);
       return;
@@ -377,7 +373,7 @@ export function DriveTeamPlanner({
     const response = await fetch('/api/drive-team', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ phase, expectedMatches: count }),
+      body: JSON.stringify({ phase: 'qual', expectedMatches: count }),
     });
     const body = await readBody<{ error?: string }>(response);
     if (!response.ok) {
@@ -387,9 +383,7 @@ export function DriveTeamPlanner({
     }
     await load();
     setBusy(false);
-    setMessage(
-      `Planning ${count} ${phase === 'playoff' ? 'playoff' : 'qualification'} matches.`,
-    );
+    setMessage(`Planning ${count} qualification matches.`);
   }
 
   async function publishDriveTeams() {
@@ -435,40 +429,42 @@ export function DriveTeamPlanner({
       <section className="space-y-2" key={phase}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="font-semibold">{phaseTitle[phase]}</h3>
-          <div className="flex items-center gap-2">
-            <label className="flex items-center gap-2 text-sm font-medium">
-              Expected matches
-              <input
-                aria-label={`Expected ${phaseTitle[phase]} matches`}
-                className="h-9 w-24 rounded-md border bg-background px-2 text-center text-sm tabular-nums"
-                type="number"
-                min={1}
-                max={maxExpectedMatches}
-                inputMode="numeric"
-                value={expectedInput[phase]}
-                onChange={(event) =>
-                  setExpectedInput((current) => ({
-                    ...current,
-                    [phase]: event.target.value,
-                  }))
-                }
-              />
-            </label>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={busy}
-              onClick={() => void setExpectedMatches(phase)}
-            >
-              Set count
-            </Button>
-          </div>
+          {phase === 'qual' ? (
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                Expected matches
+                <input
+                  aria-label="Expected qualification matches"
+                  className="h-9 w-24 rounded-md border bg-background px-2 text-center text-sm tabular-nums"
+                  type="number"
+                  min={1}
+                  max={maxExpectedMatches}
+                  inputMode="numeric"
+                  value={expectedInput}
+                  onChange={(event) => setExpectedInput(event.target.value)}
+                />
+              </label>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() => void setExpectedMatches()}
+              >
+                Set count
+              </Button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {defaultPlayoffMatches} planned matches
+            </p>
+          )}
         </div>
 
         {phaseSlots.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Set the expected {phase === 'playoff' ? 'playoff' : 'qualification'}{' '}
-            matches to create rows.
+            {phase === 'playoff'
+              ? 'Preparing playoff matches…'
+              : 'Set the expected qualification matches to create rows.'}
           </p>
         ) : (
           <div
