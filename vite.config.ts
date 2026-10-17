@@ -17,7 +17,7 @@ export default defineConfig(async ({ mode }) => {
       (useRemoteBindings
         ? 'team401-scouting-staging'
         : 'team401-scouting-local'),
-    main: 'vinext/server/fetch-handler',
+    main: './worker.ts',
     compatibility_date: '2026-05-15',
     compatibility_flags: ['nodejs_compat'],
     routes: customDomain
@@ -50,6 +50,25 @@ export default defineConfig(async ({ mode }) => {
           'team401-scouting-files-local',
       },
     ],
+    triggers: {
+      crons: ['*/15 * * * *'],
+    },
+    observability: {
+      enabled: true,
+      redact_query_string: true,
+      issues: { enabled: true },
+      logs: {
+        enabled: true,
+        invocation_logs: true,
+        head_sampling_rate: 1,
+        persist: true,
+      },
+      traces: {
+        enabled: true,
+        head_sampling_rate: 0.1,
+        persist: true,
+      },
+    },
   };
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
   // settings; application environment belongs in ignored `.env*` files.

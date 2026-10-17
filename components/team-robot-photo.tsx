@@ -1,9 +1,11 @@
 'use client';
 
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LoaderCircle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+
+const knownPhotoCounts = new Map<number, number>();
 
 export function TeamRobotPhoto({
   teamNumber,
@@ -14,7 +16,16 @@ export function TeamRobotPhoto({
   hasPitPhoto?: boolean;
   className?: string;
 }) {
-  const [tbaPhotoCount, setTbaPhotoCount] = useState(teamNumber ? 1 : 0);
+  // Reuse confirmed metadata during this page session. For a new team, wait
+  // for metadata so the metadata and image requests do not race for the
+  // server-side cache refresh lock.
+  const knownPhotoCount = teamNumber
+    ? knownPhotoCounts.get(teamNumber)
+    : undefined;
+  const [tbaPhotoCount, setTbaPhotoCount] = useState(knownPhotoCount ?? 0);
+  const [photoLookupState, setPhotoLookupState] = useState<
+    'loading' | 'ready' | 'error'
+  >(teamNumber && knownPhotoCount === undefined ? 'loading' : 'ready');
   const sources = useMemo(() => {
     if (!teamNumber) return [];
     return [
@@ -26,52 +37,79 @@ export function TeamRobotPhoto({
     ];
   }, [hasPitPhoto, tbaPhotoCount, teamNumber]);
   const [photoIndex, setPhotoIndex] = useState(0);
-  const [failed, setFailed] = useState(false);
+  const [failedSources, setFailedSources] = useState<Set<string>>(new Set());
+  const [imageLoading, setImageLoading] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const availableSources = sources.filter(
+    (candidate) => !failedSources.has(candidate),
+  );
 
   useEffect(() => {
     let cancelled = false;
-    setTbaPhotoCount(teamNumber ? 1 : 0);
+    const rememberedCount = teamNumber
+      ? knownPhotoCounts.get(teamNumber)
+      : undefined;
+    setTbaPhotoCount(rememberedCount ?? 0);
+    setPhotoLookupState(
+      teamNumber && rememberedCount === undefined ? 'loading' : 'ready',
+    );
     if (teamNumber)
       void fetch(`/api/team-photo?team=${teamNumber}&meta=1&v=3`)
         .then(async (response) => {
-          if (!response.ok) return null;
+          if (response.status === 404) return { count: 0 };
+          if (!response.ok) throw new Error('Could not load photo metadata');
           return (await response.json()) as { count?: number };
         })
         .then((body) => {
-          if (!cancelled && body)
-            setTbaPhotoCount(Math.max(0, body.count ?? 0));
+          if (!cancelled) {
+            const count = Math.max(0, body.count ?? 0);
+            knownPhotoCounts.set(teamNumber, count);
+            setTbaPhotoCount(count);
+            setPhotoLookupState('ready');
+          }
         })
-        .catch(() => undefined);
+        .catch(() => {
+          if (!cancelled && rememberedCount === undefined)
+            setPhotoLookupState('error');
+        });
     return () => {
       cancelled = true;
     };
   }, [teamNumber]);
 
   useEffect(() => {
-    setFailed(false);
+    setFailedSources(new Set());
     setPhotoIndex(0);
     setViewerOpen(false);
   }, [hasPitPhoto, teamNumber]);
 
   useEffect(() => {
-    if (!viewerOpen || sources.length < 2) return;
+    if (!viewerOpen || availableSources.length < 2) return;
     const timer = window.setInterval(
-      () => setPhotoIndex((current) => (current + 1) % sources.length),
+      () => setPhotoIndex((current) => (current + 1) % availableSources.length),
       5000,
     );
     return () => window.clearInterval(timer);
-  }, [sources.length, viewerOpen]);
+  }, [availableSources.length, viewerOpen]);
 
-  const source = sources[photoIndex];
+  const source = availableSources[photoIndex % availableSources.length];
+
+  useEffect(() => {
+    setImageLoading(Boolean(source));
+  }, [source]);
 
   function movePhoto(direction: number) {
     setPhotoIndex(
-      (current) => (current + direction + sources.length) % sources.length,
+      (current) =>
+        (current + direction + availableSources.length) %
+        availableSources.length,
     );
   }
 
-  if (!source || (failed && sources.length === 1))
+  if (!source) {
+    const isLoading = photoLookupState === 'loading';
+    const isUnavailable =
+      photoLookupState === 'error' || failedSources.size > 0;
     return (
       <div
         className={cn(
@@ -79,9 +117,19 @@ export function TeamRobotPhoto({
           className,
         )}
       >
-        No robot photo
+        <span className="flex items-center justify-center gap-2 px-3">
+          {isLoading && (
+            <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+          )}
+          {isLoading
+            ? 'Loading robot photo…'
+            : isUnavailable
+              ? 'Robot photo unavailable'
+              : 'No robot photo'}
+        </span>
       </div>
     );
+  }
 
   return (
     <>
@@ -98,12 +146,23 @@ export function TeamRobotPhoto({
           className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
           src={source}
           alt={`Team ${teamNumber} robot`}
+          onLoad={() => setImageLoading(false)}
           onError={() => {
-            if (photoIndex < sources.length - 1)
-              setPhotoIndex((current) => current + 1);
-            else setFailed(true);
+            setFailedSources((current) => new Set(current).add(source));
+            setPhotoIndex(0);
           }}
         />
+        {imageLoading && (
+          <span className="absolute inset-0 grid place-items-center bg-muted text-sm text-muted-foreground">
+            <span className="flex items-center gap-2">
+              <LoaderCircle
+                className="size-4 animate-spin"
+                aria-hidden="true"
+              />
+              Loading robot photo…
+            </span>
+          </span>
+        )}
         <span
           aria-hidden="true"
           className="pointer-events-none absolute right-2 bottom-2 rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white"
@@ -130,7 +189,7 @@ export function TeamRobotPhoto({
               src={source}
               alt={`Team ${teamNumber} robot, full screen`}
             />
-            {sources.length > 1 && (
+            {availableSources.length > 1 && (
               <>
                 <button
                   type="button"
@@ -149,7 +208,7 @@ export function TeamRobotPhoto({
                   <ChevronRight aria-hidden="true" />
                 </button>
                 <div className="pointer-events-none absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-2">
-                  {sources.map((_, index) => (
+                  {availableSources.map((_, index) => (
                     <span
                       className={`size-2 rounded-full ${index === photoIndex ? 'bg-white' : 'bg-white/40'}`}
                       key={index}

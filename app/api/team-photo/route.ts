@@ -2,11 +2,17 @@ import { env } from 'cloudflare:workers';
 import { auth } from '@/lib/auth';
 
 const provider = 'tba-team-photo-v3';
-const freshForMs = 24 * 60 * 60 * 1000;
+const freshForMs = 7 * 24 * 60 * 60 * 1000;
 const missingForMs = 6 * 60 * 60 * 1000;
 const lockForMs = 30 * 1000;
 const maxBytes = 10 * 1024 * 1024;
-const imageTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const imageTypes = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/avif',
+]);
 const mediaTypes = new Set(['cdphotothread', 'imgur', 'smugmug-photo']);
 const mediaTypePriority = new Map([
   ['smugmug-photo', 0],
@@ -33,8 +39,52 @@ type CacheRow = {
 type TbaMedia = {
   type?: string;
   direct_url?: string;
+  foreign_key?: string;
   preferred?: boolean;
 };
+
+function metadataResponse(count: number) {
+  return Response.json(
+    { count },
+    {
+      headers: {
+        'cache-control':
+          'private, max-age=604800, stale-while-revalidate=2592000',
+      },
+    },
+  );
+}
+
+function detectedImageType(bytes: ArrayBuffer) {
+  const data = new Uint8Array(bytes);
+  if (data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff)
+    return 'image/jpeg';
+  if (
+    data[0] === 0x89 &&
+    data[1] === 0x50 &&
+    data[2] === 0x4e &&
+    data[3] === 0x47
+  )
+    return 'image/png';
+  if (
+    String.fromCharCode(...data.slice(0, 4)) === 'RIFF' &&
+    String.fromCharCode(...data.slice(8, 12)) === 'WEBP'
+  )
+    return 'image/webp';
+  return null;
+}
+
+function candidateUrls(item: TbaMedia) {
+  const urls = new Set<string>();
+  if (item.direct_url?.startsWith('https://')) urls.add(item.direct_url);
+  // Some TBA Imgur records point at the gallery page or omit an extension.
+  // The image CDN URL is more reliable from Workers and avoids fetching HTML.
+  if (item.type === 'imgur' && item.foreign_key) {
+    urls.add(`https://i.imgur.com/${item.foreign_key}.jpg`);
+    urls.add(`https://i.imgur.com/${item.foreign_key}.png`);
+  }
+  return [...urls];
+}
 
 function parsePayload(value: string | null) {
   if (!value) return {};
@@ -48,7 +98,46 @@ function parsePayload(value: string | null) {
 function extensionFor(contentType: string) {
   if (contentType === 'image/png') return 'png';
   if (contentType === 'image/webp') return 'webp';
+  if (contentType === 'image/gif') return 'gif';
+  if (contentType === 'image/avif') return 'avif';
   return 'jpg';
+}
+
+async function cacheIsComplete(payload: CachePayload) {
+  if (!payload.images?.length) return false;
+  const objects = await Promise.all(
+    payload.images.map((image) => env.FILES.head(image.objectKey)),
+  );
+  return objects.every(Boolean);
+}
+
+async function waitForCachedResponse(
+  providerName: string,
+  key: string,
+  index: number,
+  metadataOnly: boolean,
+) {
+  // Another request for this team may be filling R2. Give it a brief chance to
+  // finish so concurrent cards do not expose cache coordination as a 503.
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const refreshed = await env.DB.prepare(
+      `SELECT payload, refreshing_until AS refreshingUntil
+       FROM external_api_cache WHERE provider = ? AND cache_key = ?`,
+    )
+      .bind(providerName, key)
+      .first<{ payload: string | null; refreshingUntil: number }>();
+    if (!refreshed) return null;
+    const refreshedPayload = parsePayload(refreshed.payload);
+    if (refreshedPayload.missing)
+      return new Response('Not found', { status: 404 });
+    if (await cacheIsComplete(refreshedPayload))
+      return metadataOnly
+        ? metadataResponse(refreshedPayload.images?.length ?? 0)
+        : cachedResponse(refreshedPayload, index);
+    if (refreshed.refreshingUntil <= Date.now()) return null;
+  }
+  return null;
 }
 
 async function cachedResponse(payload: CachePayload, index: number) {
@@ -59,7 +148,10 @@ async function cachedResponse(payload: CachePayload, index: number) {
   const headers = new Headers();
   object.writeHttpMetadata(headers);
   headers.set('etag', object.httpEtag);
-  headers.set('cache-control', 'private, max-age=86400');
+  headers.set(
+    'cache-control',
+    'private, max-age=604800, stale-while-revalidate=2592000',
+  );
   return new Response(object.body, { headers });
 }
 
@@ -108,14 +200,15 @@ export async function GET(request: Request) {
   let payload = parsePayload(row.payload);
   const now = Date.now();
   const validFor = payload.missing ? missingForMs : freshForMs;
+  const completeCache = payload.missing ? true : await cacheIsComplete(payload);
   if (row.fetchedAt > now - validFor) {
     if (payload.missing) return new Response('Not found', { status: 404 });
-    if (metadataOnly)
-      return Response.json({ count: payload.images?.length ?? 0 });
+    if (metadataOnly && completeCache)
+      return metadataResponse(payload.images?.length ?? 0);
     const response = await cachedResponse(payload, imageIndex);
     if (response) return response;
-    if (payload.images?.length)
-      return new Response('Photo not found', { status: 404 });
+    // D1 can outlive local or deployed object storage. A missing object makes
+    // this cache entry stale even when its timestamp is still fresh.
   }
   if (!env.TBA_AUTH_KEY)
     return new Response('TBA is not configured', { status: 503 });
@@ -127,10 +220,17 @@ export async function GET(request: Request) {
     .bind(now + lockForMs, provider, cacheKey, now)
     .run();
   if (!lock.meta.changes) {
-    if (metadataOnly && payload.images?.length)
-      return Response.json({ count: payload.images.length });
+    if (metadataOnly && completeCache && payload.images?.length)
+      return metadataResponse(payload.images.length);
     const stale = await cachedResponse(payload, imageIndex);
     if (stale) return stale;
+    const refreshed = await waitForCachedResponse(
+      provider,
+      cacheKey,
+      imageIndex,
+      metadataOnly,
+    );
+    if (refreshed) return refreshed;
     return new Response('Photo is being cached', {
       status: 503,
       headers: { 'retry-after': '2' },
@@ -139,7 +239,7 @@ export async function GET(request: Request) {
 
   try {
     const headers = new Headers({ 'X-TBA-Auth-Key': env.TBA_AUTH_KEY });
-    if (row.etag) headers.set('if-none-match', row.etag);
+    if (row.etag && completeCache) headers.set('if-none-match', row.etag);
     const mediaResponse = await fetch(
       `https://www.thebluealliance.com/api/v3/team/frc${teamNumber}/media/${event.seasonYear}`,
       { headers },
@@ -152,8 +252,7 @@ export async function GET(request: Request) {
       )
         .bind(now, provider, cacheKey)
         .run();
-      if (metadataOnly)
-        return Response.json({ count: payload.images?.length ?? 0 });
+      if (metadataOnly) return metadataResponse(payload.images?.length ?? 0);
       const response = await cachedResponse(payload, imageIndex);
       if (response) return response;
       if (payload.missing) return new Response('Not found', { status: 404 });
@@ -167,7 +266,7 @@ export async function GET(request: Request) {
         (item) =>
           item.type &&
           mediaTypes.has(item.type) &&
-          item.direct_url?.startsWith('https://'),
+          candidateUrls(item).length > 0,
       )
       .sort(
         (a, b) =>
@@ -182,28 +281,32 @@ export async function GET(request: Request) {
       sourceUrl: string;
     }> = [];
     for (const candidate of candidates.slice(0, 12)) {
-      try {
-        const imageResponse = await fetch(candidate.direct_url!);
-        const contentType =
-          imageResponse.headers.get('content-type')?.split(';')[0] ?? '';
-        const contentLength = Number(
-          imageResponse.headers.get('content-length') ?? 0,
-        );
-        if (
-          !imageResponse.ok ||
-          !imageTypes.has(contentType) ||
-          contentLength > maxBytes
-        )
-          continue;
-        const bytes = await imageResponse.arrayBuffer();
-        if (bytes.byteLength > maxBytes) continue;
-        selected.push({
-          bytes,
-          contentType,
-          sourceUrl: candidate.direct_url!,
-        });
-      } catch {
-        // Try the next TBA image when a third-party host is unavailable.
+      for (const sourceUrl of candidateUrls(candidate)) {
+        try {
+          const imageResponse = await fetch(sourceUrl, {
+            headers: {
+              accept: 'image/avif,image/webp,image/png,image/jpeg,image/*',
+              'user-agent': 'Team401-Scouting/1.0',
+            },
+            redirect: 'follow',
+          });
+          const declaredType =
+            imageResponse.headers.get('content-type')?.split(';')[0] ?? '';
+          const contentLength = Number(
+            imageResponse.headers.get('content-length') ?? 0,
+          );
+          if (!imageResponse.ok || contentLength > maxBytes) continue;
+          const bytes = await imageResponse.arrayBuffer();
+          if (bytes.byteLength > maxBytes) continue;
+          const contentType = imageTypes.has(declaredType)
+            ? declaredType
+            : detectedImageType(bytes);
+          if (!contentType) continue;
+          selected.push({ bytes, contentType, sourceUrl });
+          break;
+        } catch {
+          // Try alternate URLs and then the next TBA image.
+        }
       }
     }
 
@@ -231,7 +334,8 @@ export async function GET(request: Request) {
       await env.FILES.put(objectKey, image.bytes, {
         httpMetadata: {
           contentType: image.contentType,
-          cacheControl: 'private, max-age=86400',
+          cacheControl:
+            'private, max-age=604800, stale-while-revalidate=2592000',
         },
         customMetadata: {
           source: 'the-blue-alliance',
@@ -262,7 +366,7 @@ export async function GET(request: Request) {
         cacheKey,
       )
       .run();
-    if (metadataOnly) return Response.json({ count: images.length });
+    if (metadataOnly) return metadataResponse(images.length);
     return (
       (await cachedResponse(payload, imageIndex)) ??
       new Response('Not found', { status: 404 })
@@ -275,7 +379,7 @@ export async function GET(request: Request) {
       .bind(provider, cacheKey)
       .run();
     if (metadataOnly && payload.images?.length)
-      return Response.json({ count: payload.images.length });
+      return metadataResponse(payload.images.length);
     const stale = await cachedResponse(payload, imageIndex);
     if (stale) return stale;
     console.error('Could not cache TBA team photo', error);

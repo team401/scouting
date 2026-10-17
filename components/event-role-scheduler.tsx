@@ -14,7 +14,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { assignmentClass } from '@/components/event-schedule-board';
+import { assignmentClass } from '@/lib/assignment-class';
 import { matchLabel, plannedLabel, type DrivePhase } from '@/lib/drive-team';
 import { getCachedValue, saveCachedValue } from '@/lib/offline-db';
 import {
@@ -367,21 +367,37 @@ export function PersonalEventSchedule({
   }, [cacheId, previewUserId]);
 
   useEffect(() => {
-    if (previewUserId) return;
     let cancelled = false;
-    void fetch('/api/drive-team')
+    const driveCacheId = cacheId ? `${cacheId}:drive-team` : null;
+    if (driveCacheId)
+      void getCachedValue<DriveTeamAssignment[]>(driveCacheId)
+        .then((cached) => {
+          if (!cancelled && cached) setDriveTeam(cached);
+        })
+        .catch(() => undefined);
+    const query = previewUserId
+      ? `?userId=${encodeURIComponent(previewUserId)}`
+      : '';
+    void fetch(`/api/drive-team${query}`)
       .then(async (response) => {
         if (!response.ok) return;
         const body = (await response.json()) as {
           assignments?: DriveTeamAssignment[];
         };
-        if (!cancelled) setDriveTeam(body.assignments ?? []);
+        if (!cancelled) {
+          const assignments = body.assignments ?? [];
+          setDriveTeam(assignments);
+          if (driveCacheId)
+            void saveCachedValue(driveCacheId, assignments).catch(
+              () => undefined,
+            );
+        }
       })
       .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, [previewUserId]);
+  }, [cacheId, previewUserId]);
 
   useEffect(() => {
     // Reminders are for the signed-in user, not for a previewed member.

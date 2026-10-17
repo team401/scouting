@@ -13,6 +13,7 @@ import {
   type DrivePositionKey,
   type DriveTeamSlotMembers,
 } from '@/lib/drive-team';
+import { getCachedValue, saveCachedValue } from '@/lib/offline-db';
 
 type PlannerMember = {
   id: string;
@@ -198,7 +199,19 @@ function DrivePersonInput({
   );
 }
 
-export function DriveTeamPlanner({ members }: { members: PlannerMember[] }) {
+type DrivePlannerCache = {
+  slots: PlannedSlot[];
+  publishedAt: number | null;
+  hasUnpublishedChanges: boolean;
+};
+
+export function DriveTeamPlanner({
+  members,
+  eventKey,
+}: {
+  members: PlannerMember[];
+  eventKey: string;
+}) {
   const [slots, setSlots] = useState<PlannedSlot[]>([]);
   const [expectedInput, setExpectedInput] = useState<
     Record<DrivePhase, string>
@@ -208,6 +221,22 @@ export function DriveTeamPlanner({ members }: { members: PlannerMember[] }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [unpublishConfirmOpen, setUnpublishConfirmOpen] = useState(false);
+  const [cacheReady, setCacheReady] = useState(false);
+  const cacheId = eventKey ? `drive-team-planner:${eventKey}` : null;
+
+  const applyCache = useCallback((cached: DrivePlannerCache) => {
+    setSlots(cached.slots);
+    setExpectedInput({
+      qual: cached.slots.some((slot) => slot.phase === 'qual')
+        ? String(cached.slots.filter((slot) => slot.phase === 'qual').length)
+        : '',
+      playoff: cached.slots.some((slot) => slot.phase === 'playoff')
+        ? String(cached.slots.filter((slot) => slot.phase === 'playoff').length)
+        : '',
+    });
+    setPublishedAt(cached.publishedAt);
+    setHasUnpublishedChanges(cached.hasUnpublishedChanges);
+  }, []);
 
   const activeMembers = useMemo(
     () =>
@@ -238,26 +267,50 @@ export function DriveTeamPlanner({ members }: { members: PlannerMember[] }) {
         publishBody.error ?? 'Could not load drive team publication.',
       );
     const loadedSlots = planBody.slots ?? [];
-    setSlots(loadedSlots);
-    setExpectedInput({
-      qual: loadedSlots.some((slot) => slot.phase === 'qual')
-        ? String(loadedSlots.filter((slot) => slot.phase === 'qual').length)
-        : '',
-      playoff: loadedSlots.some((slot) => slot.phase === 'playoff')
-        ? String(loadedSlots.filter((slot) => slot.phase === 'playoff').length)
-        : '',
-    });
-    setPublishedAt(publishBody.publishedAt ?? null);
-    setHasUnpublishedChanges(publishBody.hasUnpublishedChanges ?? false);
-  }, []);
+    const loaded: DrivePlannerCache = {
+      slots: loadedSlots,
+      publishedAt: publishBody.publishedAt ?? null,
+      hasUnpublishedChanges: publishBody.hasUnpublishedChanges ?? false,
+    };
+    applyCache(loaded);
+    if (cacheId) await saveCachedValue(cacheId, loaded);
+    setCacheReady(true);
+  }, [applyCache, cacheId]);
 
   useEffect(() => {
-    load().catch((error: unknown) =>
-      setMessage(
-        error instanceof Error ? error.message : 'Could not load drive teams.',
-      ),
-    );
-  }, [load]);
+    let cancelled = false;
+    setCacheReady(false);
+    void (async () => {
+      if (cacheId) {
+        const cached = await getCachedValue<DrivePlannerCache>(cacheId).catch(
+          () => undefined,
+        );
+        if (cached && !cancelled) applyCache(cached);
+      }
+      if (cancelled) return;
+      setCacheReady(true);
+      await load();
+    })().catch((error: unknown) => {
+      if (!cancelled)
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : 'Could not load drive teams.',
+        );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [applyCache, cacheId, load]);
+
+  useEffect(() => {
+    if (!cacheReady || !cacheId) return;
+    void saveCachedValue<DrivePlannerCache>(cacheId, {
+      slots,
+      publishedAt,
+      hasUnpublishedChanges,
+    }).catch(() => undefined);
+  }, [cacheId, cacheReady, hasUnpublishedChanges, publishedAt, slots]);
 
   // A picker lists people who can fill that position. The current person stays
   // listed so an existing assignment never shows as blank.
@@ -448,14 +501,14 @@ export function DriveTeamPlanner({ members }: { members: PlannerMember[] }) {
                     }
                     key={`${slot.phase}:${slot.slotNumber}`}
                   >
-                    <th className="border-r border-b border-slate-300 bg-inherit px-3 py-2 text-center align-top font-medium tabular-nums dark:border-border">
+                    <th className="border-r border-b border-slate-300 bg-inherit px-3 py-2 text-center align-middle font-medium tabular-nums dark:border-border">
                       {phase === 'playoff'
                         ? `Playoff ${slot.slotNumber}`
                         : slot.slotNumber}
                     </th>
                     {drivePositions.map((position) => (
                       <td
-                        className="border-r border-b border-slate-300 px-2 py-1 align-top dark:border-border"
+                        className="border-r border-b border-slate-300 px-2 py-1 align-middle dark:border-border"
                         key={position.key}
                       >
                         <DrivePersonInput
@@ -473,7 +526,7 @@ export function DriveTeamPlanner({ members }: { members: PlannerMember[] }) {
                         />
                       </td>
                     ))}
-                    <td className="border-b border-slate-300 bg-inherit px-3 py-2 text-center align-top whitespace-nowrap text-muted-foreground tabular-nums dark:border-border">
+                    <td className="border-b border-slate-300 bg-inherit px-3 py-2 text-center align-middle whitespace-nowrap text-muted-foreground tabular-nums dark:border-border">
                       {slot.official
                         ? `${matchLabel(slot.official.matchNumber, slot.official.compLevel)}${matchTime(slot.official.startsAt)}`
                         : 'Not released yet'}

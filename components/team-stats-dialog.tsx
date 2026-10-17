@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -154,10 +153,6 @@ export function TeamStatsDialog({
             Team {teamNumber ?? ''}
             {teamName ? ` — ${teamName}` : ''}
           </DialogTitle>
-          <DialogDescription>
-            Scouting, external ratings, reliability, and pit data for the
-            current event.
-          </DialogDescription>
         </DialogHeader>
 
         {error && <p className="text-sm text-destructive">{error}</p>}

@@ -840,7 +840,7 @@ export function PickListWorkspace({
         )}
 
         {mode === 'selection' && (
-          <div className="alliance-selection-layout grid min-h-[70vh] gap-3 lg:grid-cols-[19rem_1fr]">
+          <div className="alliance-selection-layout grid min-h-[70vh] gap-3 lg:grid-cols-[24rem_1fr] xl:grid-cols-[30rem_1fr]">
             <aside className="selection-team-pool flex min-h-0 flex-col rounded-lg border bg-muted/30">
               <div className="grid grid-cols-2 border-b">
                 <button
@@ -937,11 +937,13 @@ export function PickListWorkspace({
                       </span>
                       <div className="min-w-0">
                         <p className="truncate">
-                          <strong>{team.teamNumber}</strong>
-                          <span className="ml-2 text-muted-foreground">
-                            {metrics.get(team.teamNumber)?.name}
-                          </span>
+                          <strong>Team {team.teamNumber}</strong>
                         </p>
+                        {metrics.get(team.teamNumber)?.name && (
+                          <small className="block truncate text-muted-foreground">
+                            {metrics.get(team.teamNumber)?.name}
+                          </small>
+                        )}
                         <small className="block truncate text-muted-foreground">
                           xP{' '}
                           {metrics.get(team.teamNumber)?.xp?.toFixed(1) ?? '—'}
