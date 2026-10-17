@@ -1157,21 +1157,20 @@ export function EventScheduleBoard({
               {rosterMembers.map((member) => {
                 const checked = attendanceLoaded && attendeeIds.has(member.id);
                 return (
-                  <label
-                    className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors ${checked ? 'border-primary/50 bg-primary/10' : 'hover:bg-muted/60'}`}
+                  <button
+                    type="button"
+                    aria-pressed={checked}
+                    className={`flex min-h-10 w-full cursor-pointer items-center justify-center rounded-md border px-3 py-2 text-center font-medium transition-colors ${checked ? 'border-primary bg-primary/15 text-primary' : 'hover:bg-muted/60'}`}
                     key={member.id}
+                    onClick={() => {
+                      const next = new Set(attendeeIds);
+                      if (checked) next.delete(member.id);
+                      else next.add(member.id);
+                      changeAttendance(next);
+                    }}
                   >
-                    <Checkbox
-                      checked={checked}
-                      onCheckedChange={(nextChecked) => {
-                        const next = new Set(attendeeIds);
-                        if (nextChecked) next.add(member.id);
-                        else next.delete(member.id);
-                        changeAttendance(next);
-                      }}
-                    />
                     <span>{member.name}</span>
-                  </label>
+                  </button>
                 );
               })}
             </div>
