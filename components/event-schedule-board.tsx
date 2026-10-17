@@ -28,7 +28,7 @@ import {
   summarizeShifts,
   type EventControls,
 } from '@/lib/event-coverage';
-import { eventRoles, type EventRole } from '@/lib/event-roles';
+import { assignableEventRoles, type EventRole } from '@/lib/event-roles';
 import { getCachedValue, saveCachedValue } from '@/lib/offline-db';
 
 const stations = ['red1', 'red2', 'red3', 'blue1', 'blue2', 'blue3'] as const;
@@ -150,7 +150,10 @@ const allScheduleOptions: ScheduleOption[] = [
     label: displayStation(station),
     value: `station:${station}`,
   })),
-  ...eventRoles.map(([role]) => ({ label: role, value: `role:${role}` })),
+  ...assignableEventRoles.map(([role]) => ({
+    label: role,
+    value: `role:${role}`,
+  })),
 ];
 
 // Only stations and roles the event has turned on are offered anywhere.

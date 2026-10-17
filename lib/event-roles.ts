@@ -33,6 +33,12 @@ export const eventRoles = [
 ] as const;
 
 export type EventRole = (typeof eventRoles)[number][0];
+// Generic scouting assignments use the six station choices instead. Keep the
+// role defined for existing schedules and descriptions, but do not offer it in
+// role pickers.
+export const assignableEventRoles = eventRoles.filter(
+  ([name]) => name !== 'Scouting',
+);
 export const eventRoleNames = eventRoles.map(([name]) => name);
 export const eventRoleDescription = Object.fromEntries(eventRoles) as Record<
   EventRole,
