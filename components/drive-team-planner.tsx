@@ -39,6 +39,15 @@ const phaseTitle: Record<DrivePhase, string> = {
   playoff: 'Playoffs',
 };
 
+const drivePositionClass: Record<DrivePositionKey, string> = {
+  driverUserId: 'bg-sky-500 text-white dark:bg-sky-700',
+  operatorUserId: 'bg-violet-500 text-white dark:bg-violet-700',
+  humanPlayerUserId: 'bg-emerald-500 text-white dark:bg-emerald-700',
+  technicianUserId:
+    'bg-amber-300 text-amber-950 dark:bg-amber-600 dark:text-amber-950',
+  coachUserId: 'bg-rose-500 text-white dark:bg-rose-700',
+};
+
 // Error responses can have empty bodies, so a failed request must not throw a
 // parse error.
 async function readBody<T extends { error?: string }>(
@@ -70,6 +79,7 @@ function DrivePersonInput({
   label,
   hasValue,
   valueName,
+  valueClass,
   options,
   disabled,
   onChoose,
@@ -77,6 +87,7 @@ function DrivePersonInput({
   label: string;
   hasValue: boolean;
   valueName: string;
+  valueClass: string;
   options: PersonOption[];
   disabled: boolean;
   onChoose: (id: string | null) => void;
@@ -124,7 +135,7 @@ function DrivePersonInput({
       <input
         ref={inputRef}
         aria-label={label}
-        className={`h-9 w-full min-w-[9rem] rounded-md border px-2 text-center text-sm transition-colors ${hasValue && !open ? 'border-primary/40 bg-primary/10 text-foreground' : 'border-slate-300 bg-white text-foreground hover:border-slate-400 hover:bg-slate-50 focus:border-primary dark:border-border dark:bg-background dark:hover:border-muted-foreground dark:hover:bg-muted/40'}`}
+        className={`h-9 w-full min-w-[9rem] rounded-md border px-2 text-center text-sm transition-colors ${hasValue && !open ? `border-transparent font-semibold ${valueClass}` : 'border-slate-300 bg-white text-foreground hover:border-slate-400 hover:bg-slate-50 focus:border-primary dark:border-border dark:bg-background dark:hover:border-muted-foreground dark:hover:bg-muted/40'}`}
         autoComplete="off"
         value={open ? query : valueName}
         disabled={disabled}
@@ -480,7 +491,7 @@ export function DriveTeamPlanner({
                   </th>
                   {drivePositions.map((position) => (
                     <th
-                      className="border-r border-b border-slate-300 px-3 py-2 text-center dark:border-border"
+                      className={`border-r border-b border-slate-300 px-3 py-2 text-center dark:border-border ${drivePositionClass[position.key]}`}
                       key={position.key}
                     >
                       {position.label}
@@ -515,6 +526,7 @@ export function DriveTeamPlanner({
                           label={`${position.label}, ${phaseTitle[phase]} ${slot.slotNumber}`}
                           hasValue={slot[position.key] !== null}
                           valueName={memberName(slot[position.key])}
+                          valueClass={drivePositionClass[position.key]}
                           options={pickerOptions(
                             position.key,
                             slot[position.key],
