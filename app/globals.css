@@ -863,7 +863,7 @@ select option {
     transform: rotate(-4deg);
   }
   .topbar h1 {
-    max-width: calc(100vw - 84px);
+    max-width: calc(100vw - 128px);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

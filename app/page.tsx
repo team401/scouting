@@ -815,6 +815,8 @@ export default function Home() {
   const [tower, setTower] = useState('');
   const [path, setPath] = useState('');
   const [dark, setDark] = useState(false);
+  const [immersiveSupported, setImmersiveSupported] = useState(false);
+  const [immersiveActive, setImmersiveActive] = useState(false);
   const [_saved, setSaved] = useState(false);
   const [defenseRating, setDefenseRating] = useState<number | null | undefined>(
     undefined,
@@ -2410,13 +2412,38 @@ export default function Home() {
     return () => cancelAnimationFrame(frame);
   }, []);
 
+  useEffect(() => {
+    setImmersiveSupported(Boolean(document.fullscreenEnabled));
+    const updateFullscreenState = () =>
+      setImmersiveActive(Boolean(document.fullscreenElement));
+    updateFullscreenState();
+    document.addEventListener('fullscreenchange', updateFullscreenState);
+    return () =>
+      document.removeEventListener('fullscreenchange', updateFullscreenState);
+  }, []);
+
+  async function toggleImmersiveMode() {
+    setMobileMenuOpen(false);
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else
+        await document.documentElement.requestFullscreen({
+          navigationUI: 'hide',
+        });
+    } catch {
+      // Browsers may reject fullscreen when a device policy disables it.
+    }
+  }
+
   function toggleTheme() {
     const next = !dark;
     document.documentElement.classList.toggle('dark', next);
     localStorage.setItem('team401-theme', next ? 'dark' : 'light');
     document
-      .querySelector('meta[name="theme-color"]')
-      ?.setAttribute('content', next ? '#24282b' : '#65152f');
+      .querySelectorAll('meta[name="theme-color"]')
+      .forEach((meta) =>
+        meta.setAttribute('content', next ? '#24282b' : '#f3f5f7'),
+      );
     setDark(next);
   }
 
@@ -2519,6 +2546,28 @@ export default function Home() {
                 {dark ? <Sun /> : <Moon />}
               </Button>
             </div>
+            {immersiveSupported && (
+              <Button
+                type="button"
+                className="mobile-header-menu-button"
+                size="icon"
+                variant="ghost"
+                aria-label={
+                  immersiveActive
+                    ? 'Exit immersive mode'
+                    : 'Enter immersive mode'
+                }
+                aria-pressed={immersiveActive}
+                title={
+                  immersiveActive
+                    ? 'Exit immersive mode'
+                    : 'Enter immersive mode'
+                }
+                onClick={() => void toggleImmersiveMode()}
+              >
+                {immersiveActive ? <Minimize2 /> : <Maximize2 />}
+              </Button>
+            )}
             <Button
               type="button"
               className="mobile-header-menu-button"
