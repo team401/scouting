@@ -553,14 +553,17 @@ export function PersonalEventSchedule({
           <CardHeader>
             <CardTitle>Drive team</CardTitle>
           </CardHeader>
-          <CardContent className="divide-y">
+          <CardContent className="space-y-2">
             {untimedDriveTeam.map((item) => (
               <div
                 key={`${item.slotNumber}:${item.position}`}
-                className="flex items-center justify-between gap-3 py-2.5"
+                className={`grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2.5 sm:grid-cols-[1fr_auto_1fr] ${assignmentClass('Drive Team')}`}
               >
-                <span className="font-semibold">{item.position}</span>
-                <span className="text-sm whitespace-nowrap text-muted-foreground">
+                <span className="hidden sm:block" aria-hidden="true" />
+                <span className="min-w-0 justify-self-start text-left font-semibold sm:justify-self-center sm:text-center">
+                  {item.position}
+                </span>
+                <span className="justify-self-end text-sm whitespace-nowrap opacity-75">
                   {item.matchNumber === null
                     ? `${plannedLabel(item.phase, item.slotNumber)} · not released yet`
                     : `${matchLabel(item.matchNumber, item.compLevel)} · time TBA`}
