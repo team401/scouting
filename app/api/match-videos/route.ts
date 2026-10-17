@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { auth } from '@/lib/auth';
 
 const allowedTypes = new Set(['video/mp4', 'video/webm', 'video/quicktime']);
-const uploadRoles = new Set(['owner', 'admin', 'strategy', 'video']);
 const maxBytes = 2 * 1024 * 1024 * 1024;
 
 const initSchema = z.object({
@@ -59,6 +58,8 @@ async function ownedUpload(mediaId: string, organizationId: string) {
 export async function GET(request: Request) {
   const user = await identity(request);
   if (!user) return new Response('Unauthorized', { status: 401 });
+  if (user.userId.startsWith('guest:'))
+    return new Response('Team 401 membership is required.', { status: 403 });
   const url = new URL(request.url);
   const mediaId = url.searchParams.get('mediaId');
   if (mediaId) {
@@ -125,7 +126,7 @@ export async function GET(request: Request) {
     }>();
   return Response.json({
     videos: videos.results,
-    canUpload: uploadRoles.has(user.role),
+    canUpload: true,
     canDeleteAny: ['owner', 'admin'].includes(user.role),
     userId: user.userId,
   });
@@ -138,9 +139,9 @@ export async function POST(request: Request) {
       { error: 'Sign in to manage match videos.' },
       { status: 401 },
     );
-  if (!uploadRoles.has(user.role))
+  if (user.userId.startsWith('guest:'))
     return Response.json(
-      { error: 'Your role cannot upload match videos.' },
+      { error: 'Team 401 membership is required.' },
       { status: 403 },
     );
   const url = new URL(request.url);
@@ -254,6 +255,11 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   const user = await identity(request);
   if (!user) return Response.json({ error: 'Sign in first.' }, { status: 401 });
+  if (user.userId.startsWith('guest:'))
+    return Response.json(
+      { error: 'Team 401 membership is required.' },
+      { status: 403 },
+    );
   const url = new URL(request.url);
   const mediaId = url.searchParams.get('mediaId') ?? '';
   const uploadId = url.searchParams.get('uploadId');

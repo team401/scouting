@@ -1,9 +1,9 @@
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 export function createGuestPassCode() {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
   const value = Array.from(bytes, (byte) => alphabet[byte % alphabet.length]);
-  return `401-${value.slice(0, 4).join('')}-${value.slice(4, 8).join('')}-${value.slice(8, 12).join('')}-${value.slice(12).join('')}`;
+  return `401-${value.slice(0, 4).join('')}-${value.slice(4).join('')}`;
 }
 
 export function normalizeGuestPassCode(code: string) {

@@ -17,6 +17,11 @@ export function teamNumberFromTbaKey(key: unknown) {
   return Number(key.slice(3));
 }
 
-export function scoutEntryMutationId(eventKey: string, matchKey: string, teamNumber: number, userId: string) {
+export function scoutEntryMutationId(
+  eventKey: string,
+  matchKey: string,
+  teamNumber: number,
+  userId: string,
+) {
   return `scout-entry:${eventKey}-${matchKey}-${teamNumber}:${userId}`;
 }

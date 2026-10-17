@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { GitCompareArrows, Plus, X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import {
   CartesianGrid,
   Legend,
@@ -15,25 +15,35 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/components/ui/combobox';
 import type { TeamTrend } from '@/components/team-trend-chart';
 
 export type ComparisonTeam = {
   teamNumber: number;
+  name?: string | null;
+  xp: number | null;
   epa: number | null;
-  opr: number | null;
   samples: number;
   coverage: number;
+  scheduledMatches: number;
   medianPoints: number;
   medianActiveFuel: number;
-  medianFuelPerCycle: number;
   towerSuccessRate: number;
+  towerLevelCounts: { level1: number; level2: number; level3: number };
+  disabledMatches: number;
   disabledRate: number;
   averageDefense: number;
   pointStdDev: number;
 };
 
-type AnalysisResponse = Omit<ComparisonTeam, 'epa' | 'opr'> & {
+type AnalysisResponse = Omit<ComparisonTeam, 'xp' | 'epa'> & {
   trends?: TeamTrend[];
   error?: string;
 };
@@ -53,12 +63,20 @@ function formatNumber(value: number | null, digits = 1) {
 
 export function TeamComparison({
   teams,
-  matchTeams,
+  matches,
 }: {
   teams: ComparisonTeam[];
-  matchTeams: number[];
+  matches: Array<{
+    key: string;
+    label: string;
+    red: number[];
+    blue: number[];
+  }>;
 }) {
   const [selected, setSelected] = useState<number[]>([]);
+  const [selectedMatchKey, setSelectedMatchKey] = useState(
+    matches[0]?.key ?? '',
+  );
   const [teamInput, setTeamInput] = useState('');
   const [details, setDetails] = useState<Record<number, AnalysisResponse>>({});
   const [message, setMessage] = useState('');
@@ -68,6 +86,20 @@ export function TeamComparison({
     () => new Map(teams.map((team) => [team.teamNumber, team])),
     [teams],
   );
+  const teamNumbers = useMemo(
+    () => teams.map((team) => String(team.teamNumber)),
+    [teams],
+  );
+  const teamLabel = (teamNumber: number) => {
+    const name = teamMap.get(teamNumber)?.name;
+    return name ? `Team ${teamNumber} — ${name}` : `Team ${teamNumber}`;
+  };
+  const selectedMatch = matches.find((match) => match.key === selectedMatchKey);
+
+  useEffect(() => {
+    if (matches.some((match) => match.key === selectedMatchKey)) return;
+    setSelectedMatchKey(matches[0]?.key ?? '');
+  }, [matches, selectedMatchKey]);
 
   useEffect(() => {
     const missing = selected.filter((team) => !details[team]);
@@ -152,15 +184,7 @@ export function TeamComparison({
   return (
     <Card className="sm:col-span-2">
       <CardHeader>
-        <div>
-          <CardTitle className="flex items-center gap-2">
-            <GitCompareArrows /> Team comparison
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Compare scouting output, external ratings, reliability, and trends.
-          </p>
-        </div>
-        <Badge variant="outline">{selected.length}/6 selected</Badge>
+        <CardTitle>Team comparison</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
@@ -173,38 +197,71 @@ export function TeamComparison({
               else setMessage('Enter a valid team number.');
             }}
           >
-            <Input
-              aria-label="Team number to compare"
-              inputMode="numeric"
-              list="comparison-teams"
-              placeholder="Team number"
-              value={teamInput}
-              onChange={(event) =>
-                setTeamInput(event.target.value.replace(/\D/g, ''))
+            <Combobox
+              items={teamNumbers}
+              value={null}
+              inputValue={teamInput}
+              onInputValueChange={(value) =>
+                setTeamInput(value.replace(/\D/g, ''))
               }
-            />
-            <datalist id="comparison-teams">
-              {teams.map((team) => (
-                <option key={team.teamNumber} value={team.teamNumber}>
-                  Team {team.teamNumber}
-                </option>
-              ))}
-            </datalist>
+              onValueChange={(value) => {
+                if (value) addTeam(Number(value));
+              }}
+            >
+              <ComboboxInput
+                aria-label="Team number to compare"
+                inputMode="numeric"
+                placeholder="Team number"
+                className="w-full"
+              />
+              <ComboboxContent>
+                <ComboboxEmpty>No matching teams</ComboboxEmpty>
+                <ComboboxList>
+                  {(teamNumber: string) => (
+                    <ComboboxItem key={teamNumber} value={teamNumber}>
+                      {teamLabel(Number(teamNumber))}
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
             <Button type="submit" variant="outline">
               <Plus /> Add
             </Button>
           </form>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={matchTeams.length === 0}
-            onClick={() => {
-              setSelected([...new Set(matchTeams)].slice(0, 6));
-              setMessage('');
-            }}
-          >
-            Current match teams
-          </Button>
+          <div className="flex min-w-64 flex-1 gap-2 sm:flex-initial">
+            <label className="sr-only" htmlFor="comparison-match">
+              Match to compare
+            </label>
+            <select
+              id="comparison-match"
+              className="h-9 rounded-md border px-3 text-sm"
+              value={selectedMatchKey}
+              onChange={(event) => setSelectedMatchKey(event.target.value)}
+            >
+              {matches.map((match) => (
+                <option value={match.key} key={match.key}>
+                  {match.label}
+                </option>
+              ))}
+            </select>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!selectedMatch}
+              onClick={() => {
+                if (!selectedMatch) return;
+                setSelected(
+                  [
+                    ...new Set([...selectedMatch.red, ...selectedMatch.blue]),
+                  ].slice(0, 6),
+                );
+                setMessage('');
+              }}
+            >
+              Load teams
+            </Button>
+          </div>
           {selected.length > 0 && (
             <Button
               type="button"
@@ -236,20 +293,19 @@ export function TeamComparison({
         {message && <p className="text-sm text-destructive">{message}</p>}
         {selectedTeams.length > 0 ? (
           <>
-            <div className="overflow-x-auto">
+            <div className="team-comparison-table overflow-x-auto">
               <table className="w-full min-w-[900px] text-sm">
                 <thead>
                   <tr className="border-b text-left">
                     <th className="p-2">Team</th>
+                    <th className="p-2">Match13 xP</th>
                     <th className="p-2">EPA</th>
-                    <th className="p-2">OPR</th>
                     <th className="p-2">Median pts</th>
-                    <th className="p-2">FUEL/cycle</th>
                     <th className="p-2">Tower</th>
                     <th className="p-2">Disabled</th>
                     <th className="p-2">Defense</th>
                     <th className="p-2">Consistency</th>
-                    <th className="p-2">Coverage</th>
+                    <th className="p-2">Matches scouted</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -259,27 +315,69 @@ export function TeamComparison({
                       className="border-b last:border-0"
                     >
                       <th className="p-2 text-left">{team.teamNumber}</th>
+                      <td className="p-2">{formatNumber(team.xp)}</td>
                       <td className="p-2">{formatNumber(team.epa)}</td>
-                      <td className="p-2">{formatNumber(team.opr)}</td>
                       <td className="p-2">{team.medianPoints.toFixed(1)}</td>
                       <td className="p-2">
-                        {team.medianFuelPerCycle.toFixed(1)}
+                        L1 {team.towerLevelCounts.level1} · L2{' '}
+                        {team.towerLevelCounts.level2} · L3{' '}
+                        {team.towerLevelCounts.level3}
                       </td>
-                      <td className="p-2">
-                        {Math.round(team.towerSuccessRate * 100)}%
-                      </td>
-                      <td className="p-2">
-                        {Math.round(team.disabledRate * 100)}%
-                      </td>
+                      <td className="p-2">{team.disabledMatches}</td>
                       <td className="p-2">{team.averageDefense.toFixed(1)}</td>
                       <td className="p-2">±{team.pointStdDev.toFixed(1)}</td>
                       <td className="p-2">
-                        {Math.round(team.coverage * 100)}% ({team.samples})
+                        {team.samples}/{team.scheduledMatches}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+            <div className="team-comparison-cards">
+              {selectedTeams.map((team) => (
+                <div className="rounded-lg border p-3" key={team.teamNumber}>
+                  <strong className="text-lg">Team {team.teamNumber}</strong>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                    <span>
+                      <strong>{formatNumber(team.xp)}</strong>
+                      <small className="block text-muted-foreground">
+                        Match13 xP
+                      </small>
+                    </span>
+                    <span>
+                      <strong>{formatNumber(team.epa)}</strong>
+                      <small className="block text-muted-foreground">EPA</small>
+                    </span>
+                    <span>
+                      <strong>{team.medianPoints.toFixed(1)}</strong>
+                      <small className="block text-muted-foreground">
+                        Median points
+                      </small>
+                    </span>
+                    <span>
+                      <strong>{team.averageDefense.toFixed(1)}</strong>
+                      <small className="block text-muted-foreground">
+                        Defense
+                      </small>
+                    </span>
+                    <span>
+                      <strong>{team.disabledMatches}</strong>
+                      <small className="block text-muted-foreground">
+                        Disabled
+                      </small>
+                    </span>
+                    <span>
+                      <strong>
+                        {team.samples}/{team.scheduledMatches}
+                      </strong>
+                      <small className="block text-muted-foreground">
+                        Matches scouted
+                      </small>
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
             <div>
               <h3 className="mb-2 font-semibold">Observed points by match</h3>

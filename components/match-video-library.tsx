@@ -1,8 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { Film, Trash2, Upload } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Camera, Square, Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -29,10 +28,12 @@ const chunkBytes = 8 * 1024 * 1024;
 export function MatchVideoLibrary({
   matchId,
   matchLabel,
+  externalVideos = [],
   playbackOnly = false,
 }: {
   matchId: string | null;
   matchLabel: string;
+  externalVideos?: Array<{ type: string; key: string }>;
   playbackOnly?: boolean;
 }) {
   const [data, setData] = useState<VideoResponse | null>(null);
@@ -40,6 +41,31 @@ export function MatchVideoLibrary({
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [selectedVideoKey, setSelectedVideoKey] = useState('');
+  const previewRef = useRef<HTMLVideoElement>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const videoSources = [
+    ...(data?.videos ?? []).map((video, index) => ({
+      key: `team:${video.id}`,
+      label: `Team ${index + 1}`,
+      kind: 'team' as const,
+      video,
+    })),
+    ...externalVideos
+      .filter((video) => video.type === 'youtube')
+      .map((video, index) => ({
+        key: `tba:${video.key}`,
+        label: `TBA ${index + 1}`,
+        kind: 'tba' as const,
+        video,
+      })),
+  ];
+  const selectedVideo =
+    videoSources.find((source) => source.key === selectedVideoKey) ??
+    videoSources[0];
 
   const loadVideos = useCallback(
     async (signal?: AbortSignal) => {
@@ -71,6 +97,90 @@ export function MatchVideoLibrary({
     });
     return () => controller.abort();
   }, [loadVideos, matchId]);
+
+  useEffect(
+    () => () => {
+      if (recorderRef.current?.state === 'recording')
+        recorderRef.current.stop();
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+    },
+    [],
+  );
+
+  async function startRecording() {
+    if (!matchId) return;
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+      setMessage(
+        'This browser cannot record video here. Record with the camera app, then choose the file below.',
+      );
+      return;
+    }
+    try {
+      setMessage('Requesting camera access…');
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: true,
+      });
+      const candidates = [
+        'video/mp4;codecs=h264,aac',
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm',
+      ];
+      const mimeType = candidates.find((type) =>
+        MediaRecorder.isTypeSupported(type),
+      );
+      const recorder = new MediaRecorder(stream, {
+        ...(mimeType ? { mimeType } : {}),
+        // Keep event video quick to upload while retaining enough detail to
+        // identify robots and field actions on a laptop or tablet.
+        videoBitsPerSecond: 2_500_000,
+        audioBitsPerSecond: 64_000,
+      });
+      streamRef.current = stream;
+      recorderRef.current = recorder;
+      recordedChunksRef.current = [];
+      if (previewRef.current) {
+        previewRef.current.srcObject = stream;
+        await previewRef.current.play();
+      }
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) recordedChunksRef.current.push(event.data);
+      };
+      recorder.onstop = () => {
+        const contentType = (recorder.mimeType || 'video/webm').split(';')[0];
+        const extension = contentType === 'video/mp4' ? 'mp4' : 'webm';
+        const blob = new Blob(recordedChunksRef.current, { type: contentType });
+        const recordedFile = new File(
+          [blob],
+          `${matchLabel.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-${Date.now()}.${extension}`,
+          { type: contentType },
+        );
+        setFile(recordedFile);
+        setRecording(false);
+        setMessage('Recording ready. Review the selection, then upload it.');
+        stream.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+        if (previewRef.current) previewRef.current.srcObject = null;
+      };
+      recorder.start(1000);
+      setRecording(true);
+      setMessage('Recording…');
+    } catch (error) {
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      setRecording(false);
+      setMessage(
+        error instanceof Error
+          ? `Could not start recording: ${error.message}`
+          : 'Could not start recording.',
+      );
+    }
+  }
+
+  function stopRecording() {
+    if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
+  }
 
   async function uploadVideo() {
     if (!matchId || !file) return;
@@ -175,11 +285,32 @@ export function MatchVideoLibrary({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Film /> Match video
-        </CardTitle>
-        <Badge variant="outline">{data?.videos.length ?? 0} uploaded</Badge>
+      <CardHeader className="flex flex-row items-center gap-3 overflow-hidden">
+        <CardTitle className="shrink-0">Match video</CardTitle>
+        {videoSources.length > 1 && (
+          <div
+            className="flex min-w-0 gap-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            role="tablist"
+            aria-label="Video source"
+          >
+            {videoSources.map((source) => (
+              <Button
+                type="button"
+                size="sm"
+                variant={
+                  selectedVideo?.key === source.key ? 'default' : 'ghost'
+                }
+                role="tab"
+                aria-selected={selectedVideo?.key === source.key}
+                className="shrink-0"
+                key={source.key}
+                onClick={() => setSelectedVideoKey(source.key)}
+              >
+                {source.label}
+              </Button>
+            ))}
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         {!matchId ? (
@@ -188,45 +319,88 @@ export function MatchVideoLibrary({
           </p>
         ) : (
           <>
-            {data?.videos.map((video) => (
-              <div className="space-y-2 rounded-lg border p-3" key={video.id}>
+            {selectedVideo?.kind === 'tba' && (
+              <div className="space-y-2">
+                <iframe
+                  className="aspect-video w-full rounded-md bg-black"
+                  src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(selectedVideo.video.key)}`}
+                  title={`${matchLabel} TBA video`}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+                <p className="text-xs text-muted-foreground">
+                  {matchLabel} · provided by The Blue Alliance
+                </p>
+              </div>
+            )}
+            {selectedVideo?.kind === 'team' && (
+              <div className="space-y-2">
                 <video
                   className="aspect-video w-full rounded-md bg-black"
                   controls
                   preload="metadata"
-                  src={`/api/match-videos?mediaId=${encodeURIComponent(video.id)}`}
+                  src={`/api/match-videos?mediaId=${encodeURIComponent(selectedVideo.video.id)}`}
                 >
                   <track kind="captions" />
                 </video>
                 <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                   <span>
-                    {matchLabel} · {(video.bytes / 1024 / 1024).toFixed(1)} MB ·
-                    uploaded by {video.uploaderName}
+                    {matchLabel} ·{' '}
+                    {(selectedVideo.video.bytes / 1024 / 1024).toFixed(1)} MB ·
+                    uploaded by {selectedVideo.video.uploaderName}
                   </span>
                   {!playbackOnly &&
-                    (data.canDeleteAny ||
-                    data.userId === video.uploaderUserId) && (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      aria-label="Delete match video"
-                      onClick={() => void deleteVideo(video.id)}
-                    >
-                      <Trash2 />
-                    </Button>
-                  )}
+                    (data?.canDeleteAny ||
+                      data?.userId === selectedVideo.video.uploaderUserId) && (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label="Delete match video"
+                        onClick={() => void deleteVideo(selectedVideo.video.id)}
+                      >
+                        <Trash2 />
+                      </Button>
+                    )}
                 </div>
               </div>
-            ))}
-            {data && data.videos.length === 0 && (
-              <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-                No video has been uploaded for {matchLabel}.
-              </p>
             )}
+            {data &&
+              data.videos.length === 0 &&
+              externalVideos.length === 0 && (
+                <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                  No video has been uploaded for {matchLabel}.
+                </p>
+              )}
             {!playbackOnly && data?.canUpload && (
               <div className="space-y-2 rounded-lg border p-3">
-                <p className="text-sm font-medium">Upload a recording</p>
+                <p className="text-sm font-medium">Record or upload video</p>
+                <video
+                  ref={previewRef}
+                  className={
+                    recording
+                      ? 'aspect-video w-full rounded-md bg-black object-cover'
+                      : 'hidden'
+                  }
+                  muted
+                  playsInline
+                />
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Button
+                    type="button"
+                    variant={recording ? 'destructive' : 'outline'}
+                    disabled={uploading}
+                    onClick={() =>
+                      recording ? stopRecording() : void startRecording()
+                    }
+                  >
+                    {recording ? <Square /> : <Camera />}
+                    {recording ? 'Stop recording' : 'Record video'}
+                  </Button>
+                </div>
+                <p className="text-xs font-medium">
+                  Or choose an existing file
+                </p>
                 <Input
                   type="file"
                   accept="video/mp4,video/webm,video/quicktime,.mov"
@@ -237,6 +411,12 @@ export function MatchVideoLibrary({
                   MP4, WebM, or MOV up to 2 GB. Keep this page open while the
                   upload finishes.
                 </p>
+                {file && (
+                  <p className="truncate text-sm">
+                    Ready to upload: {file.name} (
+                    {(file.size / 1024 / 1024).toFixed(1)} MB)
+                  </p>
+                )}
                 {uploading && (
                   <progress className="h-2 w-full" max={100} value={progress}>
                     {progress}%

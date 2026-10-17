@@ -14,6 +14,7 @@ void test('parses an Ops Firestore user profile', () => {
         email: { stringValue: ' Scout@Team401.org ' },
         displayName: { stringValue: 'Scout One' },
         role: { stringValue: 'student' },
+        mustResetPassword: { booleanValue: true },
       },
     }),
     {
@@ -21,6 +22,7 @@ void test('parses an Ops Firestore user profile', () => {
       email: 'scout@team401.org',
       displayName: 'Scout One',
       role: 'student',
+      mustResetPassword: true,
     },
   );
 });
@@ -51,12 +53,14 @@ const roster: OpsProfile[] = [
     email: 'coach@team401.org',
     displayName: 'Coach',
     role: 'coach',
+    mustResetPassword: false,
   },
   {
     uid: 'student-1',
     email: 'student@team401.org',
     displayName: 'Student',
     role: 'student',
+    mustResetPassword: false,
   },
 ];
 

@@ -1,44 +1,56 @@
 import tailwindcss from '@tailwindcss/postcss';
 import vinext from 'vinext';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 
 const LOCAL_D1_DATABASE_ID = '00000000-0000-4000-8000-000000000000';
-const workerName =
-  process.env.CLOUDFLARE_WORKER_NAME ?? 'team401-scouting-local';
-const firebaseWebApiKey = process.env.FIREBASE_WEB_API_KEY ?? '';
-const firebaseProjectId = process.env.FIREBASE_PROJECT_ID ?? '';
-const customDomain = process.env.CLOUDFLARE_CUSTOM_DOMAIN;
-
-const localBindingConfig = {
-  name: workerName,
-  main: 'vinext/server/fetch-handler',
-  compatibility_date: '2026-05-15',
-  compatibility_flags: ['nodejs_compat'],
-  routes: customDomain ? [{ pattern: customDomain, custom_domain: true }] : [],
-  vars: {
-    FIREBASE_WEB_API_KEY: firebaseWebApiKey,
-    FIREBASE_PROJECT_ID: firebaseProjectId,
-  },
-  d1_databases: [
-    {
-      binding: 'DB',
-      database_name:
-        process.env.CLOUDFLARE_D1_DATABASE_NAME ?? 'team401-scouting-local',
-      database_id:
-        process.env.CLOUDFLARE_D1_DATABASE_ID ?? LOCAL_D1_DATABASE_ID,
-      migrations_dir: 'drizzle',
+const STAGING_D1_DATABASE_ID = 'd030411e-1ed8-4209-99c5-f625ab02a6a2';
+const VINEXT_PREFETCH_QUEUE =
+  'vinext/dist/shims/internal/app-prefetch-fetch-queue.js';
+export default defineConfig(async ({ mode }) => {
+  const fileEnv = loadEnv(mode, process.cwd(), '');
+  const environment = { ...fileEnv, ...process.env };
+  const customDomain = environment.CLOUDFLARE_CUSTOM_DOMAIN;
+  const useRemoteBindings = mode === 'staging';
+  const localBindingConfig = {
+    name:
+      environment.CLOUDFLARE_WORKER_NAME ??
+      (useRemoteBindings
+        ? 'team401-scouting-staging'
+        : 'team401-scouting-local'),
+    main: 'vinext/server/fetch-handler',
+    compatibility_date: '2026-05-15',
+    compatibility_flags: ['nodejs_compat'],
+    routes: customDomain
+      ? [{ pattern: customDomain, custom_domain: true }]
+      : [],
+    vars: {
+      FIREBASE_WEB_API_KEY: environment.FIREBASE_WEB_API_KEY ?? '',
+      FIREBASE_PROJECT_ID: environment.FIREBASE_PROJECT_ID ?? '',
     },
-  ],
-  r2_buckets: [
-    {
-      binding: 'FILES',
-      bucket_name:
-        process.env.CLOUDFLARE_R2_BUCKET_NAME ?? 'team401-scouting-files-local',
-    },
-  ],
-};
-
-export default defineConfig(async () => {
+    d1_databases: [
+      {
+        binding: 'DB',
+        database_name:
+          environment.CLOUDFLARE_D1_DATABASE_NAME ??
+          (useRemoteBindings
+            ? 'team401-scouting-staging'
+            : 'team401-scouting-local'),
+        database_id:
+          environment.CLOUDFLARE_D1_DATABASE_ID ??
+          (useRemoteBindings ? STAGING_D1_DATABASE_ID : LOCAL_D1_DATABASE_ID),
+        migrations_dir: 'drizzle',
+        remote: useRemoteBindings,
+      },
+    ],
+    r2_buckets: [
+      {
+        binding: 'FILES',
+        bucket_name:
+          environment.CLOUDFLARE_R2_BUCKET_NAME ??
+          'team401-scouting-files-local',
+      },
+    ],
+  };
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
   // settings; application environment belongs in ignored `.env*` files.
   process.env.WRANGLER_WRITE_LOGS ??= 'false';
@@ -50,6 +62,16 @@ export default defineConfig(async () => {
 
   return {
     css: { postcss: { plugins: [tailwindcss()] } },
+    optimizeDeps: {
+      exclude: [VINEXT_PREFETCH_QUEUE],
+    },
+    environments: {
+      rsc: {
+        optimizeDeps: {
+          exclude: [VINEXT_PREFETCH_QUEUE],
+        },
+      },
+    },
     plugins: [
       vinext(),
       cloudflare({

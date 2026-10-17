@@ -7,7 +7,6 @@ import {
   Film,
   RefreshCw,
   RotateCcw,
-  Users,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,7 +32,8 @@ type Operations = {
     submittedAt: number | null;
     points: number | null;
     activeFuel: number | null;
-    cycles: number | null;
+    centerSwipes: number | null;
+    passedFuel: number | null;
     flags: string[];
     reopened: boolean;
     reviewSource: string | null;
@@ -170,9 +170,7 @@ export function ScoutingOperations({
     return (
       <Card className="mb-4">
         <CardHeader>
-          <CardTitle>
-            <Users /> Live station coverage
-          </CardTitle>
+          <CardTitle>Live station coverage</CardTitle>
           <div className="flex gap-2">
             <Badge variant="outline">
               {data?.summary.submitted ?? 0} submitted
@@ -232,9 +230,7 @@ export function ScoutingOperations({
   return (
     <Card className="sm:col-span-2">
       <CardHeader>
-        <CardTitle>
-          <AlertTriangle /> Scouting data review
-        </CardTitle>
+        <CardTitle>Scouting data review</CardTitle>
         <div className="flex gap-2">
           <Badge variant="outline">
             {data?.summary.submitted ?? 0}/{data?.summary.assigned ?? 0} covered
@@ -313,7 +309,10 @@ export function ScoutingOperations({
             );
           })
           .map((issue) => (
-            <div className="schedule-row" key={issue.id}>
+            <div
+              className="grid gap-3 border-b pb-4 last:border-b-0"
+              key={issue.id}
+            >
               <strong>
                 {matchLabel(issue.matchKey)} · {issue.teamNumber}
               </strong>
@@ -321,7 +320,7 @@ export function ScoutingOperations({
                 {issue.scoutName}
                 {issue.points === null
                   ? ''
-                  : ` · ${issue.points} pts · ${issue.activeFuel} active FUEL · ${issue.cycles} cycles`}
+                  : ` · ${issue.points} pts · ${issue.activeFuel} teleop FUEL · ${issue.centerSwipes} center swipes · ${issue.passedFuel} FUEL passed`}
                 {' · '}
                 {issue.flags.join(' · ')}
               </span>

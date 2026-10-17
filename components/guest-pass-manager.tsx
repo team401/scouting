@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ConfirmActionDialog } from '@/components/confirm-action-dialog';
 
 type GuestPass = {
   id: string;
@@ -17,15 +18,19 @@ type GuestPass = {
   createdAt: number;
   memberDisabled: number;
   expired: number;
+  code: string;
 };
 
 export function GuestPassManager() {
   const [passes, setPasses] = useState<GuestPass[]>([]);
   const [name, setName] = useState('');
   const [hours, setHours] = useState(24);
-  const [newCode, setNewCode] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{
+    pass: GuestPass;
+    action: 'revoke' | 'remove';
+  } | null>(null);
 
   const load = useCallback(async () => {
     const response = await fetch('/api/guest-passes', { cache: 'no-store' });
@@ -52,14 +57,12 @@ export function GuestPassManager() {
       setMessage(body.error ?? 'Could not create the guest pass.');
       return;
     }
-    setNewCode(body.code);
     setName('');
-    setMessage('Guest pass created. Copy it now; it is not stored in readable form.');
+    setMessage('Guest pass created.');
     await load();
   }
 
   async function revokePass(pass: GuestPass) {
-    if (!window.confirm(`Revoke guest access for ${pass.name}?`)) return;
     const response = await fetch('/api/guest-passes', {
       method: 'DELETE',
       headers: { 'content-type': 'application/json' },
@@ -72,28 +75,45 @@ export function GuestPassManager() {
         : (body.error ?? 'Could not revoke the guest pass.'),
     );
     if (response.ok) await load();
+    return response.ok;
+  }
+
+  async function removePass(pass: GuestPass) {
+    const response = await fetch('/api/guest-passes', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: pass.id, action: 'remove' }),
+    });
+    const body = (await response.json()) as { error?: string };
+    setMessage(
+      response.ok
+        ? `${pass.name} was removed.`
+        : (body.error ?? 'Could not remove the guest pass.'),
+    );
+    if (response.ok) await load();
+    return response.ok;
   }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Partner-team guest access</CardTitle>
-        <Badge variant="outline">Revokable</Badge>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Create an individual pass for each visiting scout. Guest accounts can
-          submit scouting data but do not need a Team 401 Ops account.
+          Create one shared code for a partner team. Each visiting scout enters
+          the code and their own name. Revoking the code signs out the entire
+          guest group.
         </p>
         <div className="grid gap-3 sm:grid-cols-[1fr_10rem_auto] sm:items-end">
           <div className="space-y-2">
-            <Label htmlFor="guest-name">Guest name or partner team</Label>
+            <Label htmlFor="guest-name">Partner team or group</Label>
             <Input
               id="guest-name"
               value={name}
               maxLength={80}
               onChange={(event) => setName(event.target.value)}
-              placeholder="Alex — Team 1234"
+              placeholder="Team 1234"
             />
           </div>
           <div className="space-y-2">
@@ -110,31 +130,14 @@ export function GuestPassManager() {
               <option value={168}>7 days</option>
             </select>
           </div>
-          <Button disabled={busy || name.trim().length < 2} onClick={createPass}>
+          <Button
+            disabled={busy || name.trim().length < 2}
+            onClick={createPass}
+          >
             {busy ? <LoaderCircle className="animate-spin" /> : <UserPlus />}
             Create pass
           </Button>
         </div>
-        {newCode && (
-          <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
-            <p className="text-xs font-medium text-muted-foreground">
-              New guest pass — shown only now
-            </p>
-            <div className="mt-1 flex items-center gap-2">
-              <code className="min-w-0 flex-1 overflow-x-auto text-base font-semibold">
-                {newCode}
-              </code>
-              <Button
-                size="icon"
-                variant="outline"
-                aria-label="Copy guest pass"
-                onClick={() => void navigator.clipboard.writeText(newCode)}
-              >
-                <Copy />
-              </Button>
-            </div>
-          </div>
-        )}
         <div className="space-y-2">
           {passes.map((pass) => {
             const active =
@@ -146,6 +149,19 @@ export function GuestPassManager() {
                   <small>
                     Expires {new Date(pass.expiresAt).toLocaleString()}
                   </small>
+                  <div className="mt-1 flex items-center gap-2">
+                    <code className="font-semibold">{pass.code}</code>
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      aria-label={`Copy code for ${pass.name}`}
+                      onClick={() =>
+                        void navigator.clipboard.writeText(pass.code)
+                      }
+                    >
+                      <Copy />
+                    </Button>
+                  </div>
                 </div>
                 <Badge variant={active ? 'default' : 'outline'}>
                   {active ? <Check /> : <X />}
@@ -158,19 +174,64 @@ export function GuestPassManager() {
                         : 'Active'}
                 </Badge>
                 {active && (
-                  <Button variant="outline" size="sm" onClick={() => revokePass(pass)}>
-                    Revoke
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setPendingAction({ pass, action: 'revoke' })
+                      }
+                    >
+                      Revoke
+                    </Button>
+                  </div>
+                )}
+                {!active && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setPendingAction({ pass, action: 'remove' })}
+                  >
+                    Remove
                   </Button>
                 )}
               </div>
             );
           })}
           {!passes.length && (
-            <p className="text-sm text-muted-foreground">No guest passes yet.</p>
+            <p className="text-sm text-muted-foreground">
+              No guest passes yet.
+            </p>
           )}
         </div>
         {message && <p className="text-sm text-muted-foreground">{message}</p>}
       </CardContent>
+      <ConfirmActionDialog
+        open={pendingAction !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingAction(null);
+        }}
+        title={
+          pendingAction?.action === 'revoke'
+            ? `Revoke access for ${pendingAction.pass.name}?`
+            : `Remove ${pendingAction?.pass.name ?? 'this guest pass'}?`
+        }
+        description={
+          pendingAction?.action === 'revoke'
+            ? 'Everyone using this team code will be signed out. Historical scouting data will be kept.'
+            : 'This removes the pass from the guest list. Historical scouting data will be kept.'
+        }
+        confirmLabel={
+          pendingAction?.action === 'revoke' ? 'Revoke access' : 'Remove pass'
+        }
+        destructive
+        onConfirm={() => {
+          if (!pendingAction) return false;
+          return pendingAction.action === 'revoke'
+            ? revokePass(pendingAction.pass)
+            : removePass(pendingAction.pass);
+        }}
+      />
     </Card>
   );
 }

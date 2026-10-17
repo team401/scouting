@@ -30,6 +30,40 @@ export async function signInToOps(email: string, password: string) {
   return body as FirebaseSignIn;
 }
 
+export async function changeOpsPassword(idToken: string, password: string) {
+  const response = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${encodeURIComponent(env.FIREBASE_WEB_API_KEY)}`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ idToken, password, returnSecureToken: true }),
+    },
+  );
+  const body: unknown = await response.json();
+  if (!response.ok) throw new Error(firebaseError(body));
+  return body as { idToken: string };
+}
+
+export async function clearOpsPasswordReset(idToken: string, uid: string) {
+  const response = await fetch(
+    `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(env.FIREBASE_PROJECT_ID)}/databases/(default)/documents/users/${encodeURIComponent(uid)}?updateMask.fieldPaths=mustResetPassword`,
+    {
+      method: 'PATCH',
+      headers: {
+        authorization: `Bearer ${idToken}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        fields: { mustResetPassword: { booleanValue: false } },
+      }),
+    },
+  );
+  if (!response.ok)
+    throw new Error(
+      'The password changed, but Ops could not finish activating the account. Sign in to Ops to complete setup.',
+    );
+}
+
 export async function loadOpsRoster(idToken: string) {
   const response = await fetch(
     `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(env.FIREBASE_PROJECT_ID)}/databases/(default)/documents:runQuery`,
@@ -72,16 +106,31 @@ export async function synchronizeOpsRoster(
     rosterUsers.set(profile.uid, userId);
     if (existing)
       await env.DB.prepare(
-        'UPDATE users SET firebase_uid = ?, email = ?, name = ?, email_verified = 1, updated_at = ? WHERE id = ?',
+        'UPDATE users SET firebase_uid = ?, email = ?, name = ?, ops_role = ?, email_verified = 1, updated_at = ? WHERE id = ?',
       )
-        .bind(profile.uid, profile.email, profile.displayName, now, userId)
+        .bind(
+          profile.uid,
+          profile.email,
+          profile.displayName,
+          profile.role,
+          now,
+          userId,
+        )
         .run();
     else
       await env.DB.prepare(
-        `INSERT INTO users (id, firebase_uid, email, name, email_verified, created_at, updated_at)
-         VALUES (?, ?, ?, ?, 1, ?, ?)`,
+        `INSERT INTO users (id, firebase_uid, email, name, ops_role, email_verified, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 1, ?, ?)`,
       )
-        .bind(userId, profile.uid, profile.email, profile.displayName, now, now)
+        .bind(
+          userId,
+          profile.uid,
+          profile.email,
+          profile.displayName,
+          profile.role,
+          now,
+          now,
+        )
         .run();
   }
   const user = await env.DB.prepare(
@@ -135,5 +184,23 @@ export async function synchronizeOpsRoster(
     )
       .bind(now, effectiveOwnerId)
       .run();
+  const rosterUids = new Set(profiles.map((profile) => profile.uid));
+  const linkedMemberships = await env.DB.prepare(
+    `SELECT memberships.user_id AS userId, memberships.role, users.firebase_uid AS firebaseUid
+     FROM memberships JOIN users ON users.id = memberships.user_id
+     WHERE memberships.organization_id = 'team-401' AND users.firebase_uid IS NOT NULL`,
+  ).all<{ userId: string; role: string; firebaseUid: string }>();
+  for (const membership of linkedMemberships.results) {
+    if (rosterUids.has(membership.firebaseUid) || membership.role === 'owner')
+      continue;
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(
+        membership.userId,
+      ),
+      env.DB.prepare(
+        "DELETE FROM memberships WHERE organization_id = 'team-401' AND user_id = ?",
+      ).bind(membership.userId),
+    ]);
+  }
   return user.id;
 }

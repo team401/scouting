@@ -5,7 +5,10 @@ import { ensureAuthSchema } from '@/lib/ensure-auth-schema';
 import { hashGuestPassCode } from '@/lib/guest-pass';
 import { createScoutingSession } from '@/lib/scouting-session';
 
-const schema = z.object({ code: z.string().trim().min(8).max(80) });
+const schema = z.object({
+  code: z.string().trim().min(8).max(80),
+  name: z.string().trim().min(2).max(80),
+});
 
 export async function POST(request: Request) {
   await ensureAuthSchema(env.DB);
@@ -17,14 +20,20 @@ export async function POST(request: Request) {
   if (!limit.allowed)
     return Response.json(
       { error: 'Too many guest sign-in attempts. Try again shortly.' },
-      { status: 429, headers: { 'retry-after': String(limit.retryAfter ?? 60) } },
+      {
+        status: 429,
+        headers: { 'retry-after': String(limit.retryAfter ?? 60) },
+      },
     );
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success)
-    return Response.json({ error: 'Enter a valid guest pass.' }, { status: 400 });
+    return Response.json(
+      { error: 'Enter a valid guest pass.' },
+      { status: 400 },
+    );
   const hash = await hashGuestPassCode(parsed.data.code);
   const pass = await env.DB.prepare(
-    `SELECT guest_access_passes.user_id AS userId,
+    `SELECT guest_access_passes.id, guest_access_passes.organization_id AS organizationId,
        guest_access_passes.expires_at AS expiresAt
      FROM guest_access_passes
      JOIN memberships ON memberships.user_id = guest_access_passes.user_id
@@ -35,17 +44,35 @@ export async function POST(request: Request) {
        AND memberships.disabled = 0 LIMIT 1`,
   )
     .bind(hash, Date.now())
-    .first<{ userId: string; expiresAt: number }>();
+    .first<{
+      id: string;
+      organizationId: string;
+      expiresAt: number;
+    }>();
   if (!pass)
     return Response.json(
       { error: 'This guest pass is invalid, expired, or revoked.' },
       { status: 401 },
     );
-  const cookie = await createScoutingSession(
-    request,
-    pass.userId,
-    pass.expiresAt,
-  );
+  const userId = `guest:${pass.id}:${crypto.randomUUID()}`;
+  const now = Date.now();
+  await env.DB.batch([
+    env.DB.prepare(
+      `INSERT INTO users (id, email, name, email_verified, created_at, updated_at)
+       VALUES (?, ?, ?, 1, ?, ?)`,
+    ).bind(
+      userId,
+      `${crypto.randomUUID()}@guest.invalid`,
+      parsed.data.name,
+      now,
+      now,
+    ),
+    env.DB.prepare(
+      `INSERT INTO memberships (organization_id, user_id, role, disabled, created_at, updated_at)
+       VALUES (?, ?, 'scout', 0, ?, ?)`,
+    ).bind(pass.organizationId, userId, now, now),
+  ]);
+  const cookie = await createScoutingSession(request, userId, pass.expiresAt);
   return Response.json(
     { signedIn: true },
     { headers: { 'set-cookie': cookie } },

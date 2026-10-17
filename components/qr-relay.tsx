@@ -1,14 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, QrCode } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  assembleRelayEnvelope,
-  parseRelayFrame,
-} from '@/lib/qr-relay';
+import { assembleRelayEnvelope, parseRelayFrame } from '@/lib/qr-relay';
 
 export function QrRelay({ online }: { online: boolean }) {
   const [message, setMessage] = useState('');
@@ -105,53 +101,50 @@ export function QrRelay({ online }: { online: boolean }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>
-          <QrCode /> Scan a scout match
-        </CardTitle>
-        <Badge variant="outline">Online receiving device</Badge>
+        <CardTitle>Scan a scout match</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <>
-            <video
-              ref={videoRef}
-              className="aspect-video w-full rounded-lg bg-black object-cover"
-              muted
-              playsInline
+          <video
+            ref={videoRef}
+            className="aspect-video w-full rounded-lg bg-black object-cover"
+            muted
+            playsInline
+          />
+          <Button
+            className="w-full"
+            onClick={() => void startCamera()}
+            disabled={!online}
+          >
+            <Camera />
+            Start or reset scanner
+          </Button>
+          {progress.total > 0 && (
+            <p className="text-center font-semibold">
+              Collected {progress.received} of {progress.total} frames
+            </p>
+          )}
+          <details>
+            <summary className="cursor-pointer text-sm font-semibold">
+              Manual frame fallback
+            </summary>
+            <textarea
+              className="mt-2 min-h-24 w-full rounded-lg border bg-transparent p-2 text-xs"
+              value={manualFrame}
+              onChange={(event) => setManualFrame(event.target.value)}
+              placeholder="Paste a Team 401 match QR value"
             />
             <Button
-              className="w-full"
-              onClick={() => void startCamera()}
-              disabled={!online}
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                void acceptFrame(manualFrame);
+                setManualFrame('');
+              }}
             >
-              <Camera />
-              Start or reset scanner
+              Add frame
             </Button>
-            {progress.total > 0 && (
-              <p className="text-center font-semibold">
-                Collected {progress.received} of {progress.total} frames
-              </p>
-            )}
-            <details>
-              <summary className="cursor-pointer text-sm font-semibold">
-                Manual frame fallback
-              </summary>
-              <textarea
-                className="mt-2 min-h-24 w-full rounded-lg border bg-transparent p-2 text-xs"
-                value={manualFrame}
-                onChange={(event) => setManualFrame(event.target.value)}
-                placeholder="Paste a Team 401 match QR value"
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  void acceptFrame(manualFrame);
-                  setManualFrame('');
-                }}
-              >
-                Add frame
-              </Button>
-            </details>
+          </details>
         </>
         {message && <p className="text-sm text-muted-foreground">{message}</p>}
       </CardContent>

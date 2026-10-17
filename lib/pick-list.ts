@@ -4,7 +4,6 @@ export type PickListEntry = {
   teamNumber: number;
   note: string;
   tier: PickTier;
-  avoid: boolean;
 };
 
 export type AllianceSelection = {
@@ -15,6 +14,7 @@ export type AllianceSelection = {
 export type UnavailableTeam = {
   teamNumber: number;
   reason: 'declined' | 'ineligible';
+  allianceNumber?: number;
 };
 
 export type PickListData = {
@@ -40,8 +40,7 @@ export function nextAllianceAfterSelection(
   previousPickCount: number,
   allianceCount = 8,
 ) {
-  if (previousPickCount === 0)
-    return allianceNumber < allianceCount ? allianceNumber + 1 : 1;
+  if (previousPickCount === 0) return allianceNumber;
   if (previousPickCount === 1)
     return allianceNumber < allianceCount ? allianceNumber + 1 : allianceCount;
   return allianceNumber > 1 ? allianceNumber - 1 : 1;
@@ -51,11 +50,42 @@ export function nextAllianceSlot(pickCount: number) {
   return ['Captain', 'First pick', 'Second pick'][pickCount] ?? 'Complete';
 }
 
+export function nextAlliancePick(
+  selections: AllianceSelection[],
+  allianceCount = 8,
+) {
+  const pickCounts = new Map<number, number>();
+  for (const selection of selections) {
+    pickCounts.set(
+      selection.allianceNumber,
+      (pickCounts.get(selection.allianceNumber) ?? 0) + 1,
+    );
+  }
+
+  for (
+    let allianceNumber = 1;
+    allianceNumber <= allianceCount;
+    allianceNumber += 1
+  ) {
+    const pickCount = pickCounts.get(allianceNumber) ?? 0;
+    if (pickCount < 2) return { allianceNumber, pickCount };
+  }
+  for (
+    let allianceNumber = allianceCount;
+    allianceNumber >= 1;
+    allianceNumber -= 1
+  ) {
+    if ((pickCounts.get(allianceNumber) ?? 0) === 2)
+      return { allianceNumber, pickCount: 2 };
+  }
+  return null;
+}
+
 export function buildConsensus(lists: PickListData[]): ConsensusEntry[] {
   const ranks = new Map<number, number[]>();
   for (const list of lists) {
     list.entries.forEach((entry, index) => {
-      if (entry.avoid || entry.tier === 'do-not-pick') return;
+      if (entry.tier === 'do-not-pick') return;
       ranks.set(entry.teamNumber, [
         ...(ranks.get(entry.teamNumber) ?? []),
         index + 1,

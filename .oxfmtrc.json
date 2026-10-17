@@ -2,6 +2,7 @@
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
   "singleQuote": true,
   "printWidth": 80,
+  "endOfLine": "lf",
   "sortPackageJson": false,
   "ignorePatterns": [
     "package-lock.json",

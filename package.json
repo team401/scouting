@@ -7,8 +7,9 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "dev": "vinext dev",
-    "build": "vinext build",
+    "dev": "vite dev --mode staging",
+    "dev:local": "vite dev",
+    "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "start": "wrangler dev --config dist/server/wrangler.json",
@@ -18,6 +19,7 @@
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote --config dist/server/wrangler.json",
     "lint": "oxlint",
     "format": "oxfmt",
+    "format:check": "oxfmt --check",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {

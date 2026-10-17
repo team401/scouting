@@ -2,14 +2,16 @@ import { env } from 'cloudflare:workers';
 import { auth } from '@/lib/auth';
 import { summarizeEntries, type ScoutingPayload } from '@/lib/scouting-metrics';
 import { teamNumberFromTbaKey } from '@/lib/scouting-policy';
+import { getMatch13EventTeams } from '@/lib/match13';
 
-type TbaOprs = { oprs?: Record<string, number> };
-type StatboticsTeamEvent = {
-  team?: number;
-  epa_end?: number;
-  epa?: { total_points?: { mean?: number } };
+type TbaRankings = {
+  rankings?: Array<{
+    rank: number;
+    team_key: string;
+    matches_played?: number;
+    record?: { wins?: number; losses?: number; ties?: number };
+  }>;
 };
-
 function finiteNumber(value: unknown) {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
@@ -22,13 +24,13 @@ export async function GET(request: Request) {
       { status: 401 },
     );
   const membership = await env.DB.prepare(
-    'SELECT organization_id FROM memberships WHERE user_id = ? LIMIT 1',
+    'SELECT organization_id, role FROM memberships WHERE user_id = ? LIMIT 1',
   )
     .bind(session.user.id)
-    .first<{ organization_id: string }>();
+    .first<{ organization_id: string; role: string }>();
   if (!membership)
     return Response.json(
-      { error: 'No team membership found.' },
+      { error: 'An active scouting account is required.' },
       { status: 403 },
     );
   const event = await env.DB.prepare(
@@ -41,6 +43,15 @@ export async function GET(request: Request) {
   )
     .bind(membership.organization_id)
     .all<{ alliances: string }>();
+  const registeredTeams = await env.DB.prepare(
+    `SELECT event_teams.team_number AS teamNumber
+     FROM event_teams
+     JOIN events ON events.id = event_teams.event_id
+     WHERE event_teams.organization_id = ? AND events.is_current = 1
+     ORDER BY event_teams.team_number`,
+  )
+    .bind(membership.organization_id)
+    .all<{ teamNumber: number }>();
   const scheduled = new Map<number, number>();
   for (const row of matches.results) {
     const alliances = JSON.parse(row.alliances) as {
@@ -66,13 +77,27 @@ export async function GET(request: Request) {
       ...(grouped.get(row.teamNumber) ?? []),
       JSON.parse(row.payload) as ScoutingPayload,
     ]);
-  let oprs: Record<string, number> = {};
+  const rankings = new Map<
+    number,
+    {
+      eventRank: number;
+      matchesPlayed: number;
+      wins: number;
+      losses: number;
+      ties: number;
+    }
+  >();
+  const xps = new Map<number, number>();
   const epas = new Map<number, number>();
+  const phaseXps = new Map<
+    number,
+    { xAuto: number | null; xTele: number | null; xEnd: number | null }
+  >();
   if (event) {
-    const [tbaResult, statboticsResult] = await Promise.allSettled([
+    const [rankingsResult, match13Result] = await Promise.allSettled([
       env.TBA_AUTH_KEY
         ? fetch(
-            `https://www.thebluealliance.com/api/v3/event/${encodeURIComponent(event.eventKey)}/oprs`,
+            `https://www.thebluealliance.com/api/v3/event/${encodeURIComponent(event.eventKey)}/rankings`,
             {
               headers: {
                 'X-TBA-Auth-Key': env.TBA_AUTH_KEY,
@@ -81,33 +106,59 @@ export async function GET(request: Request) {
             },
           )
         : Promise.reject(new Error('TBA is not configured.')),
-      fetch(
-        `https://api.statbotics.io/v3/team_events?event=${encodeURIComponent(event.eventKey)}&limit=1000`,
-      ),
+      getMatch13EventTeams(env.DB, event.eventKey, env.MATCH13_API_KEY),
     ]);
-    if (tbaResult.status === 'fulfilled' && tbaResult.value.ok) {
-      const data = (await tbaResult.value.json()) as TbaOprs;
-      oprs = data.oprs ?? {};
+    if (rankingsResult.status === 'fulfilled' && rankingsResult.value.ok) {
+      const data = (await rankingsResult.value.json()) as TbaRankings | null;
+      for (const row of data?.rankings ?? []) {
+        const teamNumber = teamNumberFromTbaKey(row.team_key);
+        if (!teamNumber) continue;
+        rankings.set(teamNumber, {
+          eventRank: row.rank,
+          matchesPlayed: row.matches_played ?? 0,
+          wins: row.record?.wins ?? 0,
+          losses: row.record?.losses ?? 0,
+          ties: row.record?.ties ?? 0,
+        });
+      }
     }
-    if (statboticsResult.status === 'fulfilled' && statboticsResult.value.ok) {
-      const data =
-        (await statboticsResult.value.json()) as StatboticsTeamEvent[];
-      for (const row of data) {
-        const epa =
-          finiteNumber(row.epa?.total_points?.mean) ??
-          finiteNumber(row.epa_end);
-        if (row.team && epa !== null) epas.set(row.team, epa);
+    if (match13Result.status === 'fulfilled' && match13Result.value) {
+      for (const row of match13Result.value.teams ?? []) {
+        const xp = finiteNumber(row.xpEnd) ?? finiteNumber(row.xpMean);
+        if (row.teamNumber) {
+          if (xp !== null) xps.set(row.teamNumber, xp);
+          const epa = finiteNumber(row.epa);
+          if (epa !== null) epas.set(row.teamNumber, epa);
+          phaseXps.set(row.teamNumber, {
+            xAuto: finiteNumber(row.xAuto),
+            xTele: finiteNumber(row.xTele),
+            xEnd: finiteNumber(row.xEnd),
+          });
+        }
       }
     }
   }
-  const teams = [...scheduled.keys()]
+  const teamNumbers = new Set([
+    ...registeredTeams.results.map((team) => team.teamNumber),
+    ...scheduled.keys(),
+    ...grouped.keys(),
+  ]);
+  const teams = [...teamNumbers]
     .sort((a, b) => a - b)
     .map((teamNumber) => {
       const summary = summarizeEntries(grouped.get(teamNumber) ?? []);
       return {
         teamNumber,
+        xp: xps.get(teamNumber) ?? null,
+        xAuto: phaseXps.get(teamNumber)?.xAuto ?? null,
+        xTele: phaseXps.get(teamNumber)?.xTele ?? null,
+        xEnd: phaseXps.get(teamNumber)?.xEnd ?? null,
         epa: epas.get(teamNumber) ?? null,
-        opr: finiteNumber(oprs[`frc${teamNumber}`]),
+        eventRank: rankings.get(teamNumber)?.eventRank ?? null,
+        matchesPlayed: rankings.get(teamNumber)?.matchesPlayed ?? 0,
+        wins: rankings.get(teamNumber)?.wins ?? 0,
+        losses: rankings.get(teamNumber)?.losses ?? 0,
+        ties: rankings.get(teamNumber)?.ties ?? 0,
         scheduledMatches: scheduled.get(teamNumber) ?? 0,
         coverage:
           (scheduled.get(teamNumber) ?? 0)

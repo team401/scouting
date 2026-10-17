@@ -3,14 +3,9 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import QRCode from 'qrcode';
-import { QrCode } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { PendingMutation } from '@/lib/offline-db';
-import {
-  createRelayFrames,
-  ensureRelayDeviceRegistered,
-} from '@/lib/qr-relay';
+import { createRelayFrames, ensureRelayDeviceRegistered } from '@/lib/qr-relay';
 
 export function MatchSubmissionQr({
   mutation,
@@ -68,10 +63,7 @@ export function MatchSubmissionQr({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>
-          <QrCode /> Match handoff
-        </CardTitle>
-        <Badge variant="outline">One match</Badge>
+        <CardTitle>Match handoff</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 text-center">
         {image && (

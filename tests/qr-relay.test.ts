@@ -32,8 +32,6 @@ void test('creates one QR frame for one normal match submission', async () => {
       schemaVersion: 1,
       autoFuel: 12,
       activeFuel: 35,
-      inactiveFuel: 4,
-      cycles: 7,
       autoTower: 'None',
       tower: 'Level 2',
       notes: 'Consistent scoring with brief defense in the middle of teleop.',

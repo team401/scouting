@@ -19,11 +19,19 @@ export async function GET(request: Request) {
       { error: 'Sign in to choose an event.' },
       { status: 401 },
     );
-  const membership =
-    await env.DB.prepare(`SELECT memberships.role, organizations.frc_team_number AS teamNumber
-    FROM memberships JOIN organizations ON organizations.id = memberships.organization_id WHERE memberships.user_id = ? LIMIT 1`)
-      .bind(session.user.id)
-      .first<{ role: string; teamNumber: number | null }>();
+  const membership = await env.DB.prepare(`SELECT memberships.role,
+      organizations.frc_team_number AS baseTeamNumber,
+      organization_settings.test_team_number AS testTeamNumber
+    FROM memberships
+    JOIN organizations ON organizations.id = memberships.organization_id
+    LEFT JOIN organization_settings ON organization_settings.organization_id = organizations.id
+    WHERE memberships.user_id = ? LIMIT 1`)
+    .bind(session.user.id)
+    .first<{
+      role: string;
+      baseTeamNumber: number | null;
+      testTeamNumber: number | null;
+    }>();
   if (!membership || !['owner', 'admin'].includes(membership.role))
     return Response.json(
       { error: 'Only an owner or admin can choose the current event.' },
@@ -42,7 +50,15 @@ export async function GET(request: Request) {
       { error: 'Choose a valid FRC season.' },
       { status: 400 },
     );
-  const teamNumber = membership.teamNumber ?? 401;
+  const requestedTeam = new URL(request.url).searchParams.get('team');
+  const teamNumber = requestedTeam
+    ? Number(requestedTeam)
+    : (membership.testTeamNumber ?? membership.baseTeamNumber ?? 401);
+  if (!Number.isInteger(teamNumber) || teamNumber <= 0 || teamNumber > 99_999)
+    return Response.json(
+      { error: 'Choose a valid FRC team.' },
+      { status: 400 },
+    );
   const response = await fetch(
     `https://www.thebluealliance.com/api/v3/team/frc${teamNumber}/events/${parsedYear.data}/simple`,
     {
@@ -62,6 +78,8 @@ export async function GET(request: Request) {
   const events = (await response.json()) as TbaEvent[];
   return Response.json({
     teamNumber,
+    baseTeamNumber: membership.baseTeamNumber ?? 401,
+    testTeamNumber: membership.testTeamNumber,
     year: parsedYear.data,
     events: events
       .sort((a, b) => (a.start_date ?? '').localeCompare(b.start_date ?? ''))

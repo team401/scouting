@@ -1,27 +1,29 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  CalendarDays,
+  ArrowDown,
+  ArrowUp,
   Check,
   ChevronRight,
+  CircleUserRound,
   ClipboardList,
   Cloud,
   CloudOff,
-  Gauge,
-  House,
-  LayoutDashboard,
+  Film,
+  Maximize2,
+  Minimize2,
+  Handshake,
+  KeyRound,
   LogOut,
   Map,
+  Menu,
   Minus,
-  MonitorSmartphone,
   Moon,
   Plus,
+  QrCode,
   RefreshCw,
-  Settings,
-  Shield,
   Sun,
-  TowerControl,
   Upload,
   UserCog,
   Users,
@@ -33,6 +35,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
+  initialPlaceholderRobotMarkers,
   initialRobotMarkers,
   TacticalBoard,
   type TacticalBoardData,
@@ -40,12 +43,18 @@ import {
 import { PickListWorkspace } from '@/components/pick-list-workspace';
 import { MatchVideoLibrary } from '@/components/match-video-library';
 import { TeamComparison } from '@/components/team-comparison';
+import { TeamStatsDialog } from '@/components/team-stats-dialog';
+import { TeamRobotPhoto } from '@/components/team-robot-photo';
 import { TeamTrendChart, type TeamTrend } from '@/components/team-trend-chart';
 import { ScoutingOperations } from '@/components/scouting-operations';
-import { ShiftScheduler } from '@/components/shift-scheduler';
+import { PersonalEventSchedule } from '@/components/event-role-scheduler';
+import { EventScheduleBoard } from '@/components/event-schedule-board';
+import { EventTeamAliases } from '@/components/event-team-aliases';
 import { QrRelay } from '@/components/qr-relay';
 import { MatchSubmissionQr } from '@/components/match-submission-qr';
 import { GuestPassManager } from '@/components/guest-pass-manager';
+import { ConfirmActionDialog } from '@/components/confirm-action-dialog';
+import { PwaInstallButton } from '@/components/service-worker-register';
 import {
   getCachedValue,
   getDraft,
@@ -63,17 +72,29 @@ import {
   scoutEntryMutationId,
 } from '@/lib/scouting-policy';
 
-type View = 'Home' | 'Scout' | 'Pit' | 'Plan' | 'Teams' | 'Admin' | 'Settings';
+type View =
+  | 'Home'
+  | 'Scout'
+  | 'Pit'
+  | 'Plan'
+  | 'Data'
+  | 'Video'
+  | 'Alliance'
+  | 'Offline transfer'
+  | 'Admin'
+  | 'Account';
 
 const nav: {
-  label: Exclude<View, 'Settings' | 'Admin'>;
+  label: Exclude<View, 'Account' | 'Admin'>;
   icon: typeof ClipboardList;
 }[] = [
-  { label: 'Home', icon: LayoutDashboard },
   { label: 'Scout', icon: ClipboardList },
   { label: 'Pit', icon: Wrench },
   { label: 'Plan', icon: Map },
-  { label: 'Teams', icon: Users },
+  { label: 'Data', icon: Users },
+  { label: 'Video', icon: Film },
+  { label: 'Alliance', icon: Handshake },
+  { label: 'Offline transfer', icon: QrCode },
 ];
 
 type EventPack = {
@@ -84,9 +105,15 @@ type EventPack = {
     name: string;
     updatedAt: number;
     timezone: string | null;
+    eventType: number | null;
   };
   matches: EventMatch[];
-  teams: { teamNumber: number; name: string }[];
+  teams: {
+    teamNumber: number;
+    name: string;
+    sourceName: string;
+    customName: string | null;
+  }[];
   assignments: {
     matchId: string;
     teamNumber: number;
@@ -97,9 +124,11 @@ type EventPack = {
     id: string;
     name: string;
     email: string;
+    opsRole?: string | null;
     role: string;
     disabled?: number | boolean;
   }[];
+  attendingUserIds: string[] | null;
   pitEntries: PitEntry[];
   scoutEntries: Array<{
     matchId: string;
@@ -125,14 +154,13 @@ type PitDraft = {
   swerveModule: string;
   motorTypes: string;
   weightLbs: number;
-  widthInches: number;
-  lengthInches: number;
-  heightInches: number;
   fuelCapacity: number;
   climbCapability: string;
   fieldAccess: string;
   fieldAccessPreference: string;
-  shooterType: string;
+  shooterMount: string;
+  shooterBarrels: string;
+  adjustableHood: boolean;
   autonomousStart: string[];
   autonomousSwipe: string[];
   autonomousDepot: boolean;
@@ -141,11 +169,12 @@ type PitDraft = {
 };
 type PitEntry = {
   teamNumber: number;
+  scoutUserId: string;
+  scoutName: string;
   drivetrain: string | null;
   swerveModule: string | null;
   motorTypes: string[];
   weightLbs: number | null;
-  dimensions: { width?: number; length?: number; height?: number } | null;
   payload: Partial<PitDraft>;
   photoObjectKey: string | null;
   updatedAt: number;
@@ -155,14 +184,13 @@ const emptyPitDraft: PitDraft = {
   swerveModule: '',
   motorTypes: '',
   weightLbs: 0,
-  widthInches: 0,
-  lengthInches: 0,
-  heightInches: 0,
   fuelCapacity: 0,
   climbCapability: 'None',
   fieldAccess: 'Both',
   fieldAccessPreference: 'No preference',
-  shooterType: 'Fixed',
+  shooterMount: 'Fixed',
+  shooterBarrels: '1',
+  adjustableHood: false,
   autonomousStart: ['Unknown'],
   autonomousSwipe: ['None'],
   autonomousDepot: false,
@@ -177,7 +205,125 @@ function normalizeSelections(value: unknown, fallback: string): string[] {
     );
     return selections.length > 0 ? selections : [fallback];
   }
-  return typeof value === 'string' && value.length > 0 ? [value] : [fallback];
+  return [fallback];
+}
+
+function displaySelections(value: unknown, fallback = 'Unknown') {
+  if (Array.isArray(value)) {
+    const selections = value.filter(
+      (item): item is string => typeof item === 'string',
+    );
+    return selections.length ? selections.join(', ') : fallback;
+  }
+  return typeof value === 'string' && value ? value : fallback;
+}
+
+function formatDeviceName(userAgent: string | null) {
+  if (!userAgent) return 'Unknown device';
+  const platform = /iPhone|iPad/.test(userAgent)
+    ? /iPad/.test(userAgent)
+      ? 'iPad'
+      : 'iPhone'
+    : /Android/.test(userAgent)
+      ? 'Android'
+      : /Windows/.test(userAgent)
+        ? 'Windows'
+        : /Macintosh|Mac OS/.test(userAgent)
+          ? 'Mac'
+          : /Linux/.test(userAgent)
+            ? 'Linux'
+            : 'device';
+  const browser = /Edg\//.test(userAgent)
+    ? 'Edge'
+    : /Firefox\//.test(userAgent)
+      ? 'Firefox'
+      : /CriOS|Chrome\//.test(userAgent)
+        ? 'Chrome'
+        : /Safari\//.test(userAgent)
+          ? 'Safari'
+          : 'Browser';
+  return `${browser} on ${platform}`;
+}
+
+function ordinal(value: number) {
+  const mod100 = value % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${value}th`;
+  return `${value}${['th', 'st', 'nd', 'rd'][Math.min(value % 10, 4)] ?? 'th'}`;
+}
+
+type RankingSortKey =
+  | 'rank'
+  | 'team'
+  | 'xp'
+  | 'xAuto'
+  | 'xTele'
+  | 'epa'
+  | 'medianPoints'
+  | 'samples';
+
+const rankingColumns: Array<{ key: RankingSortKey; label: string }> = [
+  { key: 'rank', label: 'Rank' },
+  { key: 'team', label: 'Team' },
+  { key: 'xp', label: 'xP' },
+  { key: 'xAuto', label: 'Auto xP' },
+  { key: 'xTele', label: 'Tele xP' },
+  { key: 'epa', label: 'EPA' },
+  { key: 'medianPoints', label: 'Median pts' },
+  { key: 'samples', label: 'Matches scouted' },
+];
+
+function rankingValue(
+  team: TeamAnalysis,
+  key: RankingSortKey,
+): number | null | undefined {
+  switch (key) {
+    case 'rank':
+      return team.eventRank;
+    case 'team':
+      return team.teamNumber;
+    case 'xp':
+      return team.xp;
+    case 'xAuto':
+      return team.xAuto;
+    case 'xTele':
+      return team.xTele;
+    case 'epa':
+      return team.epa;
+    case 'medianPoints':
+      return team.medianPoints;
+    case 'samples':
+      return team.samples;
+  }
+}
+
+// Missing values always sort last, whichever direction is chosen.
+function compareRankingValues(
+  a: number | null | undefined,
+  b: number | null | undefined,
+  direction: 1 | -1,
+) {
+  if (typeof a !== 'number' && typeof b !== 'number') return 0;
+  if (typeof a !== 'number') return 1;
+  if (typeof b !== 'number') return -1;
+  return (a - b) * direction;
+}
+
+function formatRankingNumber(value: number | null | undefined) {
+  return typeof value === 'number' ? value.toFixed(1) : '—';
+}
+
+function eventMetricRank(
+  teams: TeamAnalysis[],
+  teamNumber: number | null,
+  key: 'xp' | 'xAuto' | 'xTele' | 'xEnd' | 'epa',
+) {
+  if (!teamNumber) return null;
+  const ranked = teams.filter((team) => typeof team[key] === 'number');
+  const selected = ranked.find((team) => team.teamNumber === teamNumber)?.[key];
+  if (typeof selected !== 'number') return null;
+  const rank =
+    ranked.filter((team) => (team[key] as number) > selected).length + 1;
+  return `${ordinal(rank)} of ${ranked.length}`;
 }
 
 function toggleSelection(
@@ -191,6 +337,17 @@ function toggleSelection(
     ? active.filter((item) => item !== value)
     : [...active, value];
   return next.length > 0 ? next : [emptyValue];
+}
+
+function shooterSummary(payload: Partial<PitDraft>) {
+  const mount = payload.shooterMount ?? '—';
+  const barrels = payload.shooterBarrels ?? '—';
+  const hood = payload.adjustableHood ? 'adjustable hood' : 'fixed hood';
+  const barrelDescription =
+    barrels === 'Drum'
+      ? 'drum'
+      : `${barrels} ${barrels === '1' ? 'barrel' : 'barrels'}`;
+  return `${mount} · ${barrelDescription} · ${hood}`;
 }
 
 type EventMatch = {
@@ -221,23 +378,51 @@ function matchLabel(match: EventMatch) {
   return `${prefix[match.compLevel] ?? match.compLevel.toUpperCase()}${match.matchNumber}`;
 }
 
+function matchHeaderLabel(match: EventMatch) {
+  const prefix: Record<string, string> = {
+    qm: 'Quals',
+    ef: 'Eighthfinal',
+    qf: 'Quarterfinal',
+    sf: 'Semifinal',
+    f: 'Final',
+  };
+  return `${prefix[match.compLevel] ?? match.compLevel.toUpperCase()} ${match.matchNumber}`;
+}
+
 type MatchDraft = ScoutingPayload;
 
 type TeamAnalysis = {
   teamNumber: number;
+  xp: number | null;
+  xAuto: number | null;
+  xTele: number | null;
+  xEnd: number | null;
   epa: number | null;
-  opr: number | null;
+  eventRank: number | null;
+  matchesPlayed: number;
+  wins: number;
+  losses: number;
+  ties: number;
   samples: number;
   scheduledMatches: number;
   coverage: number;
   medianPoints: number;
   medianActiveFuel: number;
-  medianFuelPerCycle: number;
   towerSuccessRate: number;
+  towerLevelCounts: { level1: number; level2: number; level3: number };
+  disabledMatches: number;
   disabledRate: number;
   averageDefense: number;
   pointStdDev: number;
   trends?: TeamTrend[];
+  pit?: {
+    drivetrain: string | null;
+    swerveModule: string | null;
+    motorTypes: string[];
+    weightLbs: number | null;
+    payload: Partial<PitDraft>;
+    photoObjectKey: string | null;
+  } | null;
   entries: {
     id: string;
     matchKey: string;
@@ -252,35 +437,36 @@ type TbaEventChoice = {
   location: string;
 };
 type MatchPlan = {
-  objective: string;
-  autonomous: string;
-  offense: string;
-  defense: string;
-  endgame: string;
   notes: string;
-  teamRoles: Record<string, string>;
+  absentTeams: number[];
   board: TacticalBoardData;
+  autoBoard: TacticalBoardData;
 };
 const emptyMatchPlan: MatchPlan = {
-  objective: '',
-  autonomous: '',
-  offense: '',
-  defense: '',
-  endgame: '',
   notes: '',
-  teamRoles: {},
-  board: { robots: [], strokes: [] },
+  absentTeams: [],
+  board: { robots: initialPlaceholderRobotMarkers(), strokes: [] },
+  autoBoard: { robots: initialPlaceholderRobotMarkers(), strokes: [] },
 };
 
 function planForMatch(
-  plan: Partial<MatchPlan> | null | undefined,
+  plan: MatchPlan | null | undefined,
   match: EventMatch,
 ): MatchPlan {
   const defaultRobots = initialRobotMarkers(
     match.alliances.red,
     match.alliances.blue,
   );
-  const expectedTeams = defaultRobots.map((robot) => robot.team).sort((a, b) => a - b);
+  const scheduledTeams = new Set(defaultRobots.map((robot) => robot.team));
+  const absentTeams = (plan?.absentTeams ?? []).filter((team) =>
+    scheduledTeams.has(team),
+  );
+  const availableRobots = defaultRobots.filter(
+    (robot) => !absentTeams.includes(robot.team),
+  );
+  const expectedTeams = availableRobots
+    .map((robot) => robot.team)
+    .sort((a, b) => a - b);
   const savedTeams = (plan?.board?.robots ?? [])
     .map((robot) => robot.team)
     .sort((a, b) => a - b);
@@ -289,7 +475,7 @@ function planForMatch(
     savedTeams.every((team, index) => team === expectedTeams[index]);
   const robots = savedBoardMatches
     ? (plan?.board?.robots ?? []).map((robot) => {
-        const assignment = defaultRobots.find(
+        const assignment = availableRobots.find(
           (candidate) => candidate.team === robot.team,
         );
         return assignment
@@ -300,28 +486,50 @@ function planForMatch(
             }
           : robot;
       })
-    : defaultRobots;
+    : availableRobots;
+  const savedAutoTeams = (plan?.autoBoard?.robots ?? [])
+    .map((robot) => robot.team)
+    .sort((a, b) => a - b);
+  const savedAutoBoardMatches =
+    savedAutoTeams.length === expectedTeams.length &&
+    savedAutoTeams.every((team, index) => team === expectedTeams[index]);
+  const autoRobots = savedAutoBoardMatches
+    ? (plan?.autoBoard?.robots ?? []).map((robot) => {
+        const assignment = availableRobots.find(
+          (candidate) => candidate.team === robot.team,
+        );
+        return assignment
+          ? {
+              ...robot,
+              alliance: assignment.alliance,
+              station: assignment.station,
+            }
+          : robot;
+      })
+    : availableRobots;
 
   return {
     ...emptyMatchPlan,
     ...plan,
-    teamRoles: plan?.teamRoles ?? {},
+    absentTeams,
     board: {
       robots,
       strokes: plan?.board?.strokes ?? [],
+    },
+    autoBoard: {
+      robots: autoRobots,
+      strokes: plan?.autoBoard?.strokes ?? [],
     },
   };
 }
 
 function Counter({
   label,
-  hint,
   value,
   onChange,
   quickAdds = [],
 }: {
   label: string;
-  hint: string;
   value: number;
   onChange: (value: number) => void;
   quickAdds?: number[];
@@ -330,7 +538,6 @@ function Counter({
     <div className="counter-row">
       <div>
         <p className="font-semibold">{label}</p>
-        <p className="text-xs text-muted-foreground">{hint}</p>
       </div>
       <div className="counter-controls">
         {quickAdds.map((amount) => (
@@ -379,24 +586,51 @@ function Counter({
 export default function Home() {
   const { data: session, isPending } = authClient.useSession();
   const [activeView, setActiveView] = useState<View>('Home');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [teamsSection, setTeamsSection] = useState<
-    'directory' | 'analysis' | 'picks' | 'review'
-  >('directory');
+    'analysis' | 'picklist' | 'review'
+  >('analysis');
+  const [rankingSort, setRankingSort] = useState<{
+    key: RankingSortKey;
+    direction: 'asc' | 'desc';
+  }>({ key: 'rank', direction: 'asc' });
+  function sortRankingBy(key: RankingSortKey) {
+    setRankingSort((current) =>
+      current.key === key
+        ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+        : {
+            key,
+            direction: key === 'rank' || key === 'team' ? 'asc' : 'desc',
+          },
+    );
+  }
   const navigationDepthRef = useRef(0);
   const selectedMatchKeyRef = useRef('');
+  const scoutSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const loadedPlanMatchIdRef = useRef('');
   const [autoFuel, setAutoFuel] = useState(0);
   const [activeFuel, setActiveFuel] = useState(0);
+  const [centerSwipes, setCenterSwipes] = useState(0);
+  const [passedFuel, setPassedFuel] = useState(0);
+  const [autoDepot, setAutoDepot] = useState(false);
+  const [autoOutpost, setAutoOutpost] = useState(false);
+  const [autoPenalties, setAutoPenalties] = useState(0);
+  const [teleopPenalties, setTeleopPenalties] = useState(0);
+  const [scoutingPhase, setScoutingPhase] = useState<
+    'pre' | 'auto' | 'tele' | 'post'
+  >('pre');
   const [autoTower, setAutoTower] = useState('None');
-  const [tower, setTower] = useState('None');
-  const [path, setPath] = useState('Trench');
+  const [autoStartPosition, setAutoStartPosition] = useState('');
+  const [tower, setTower] = useState('');
+  const [path, setPath] = useState('');
   const [dark, setDark] = useState(false);
   const [_saved, setSaved] = useState(false);
-  const [defenseRating, setDefenseRating] = useState(0);
-  const [disabled, setDisabled] = useState(false);
+  const [defenseRating, setDefenseRating] = useState<number | null | undefined>(
+    undefined,
+  );
+  const [disabled, setDisabled] = useState<boolean | null>(null);
   const [noShow, setNoShow] = useState(false);
-  const [penalties, setPenalties] = useState(0);
-  const [shootingRange, setShootingRange] = useState('Mixed');
+  const [shootingRange, setShootingRange] = useState('');
   const [notes, setNotes] = useState('');
   const [draftReady, setDraftReady] = useState(false);
   const [queuedCount, setQueuedCount] = useState(0);
@@ -407,23 +641,40 @@ export default function Home() {
   const [eventKey, setEventKey] = useState('');
   const [eventMessage, setEventMessage] = useState('');
   const [configuringEvent, setConfiguringEvent] = useState(false);
-  const [eventYear, setEventYear] = useState(2026);
   const [eventChoices, setEventChoices] = useState<TbaEventChoice[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
+  const [eventTeamInput, setEventTeamInput] = useState('401');
+  const [eventTeamNumber, setEventTeamNumber] = useState(401);
+  const [baseTeamNumber, setBaseTeamNumber] = useState(401);
+  const [testTeamNumber, setTestTeamNumber] = useState<number | null>(null);
   const [eventPack, setEventPack] = useState<EventPack | null>(null);
   const [packLoading, setPackLoading] = useState(false);
-  const [packError, setPackError] = useState('');
+  const [_packError, setPackError] = useState('');
   const [selectedMatchKey, setSelectedMatchKey] = useState('');
+  const [selectedVideoMatchKey, setSelectedVideoMatchKey] = useState('');
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
   const [selectedStation, setSelectedStation] = useState('');
   const [analysis, setAnalysis] = useState<TeamAnalysis | null>(null);
-  const [assignmentMessage, setAssignmentMessage] = useState('');
+  const [previewMember, setPreviewMember] = useState<{
+    id: string;
+    name: string;
+    role: string;
+  } | null>(null);
   const [strategyTeams, setStrategyTeams] = useState<TeamAnalysis[]>([]);
+  const [strategyLoading, setStrategyLoading] = useState(false);
   const [adminMessage, setAdminMessage] = useState('');
+  const [memberPendingRemoval, setMemberPendingRemoval] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [memberSearch, setMemberSearch] = useState('');
+  const [memberFilter, setMemberFilter] = useState<
+    'all' | 'active' | 'disabled' | 'guests'
+  >('active');
   const [accountSessions, setAccountSessions] = useState<
     Array<{
       id: string;
-      ipAddress: string | null;
+      location: string | null;
       userAgent: string | null;
       createdAt: number;
       updatedAt: number;
@@ -432,13 +683,15 @@ export default function Home() {
   >([]);
   const [currentSessionId, setCurrentSessionId] = useState('');
   const [sessionMessage, setSessionMessage] = useState('');
+  const [signingOut, setSigningOut] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
   const [adminSection, setAdminSection] = useState<'settings' | 'assignments'>(
-    'settings',
+    'assignments',
   );
-  const [scheduleFilter, setScheduleFilter] = useState<
-    'all' | 'mine' | 'unassigned'
-  >('all');
-  const [scheduleSearch, setScheduleSearch] = useState('');
   const [pitTeam, setPitTeam] = useState<number | null>(null);
   const [pitDraft, setPitDraft] = useState<PitDraft>(emptyPitDraft);
   const [pitReady, setPitReady] = useState(false);
@@ -452,6 +705,11 @@ export default function Home() {
   const [planAuthor, setPlanAuthor] = useState('');
   const [planUpdatedAt, setPlanUpdatedAt] = useState<number | null>(null);
   const [planStats, setPlanStats] = useState<TeamAnalysis[]>([]);
+  const [planStatsTeam, setPlanStatsTeam] = useState<number | null>(null);
+  const [planSection, setPlanSection] = useState<'auto' | 'teleop' | 'metrics'>(
+    'auto',
+  );
+  const [planFullscreen, setPlanFullscreen] = useState(false);
   const organizationTeamNumber = eventPack?.organizationTeamNumber ?? 401;
   const planningMatches =
     eventPack?.matches.filter((match) =>
@@ -459,8 +717,15 @@ export default function Home() {
         organizationTeamNumber,
       ),
     ) ?? [];
+  const videoMatches = planningMatches;
+  const currentPlanningMatch = planningMatches.find(
+    (match) => match.key === selectedMatchKey,
+  );
   const currentMatch = eventPack?.matches.find(
     (match) => match.key === selectedMatchKey,
+  );
+  const selectedVideoMatch = videoMatches.find(
+    (match) => match.key === selectedVideoMatchKey,
   );
   const draftId =
     eventPack && currentMatch && selectedTeam
@@ -487,42 +752,99 @@ export default function Home() {
   } | null>(null);
   const eventTeams = eventPack
     ? [
-        ...new Set(
-          eventPack.matches.flatMap((match) => [
+        ...new Set([
+          ...eventPack.teams.map((team) => team.teamNumber),
+          ...eventPack.matches.flatMap((match) => [
             ...match.alliances.red,
             ...match.alliances.blue,
           ]),
-        ),
+        ]),
       ].sort((a, b) => a - b)
     : [];
   const currentPayload: ScoutingPayload = {
-    autoFuel: noShow ? 0 : autoFuel,
-    activeFuel: noShow ? 0 : activeFuel,
-    inactiveFuel: 0,
-    cycles: 0,
-    autoTower: noShow ? 'None' : autoTower,
-    tower: noShow ? 'None' : tower,
-    path: noShow ? 'None' : path,
-    defenseRating: noShow ? 0 : defenseRating,
-    disabled: noShow ? false : disabled,
+    autoFuel,
+    activeFuel,
+    centerSwipes,
+    passedFuel,
+    autoDepot,
+    autoOutpost,
+    autoPenalties,
+    teleopPenalties,
+    autoTower,
+    autoStartPosition,
+    tower,
+    path,
+    defenseRating,
+    disabled: disabled ?? false,
     noShow,
-    penalties: noShow ? 0 : penalties,
-    shootingRange: noShow ? 'None' : shootingRange,
-    cycleSeconds: 0,
+    penalties: autoPenalties + teleopPenalties,
+    shootingRange,
     notes,
   };
-  const estimatedPoints = observedPoints(currentPayload);
+  const estimatedPoints = noShow ? 0 : observedPoints(currentPayload);
+  const scoutingPhases = ['pre', 'auto', 'tele', 'post'] as const;
+
+  function moveToScoutingPhase(target: (typeof scoutingPhases)[number]) {
+    if (noShow) {
+      if (target === 'auto' || target === 'tele') return;
+      setSaveError('');
+      setScoutingPhase(target);
+      return;
+    }
+
+    const currentIndex = scoutingPhases.indexOf(scoutingPhase);
+    const targetIndex = scoutingPhases.indexOf(target);
+    if (targetIndex <= currentIndex) {
+      setSaveError('');
+      setScoutingPhase(target);
+      return;
+    }
+
+    const incompletePhase = scoutingPhases
+      .slice(currentIndex, targetIndex)
+      .find((phase) => {
+        if (phase === 'pre') return !autoStartPosition;
+        return false;
+      });
+    if (incompletePhase === 'pre') {
+      setSaveError('Choose a starting position before continuing.');
+      return;
+    }
+    setSaveError('');
+    setScoutingPhase(target);
+  }
   const pitDraftId =
     eventPack && pitTeam ? `pit-${eventPack.event.key}-${pitTeam}` : null;
   const existingPitPhoto = pitTeam
     ? eventPack?.pitEntries.find((entry) => entry.teamNumber === pitTeam)
         ?.photoObjectKey
     : null;
-  const isAdmin = Boolean(eventPack && canManageAssignments(eventPack.role));
-  const canUseStrategy = Boolean(eventPack && canReopenEntries(eventPack.role));
-  const visibleNav = nav;
+  // An admin can preview the app as a team member. Only the UI changes; the
+  // server still checks every request against the admin's own role.
+  const realIsAdmin = Boolean(
+    eventPack && canManageAssignments(eventPack.role),
+  );
+  const activePreview = realIsAdmin ? previewMember : null;
+  const effectiveRole = activePreview
+    ? activePreview.role
+    : (eventPack?.role ?? '');
+  const effectiveUserId = activePreview
+    ? activePreview.id
+    : (eventPack?.userId ?? '');
+  const isAdmin = Boolean(eventPack && canManageAssignments(effectiveRole));
+  const canUseStrategy = Boolean(eventPack && canReopenEntries(effectiveRole));
+  const isGuest = effectiveUserId.startsWith('guest:');
+  const canUsePickLists = Boolean(eventPack && !isGuest);
+  const visibleNav = nav.filter(
+    ({ label }) =>
+      label === 'Data' ||
+      (label === 'Video'
+        ? !isGuest
+        : !['Plan', 'Alliance'].includes(label) || canUseStrategy),
+  );
 
   function navigate(view: View) {
+    setMobileMenuOpen(false);
     if (view === activeView) return;
     navigationDepthRef.current += 1;
     const url = new URL(window.location.href);
@@ -552,14 +874,20 @@ export default function Home() {
       'Scout',
       'Pit',
       'Plan',
-      'Teams',
+      'Data',
+      'Video',
+      'Alliance',
+      'Offline transfer',
       'Admin',
-      'Settings',
+      'Account',
     ];
     const requested = new URL(window.location.href).searchParams.get('view');
     const initial =
-      views.find((view) => view.toLowerCase() === requested?.toLowerCase()) ??
-      'Home';
+      (requested?.toLowerCase() === 'settings'
+        ? 'Account'
+        : views.find(
+            (view) => view.toLowerCase() === requested?.toLowerCase(),
+          )) ?? 'Home';
     window.history.replaceState(
       { scoutingApp: true, view: initial, depth: 0 },
       '',
@@ -613,30 +941,44 @@ export default function Home() {
             : serverEntry?.payload;
         if (payload) {
           const didNotShow = payload.noShow ?? false;
-          setAutoFuel(didNotShow ? 0 : payload.autoFuel);
-          setActiveFuel(didNotShow ? 0 : payload.activeFuel);
-          setAutoTower(didNotShow ? 'None' : payload.autoTower);
-          setTower(didNotShow ? 'None' : payload.tower);
-          setPath(didNotShow ? 'None' : payload.path);
-          setDefenseRating(didNotShow ? 0 : (payload.defenseRating ?? 0));
-          setDisabled(didNotShow ? false : (payload.disabled ?? false));
-          setNoShow(didNotShow);
-          setPenalties(didNotShow ? 0 : (payload.penalties ?? 0));
-          setShootingRange(
-            didNotShow ? 'None' : (payload.shootingRange ?? 'Mixed'),
+          setAutoFuel(payload.autoFuel);
+          setActiveFuel(payload.activeFuel);
+          setCenterSwipes(payload.centerSwipes ?? 0);
+          setPassedFuel(payload.passedFuel ?? 0);
+          setAutoDepot(payload.autoDepot ?? false);
+          setAutoOutpost(payload.autoOutpost ?? false);
+          setAutoPenalties(payload.autoPenalties ?? 0);
+          setTeleopPenalties(payload.teleopPenalties ?? payload.penalties ?? 0);
+          setAutoTower(payload.autoTower ?? 'None');
+          setAutoStartPosition(payload.autoStartPosition ?? '');
+          setTower(payload.tower ?? '');
+          setPath(payload.path ?? '');
+          setDefenseRating(
+            payload.defenseRating === undefined
+              ? undefined
+              : payload.defenseRating,
           );
+          setDisabled(payload.disabled ?? null);
+          setNoShow(didNotShow);
+          setShootingRange(payload.shootingRange ?? '');
           setNotes(payload.notes ?? '');
         } else {
           setAutoFuel(0);
           setActiveFuel(0);
+          setCenterSwipes(0);
+          setPassedFuel(0);
+          setAutoDepot(false);
+          setAutoOutpost(false);
+          setAutoPenalties(0);
+          setTeleopPenalties(0);
           setAutoTower('None');
-          setTower('None');
-          setPath('Trench');
-          setDefenseRating(0);
-          setDisabled(false);
+          setAutoStartPosition('');
+          setTower('');
+          setPath('');
+          setDefenseRating(undefined);
+          setDisabled(null);
           setNoShow(false);
-          setPenalties(0);
-          setShootingRange('Mixed');
+          setShootingRange('');
           setNotes('');
         }
         setDraftReady(true);
@@ -681,8 +1023,7 @@ export default function Home() {
   }, [online, queuedCount, session]);
 
   useEffect(() => {
-    if (activeView !== 'Teams' || !canUseStrategy || !selectedTeam || !online)
-      return;
+    if (activeView !== 'Data' || !selectedTeam || !online) return;
     fetch(`/api/analysis?team=${selectedTeam}`)
       .then(async (response) => {
         const result = (await response.json()) as TeamAnalysis & {
@@ -696,53 +1037,88 @@ export default function Home() {
   }, [activeView, online, selectedTeam]);
 
   useEffect(() => {
-    if (
-      !['Plan', 'Teams'].includes(activeView) ||
-      !canUseStrategy ||
-      !online ||
-      !session
-    )
-      return;
-    fetch('/api/strategy')
-      .then(async (response) => {
+    if (!eventPack || !session) return;
+    if (!['Home', 'Plan', 'Data', 'Alliance'].includes(activeView)) return;
+    let cancelled = false;
+    const cacheId = `strategy-teams:${eventPack.event.id}`;
+    setStrategyLoading(true);
+    void (async () => {
+      const cached = await getCachedValue<TeamAnalysis[]>(cacheId);
+      if (cancelled) return;
+      if (cached?.length) setStrategyTeams(cached);
+      if (!online) {
+        setStrategyLoading(false);
+        return;
+      }
+      try {
+        const response = await fetch('/api/strategy');
         const result = (await response.json()) as {
           teams?: TeamAnalysis[];
           error?: string;
         };
         if (!response.ok)
           throw new Error(result.error ?? 'Strategy data unavailable.');
-        setStrategyTeams(result.teams ?? []);
-      })
-      .catch(() => setStrategyTeams([]));
-  }, [activeView, online, session]);
+        const teams = result.teams ?? [];
+        if (cancelled) return;
+        setStrategyTeams(teams);
+        await saveCachedValue(cacheId, teams);
+      } catch {
+        // Keep the last successful event-specific cache on transient failure.
+      } finally {
+        if (!cancelled) setStrategyLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeView, eventPack?.event.id, online, session]);
 
   useEffect(() => {
     if (!eventPack) return;
     if (
       (activeView === 'Admin' && !isAdmin) ||
-      (activeView === 'Plan' && !canUseStrategy)
+      (activeView === 'Plan' && !canUseStrategy) ||
+      (activeView === 'Video' && isGuest)
     )
       replaceView('Home');
-  }, [activeView, canUseStrategy, eventPack, isAdmin]);
+  }, [activeView, canUseStrategy, eventPack, isAdmin, isGuest]);
 
   useEffect(() => {
-    if (!canUseStrategy && teamsSection !== 'directory')
-      setTeamsSection('directory');
-  }, [canUseStrategy, teamsSection]);
+    if (
+      eventPack &&
+      !canUseStrategy &&
+      (activeView === 'Plan' || activeView === 'Alliance')
+    )
+      replaceView('Home');
+  }, [activeView, canUseStrategy, eventPack]);
 
   useEffect(() => {
-    if (activeView !== 'Admin' || !isAdmin || !online) return;
+    if (isGuest && teamsSection !== 'analysis') setTeamsSection('analysis');
+    else if (!canUseStrategy && teamsSection === 'review')
+      setTeamsSection('analysis');
+  }, [canUseStrategy, isGuest, teamsSection]);
+
+  const loadTeamEventChoices = useCallback(async (requestedTeam?: number) => {
     setEventsLoading(true);
     setEventMessage('');
-    fetch(`/api/tba-events?year=${eventYear}`)
+    const query = requestedTeam ? `?team=${requestedTeam}` : '';
+    return fetch(`/api/tba-events${query}`)
       .then(async (response) => {
         const result = (await response.json()) as {
           events?: TbaEventChoice[];
+          teamNumber?: number;
+          baseTeamNumber?: number;
+          testTeamNumber?: number | null;
           error?: string;
         };
         if (!response.ok)
           throw new Error(result.error ?? 'Unable to load Team 401 events.');
         setEventChoices(result.events ?? []);
+        const loadedTeam = result.teamNumber ?? requestedTeam ?? 401;
+        setEventTeamNumber(loadedTeam);
+        setEventTeamInput(String(loadedTeam));
+        setBaseTeamNumber(result.baseTeamNumber ?? 401);
+        setTestTeamNumber(result.testTeamNumber ?? null);
       })
       .catch((error) => {
         setEventChoices([]);
@@ -753,10 +1129,15 @@ export default function Home() {
         );
       })
       .finally(() => setEventsLoading(false));
-  }, [activeView, eventYear, isAdmin, online]);
+  }, []);
 
   useEffect(() => {
-    if (activeView !== 'Settings' || !session || !online) return;
+    if (activeView !== 'Admin' || !isAdmin || !online) return;
+    void loadTeamEventChoices();
+  }, [activeView, isAdmin, loadTeamEventChoices, online]);
+
+  useEffect(() => {
+    if (activeView !== 'Account' || !session || !online) return;
     fetch('/api/sessions')
       .then(async (response) => {
         const result = (await response.json()) as {
@@ -783,15 +1164,22 @@ export default function Home() {
   }, [activeView, planningMatches, selectedMatchKey]);
 
   useEffect(() => {
-    if (activeView !== 'Plan' || !currentMatch || !session) return;
+    if (activeView !== 'Video') return;
+    if (videoMatches.length === 0) return;
+    if (!videoMatches.some((match) => match.key === selectedVideoMatchKey))
+      setSelectedVideoMatchKey(videoMatches[0].key);
+  }, [activeView, selectedVideoMatchKey, videoMatches]);
+
+  useEffect(() => {
+    if (activeView !== 'Plan' || !currentPlanningMatch || !session) return;
     let cancelled = false;
     loadedPlanMatchIdRef.current = '';
     setPlanMessage('');
     setPlanAuthor('');
     setPlanUpdatedAt(null);
-    setMatchPlan(planForMatch(null, currentMatch));
-    const cacheId = `match-plan:${currentMatch.id}`;
-    const draftId = `match-plan-draft:${currentMatch.id}`;
+    setMatchPlan(planForMatch(null, currentPlanningMatch));
+    const cacheId = `match-plan:${currentPlanningMatch.id}`;
+    const draftId = `match-plan-draft:${currentPlanningMatch.id}`;
     void Promise.all([
       getDraft<MatchPlan>(draftId),
       getCachedValue<{
@@ -802,8 +1190,10 @@ export default function Home() {
       }>(cacheId),
     ]).then(([draft, cached]) => {
       if (cancelled) return;
-      if (draft) setMatchPlan(planForMatch(draft.payload, currentMatch));
-      else if (cached) setMatchPlan(planForMatch(cached.plan, currentMatch));
+      if (draft)
+        setMatchPlan(planForMatch(draft.payload, currentPlanningMatch));
+      else if (cached)
+        setMatchPlan(planForMatch(cached.plan, currentPlanningMatch));
       if (cached) {
         setPlanCanEdit(cached.canEdit);
         setPlanAuthor(cached.authorName ?? '');
@@ -813,14 +1203,16 @@ export default function Home() {
         setPlanMessage(
           'Showing the match plan saved on this device. Changes will remain a local draft until reconnected.',
         );
-        loadedPlanMatchIdRef.current = currentMatch.id;
+        loadedPlanMatchIdRef.current = currentPlanningMatch.id;
       }
     });
     if (!online)
       return () => {
         cancelled = true;
       };
-    fetch(`/api/match-plans?matchId=${encodeURIComponent(currentMatch.id)}`)
+    fetch(
+      `/api/match-plans?matchId=${encodeURIComponent(currentPlanningMatch.id)}`,
+    )
       .then(async (response) => {
         const result = (await response.json()) as {
           plan: MatchPlan | null;
@@ -833,7 +1225,8 @@ export default function Home() {
           throw new Error(result.error ?? 'Unable to load this match plan.');
         const draft = await getDraft<MatchPlan>(draftId).catch(() => undefined);
         if (cancelled) return;
-        if (!draft) setMatchPlan(planForMatch(result.plan, currentMatch));
+        if (!draft)
+          setMatchPlan(planForMatch(result.plan, currentPlanningMatch));
         setPlanCanEdit(result.canEdit);
         setPlanAuthor(result.authorName ?? '');
         setPlanUpdatedAt(result.updatedAt);
@@ -846,7 +1239,7 @@ export default function Home() {
       })
       .catch((error) => {
         if (cancelled) return;
-        setMatchPlan(planForMatch(null, currentMatch));
+        setMatchPlan(planForMatch(null, currentPlanningMatch));
         setPlanCanEdit(false);
         setPlanMessage(
           error instanceof Error
@@ -855,20 +1248,31 @@ export default function Home() {
         );
       })
       .finally(() => {
-        if (!cancelled) loadedPlanMatchIdRef.current = currentMatch.id;
+        if (!cancelled) loadedPlanMatchIdRef.current = currentPlanningMatch.id;
       });
     return () => {
       cancelled = true;
     };
-  }, [activeView, currentMatch, online, session]);
+  }, [activeView, currentPlanningMatch, online, session]);
 
   useEffect(() => {
-    if (activeView !== 'Plan' || !currentMatch || !session) return;
+    if (currentPlanningMatch) return;
+    loadedPlanMatchIdRef.current = '';
+    setMatchPlan(emptyMatchPlan);
+    setPlanCanEdit(false);
+    setPlanMessage('');
+    setPlanAuthor('');
+    setPlanUpdatedAt(null);
+    setPlanStats([]);
+  }, [currentPlanningMatch, eventPack?.event.key]);
+
+  useEffect(() => {
+    if (activeView !== 'Plan' || !currentPlanningMatch || !session) return;
     const matchTeams = new Set([
-      ...currentMatch.alliances.red,
-      ...currentMatch.alliances.blue,
+      ...currentPlanningMatch.alliances.red,
+      ...currentPlanningMatch.alliances.blue,
     ]);
-    const statsCacheId = `match-stats:${currentMatch.id}`;
+    const statsCacheId = `match-stats:${currentPlanningMatch.id}`;
     void getCachedValue<TeamAnalysis[]>(statsCacheId).then((cached) => {
       if (cached) setPlanStats(cached);
     });
@@ -888,28 +1292,28 @@ export default function Home() {
         await saveCachedValue(statsCacheId, stats);
       })
       .catch(() => setPlanStats([]));
-  }, [activeView, currentMatch, online, session]);
+  }, [activeView, currentPlanningMatch, online, session]);
 
   useEffect(() => {
-    if (activeView !== 'Plan' || !currentMatch || !planCanEdit) return;
+    if (activeView !== 'Plan' || !currentPlanningMatch || !planCanEdit) return;
     const timer = window.setTimeout(
       () =>
         void saveDraft({
-          id: `match-plan-draft:${currentMatch.id}`,
+          id: `match-plan-draft:${currentPlanningMatch.id}`,
           payload: matchPlan,
           updatedAt: Date.now(),
         }),
       300,
     );
     return () => window.clearTimeout(timer);
-  }, [activeView, currentMatch, matchPlan, planCanEdit]);
+  }, [activeView, currentPlanningMatch, matchPlan, planCanEdit]);
 
   useEffect(() => {
     if (
       activeView !== 'Plan' ||
-      !currentMatch ||
+      !currentPlanningMatch ||
       !planCanEdit ||
-      loadedPlanMatchIdRef.current !== currentMatch.id
+      loadedPlanMatchIdRef.current !== currentPlanningMatch.id
     )
       return;
 
@@ -921,7 +1325,7 @@ export default function Home() {
     setPlanMessage('Saving changes…');
     const timer = window.setTimeout(() => void saveMatchPlan(), 700);
     return () => window.clearTimeout(timer);
-  }, [activeView, currentMatch, matchPlan, online, planCanEdit]);
+  }, [activeView, currentPlanningMatch, matchPlan, online, planCanEdit]);
 
   useEffect(() => {
     if (!draftReady || !draftId) return;
@@ -933,8 +1337,13 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, [
     activeFuel,
+    autoDepot,
     autoFuel,
+    autoOutpost,
+    autoPenalties,
+    autoStartPosition,
     autoTower,
+    centerSwipes,
     defenseRating,
     disabled,
     draftId,
@@ -942,8 +1351,9 @@ export default function Home() {
     noShow,
     notes,
     path,
-    penalties,
+    passedFuel,
     shootingRange,
+    teleopPenalties,
     tower,
   ]);
 
@@ -968,17 +1378,17 @@ export default function Home() {
               swerveModule: serverEntry.swerveModule ?? '',
               motorTypes: serverEntry.motorTypes.join(', '),
               weightLbs: serverEntry.weightLbs ?? 0,
-              widthInches: serverEntry.dimensions?.width ?? 0,
-              lengthInches: serverEntry.dimensions?.length ?? 0,
-              heightInches: serverEntry.dimensions?.height ?? 0,
             }
           : emptyPitDraft;
+        const savedDraft = draft?.payload ?? serverDraft;
         const loadedDraft = {
           ...emptyPitDraft,
-          ...(draft?.payload ?? serverDraft),
+          ...savedDraft,
         };
         setPitDraft({
           ...loadedDraft,
+          shooterMount:
+            (savedDraft as Partial<PitDraft>).shooterMount ?? 'Fixed',
           autonomousStart: normalizeSelections(
             loadedDraft.autonomousStart,
             'Unknown',
@@ -1016,6 +1426,34 @@ export default function Home() {
       setSaveError('Choose a match and team from the schedule first.');
       return;
     }
+    const missingFields = noShow
+      ? []
+      : [
+          !autoStartPosition && 'autonomous starting position',
+          !path && 'field movement',
+          defenseRating === undefined && 'whether the robot played defense',
+          !shootingRange && 'shooting range',
+          !tower && 'endgame tower',
+          disabled === null && 'reliability',
+        ].filter((field): field is string => Boolean(field));
+    if (missingFields.length > 0) {
+      setSaveError(`Complete: ${missingFields.join(', ')}.`);
+      return;
+    }
+    if (
+      !noShow &&
+      [
+        autoFuel,
+        activeFuel,
+        centerSwipes,
+        passedFuel,
+        autoPenalties,
+        teleopPenalties,
+      ].some((value) => !Number.isInteger(value) || value < 0)
+    ) {
+      setSaveError('All counts must be zero or a positive whole number.');
+      return;
+    }
     setSaveError('');
     try {
       const mutation: PendingMutation = {
@@ -1038,7 +1476,27 @@ export default function Home() {
           seasonYear: eventPack.event.year,
           schemaVersion: 1,
           reviewSource: videoReview ? 'video_review' : 'live',
-          ...currentPayload,
+          ...(noShow
+            ? {
+                ...currentPayload,
+                autoFuel: 0,
+                activeFuel: 0,
+                centerSwipes: 0,
+                passedFuel: 0,
+                autoDepot: false,
+                autoOutpost: false,
+                autoPenalties: 0,
+                teleopPenalties: 0,
+                autoTower: 'None',
+                autoStartPosition: 'None',
+                tower: 'None',
+                path: 'None',
+                defenseRating: null,
+                disabled: false,
+                penalties: 0,
+                shootingRange: 'None',
+              }
+            : currentPayload),
         },
       };
       await queueMutation(mutation);
@@ -1046,6 +1504,20 @@ export default function Home() {
       setQueuedCount((await getPendingMutations()).length);
       setSaved(true);
       setSubmissionStatus('queued');
+      const matchIndex = (eventPack.matches ?? []).findIndex(
+        (match) => match.key === currentMatch.key,
+      );
+      const nextMatch = eventPack.matches[matchIndex + 1];
+      if (nextMatch) {
+        const alliance = selectedStation.startsWith('blue')
+          ? nextMatch.alliances.blue
+          : nextMatch.alliances.red;
+        const stationIndex = Number(selectedStation.at(-1)) - 1;
+        const nextTeam = alliance[stationIndex];
+        if (nextTeam) selectAssignment(nextMatch, nextTeam, selectedStation);
+      } else {
+        setScoutingPhase('pre');
+      }
     } catch {
       setSaveError('Could not queue this match for synchronization.');
     }
@@ -1054,6 +1526,10 @@ export default function Home() {
   async function submitPit() {
     if (!eventPack || !pitTeam) {
       setPitMessage('Choose a team first.');
+      return;
+    }
+    if (pitDraft.weightLbs <= 0) {
+      setPitMessage('Enter the robot weight before saving the pit report.');
       return;
     }
     const id = `pit:${eventPack.event.key}:${pitTeam}`;
@@ -1172,9 +1648,18 @@ export default function Home() {
       setEventKey(pack.event.key);
       await saveCachedValue('current-event-pack', pack);
       if (!selectedMatchKeyRef.current && pack.matches.length > 0) {
-        const mine = pack.assignments.find(
-          (assignment) => assignment.scoutUserId === pack.userId,
-        );
+        const mine = pack.assignments
+          .filter((assignment) => assignment.scoutUserId === pack.userId)
+          .map((assignment) => ({
+            assignment,
+            match: pack.matches.find((item) => item.id === assignment.matchId),
+          }))
+          .filter((item) => item.match && !item.match.result?.actualTime)
+          .sort(
+            (a, b) =>
+              (a.match?.predictedAt ?? a.match?.scheduledAt ?? Infinity) -
+              (b.match?.predictedAt ?? b.match?.scheduledAt ?? Infinity),
+          )[0]?.assignment;
         const match =
           pack.matches.find((item) => item.id === mine?.matchId) ??
           pack.matches[0];
@@ -1219,6 +1704,7 @@ export default function Home() {
     setSubmissionStatus('draft');
     setSubmittedMatchMutation(null);
     setVideoReview(null);
+    setScoutingPhase('pre');
     navigate('Scout');
   }
 
@@ -1250,32 +1736,6 @@ export default function Home() {
       return;
     }
     navigate('Home');
-  }
-
-  async function assignScout(
-    match: EventMatch,
-    team: number,
-    station: string,
-    scoutUserId: string,
-  ) {
-    setAssignmentMessage('');
-    const response = await fetch('/api/assignments', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        matchId: match.id,
-        teamNumber: team,
-        station,
-        scoutUserId,
-      }),
-    });
-    const result = (await response.json()) as { error?: string };
-    if (!response.ok) {
-      setAssignmentMessage(result.error ?? 'Could not save assignment.');
-      return;
-    }
-    setAssignmentMessage('Assignment saved.');
-    await loadEventPack();
   }
 
   async function reopenEntry(entryId: string) {
@@ -1332,6 +1792,23 @@ export default function Home() {
     await loadEventPack();
   }
 
+  async function removeMember(userId: string) {
+    setAdminMessage('');
+    const response = await fetch('/api/members', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    });
+    const result = (await response.json()) as { error?: string };
+    if (!response.ok) {
+      setAdminMessage(result.error ?? 'Could not remove the account.');
+      return false;
+    }
+    setAdminMessage('Account removed from Scouting.');
+    await loadEventPack();
+    return true;
+  }
+
   async function revokeSession(sessionId: string) {
     setSessionMessage('');
     const response = await fetch('/api/sessions', {
@@ -1355,6 +1832,44 @@ export default function Home() {
       items.filter((item) => item.id !== sessionId),
     );
     setSessionMessage('Session revoked.');
+  }
+
+  async function signOut() {
+    setSigningOut(true);
+    await authClient.signOut();
+    window.location.href = '/sign-in';
+  }
+
+  async function changePassword(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPasswordMessage('');
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage('The new passwords do not match.');
+      return;
+    }
+    setChangingPassword(true);
+    const response = await fetch('/api/auth/firebase-password', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    const result = (await response.json().catch(() => null)) as {
+      error?: string;
+      warning?: string;
+    } | null;
+    setChangingPassword(false);
+    if (!response.ok) {
+      setPasswordMessage(result?.error ?? 'Could not change your password.');
+      return;
+    }
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordMessage(
+      result?.warning
+        ? `Password changed for both Scouting and Ops. ${result.warning}`
+        : 'Password changed for both Scouting and Ops. Other scouting sessions were signed out.',
+    );
   }
 
   async function syncNow() {
@@ -1393,7 +1908,7 @@ export default function Home() {
   }
 
   async function saveMatchPlan() {
-    if (!currentMatch) {
+    if (!currentPlanningMatch) {
       setPlanMessage('Choose a match first.');
       return;
     }
@@ -1402,7 +1917,10 @@ export default function Home() {
       const response = await fetch('/api/match-plans', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ matchId: currentMatch.id, ...matchPlan }),
+        body: JSON.stringify({
+          matchId: currentPlanningMatch.id,
+          ...matchPlan,
+        }),
       });
       const result = (await response.json()) as {
         error?: string;
@@ -1414,14 +1932,14 @@ export default function Home() {
       setPlanAuthor(result.authorName ?? session?.user.name ?? '');
       const savedAt = result.updatedAt ?? Date.now();
       setPlanUpdatedAt(savedAt);
-      await saveCachedValue(`match-plan:${currentMatch.id}`, {
+      await saveCachedValue(`match-plan:${currentPlanningMatch.id}`, {
         plan: matchPlan,
         canEdit: true,
         authorName: result.authorName ?? session?.user.name ?? null,
         updatedAt: savedAt,
       });
       await saveDraft({
-        id: `match-plan-draft:${currentMatch.id}`,
+        id: `match-plan-draft:${currentPlanningMatch.id}`,
         payload: matchPlan,
         updatedAt: Date.now(),
       });
@@ -1442,17 +1960,26 @@ export default function Home() {
       const response = await fetch('/api/event-pack', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ eventKey: eventKey.trim().toLowerCase() }),
+        body: JSON.stringify({
+          eventKey: eventKey.trim().toLowerCase(),
+          teamNumber: eventTeamNumber,
+        }),
       });
       const result = (await response.json()) as {
         error?: string;
         event?: { name: string };
         matchCount?: number;
+        organizationTeamNumber?: number;
       };
       if (!response.ok)
         throw new Error(result.error ?? 'Unable to load this event.');
       setEventMessage(
         `${result.event?.name ?? eventKey} is current. Cached ${result.matchCount ?? 0} matches.`,
+      );
+      setTestTeamNumber(
+        result.organizationTeamNumber !== baseTeamNumber
+          ? (result.organizationTeamNumber ?? eventTeamNumber)
+          : null,
       );
       await loadEventPack();
     } catch (error) {
@@ -1464,53 +1991,32 @@ export default function Home() {
     }
   }
 
-  function renderStation(
-    match: EventMatch,
-    color: 'red' | 'blue',
-    team: number,
-    index: number,
-  ) {
-    const station = `${color}${index + 1}`;
-    const assignment = eventPack?.assignments.find(
-      (item) => item.matchId === match.id && item.station === station,
-    );
-    const scout = eventPack?.members.find(
-      (member) => member.id === assignment?.scoutUserId,
-    );
-    const canManage = eventPack && canManageAssignments(eventPack.role);
-    return (
-      <div className="grid gap-1" key={`${station}-${team}`}>
-        <button
-          className={`choice ${color === 'red' ? 'border-red-300' : 'border-blue-300'}`}
-          onClick={() => selectAssignment(match, team, station)}
-        >
-          {color === 'red' ? 'R' : 'B'}
-          {index + 1} · {team}
-        </button>
-        {canManage ? (
-          <select
-            aria-label={`Scout assigned to ${station} team ${team}`}
-            className="h-8 rounded-md border bg-transparent px-1 text-xs"
-            value={assignment?.scoutUserId ?? ''}
-            onChange={(event) =>
-              event.target.value &&
-              void assignScout(match, team, station, event.target.value)
-            }
-          >
-            <option value="">Unassigned</option>
-            {eventPack.members.map((member) => (
-              <option value={member.id} key={member.id}>
-                {member.name}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <small className="text-center text-muted-foreground">
-            {scout?.name ?? 'Unassigned'}
-          </small>
-        )}
-      </div>
-    );
+  async function stopTeamTestMode() {
+    setConfiguringEvent(true);
+    setEventMessage('');
+    try {
+      const response = await fetch('/api/event-pack', { method: 'DELETE' });
+      const result = (await response.json()) as { error?: string };
+      if (!response.ok)
+        throw new Error(result.error ?? 'Unable to stop team test mode.');
+      setTestTeamNumber(null);
+      setEventTeamNumber(baseTeamNumber);
+      setEventTeamInput(String(baseTeamNumber));
+      setEventKey('');
+      setEventMessage(`Returned to Team ${baseTeamNumber}.`);
+      await Promise.all([
+        loadEventPack(),
+        loadTeamEventChoices(baseTeamNumber),
+      ]);
+    } catch (error) {
+      setEventMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to stop team test mode.',
+      );
+    } finally {
+      setConfiguringEvent(false);
+    }
   }
 
   const myAssignments =
@@ -1523,7 +2029,7 @@ export default function Home() {
       }))
       .filter(
         (item) =>
-          item.assignment.scoutUserId === eventPack.userId &&
+          item.assignment.scoutUserId === effectiveUserId &&
           item.match &&
           !item.match.result?.actualTime,
       )
@@ -1532,57 +2038,55 @@ export default function Home() {
           (a.match?.predictedAt ?? a.match?.scheduledAt ?? Infinity) -
           (b.match?.predictedAt ?? b.match?.scheduledAt ?? Infinity),
       ) ?? [];
-  const nextAssignment = myAssignments[0];
   const reopenedEntries =
     eventPack?.scoutEntries.filter(
       (entry) =>
         (entry.payload as MatchDraft & { reopened?: boolean }).reopened,
     ) ?? [];
-  const visibleMatches =
-    eventPack?.matches.filter((match) => {
-      const assignments = eventPack.assignments.filter(
-        (item) => item.matchId === match.id,
-      );
-      if (
-        scheduleFilter === 'mine' &&
-        !assignments.some((item) => item.scoutUserId === eventPack.userId)
-      )
-        return false;
-      if (scheduleFilter === 'unassigned' && assignments.length >= 6)
-        return false;
-      const query = scheduleSearch.trim().toLowerCase();
-      return (
-        !query ||
-        matchLabel(match).toLowerCase().includes(query) ||
-        [...match.alliances.red, ...match.alliances.blue].some((team) =>
-          String(team).includes(query),
-        )
-      );
-    }) ?? [];
-  const planTeams = currentMatch
-    ? [...currentMatch.alliances.red, ...currentMatch.alliances.blue].map(
-        (team) => ({
-          team,
-          alliance: currentMatch.alliances.red.includes(team)
-            ? ('red' as const)
-            : ('blue' as const),
-          stats: planStats.find((item) => item.teamNumber === team),
-          pit: eventPack?.pitEntries.find((item) => item.teamNumber === team),
-          name: eventPack?.teams?.find((item) => item.teamNumber === team)?.name,
-        }),
-      )
+  const planTeams = currentPlanningMatch
+    ? [
+        ...currentPlanningMatch.alliances.red,
+        ...currentPlanningMatch.alliances.blue,
+      ].map((team) => ({
+        team,
+        alliance: currentPlanningMatch.alliances.red.includes(team)
+          ? ('red' as const)
+          : ('blue' as const),
+        stats: planStats.find((item) => item.teamNumber === team),
+        pit: eventPack?.pitEntries.find((item) => item.teamNumber === team),
+        name: eventPack?.teams?.find((item) => item.teamNumber === team)?.name,
+      }))
     : [];
-  const totalSlots = (eventPack?.matches.length ?? 0) * 6;
+  const selectedStrategyTeam = strategyTeams.find(
+    (team) => team.teamNumber === selectedTeam,
+  );
   const currentMatchYoutubeVideo = currentMatch?.videos?.find(
     (video) => video.type === 'youtube',
   );
-  const assignmentCounts =
-    eventPack?.members.map((member) => ({
-      member,
-      count: eventPack.assignments.filter(
-        (assignment) => assignment.scoutUserId === member.id,
-      ).length,
-    })) ?? [];
+  const filteredMembers =
+    eventPack?.members.filter((member) => {
+      const guest = member.email.endsWith('@guest.invalid');
+      const matchesSearch = `${member.name} ${member.email}`
+        .toLowerCase()
+        .includes(memberSearch.trim().toLowerCase());
+      const matchesFilter =
+        memberFilter === 'all' ||
+        (memberFilter === 'active' && !member.disabled && !guest) ||
+        (memberFilter === 'disabled' && Boolean(member.disabled)) ||
+        (memberFilter === 'guests' && guest);
+      return matchesSearch && matchesFilter;
+    }) ?? [];
+
+  const pageTitle =
+    activeView === 'Scout'
+      ? currentMatch
+        ? `${matchHeaderLabel(currentMatch)}${selectedStation ? ` · ${selectedStation.replace('red', 'Red ').replace('blue', 'Blue ')}` : ''}${selectedTeam ? ` · Team ${selectedTeam}` : ''}`
+        : 'Choose an assignment'
+      : activeView === 'Pit'
+        ? `Pit Scouting · ${eventPack?.pitEntries.length ?? 0}/${eventTeams.length} Complete`
+        : activeView === 'Plan' && currentPlanningMatch
+          ? `Plan · ${matchHeaderLabel(currentPlanningMatch)}`
+          : activeView;
 
   useEffect(() => {
     const frame = requestAnimationFrame(() =>
@@ -1595,15 +2099,38 @@ export default function Home() {
     const next = !dark;
     document.documentElement.classList.toggle('dark', next);
     localStorage.setItem('team401-theme', next ? 'dark' : 'light');
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute('content', next ? '#24282b' : '#65152f');
     setDark(next);
   }
 
   if (isPending || !session) return null;
 
+  const stationOptions = currentMatch
+    ? [
+        ...currentMatch.alliances.red.map((_, index) => `red${index + 1}`),
+        ...currentMatch.alliances.blue.map((_, index) => `blue${index + 1}`),
+      ]
+    : [];
+  const scoutAlliance =
+    activeView !== 'Scout' || !stationOptions.includes(selectedStation)
+      ? undefined
+      : selectedStation.startsWith('red')
+        ? 'red'
+        : 'blue';
+
   return (
-    <main className="app-shell">
+    <main className="app-shell" data-scout-alliance={scoutAlliance}>
       <aside className="desktop-nav">
-        <div className="brand-mark">401</div>
+        <button
+          type="button"
+          className="brand-mark"
+          aria-label="Home"
+          onClick={() => navigate('Home')}
+        >
+          401
+        </button>
         <nav aria-label="Primary navigation" className="mt-8 grid gap-2">
           {visibleNav.map(({ label, icon: Icon }) => (
             <button
@@ -1631,129 +2158,127 @@ export default function Home() {
             </button>
           )}
         </nav>
-        <button
-          type="button"
-          aria-current={activeView === 'Settings' ? 'page' : undefined}
-          onClick={() => navigate('Settings')}
-          className={
-            activeView === 'Settings'
-              ? 'nav-item active mt-auto'
-              : 'nav-item mt-auto'
-          }
-        >
-          <Settings />
-          <span>Settings</span>
-        </button>
       </aside>
-      <section className="h-dvh min-w-0 flex-1 overflow-y-auto">
+      <section className="app-content h-dvh min-w-0 flex-1 overflow-y-auto">
         <header className="topbar">
-          <div className="flex items-center gap-2">
-            {activeView !== 'Home' && (
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                aria-label="Go to home"
-                onClick={() => replaceView('Home')}
-              >
-                <House />
-              </Button>
-            )}
-            <h1>
-              {activeView === 'Scout'
-                ? currentMatch
-                  ? matchLabel(currentMatch)
-                  : 'Choose an assignment'
-                : activeView}
+          <div className="flex min-w-0 items-center gap-2">
+            <button
+              type="button"
+              className="mobile-brand-mark"
+              aria-label="Home"
+              onClick={() => navigate('Home')}
+            >
+              401
+            </button>
+            <h1
+              className={activeView === 'Scout' ? 'scout-heading' : undefined}
+            >
+              {pageTitle}
             </h1>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="status-badge">
-              {online ? <Cloud /> : <CloudOff />}
-              {online ? 'Online' : 'Offline ready'}
-            </Badge>
-            {!isPending &&
-              (session ? (
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    authClient.signOut().then(() => window.location.reload())
-                  }
-                >
-                  <LogOut />
-                  {session.user.name}
-                </Button>
-              ) : (
-                <Button nativeButton={false} render={<a href="/sign-in" />}>
-                  Sign in
-                </Button>
-              ))}
+          <div className="ml-auto flex items-center gap-2">
+            {!online && (
+              <Badge variant="outline" className="status-badge">
+                <CloudOff />
+                <span className="status-text">Offline ready</span>
+              </Badge>
+            )}
+            <div className="desktop-header-actions flex items-center gap-2">
+              {!isPending &&
+                (session ? (
+                  <Button variant="outline" onClick={() => navigate('Account')}>
+                    <CircleUserRound />
+                    {session.user.name}
+                  </Button>
+                ) : (
+                  <Button nativeButton={false} render={<a href="/sign-in" />}>
+                    Sign in
+                  </Button>
+                ))}
+              <Button
+                aria-label="Toggle color theme"
+                size="icon"
+                variant="ghost"
+                onClick={toggleTheme}
+              >
+                {dark ? <Sun /> : <Moon />}
+              </Button>
+            </div>
             <Button
-              aria-label="Toggle color theme"
+              type="button"
+              className="mobile-header-menu-button"
               size="icon"
               variant="ghost"
-              onClick={toggleTheme}
+              aria-label="Open navigation menu"
+              aria-expanded={mobileMenuOpen}
+              onClick={() => setMobileMenuOpen((open) => !open)}
             >
-              {dark ? <Sun /> : <Moon />}
+              <Menu />
             </Button>
           </div>
         </header>
         {activeView === 'Home' && (
           <div className="mx-auto grid w-full max-w-3xl gap-4 p-4 sm:p-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Next assignment</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {nextAssignment?.match ? (
-                  <>
-                    <div>
-                      <p className="text-2xl font-bold">
-                        {matchLabel(nextAssignment.match)}
-                      </p>
-                      <p className="text-muted-foreground">
-                        Team {nextAssignment.assignment.teamNumber} ·{' '}
-                        {nextAssignment.assignment.station.toUpperCase()}
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {nextAssignment.match.predictedAt
-                          ? new Date(
-                              nextAssignment.match.predictedAt,
-                            ).toLocaleTimeString([], {
-                              hour: 'numeric',
-                              minute: '2-digit',
-                            })
-                          : 'Time TBD'}{' '}
-                        · {nextAssignment.match.alliances.red.join(', ')} vs{' '}
-                        {nextAssignment.match.alliances.blue.join(', ')}
-                      </p>
-                    </div>
-                    <Button
-                      className="w-full"
-                      onClick={() =>
-                        selectAssignment(
-                          nextAssignment.match!,
-                          nextAssignment.assignment.teamNumber,
-                          nextAssignment.assignment.station,
-                        )
-                      }
-                    >
-                      Start scouting
-                    </Button>
-                  </>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No assignment has been scheduled for you yet.
+            <PersonalEventSchedule
+              name={activePreview?.name ?? session.user.name}
+              scoutShifts={eventPack?.scoutShifts ?? []}
+              previewUserId={activePreview?.id}
+              eventKey={eventPack?.event.key ?? ''}
+              userId={effectiveUserId}
+              eventName={eventPack?.event.name ?? 'No current event selected'}
+              actions={
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!online || packLoading}
+                    onClick={() => void loadEventPack(false, true)}
+                  >
+                    <RefreshCw className={packLoading ? 'animate-spin' : ''} />
+                    Refresh
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    {eventPack?.event.updatedAt
+                      ? `Updated ${new Date(
+                          eventPack.event.updatedAt,
+                        ).toLocaleTimeString([], {
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })}`
+                      : isAdmin
+                        ? 'Choose an event from Admin.'
+                        : 'A scouting administrator needs to choose an event.'}
                   </p>
-                )}
-              </CardContent>
-            </Card>
+                </div>
+              }
+            />
+            {canUsePickLists && (
+              <Card className="py-0">
+                <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="font-semibold">Build your pick list</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Rank the teams you have watched, rate potential picks, and
+                      add notes.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    className="shrink-0"
+                    onClick={() => {
+                      setTeamsSection('picklist');
+                      navigate('Data');
+                    }}
+                  >
+                    Open my pick list
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
             {reopenedEntries.length > 0 && (
               <Card className="border-amber-400">
                 <CardHeader>
-                  <CardTitle>
-                    <RefreshCw /> Corrections requested
-                  </CardTitle>
+                  <CardTitle>Corrections requested</CardTitle>
                   <Badge variant="destructive">{reopenedEntries.length}</Badge>
                 </CardHeader>
                 <CardContent className="space-y-2">
@@ -1788,8 +2313,8 @@ export default function Home() {
           <div
             className={
               videoReview
-                ? 'mx-auto grid w-full max-w-7xl items-start gap-4 p-4 pb-28 sm:p-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(26rem,.95fr)]'
-                : 'mx-auto w-full max-w-3xl p-4 pb-28 sm:p-6'
+                ? 'mx-auto grid w-full max-w-7xl items-start gap-4 p-4 sm:p-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(26rem,.95fr)]'
+                : 'mx-auto w-full max-w-3xl p-4 sm:p-6'
             }
           >
             {videoReview && (
@@ -1828,259 +2353,490 @@ export default function Home() {
                 </CardContent>
               </Card>
             )}
-            <div className="min-w-0 space-y-4">
-              <Card className="match-card">
-                <CardContent className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <span className="station-dot" />
-                    <div>
-                      <p className="eyebrow">
-                        {selectedStation
-                          ? `${selectedStation.replace(/(red|blue)/, '$1 ')} · Selected assignment`
-                          : 'No assignment selected'}
-                      </p>
-                      <p className="text-2xl font-bold">
-                        {selectedTeam
-                          ? `Team ${selectedTeam}`
-                          : 'Open the schedule'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground">
-                      {eventPack?.event.year ?? 2026} REBUILT
-                    </p>
-                    <p className="font-mono text-lg font-bold text-primary">
-                      {currentMatch?.predictedAt
-                        ? new Date(currentMatch.predictedAt).toLocaleTimeString(
-                            [],
-                            { hour: 'numeric', minute: '2-digit' },
-                          )
-                        : '—'}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="border-b">
-                  <CardTitle>Autonomous</CardTitle>
-                </CardHeader>
-                <CardContent className="divide-y divide-border p-0">
-                  <Counter
-                    label="FUEL scored"
-                    hint="Use +5 for a burst, then adjust or type the total"
-                    value={autoFuel}
-                    onChange={setAutoFuel}
-                    quickAdds={[5]}
-                  />
-                  <div className="flex items-center justify-between gap-3 px-4 py-2">
-                    <strong>Auto TOWER</strong>
-                    <div className="two-choices">
-                      {['None', 'Level 1'].map((item) => (
-                        <button
-                          type="button"
-                          onClick={() => setAutoTower(item)}
-                          key={item}
-                          className={
-                            autoTower === item
-                              ? 'choice selected h-9 min-h-0 px-3 text-sm'
-                              : 'choice h-9 min-h-0 px-3 text-sm'
-                          }
-                        >
-                          {autoTower === item && <Check />}
-                          {item}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="border-b">
-                  <CardTitle>Teleoperated FUEL</CardTitle>
-                </CardHeader>
-                <CardContent className="divide-y divide-border p-0">
-                  <Counter
-                    label="FUEL scored"
-                    hint="Add observed bursts with +5 or +10; fine-tune anytime"
-                    value={activeFuel}
-                    onChange={setActiveFuel}
-                    quickAdds={[5, 10]}
-                  />
-                </CardContent>
-              </Card>
-              <div className="form-pair">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>
-                      <Gauge /> Field movement
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-3 gap-2">
-                    {['Trench', 'Bump', 'Both'].map((item) => (
-                      <button
-                        key={item}
-                        onClick={() => setPath(item)}
-                        className={path === item ? 'choice selected' : 'choice'}
-                      >
-                        {path === item && <Check />}
-                        {item}
-                      </button>
-                    ))}
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>
-                      <Shield /> Defense
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-2 gap-2">
-                    {[
-                      { value: 0, label: 'None' },
-                      { value: 1, label: 'Ineffective' },
-                      { value: 2, label: 'Effective' },
-                      { value: 3, label: 'Dominant' },
-                    ].map(({ value, label }) => (
-                      <button
-                        onClick={() => setDefenseRating(value)}
-                        aria-pressed={defenseRating === value}
-                        className={
-                          defenseRating === value
-                            ? 'choice selected min-h-10 justify-start px-2 text-xs'
-                            : 'choice min-h-10 justify-start px-2 text-xs'
-                        }
-                        key={value}
-                      >
-                        <strong className="text-base">{value}</strong>
-                        <span>{label}</span>
-                      </button>
-                    ))}
-                  </CardContent>
-                </Card>
+            <div
+              className="scout-form min-w-0 space-y-4"
+              onTouchStart={(event) => {
+                const touch = event.touches[0];
+                scoutSwipeStartRef.current = {
+                  x: touch.clientX,
+                  y: touch.clientY,
+                };
+              }}
+              onTouchEnd={(event) => {
+                const start = scoutSwipeStartRef.current;
+                scoutSwipeStartRef.current = null;
+                if (!start) return;
+                const touch = event.changedTouches[0];
+                const dx = touch.clientX - start.x;
+                const dy = touch.clientY - start.y;
+                if (Math.abs(dx) < 72 || Math.abs(dx) < Math.abs(dy) * 1.4)
+                  return;
+                const index = scoutingPhases.indexOf(scoutingPhase);
+                const target = scoutingPhases[index + (dx < 0 ? 1 : -1)];
+                if (target) moveToScoutingPhase(target);
+              }}
+            >
+              <div className="grid grid-cols-4 gap-1">
+                {(
+                  [
+                    ['pre', 'Pre-match'],
+                    ['auto', 'Auto'],
+                    ['tele', 'Teleop'],
+                    ['post', 'Post-match'],
+                  ] as const
+                ).map(([phase, label]) => (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={scoutingPhase === phase ? 'default' : 'ghost'}
+                    aria-current={scoutingPhase === phase ? 'step' : undefined}
+                    disabled={noShow && (phase === 'auto' || phase === 'tele')}
+                    onClick={() => moveToScoutingPhase(phase)}
+                    className="min-w-0 px-1 text-xs sm:text-sm"
+                    key={phase}
+                  >
+                    {label}
+                  </Button>
+                ))}
               </div>
-              <Card>
-                <CardHeader className="border-b">
-                  <CardTitle>Scoring profile</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-4">
-                  <div>
-                    <p className="mb-2 font-semibold">Typical shooting range</p>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      {['Near', 'Midfield', 'Far', 'Mixed'].map((item) => (
-                        <button
-                          className={
-                            shootingRange === item
-                              ? 'choice selected'
-                              : 'choice'
-                          }
-                          onClick={() => setShootingRange(item)}
-                          key={item}
+
+              {scoutingPhase === 'pre' && (
+                <Card>
+                  <CardHeader className="border-b">
+                    <CardTitle>Pre-match</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-5 pt-4">
+                    <div className="scout-assignment-selectors grid gap-3 sm:grid-cols-2">
+                      <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-sm font-medium">
+                        <span>Match</span>
+                        <select
+                          className="h-10 min-w-0 rounded-md border bg-background px-3 text-foreground"
+                          value={selectedMatchKey}
+                          onChange={(event) => {
+                            const match = eventPack?.matches.find(
+                              (item) => item.key === event.target.value,
+                            );
+                            if (!match) return;
+                            const station = selectedStation || 'red1';
+                            const alliance = station.startsWith('blue')
+                              ? match.alliances.blue
+                              : match.alliances.red;
+                            const stationIndex = Number(station.at(-1)) - 1;
+                            const team = alliance[stationIndex];
+                            if (team) selectAssignment(match, team, station);
+                          }}
                         >
-                          {shootingRange === item && <Check />}
-                          {item}
-                        </button>
-                      ))}
+                          {eventPack?.matches.map((match) => (
+                            <option value={match.key} key={match.key}>
+                              {matchLabel(match)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-sm font-medium">
+                        <span>Station</span>
+                        <select
+                          className="h-10 min-w-0 rounded-md border bg-background px-3 text-foreground"
+                          value={selectedStation}
+                          onChange={(event) => {
+                            if (!currentMatch) return;
+                            const station = event.target.value;
+                            const alliance = station.startsWith('red')
+                              ? currentMatch.alliances.red
+                              : currentMatch.alliances.blue;
+                            const index = Number(station.at(-1)) - 1;
+                            const team = alliance[index];
+                            if (team)
+                              selectAssignment(currentMatch, team, station);
+                          }}
+                        >
+                          {currentMatch &&
+                            [
+                              ...currentMatch.alliances.red.map(
+                                (team, index) => ({
+                                  team,
+                                  station: `red${index + 1}`,
+                                }),
+                              ),
+                              ...currentMatch.alliances.blue.map(
+                                (team, index) => ({
+                                  team,
+                                  station: `blue${index + 1}`,
+                                }),
+                              ),
+                            ].map(({ team, station }) => (
+                              <option value={station} key={station}>
+                                {station.toUpperCase()} · Team {team}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
                     </div>
-                  </div>
-                  <Counter
-                    label="Number of penalties"
-                    hint="Count referee-called penalties attributable to this robot; do not calculate penalty points."
-                    value={penalties}
-                    onChange={setPenalties}
-                    quickAdds={[1]}
-                  />
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="border-b">
-                  <CardTitle>
-                    <TowerControl /> Endgame TOWER
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {['None', 'Level 1', 'Level 2', 'Level 3'].map((item) => (
+                    <div className="space-y-2">
+                      <div>
+                        <strong>Starting position</strong>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                        {[
+                          'Left trench',
+                          'Left bump',
+                          'Center',
+                          'Right bump',
+                          'Right trench',
+                        ].map((position) => (
+                          <button
+                            type="button"
+                            className={
+                              autoStartPosition === position
+                                ? 'choice selected min-h-12 px-2 text-center text-sm'
+                                : 'choice min-h-12 px-2 text-center text-sm'
+                            }
+                            aria-pressed={autoStartPosition === position}
+                            onClick={() => setAutoStartPosition(position)}
+                            key={position}
+                          >
+                            {position}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     <button
-                      onClick={() => setTower(item)}
-                      key={item}
-                      className={tower === item ? 'choice selected' : 'choice'}
-                    >
-                      {tower === item && <Check />}
-                      {item}
-                    </button>
-                  ))}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Reliability and notes</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      className={disabled ? 'choice selected' : 'choice'}
-                      onClick={() => setDisabled(!disabled)}
-                    >
-                      {disabled && <Check />}Disabled or broken
-                    </button>
-                    <button
-                      className={noShow ? 'choice selected' : 'choice'}
+                      type="button"
+                      className={
+                        noShow ? 'choice selected w-full' : 'choice w-full'
+                      }
                       onClick={() => {
                         const nextNoShow = !noShow;
                         setNoShow(nextNoShow);
-                        if (nextNoShow) {
-                          setAutoFuel(0);
-                          setActiveFuel(0);
-                          setAutoTower('None');
-                          setTower('None');
-                          setPath('None');
-                          setDefenseRating(0);
-                          setDisabled(false);
-                          setPenalties(0);
-                          setShootingRange('None');
-                        }
+                        setSaveError('');
+                        if (nextNoShow) setScoutingPhase('post');
                       }}
                     >
-                      {noShow && <Check />}No-show
+                      {noShow && <Check />} No-show
                     </button>
-                  </div>
-                  <textarea
-                    className="min-h-24 w-full rounded-lg border bg-transparent p-3 text-base"
-                    value={notes}
-                    maxLength={1000}
-                    onChange={(event) => setNotes(event.target.value)}
-                    placeholder="Strategy-relevant observations, failure details, defense quality…"
-                  />
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
+
+              {scoutingPhase === 'auto' && (
+                <Card>
+                  <CardHeader className="border-b">
+                    <CardTitle>Autonomous</CardTitle>
+                  </CardHeader>
+                  <CardContent className="divide-y divide-border p-0">
+                    <Counter
+                      label="Fuel scored"
+                      value={autoFuel}
+                      onChange={setAutoFuel}
+                      quickAdds={[5]}
+                    />
+                    <Counter
+                      label="Center swipes"
+                      value={centerSwipes}
+                      onChange={setCenterSwipes}
+                    />
+                    <div className="grid grid-cols-2 gap-2 px-4 py-3">
+                      <button
+                        type="button"
+                        className={autoDepot ? 'choice selected' : 'choice'}
+                        aria-pressed={autoDepot}
+                        onClick={() => setAutoDepot(!autoDepot)}
+                      >
+                        {autoDepot && <Check />} Depot
+                      </button>
+                      <button
+                        type="button"
+                        className={autoOutpost ? 'choice selected' : 'choice'}
+                        aria-pressed={autoOutpost}
+                        onClick={() => setAutoOutpost(!autoOutpost)}
+                      >
+                        {autoOutpost && <Check />} Outpost
+                      </button>
+                    </div>
+                    <Counter
+                      label="Penalties"
+                      value={autoPenalties}
+                      onChange={setAutoPenalties}
+                    />
+                    <div className="flex items-center justify-between gap-3 px-4 py-3">
+                      <strong>Auto tower</strong>
+                      <div className="two-choices">
+                        {['None', 'Level 1'].map((item) => (
+                          <button
+                            type="button"
+                            onClick={() => setAutoTower(item)}
+                            key={item}
+                            className={
+                              autoTower === item
+                                ? 'choice selected h-9 min-h-0 px-3 text-sm'
+                                : 'choice h-9 min-h-0 px-3 text-sm'
+                            }
+                          >
+                            {autoTower === item && <Check />}
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {scoutingPhase === 'tele' && (
+                <Card>
+                  <CardHeader className="border-b">
+                    <CardTitle>Teleoperated</CardTitle>
+                  </CardHeader>
+                  <CardContent className="divide-y divide-border p-0">
+                    <Counter
+                      label="Fuel scored"
+                      value={activeFuel}
+                      onChange={setActiveFuel}
+                      quickAdds={[5, 10]}
+                    />
+                    <Counter
+                      label="Fuel passed"
+                      value={passedFuel}
+                      onChange={setPassedFuel}
+                      quickAdds={[5]}
+                    />
+                    <Counter
+                      label="Penalties"
+                      value={teleopPenalties}
+                      onChange={setTeleopPenalties}
+                    />
+                  </CardContent>
+                </Card>
+              )}
+
+              {scoutingPhase === 'post' && (
+                <>
+                  {noShow ? (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>No-show report</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        <p>
+                          This report will submit with match observations set to
+                          zero.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Field movement</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-3 gap-2">
+                          {['Trench', 'Bump', 'Both'].map((item) => (
+                            <button
+                              key={item}
+                              onClick={() => setPath(item)}
+                              className={
+                                path === item ? 'choice selected' : 'choice'
+                              }
+                            >
+                              {path === item && <Check />}
+                              {item}
+                            </button>
+                          ))}
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Played defense</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                          {[
+                            { value: null, label: 'N/A' },
+                            { value: 1, label: 'Ineffective' },
+                            { value: 2, label: 'Some impact' },
+                            { value: 3, label: 'Effective' },
+                            { value: 4, label: 'Dominant' },
+                          ].map(({ value, label }) => (
+                            <button
+                              type="button"
+                              onClick={() => setDefenseRating(value)}
+                              aria-pressed={defenseRating === value}
+                              className={
+                                defenseRating === value
+                                  ? 'choice selected min-h-16 flex-col gap-1 px-2 text-center text-sm'
+                                  : 'choice min-h-16 flex-col gap-1 px-2 text-center text-sm'
+                              }
+                              key={label}
+                            >
+                              <strong className="text-lg">{value}</strong>
+                              <span>{label}</span>
+                            </button>
+                          ))}
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardHeader className="border-b">
+                          <CardTitle>Scoring profile</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4 pt-4">
+                          <div>
+                            <p className="mb-2 font-semibold">
+                              Typical shooting range
+                            </p>
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                              {['Near', 'Midfield', 'Far', 'Mixed'].map(
+                                (item) => (
+                                  <button
+                                    className={
+                                      shootingRange === item
+                                        ? 'choice selected'
+                                        : 'choice'
+                                    }
+                                    onClick={() => setShootingRange(item)}
+                                    key={item}
+                                  >
+                                    {shootingRange === item && <Check />}
+                                    {item}
+                                  </button>
+                                ),
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardHeader className="border-b">
+                          <CardTitle>Endgame tower</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          {['None', 'Level 1', 'Level 2', 'Level 3'].map(
+                            (item) => (
+                              <button
+                                onClick={() => setTower(item)}
+                                key={item}
+                                className={
+                                  tower === item ? 'choice selected' : 'choice'
+                                }
+                              >
+                                {tower === item && <Check />}
+                                {item}
+                              </button>
+                            ),
+                          )}
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Reliability and notes</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div>
+                            <p className="mb-2 font-semibold">
+                              Robot reliability
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {[
+                                { value: false, label: 'Working' },
+                                { value: true, label: 'Disabled or broken' },
+                              ].map((item) => (
+                                <button
+                                  type="button"
+                                  className={
+                                    disabled === item.value
+                                      ? 'choice selected'
+                                      : 'choice'
+                                  }
+                                  aria-pressed={disabled === item.value}
+                                  onClick={() => setDisabled(item.value)}
+                                  key={item.label}
+                                >
+                                  {item.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <textarea
+                            className="min-h-24 w-full rounded-lg border bg-transparent p-3 text-base"
+                            value={notes}
+                            maxLength={1000}
+                            onChange={(event) => setNotes(event.target.value)}
+                            placeholder="Strategy-relevant observations, failure details, defense quality…"
+                          />
+                        </CardContent>
+                      </Card>
+                    </>
+                  )}
+                </>
+              )}
+
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={scoutingPhase === 'pre'}
+                  onClick={() =>
+                    moveToScoutingPhase(
+                      scoutingPhase === 'post'
+                        ? noShow
+                          ? 'pre'
+                          : 'tele'
+                        : scoutingPhase === 'tele'
+                          ? 'auto'
+                          : 'pre',
+                    )
+                  }
+                >
+                  Previous
+                </Button>
+                {scoutingPhase !== 'post' ? (
+                  <Button
+                    type="button"
+                    onClick={() =>
+                      moveToScoutingPhase(
+                        scoutingPhase === 'pre'
+                          ? 'auto'
+                          : scoutingPhase === 'auto'
+                            ? 'tele'
+                            : 'post',
+                      )
+                    }
+                  >
+                    Next <ChevronRight />
+                  </Button>
+                ) : (
+                  <span />
+                )}
+              </div>
               {saveError && (
                 <p role="alert" className="auth-error">
                   {saveError}
                 </p>
               )}
-              <Button
-                className="h-12 w-full text-base"
-                disabled={!draftReady || submissionStatus === 'synchronized'}
-                onClick={submitMatch}
-              >
-                {submissionStatus === 'synchronized' ? (
-                  <>
-                    <Check /> Synchronized · locked
-                  </>
-                ) : submissionStatus === 'rejected' ? (
-                  <>Rejected · review sync error</>
-                ) : submissionStatus === 'queued' ? (
-                  <>
-                    <Check /> Queued for sync · {estimatedPoints} pts observed
-                  </>
-                ) : draftReady ? (
-                  <>
-                    Save match offline <ChevronRight />
-                  </>
-                ) : (
-                  <>Opening offline storage…</>
-                )}
-              </Button>
+              {scoutingPhase === 'post' && (
+                <Button
+                  className="h-12 w-full text-base"
+                  disabled={!draftReady || submissionStatus === 'synchronized'}
+                  onClick={submitMatch}
+                >
+                  {submissionStatus === 'synchronized' ? (
+                    <>
+                      <Check /> Synchronized · locked
+                    </>
+                  ) : submissionStatus === 'rejected' ? (
+                    <>Rejected · review sync error</>
+                  ) : submissionStatus === 'queued' ? (
+                    <>
+                      <Check /> Queued for sync · {estimatedPoints} pts observed
+                    </>
+                  ) : draftReady ? (
+                    <>
+                      {online ? 'Submit match' : 'Save match offline'}{' '}
+                      <ChevronRight />
+                    </>
+                  ) : (
+                    <>Opening offline storage…</>
+                  )}
+                </Button>
+              )}
               {(submissionStatus === 'queued' ||
                 submissionStatus === 'synchronized') && (
                 <>
@@ -2110,40 +2866,86 @@ export default function Home() {
           </div>
         )}
         {activeView === 'Pit' && (
-          <div className="grid gap-4 p-4 sm:p-6 lg:grid-cols-[18rem_1fr]">
-            <Card className="h-full min-h-0">
-              <CardHeader>
-                <CardTitle>Pit queue</CardTitle>
-                <Badge variant="outline">
-                  {eventPack?.pitEntries.length ?? 0}/{eventTeams.length}{' '}
-                  complete
-                </Badge>
-              </CardHeader>
+          <div className="pit-layout grid gap-4 p-4 sm:p-6 lg:grid-cols-[28rem_1fr]">
+            <Card className="pit-mobile-picker">
+              <CardContent className="p-3">
+                <label className="grid gap-1 text-sm font-semibold">
+                  Team to pit scout
+                  <select
+                    className="h-11 w-full rounded-md border bg-background px-3 text-foreground"
+                    value={pitTeam ?? ''}
+                    onChange={(event) =>
+                      setPitTeam(
+                        event.target.value ? Number(event.target.value) : null,
+                      )
+                    }
+                  >
+                    <option value="">Choose a team</option>
+                    {eventTeams.map((team) => {
+                      const entry = eventPack?.pitEntries.find(
+                        (entry) => entry.teamNumber === team,
+                      );
+                      return (
+                        <option value={team} key={team}>
+                          Team {team}
+                          {eventPack?.teams.find(
+                            (item) => item.teamNumber === team,
+                          )?.name
+                            ? ` — ${eventPack.teams.find((item) => item.teamNumber === team)?.name}`
+                            : ''}
+                          {' — '}
+                          {entry
+                            ? `Scouted by ${entry.scoutName}`
+                            : 'Needs scouting'}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+                {pitTeam && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Team {pitTeam} selected · changes save on this device
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+            <Card className="pit-queue-card h-full min-h-0">
               <CardContent className="min-h-0 flex-1 space-y-1 overflow-auto">
                 {eventTeams.map((team) => {
-                  const complete = eventPack?.pitEntries.some(
+                  const entry = eventPack?.pitEntries.find(
                     (entry) => entry.teamNumber === team,
                   );
+                  const complete = Boolean(entry);
                   return (
                     <button
                       type="button"
-                      className={
-                        pitTeam === team
-                          ? 'schedule-row selected w-full text-left'
-                          : 'schedule-row w-full text-left'
-                      }
+                      className={`schedule-row pit-queue-row ${
+                        complete ? 'pit-queue-complete' : 'pit-queue-needed'
+                      } ${pitTeam === team ? 'selected' : ''} w-full text-left`}
                       onClick={() => setPitTeam(team)}
                       key={team}
                     >
-                      <strong>Team {team}</strong>
-                      <span>{complete ? 'Report saved' : 'Not scouted'}</span>
+                      <strong>
+                        Team {team}
+                        {eventPack?.teams.find(
+                          (item) => item.teamNumber === team,
+                        )?.name
+                          ? ` — ${eventPack.teams.find((item) => item.teamNumber === team)?.name}`
+                          : ''}
+                      </strong>
+                      <span className="pit-queue-status">
+                        {entry
+                          ? `Scouted by ${entry.scoutName} · ${new Date(entry.updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
+                          : 'Needs scouting'}
+                      </span>
                       {complete ? <Check /> : <ChevronRight />}
                     </button>
                   );
                 })}
                 {eventTeams.length === 0 && (
                   <p className="text-sm text-muted-foreground">
-                    Load an event pack before pit scouting.
+                    No teams are registered for this event yet. Refresh the
+                    event data after TBA publishes the team list.
                   </p>
                 )}
               </CardContent>
@@ -2151,14 +2953,39 @@ export default function Home() {
             <Card>
               <CardHeader>
                 <CardTitle>
-                  {pitTeam ? `Team ${pitTeam} robot` : 'Choose a team'}
+                  {pitTeam
+                    ? `Team ${pitTeam}${eventPack?.teams.find((item) => item.teamNumber === pitTeam)?.name ? ` — ${eventPack.teams.find((item) => item.teamNumber === pitTeam)?.name}` : ''}`
+                    : 'Choose a team'}
                 </CardTitle>
-                {pitTeam && <Badge variant="outline">Auto-saved offline</Badge>}
+                {pitTeam &&
+                  eventPack?.pitEntries.find(
+                    (entry) => entry.teamNumber === pitTeam,
+                  ) && (
+                    <p className="text-sm text-muted-foreground">
+                      Scouted by{' '}
+                      {
+                        eventPack.pitEntries.find(
+                          (entry) => entry.teamNumber === pitTeam,
+                        )?.scoutName
+                      }{' '}
+                      ·{' '}
+                      {new Date(
+                        eventPack.pitEntries.find(
+                          (entry) => entry.teamNumber === pitTeam,
+                        )!.updatedAt,
+                      ).toLocaleString([], {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                    </p>
+                  )}
               </CardHeader>
               <CardContent className="space-y-4">
                 {pitTeam && (
                   <>
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="pit-form grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                       <label className="grid gap-1 text-sm">
                         Drivetrain
                         <select
@@ -2208,58 +3035,14 @@ export default function Home() {
                         Weight (lb)
                         <Input
                           type="number"
-                          min="0"
+                          min="1"
                           inputMode="decimal"
+                          required
                           value={pitDraft.weightLbs || ''}
                           onChange={(event) =>
                             setPitDraft({
                               ...pitDraft,
                               weightLbs: Number(event.target.value),
-                            })
-                          }
-                        />
-                      </label>
-                      <label className="grid gap-1 text-sm">
-                        Width (in)
-                        <Input
-                          type="number"
-                          min="0"
-                          inputMode="decimal"
-                          value={pitDraft.widthInches || ''}
-                          onChange={(event) =>
-                            setPitDraft({
-                              ...pitDraft,
-                              widthInches: Number(event.target.value),
-                            })
-                          }
-                        />
-                      </label>
-                      <label className="grid gap-1 text-sm">
-                        Length (in)
-                        <Input
-                          type="number"
-                          min="0"
-                          inputMode="decimal"
-                          value={pitDraft.lengthInches || ''}
-                          onChange={(event) =>
-                            setPitDraft({
-                              ...pitDraft,
-                              lengthInches: Number(event.target.value),
-                            })
-                          }
-                        />
-                      </label>
-                      <label className="grid gap-1 text-sm">
-                        Height (in)
-                        <Input
-                          type="number"
-                          min="0"
-                          inputMode="decimal"
-                          value={pitDraft.heightInches || ''}
-                          onChange={(event) =>
-                            setPitDraft({
-                              ...pitDraft,
-                              heightInches: Number(event.target.value),
                             })
                           }
                         />
@@ -2299,29 +3082,64 @@ export default function Home() {
                         </select>
                       </label>
                       <label className="grid gap-1 text-sm">
-                        Shooter type
+                        Shooter mounting
                         <select
                           className="h-10 rounded-md border bg-transparent px-3"
-                          value={pitDraft.shooterType}
+                          value={pitDraft.shooterMount}
                           onChange={(event) =>
                             setPitDraft({
                               ...pitDraft,
-                              shooterType: event.target.value,
+                              shooterMount: event.target.value,
                             })
                           }
                         >
                           <option>Fixed</option>
                           <option>Turreted</option>
-                          <option>Multiple shooters</option>
-                          <option>None</option>
-                          <option>Other</option>
                         </select>
                       </label>
+                      <label className="grid gap-1 text-sm">
+                        Shooter barrels
+                        <select
+                          className="h-10 rounded-md border bg-transparent px-3"
+                          value={pitDraft.shooterBarrels}
+                          onChange={(event) =>
+                            setPitDraft({
+                              ...pitDraft,
+                              shooterBarrels: event.target.value,
+                            })
+                          }
+                        >
+                          <option value="1">1</option>
+                          <option value="2">2</option>
+                          <option value="3">3</option>
+                          <option value="Drum">Drum</option>
+                        </select>
+                      </label>
+                      <div className="grid gap-1 text-sm">
+                        Hood
+                        <button
+                          type="button"
+                          className={
+                            pitDraft.adjustableHood
+                              ? 'choice selected'
+                              : 'choice'
+                          }
+                          onClick={() =>
+                            setPitDraft({
+                              ...pitDraft,
+                              adjustableHood: !pitDraft.adjustableHood,
+                            })
+                          }
+                        >
+                          {pitDraft.adjustableHood && <Check />}
+                          Adjustable
+                        </button>
+                      </div>
                     </div>
                     <div className="space-y-3 rounded-lg border p-3">
                       <div>
                         <p className="mb-2 font-semibold">Field access</p>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                           {['Trench', 'Bump', 'Both'].map((item) => (
                             <button
                               type="button"
@@ -2343,7 +3161,7 @@ export default function Home() {
                       </div>
                       <div>
                         <p className="mb-2 font-semibold">Preferred route</p>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                           {['Trench', 'Bump', 'No preference'].map((item) => (
                             <button
                               type="button"
@@ -2370,11 +3188,20 @@ export default function Home() {
                       </div>
                     </div>
                     <div className="space-y-3 rounded-lg border p-3">
-                      <p className="font-semibold">Autonomous capabilities</p>
                       <div>
-                        <p className="mb-2 text-sm">Starting position</p>
-                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                          {['Left', 'Middle', 'Right', 'Unknown'].map((item) => (
+                        <p className="font-semibold">Autonomous capabilities</p>
+                      </div>
+                      <div>
+                        <p className="text-sm">Starting positions</p>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                          {[
+                            'Left trench',
+                            'Left bump',
+                            'Center',
+                            'Right bump',
+                            'Right trench',
+                            'Unknown',
+                          ].map((item) => (
                             <button
                               type="button"
                               className={
@@ -2404,7 +3231,7 @@ export default function Home() {
                       </div>
                       <div>
                         <p className="mb-2 text-sm">Swipe routine</p>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                           {['None', 'Single swipe', 'Double swipe'].map(
                             (item) => (
                               <button
@@ -2480,7 +3307,12 @@ export default function Home() {
                       />
                     </label>
                     <div className="space-y-3 rounded-lg border p-3">
-                      <p className="font-semibold">Robot photo</p>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <p className="font-semibold">Robot photo</p>
+                        <p className="text-sm text-muted-foreground">
+                          JPEG, PNG, or WebP image up to 10 MB
+                        </p>
+                      </div>
                       {existingPitPhoto && (
                         <img
                           className="aspect-video w-full max-w-md rounded-md object-cover"
@@ -2488,10 +3320,6 @@ export default function Home() {
                           alt={`Team ${pitTeam} robot`}
                         />
                       )}
-                      <p className="text-sm text-muted-foreground">
-                        Take or choose a JPEG, PNG, or WebP image up to 10 MB.
-                        Photo upload requires a connection.
-                      </p>
                       <div className="flex flex-col gap-2 sm:flex-row">
                         <Input
                           type="file"
@@ -2539,348 +3367,129 @@ export default function Home() {
           </div>
         )}
         {activeView === 'Plan' && (
-          <div className="p-2 sm:p-4">
-            <Card>
-              <CardContent className="space-y-5">
-                <div className="flex items-center gap-3">
-                  <label className="shrink-0 font-semibold" htmlFor="plan-match">
-                    Match
-                  </label>
-                <select
-                  id="plan-match"
-                  aria-label="Match to plan"
-                  className="h-11 min-w-0 flex-1 rounded-md border bg-transparent px-3"
-                  value={selectedMatchKey}
-                  onChange={(event) => setSelectedMatchKey(event.target.value)}
-                >
-                  {planningMatches.map((match) => (
-                    <option value={match.key} key={match.key}>
-                      {matchLabel(match)} · {match.alliances.red.join(', ')} vs{' '}
-                      {match.alliances.blue.join(', ')}
-                    </option>
-                  ))}
-                </select>
-                </div>
-                {eventPack && planningMatches.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    Team {organizationTeamNumber} is not scheduled for any
-                    matches in this event pack.
-                  </p>
-                )}
-                <div className="border-t pt-4">
-                  <TacticalBoard
-                    value={matchPlan.board}
-                    readOnly={!planCanEdit}
-                    onChange={(board) => setMatchPlan({ ...matchPlan, board })}
-                  />
-                </div>
-                <div className="grid gap-3 border-t pt-4 sm:grid-cols-2 xl:grid-cols-3">
-                  {planTeams.map(({ team, alliance, stats, pit, name }) => (
-                    <div
-                      className={
-                        alliance === 'red'
-                          ? 'rounded-lg border border-l-8 border-red-500 bg-red-50 p-3 text-red-950 dark:bg-red-950/30 dark:text-red-50'
-                          : 'rounded-lg border border-l-8 border-blue-500 bg-blue-50 p-3 text-blue-950 dark:bg-blue-950/30 dark:text-blue-50'
-                      }
-                      key={team}
-                    >
-                      <div className="flex items-center justify-between">
-                        <strong>
-                          Team {team}
-                          {name ? ` - ${name}` : ''}
-                        </strong>
-                        <span
-                          aria-label={`${alliance} alliance`}
-                          className={
-                            alliance === 'red'
-                              ? 'size-4 rounded-full bg-red-600 ring-2 ring-red-200'
-                              : 'size-4 rounded-full bg-blue-600 ring-2 ring-blue-200'
+          <div
+            className={
+              planFullscreen
+                ? 'fixed inset-0 z-50 overflow-auto bg-background'
+                : 'px-0 py-2 sm:py-4'
+            }
+          >
+            <Card
+              className={
+                planFullscreen
+                  ? 'min-h-dvh rounded-none border-0'
+                  : 'rounded-none sm:rounded-xl'
+              }
+              onClick={() => {
+                if (planFullscreen) setPlanFullscreen(false);
+              }}
+            >
+              <CardContent className="flex flex-col gap-5">
+                {!planFullscreen && (
+                  <>
+                    {planningMatches.length > 0 && (
+                      <div className="flex items-center gap-3">
+                        <label
+                          className="shrink-0 font-semibold"
+                          htmlFor="plan-match"
+                        >
+                          Match
+                        </label>
+                        <select
+                          id="plan-match"
+                          aria-label="Match to plan"
+                          className="h-11 min-w-0 flex-1 rounded-md border bg-transparent px-3"
+                          value={selectedMatchKey}
+                          onChange={(event) =>
+                            setSelectedMatchKey(event.target.value)
                           }
-                        />
+                        >
+                          {planningMatches.map((match) => (
+                            <option value={match.key} key={match.key}>
+                              {matchLabel(match)} ·{' '}
+                              {match.alliances.red.join(', ')} vs{' '}
+                              {match.alliances.blue.join(', ')}
+                            </option>
+                          ))}
+                        </select>
                       </div>
-                      <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                        <span>
-                          <strong>{stats?.epa?.toFixed(1) ?? '—'}</strong>
-                          <small className="block text-muted-foreground">
-                            EPA
-                          </small>
-                        </span>
-                        <span>
-                          <strong>{stats?.opr?.toFixed(1) ?? '—'}</strong>
-                          <small className="block text-muted-foreground">
-                            OPR
-                          </small>
-                        </span>
-                        <span>
-                          <strong>
-                            {stats?.medianPoints.toFixed(1) ?? '—'}
-                          </strong>
-                          <small className="block text-muted-foreground">
-                            median pts
-                          </small>
-                        </span>
-                        <span>
-                          <strong>
-                            {stats?.medianFuelPerCycle.toFixed(1) ?? '—'}
-                          </strong>
-                          <small className="block text-muted-foreground">
-                            fuel/cycle
-                          </small>
-                        </span>
-                        <span>
-                          <strong>
-                            {Math.round((stats?.disabledRate ?? 0) * 100)}%
-                          </strong>
-                          <small className="block text-muted-foreground">
-                            disabled
-                          </small>
-                        </span>
-                      </div>
-                      <div className="mt-3 border-t pt-2 text-xs">
-                        <p className="font-semibold">Pit summary</p>
-                        {pit ? (
-                          <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-muted-foreground">
-                            <span>
-                              {pit.drivetrain ?? 'Unknown'}
-                              {pit.swerveModule
-                                ? ` · ${pit.swerveModule}`
-                                : ''}
-                            </span>
-                            <span>
-                              {pit.weightLbs ? `${pit.weightLbs} lb` : 'Weight —'}
-                            </span>
-                            <span>
-                              Capacity {pit.payload.fuelCapacity ?? '—'}
-                            </span>
-                            <span>
-                              Climb {pit.payload.climbCapability ?? '—'}
-                            </span>
-                            <span>
-                              Access {pit.payload.fieldAccess ?? '—'}
-                            </span>
-                            <span>
-                              Shooter {pit.payload.shooterType ?? '—'}
-                            </span>
-                            <span className="col-span-2 line-clamp-2">
-                              Auto:{' '}
-                              {[
-                                normalizeSelections(
-                                  pit.payload.autonomousStart,
-                                  'Unknown',
-                                ).join(', '),
-                                normalizeSelections(
-                                  pit.payload.autonomousSwipe,
-                                  'None',
-                                )
-                                  .filter((item) => item !== 'None')
-                                  .join(', ') || null,
-                                pit.payload.autonomousDepot ? 'Depot' : null,
-                              ]
-                                .filter(Boolean)
-                                .join(' · ') || '—'}
-                            </span>
-                          </div>
-                        ) : (
-                          <p className="mt-1 text-muted-foreground">
-                            No pit report
-                          </p>
-                        )}
-                      </div>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        {stats?.samples ?? 0} scouting samples ·{' '}
-                        {Math.round((stats?.coverage ?? 0) * 100)}% coverage
-                      </p>
+                    )}
+                    <div className="grid grid-cols-3 gap-1">
                       <Button
                         type="button"
                         size="sm"
-                        variant="outline"
-                        className="mt-3 w-full bg-background/70"
-                        onClick={() => {
-                          setSelectedTeam(team);
-                          setTeamsSection('analysis');
-                          navigate('Teams');
-                        }}
+                        variant={planSection === 'auto' ? 'default' : 'ghost'}
+                        onClick={() => setPlanSection('auto')}
                       >
-                        View team {team}
-                        <ChevronRight />
+                        Auto Plan
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={planSection === 'teleop' ? 'default' : 'ghost'}
+                        onClick={() => setPlanSection('teleop')}
+                      >
+                        Tele Plan
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={
+                          planSection === 'metrics' ? 'default' : 'ghost'
+                        }
+                        onClick={() => setPlanSection('metrics')}
+                      >
+                        Team metrics
                       </Button>
                     </div>
-                  ))}
-                </div>
-                <div className="space-y-3 border-t pt-4">
-                  <textarea
-                    aria-label="Match plan notes"
-                    className="min-h-20 w-full rounded-md border bg-transparent p-3"
-                    disabled={!planCanEdit}
-                    value={matchPlan.notes}
-                    onChange={(event) =>
-                      setMatchPlan({ ...matchPlan, notes: event.target.value })
-                    }
-                    placeholder="Only details that are not clear from the field drawing"
-                  />
-                  {(planMessage || planAuthor || planCanEdit) && (
-                    <p className="text-sm text-muted-foreground" role="status">
-                      {planMessage ||
-                        (planAuthor && planUpdatedAt
-                          ? `Saved automatically by ${planAuthor} · ${new Date(planUpdatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
-                          : 'Changes save automatically.')}
-                    </p>
-                  )}
-                </div>
-              {planCanEdit && currentMatch?.id === '__legacy-plan__' && (
-                <>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Alliance objective</CardTitle>
-                      <Badge variant="outline">
-                        {planCanEdit ? 'Editable' : 'Read only'}
-                      </Badge>
-                    </CardHeader>
-                    <CardContent>
-                      <textarea
-                        aria-label="Alliance objective"
-                        className="min-h-20 w-full rounded-md border bg-transparent p-3"
-                        disabled={!planCanEdit}
-                        value={matchPlan.objective}
-                        onChange={(event) =>
-                          setMatchPlan({
-                            ...matchPlan,
-                            objective: event.target.value,
-                          })
+                  </>
+                )}
+                {planSection !== 'metrics' && (
+                  <>
+                    <div
+                      role="presentation"
+                      className="order-first -mx-(--card-spacing)"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <TacticalBoard
+                        value={
+                          planSection === 'auto'
+                            ? matchPlan.autoBoard
+                            : matchPlan.board
                         }
-                        placeholder="What must this alliance accomplish to win?"
+                        readOnly={Boolean(currentPlanningMatch && !planCanEdit)}
+                        toolbarStart={
+                          <Button
+                            type="button"
+                            size="icon-sm"
+                            variant="outline"
+                            aria-label={
+                              planFullscreen
+                                ? 'Exit full screen'
+                                : 'Open planning board full screen'
+                            }
+                            onClick={() => setPlanFullscreen((value) => !value)}
+                          >
+                            {planFullscreen ? <Minimize2 /> : <Maximize2 />}
+                          </Button>
+                        }
+                        onChange={(board) =>
+                          setMatchPlan(
+                            planSection === 'auto'
+                              ? { ...matchPlan, autoBoard: board }
+                              : { ...matchPlan, board },
+                          )
+                        }
                       />
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Team responsibilities</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      {currentMatch &&
-                        [
-                          ...(currentMatch?.alliances.red ?? []).map(
-                            (team, index) => ({
-                              team,
-                              station: `R${index + 1}`,
-                            }),
-                          ),
-                          ...(currentMatch?.alliances.blue ?? []).map(
-                            (team, index) => ({
-                              team,
-                              station: `B${index + 1}`,
-                            }),
-                          ),
-                        ].map(({ team, station }) => (
-                          <label className="grid gap-1 text-sm" key={team}>
-                            <span>
-                              <strong>{station}</strong> · Team {team}
-                            </span>
-                            <textarea
-                              className="min-h-20 rounded-md border bg-transparent p-2"
-                              disabled={!planCanEdit}
-                              value={matchPlan.teamRoles[String(team)] ?? ''}
-                              onChange={(event) =>
-                                setMatchPlan({
-                                  ...matchPlan,
-                                  teamRoles: {
-                                    ...matchPlan.teamRoles,
-                                    [team]: event.target.value,
-                                  },
-                                })
-                              }
-                              placeholder="Starting position and role"
-                            />
-                          </label>
-                        ))}
-                    </CardContent>
-                  </Card>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Autonomous</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <textarea
-                          aria-label="Autonomous plan"
-                          className="min-h-28 w-full rounded-md border bg-transparent p-3"
-                          disabled={!planCanEdit}
-                          value={matchPlan.autonomous}
-                          onChange={(event) =>
-                            setMatchPlan({
-                              ...matchPlan,
-                              autonomous: event.target.value,
-                            })
-                          }
-                        />
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Offense</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <textarea
-                          aria-label="Offense plan"
-                          className="min-h-28 w-full rounded-md border bg-transparent p-3"
-                          disabled={!planCanEdit}
-                          value={matchPlan.offense}
-                          onChange={(event) =>
-                            setMatchPlan({
-                              ...matchPlan,
-                              offense: event.target.value,
-                            })
-                          }
-                        />
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Defense</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <textarea
-                          aria-label="Defense plan"
-                          className="min-h-28 w-full rounded-md border bg-transparent p-3"
-                          disabled={!planCanEdit}
-                          value={matchPlan.defense}
-                          onChange={(event) =>
-                            setMatchPlan({
-                              ...matchPlan,
-                              defense: event.target.value,
-                            })
-                          }
-                        />
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Endgame</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <textarea
-                          aria-label="Endgame plan"
-                          className="min-h-28 w-full rounded-md border bg-transparent p-3"
-                          disabled={!planCanEdit}
-                          value={matchPlan.endgame}
-                          onChange={(event) =>
-                            setMatchPlan({
-                              ...matchPlan,
-                              endgame: event.target.value,
-                            })
-                          }
-                        />
-                      </CardContent>
-                    </Card>
-                  </div>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Drive team notes</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
+                    </div>
+                    <div
+                      className={
+                        planFullscreen ? 'hidden' : 'space-y-3 border-t pt-4'
+                      }
+                    >
                       <textarea
-                        aria-label="Drive team notes"
-                        className="min-h-28 w-full rounded-md border bg-transparent p-3"
+                        aria-label="Match plan notes"
+                        className="min-h-20 w-full rounded-md border bg-transparent p-3"
                         disabled={!planCanEdit}
                         value={matchPlan.notes}
                         onChange={(event) =>
@@ -2889,6 +3498,7 @@ export default function Home() {
                             notes: event.target.value,
                           })
                         }
+                        placeholder="Only details that are not clear from the field drawing"
                       />
                       {(planMessage || planAuthor || planCanEdit) && (
                         <p
@@ -2901,172 +3511,348 @@ export default function Home() {
                               : 'Changes save automatically.')}
                         </p>
                       )}
-                    </CardContent>
-                  </Card>
-                </>
-              )}
+                    </div>
+                  </>
+                )}
+                {planSection === 'metrics' && (
+                  <div className="grid gap-3 border-t pt-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {planTeams.map(({ team, alliance, stats, pit, name }) => (
+                      <div
+                        className={
+                          alliance === 'red'
+                            ? 'rounded-lg border border-l-8 border-red-500 bg-red-50 p-3 text-red-950 dark:bg-red-950/30 dark:text-red-50'
+                            : 'rounded-lg border border-l-8 border-blue-500 bg-blue-50 p-3 text-blue-950 dark:bg-blue-950/30 dark:text-blue-50'
+                        }
+                        key={team}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <strong>
+                              Team {team}
+                              {name ? ` - ${name}` : ''}
+                            </strong>
+                            {matchPlan.absentTeams.includes(team) && (
+                              <Badge className="ml-2" variant="destructive">
+                                Not playing
+                              </Badge>
+                            )}
+                          </div>
+                          <span
+                            aria-label={`${alliance} alliance`}
+                            className={
+                              alliance === 'red'
+                                ? 'size-4 rounded-full bg-red-600 ring-2 ring-red-200'
+                                : 'size-4 rounded-full bg-blue-600 ring-2 ring-blue-200'
+                            }
+                          />
+                        </div>
+                        {planCanEdit && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="mt-2"
+                            onClick={() => {
+                              const isAbsent =
+                                matchPlan.absentTeams.includes(team);
+                              const absentTeams = isAbsent
+                                ? matchPlan.absentTeams.filter(
+                                    (item) => item !== team,
+                                  )
+                                : [...matchPlan.absentTeams, team];
+                              const defaultMarkers = initialRobotMarkers(
+                                currentPlanningMatch?.alliances.red ?? [],
+                                currentPlanningMatch?.alliances.blue ?? [],
+                              );
+                              const robots = isAbsent
+                                ? [
+                                    ...matchPlan.board.robots,
+                                    ...defaultMarkers.filter(
+                                      (robot) => robot.team === team,
+                                    ),
+                                  ]
+                                : matchPlan.board.robots.filter(
+                                    (robot) => robot.team !== team,
+                                  );
+                              const autoRobots = isAbsent
+                                ? [
+                                    ...matchPlan.autoBoard.robots,
+                                    ...defaultMarkers.filter(
+                                      (robot) => robot.team === team,
+                                    ),
+                                  ]
+                                : matchPlan.autoBoard.robots.filter(
+                                    (robot) => robot.team !== team,
+                                  );
+                              setMatchPlan({
+                                ...matchPlan,
+                                absentTeams,
+                                board: { ...matchPlan.board, robots },
+                                autoBoard: {
+                                  ...matchPlan.autoBoard,
+                                  robots: autoRobots,
+                                },
+                              });
+                            }}
+                          >
+                            {matchPlan.absentTeams.includes(team)
+                              ? 'Return robot to field'
+                              : 'Robot not playing'}
+                          </Button>
+                        )}
+                        <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                          <span>
+                            <strong>{stats?.xp?.toFixed(1) ?? '—'}</strong>
+                            <small className="block text-muted-foreground">
+                              Match13 xP
+                            </small>
+                          </span>
+                          <span>
+                            <strong>{stats?.epa?.toFixed(1) ?? '—'}</strong>
+                            <small className="block text-muted-foreground">
+                              EPA
+                            </small>
+                          </span>
+                          <span>
+                            <strong>
+                              {stats?.medianPoints.toFixed(1) ?? '—'}
+                            </strong>
+                            <small className="block text-muted-foreground">
+                              median pts
+                            </small>
+                          </span>
+                          <span>
+                            <strong>{stats?.disabledMatches ?? 0}</strong>
+                            <small className="block text-muted-foreground">
+                              disabled matches
+                            </small>
+                          </span>
+                        </div>
+                        <div className="mt-3 border-t pt-2 text-xs">
+                          <p className="font-semibold">Pit summary</p>
+                          {pit ? (
+                            <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-muted-foreground">
+                              <span>
+                                {pit.drivetrain ?? 'Unknown'}
+                                {pit.swerveModule
+                                  ? ` · ${pit.swerveModule}`
+                                  : ''}
+                              </span>
+                              <span>
+                                {pit.weightLbs
+                                  ? `${pit.weightLbs} lb`
+                                  : 'Weight —'}
+                              </span>
+                              <span>
+                                Capacity {pit.payload.fuelCapacity ?? '—'}
+                              </span>
+                              <span>
+                                Climb {pit.payload.climbCapability ?? '—'}
+                              </span>
+                              <span>
+                                Access {pit.payload.fieldAccess ?? '—'}
+                              </span>
+                              <span>Shooter {shooterSummary(pit.payload)}</span>
+                              <span className="col-span-2 line-clamp-2">
+                                Auto:{' '}
+                                {[
+                                  normalizeSelections(
+                                    pit.payload.autonomousStart,
+                                    'Unknown',
+                                  ).join(', '),
+                                  normalizeSelections(
+                                    pit.payload.autonomousSwipe,
+                                    'None',
+                                  )
+                                    .filter((item) => item !== 'None')
+                                    .join(', ') || null,
+                                  pit.payload.autonomousDepot ? 'Depot' : null,
+                                ]
+                                  .filter(Boolean)
+                                  .join(' · ') || '—'}
+                              </span>
+                            </div>
+                          ) : (
+                            <p className="mt-1 text-muted-foreground">
+                              No pit report
+                            </p>
+                          )}
+                        </div>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {stats?.samples ?? 0}/{stats?.scheduledMatches ?? 0}{' '}
+                          matches scouted
+                        </p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="mt-3 w-full bg-background/70"
+                          onClick={() => setPlanStatsTeam(team)}
+                        >
+                          View stats for team {team}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
         )}
+        <TeamStatsDialog
+          teamNumber={planStatsTeam}
+          teamName={
+            eventPack?.teams.find((team) => team.teamNumber === planStatsTeam)
+              ?.name
+          }
+          summary={
+            planStatsTeam
+              ? planStats.find((team) => team.teamNumber === planStatsTeam)
+              : undefined
+          }
+          eventSummaries={planStats}
+          onOpenChange={(open) => {
+            if (!open) setPlanStatsTeam(null);
+          }}
+        />
         {activeView === 'Admin' && isAdmin && (
-          <div className="flex gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
-            <Button
-              variant={adminSection === 'settings' ? 'default' : 'outline'}
-              onClick={() => setAdminSection('settings')}
-            >
-              Team and event
-            </Button>
+          <div className="section-tabs flex gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
             <Button
               variant={adminSection === 'assignments' ? 'default' : 'outline'}
               onClick={() => setAdminSection('assignments')}
             >
-              <CalendarDays /> Scout assignments
+              Event Assignments
+            </Button>
+            <Button
+              variant={adminSection === 'settings' ? 'default' : 'outline'}
+              onClick={() => setAdminSection('settings')}
+            >
+              Team Roster
             </Button>
           </div>
         )}
         {activeView === 'Admin' &&
           isAdmin &&
           adminSection === 'assignments' && (
-            <div className="p-4 sm:p-6">
-              <ShiftScheduler
-                members={eventPack?.members ?? []}
+            <div className="grid gap-4 p-4 sm:p-6">
+              <EventTeamAliases
+                eventType={eventPack?.event.eventType ?? null}
+                teams={eventPack?.teams ?? []}
                 onChanged={() => loadEventPack(false, true)}
               />
-              <ScoutingOperations mode="coverage" />
-              <Card>
-                <CardHeader>
-                  <CardTitle>
-                    {eventPack?.event.name ?? 'Match schedule'}
-                  </CardTitle>
-                  <Badge variant="outline">
-                    {visibleMatches.length} of {eventPack?.matches.length ?? 0}
-                  </Badge>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {eventPack?.event.updatedAt ? (
-                    <p className="text-xs text-muted-foreground">
-                      Schedule and results updated{' '}
-                      {new Date(eventPack.event.updatedAt).toLocaleTimeString()}
-                      . Online devices check every 45 seconds.
-                    </p>
-                  ) : null}
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <Input
-                      value={scheduleSearch}
-                      onChange={(event) =>
-                        setScheduleSearch(event.target.value)
-                      }
-                      placeholder="Search match or team number"
-                    />
-                    <div className="flex gap-1">
-                      {(['all', 'mine', 'unassigned'] as const).map(
-                        (filter) => (
-                          <Button
-                            size="sm"
-                            variant={
-                              scheduleFilter === filter ? 'default' : 'outline'
-                            }
-                            onClick={() => setScheduleFilter(filter)}
-                            key={filter}
-                          >
-                            {filter === 'all'
-                              ? 'All'
-                              : filter === 'mine'
-                                ? 'Mine'
-                                : 'Needs scout'}
-                          </Button>
-                        ),
-                      )}
-                    </div>
-                  </div>
-                  {packLoading && (
-                    <p className="text-sm text-muted-foreground">
-                      Loading event pack…
-                    </p>
-                  )}
-                  {packError && <p className="auth-error">{packError}</p>}
-                  {assignmentMessage && (
-                    <p className="text-sm text-muted-foreground" role="status">
-                      {assignmentMessage}
-                    </p>
-                  )}
-                  {visibleMatches.map((match) => (
-                    <div className="rounded-lg border p-3" key={match.key}>
-                      <div className="mb-2 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <strong>{matchLabel(match)}</strong>
-                          {match.result?.actualTime ? (
-                            <Badge variant="secondary">
-                              Final · {match.result.redScore ?? '—'}–
-                              {match.result.blueScore ?? '—'}
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline">Upcoming</Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <small className="text-muted-foreground">
-                            {match.predictedAt
-                              ? new Date(match.predictedAt).toLocaleTimeString(
-                                  [],
-                                  {
-                                    hour: 'numeric',
-                                    minute: '2-digit',
-                                  },
-                                )
-                              : 'Time TBD'}
-                          </small>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedMatchKey(match.key);
-                              navigate('Plan');
-                            }}
-                          >
-                            <Map />
-                            Plan
-                          </Button>
-                        </div>
+              <EventScheduleBoard
+                members={eventPack?.members ?? []}
+                eventKey={eventPack?.event.key ?? ''}
+                onChanged={() => loadEventPack(false, true)}
+                eventPicker={
+                  <>
+                    {testTeamNumber && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-400/60 bg-amber-100 px-3 py-2 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">
+                        <strong>Testing as Team {testTeamNumber}</strong>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={configuringEvent}
+                          onClick={() => void stopTeamTestMode()}
+                        >
+                          Return to Team {baseTeamNumber}
+                        </Button>
                       </div>
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <div className="grid grid-cols-3 gap-2">
-                          {match.alliances.red.map((team, index) =>
-                            renderStation(match, 'red', team, index),
-                          )}
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                          {match.alliances.blue.map((team, index) =>
-                            renderStation(match, 'blue', team, index),
-                          )}
-                        </div>
-                      </div>
+                    )}
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <label className="flex items-center gap-2 text-sm font-medium">
+                        Team
+                        <Input
+                          className="w-24"
+                          min={1}
+                          max={99999}
+                          inputMode="numeric"
+                          type="number"
+                          value={eventTeamInput}
+                          onChange={(event) =>
+                            setEventTeamInput(event.target.value)
+                          }
+                        />
+                      </label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={
+                          eventsLoading ||
+                          !online ||
+                          !Number.isInteger(Number(eventTeamInput)) ||
+                          Number(eventTeamInput) <= 0
+                        }
+                        onClick={() => {
+                          const teamNumber = Number(eventTeamInput);
+                          setEventKey('');
+                          void loadTeamEventChoices(teamNumber);
+                        }}
+                      >
+                        Find events
+                      </Button>
+                      <label className="flex min-w-0 items-center gap-3 text-sm font-medium">
+                        Event
+                        <select
+                          aria-label={`Team ${eventTeamNumber} event`}
+                          className="h-10 truncate rounded-md border bg-background px-3"
+                          value={eventKey}
+                          onChange={(event) => setEventKey(event.target.value)}
+                          disabled={eventsLoading}
+                        >
+                          <option value="">
+                            {eventsLoading
+                              ? 'Loading events…'
+                              : 'Select an event'}
+                          </option>
+                          {eventChoices.map((event) => (
+                            <option value={event.key} key={event.key}>
+                              {event.name}
+                              {event.date ? ` · ${event.date}` : ''}
+                              {event.location ? ` · ${event.location}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <Button
+                        className="w-full sm:w-auto"
+                        disabled={
+                          configuringEvent || !online || !session || !eventKey
+                        }
+                        onClick={configureEvent}
+                      >
+                        {configuringEvent
+                          ? 'Loading event…'
+                          : eventTeamNumber === baseTeamNumber
+                            ? 'Use this event'
+                            : `Test as Team ${eventTeamNumber}`}
+                      </Button>
                     </div>
-                  ))}
-                  {!packLoading && !eventPack && (
-                    <p className="text-sm text-muted-foreground">
-                      No event pack is loaded. An owner or admin can load one in
-                      Admin.
-                    </p>
-                  )}
-                  {eventPack && visibleMatches.length === 0 && (
-                    <p className="text-sm text-muted-foreground">
-                      No matches match this filter.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
+                    {eventMessage && (
+                      <p
+                        className="text-sm text-muted-foreground"
+                        role="status"
+                      >
+                        {eventMessage}
+                      </p>
+                    )}
+                  </>
+                }
+              />
             </div>
           )}
-        {activeView === 'Teams' && canUseStrategy && (
-          <div className="flex flex-wrap gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
+        {activeView === 'Data' && (
+          <div className="section-tabs flex gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
             {(
               [
-                ['directory', 'Directory'],
                 ['analysis', 'Analysis'],
-                ['picks', 'Pick list'],
-                ['review', 'Data review'],
+                ...(canUsePickLists
+                  ? ([['picklist', 'Pick lists']] as const)
+                  : []),
+                ...(canUseStrategy
+                  ? ([['review', 'Scouting review']] as const)
+                  : []),
               ] as const
             ).map(([section, label]) => (
               <Button
@@ -3080,434 +3866,529 @@ export default function Home() {
             ))}
           </div>
         )}
-        {activeView === 'Teams' && teamsSection === 'directory' && (
-          <div className="p-4 sm:p-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  Teams at {eventPack?.event.name ?? 'this event'}
-                </CardTitle>
-                <Badge variant="outline">{eventTeams.length} teams</Badge>
-              </CardHeader>
-              <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {eventTeams.map((team) => (
-                  <button
-                    onClick={() => {
-                      setSelectedTeam(team);
-                      if (canUseStrategy) setTeamsSection('analysis');
-                      else {
-                        setPitTeam(team);
-                        navigate('Pit');
-                      }
-                    }}
-                    className="schedule-row w-full text-left"
-                    key={team}
-                  >
-                    <strong>Team {team}</strong>
-                    <span>
-                      {
-                        eventPack?.matches.filter((match) =>
-                          [
-                            ...match.alliances.red,
-                            ...match.alliances.blue,
-                          ].includes(team),
-                        ).length
-                      }{' '}
-                      matches
-                    </span>
-                    <ChevronRight />
-                  </button>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-        )}
-        {activeView === 'Teams' &&
+        {activeView === 'Data' &&
+          canUsePickLists &&
+          teamsSection === 'picklist' && (
+            <div className="p-4 sm:p-6">
+              {eventPack && (
+                <PickListWorkspace
+                  teams={strategyTeams.map((team) => ({
+                    ...team,
+                    name: eventPack.teams.find(
+                      (item) => item.teamNumber === team.teamNumber,
+                    )?.name,
+                  }))}
+                  eventKey={eventPack.event.key}
+                  organizationTeamNumber={organizationTeamNumber}
+                  userId={eventPack.userId}
+                  initialMode="personal"
+                />
+              )}
+            </div>
+          )}
+        {activeView === 'Data' &&
           canUseStrategy &&
           teamsSection === 'review' && (
             <div className="grid gap-4 p-4 sm:p-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Match videos</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <select
-                    aria-label="Match video to manage"
-                    className="h-11 w-full rounded-md border bg-transparent px-3"
-                    value={selectedMatchKey}
-                    onChange={(event) => setSelectedMatchKey(event.target.value)}
-                  >
-                    {eventPack?.matches.map((match) => (
-                      <option value={match.key} key={match.key}>
-                        {matchLabel(match)} · {match.alliances.red.join(', ')} vs{' '}
-                        {match.alliances.blue.join(', ')}
-                      </option>
-                    ))}
-                  </select>
-                  <MatchVideoLibrary
-                    matchId={currentMatch?.id ?? null}
-                    matchLabel={
-                      currentMatch ? matchLabel(currentMatch) : 'this match'
-                    }
-                  />
-                </CardContent>
-              </Card>
               <ScoutingOperations
                 mode="review"
                 onVideoReview={startVideoReview}
               />
             </div>
           )}
-        {activeView === 'Teams' &&
-          canUseStrategy &&
-          teamsSection === 'picks' && (
-            <div className="grid gap-4 p-4 sm:p-6">
-              {eventPack && (
-                <PickListWorkspace
-                  teams={strategyTeams}
-                  eventKey={eventPack.event.key}
-                  organizationTeamNumber={organizationTeamNumber}
-                />
-              )}
-            </div>
-          )}
-        {activeView === 'Teams' &&
-          canUseStrategy &&
-          teamsSection === 'analysis' && (
-            <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
-              <TeamComparison
-                teams={strategyTeams}
-                matchTeams={
-                  currentMatch
-                    ? [
-                        ...currentMatch.alliances.red,
-                        ...currentMatch.alliances.blue,
-                      ]
-                    : []
-                }
-              />
-              <Card className="sm:col-span-2">
-                <CardHeader>
-                  <CardTitle>Event ranking workspace</CardTitle>
-                  <div className="flex gap-2">
-                    <Badge variant="outline">
-                      {strategyTeams.length} teams
-                    </Badge>
-                    {eventPack && canReopenEntries(eventPack.role) && (
-                      <Button
-                        nativeButton={false}
-                        size="sm"
-                        variant="outline"
-                        render={<a href="/api/export/scouting" download />}
-                      >
-                        <Cloud />
-                        Export CSV
-                      </Button>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="max-h-96 overflow-auto">
-                  <div className="strategy-table">
-                    <strong>Team</strong>
-                    <strong>Samples</strong>
-                    <strong>Median pts</strong>
-                    <strong>Fuel/cycle</strong>
-                    <strong>Coverage</strong>
-                    {[...strategyTeams]
-                      .sort((a, b) => b.medianPoints - a.medianPoints)
-                      .map((team) => (
-                        <button
-                          key={team.teamNumber}
-                          onClick={() => setSelectedTeam(team.teamNumber)}
-                          className={
-                            selectedTeam === team.teamNumber ? 'selected' : ''
-                          }
-                        >
-                          <span>{team.teamNumber}</span>
-                          <span>{team.samples}</span>
-                          <span>{team.medianPoints.toFixed(1)}</span>
-                          <span>{team.medianFuelPerCycle.toFixed(1)}</span>
-                          <span>{Math.round(team.coverage * 100)}%</span>
-                        </button>
-                      ))}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>
-                    {selectedTeam
-                      ? `Team ${selectedTeam} summary`
-                      : 'Select a team above'}
-                  </CardTitle>
-                  <Badge variant="outline">
-                    {analysis?.samples ?? 0} samples
-                  </Badge>
-                </CardHeader>
-                <CardContent>
-                  <p className="score-number">{analysis?.medianPoints ?? 0}</p>
-                  <p className="text-sm text-muted-foreground">
-                    median observed points
-                  </p>
-                  <div className="mini-stats">
-                    <span>
-                      <strong>{analysis?.medianActiveFuel ?? 0}</strong> median
-                      active FUEL
-                    </span>
-                    <span>
-                      <strong>
-                        {analysis?.medianFuelPerCycle.toFixed(1) ?? '0.0'}
-                      </strong>{' '}
-                      FUEL / cycle
-                    </span>
-                    <span>
-                      <strong>
-                        {analysis?.pointStdDev.toFixed(1) ?? '0.0'}
-                      </strong>{' '}
-                      point deviation
-                    </span>
-                    <span>
-                      <strong>
-                        {analysis?.averageDefense.toFixed(1) ?? '0.0'}
-                      </strong>{' '}
-                      defense rating
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Reliability and coverage</CardTitle>
-                </CardHeader>
-                <CardContent className="mini-stats">
-                  <span>
-                    <strong>
-                      {Math.round((analysis?.towerSuccessRate ?? 0) * 100)}%
-                    </strong>{' '}
-                    tower success
-                  </span>
-                  <span>
-                    <strong>
-                      {Math.round((analysis?.disabledRate ?? 0) * 100)}%
-                    </strong>{' '}
-                    disabled rate
-                  </span>
-                  <span>
-                    <strong>
-                      {Math.round((analysis?.coverage ?? 0) * 100)}%
-                    </strong>{' '}
-                    data coverage
-                  </span>
-                  <span>
-                    <strong>{analysis?.scheduledMatches ?? 0}</strong> scheduled
-                    matches
-                  </span>
-                </CardContent>
-              </Card>
-              <Card className="sm:col-span-2">
-                <CardHeader>
-                  <CardTitle>
-                    {selectedTeam
-                      ? `Team ${selectedTeam} trends`
-                      : 'Team trends'}
-                  </CardTitle>
-                  <Badge variant="outline">Match by match</Badge>
-                </CardHeader>
-                <CardContent>
-                  <TeamTrendChart trends={analysis?.trends ?? []} />
-                </CardContent>
-              </Card>
-              <Card className="sm:col-span-2">
-                <CardHeader>
-                  <CardTitle>Submitted entries</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-1">
-                  {analysis?.entries.map((entry) => (
-                    <div className="schedule-row" key={entry.id}>
-                      <strong>
-                        {entry.matchKey.split('_').at(-1)?.toUpperCase()}
-                      </strong>
-                      <span>
-                        {entry.scoutName}
-                        {entry.reopened ? ' · reopened' : ''}
-                      </span>
-                      {eventPack &&
-                      canReopenEntries(eventPack.role) &&
-                      !entry.reopened ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => void reopenEntry(entry.id)}
-                        >
-                          Reopen
-                        </Button>
-                      ) : (
-                        <small>{entry.reopened ? 'Editable' : 'Locked'}</small>
-                      )}
-                    </div>
-                  ))}
-                  {analysis?.entries.length === 0 && (
-                    <p className="text-sm text-muted-foreground">
-                      No synchronized entries for this team yet.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        {activeView === 'Admin' && isAdmin && adminSection === 'settings' && (
-          <div className="grid gap-4 p-4 sm:p-6">
+        {activeView === 'Video' && (
+          <div className="mx-auto grid w-full max-w-5xl gap-4 p-4 sm:p-6">
             <Card>
               <CardHeader>
-                <CardTitle>Current event</CardTitle>
+                <CardTitle>Choose a match</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Choose one of Team 401&apos;s registered events from The Blue
-                  Alliance. Its schedule will be cached on every device.
-                </p>
-                <div className="grid gap-2 sm:grid-cols-[8rem_1fr_auto]">
-                  <Input
-                    aria-label="FRC season"
-                    type="number"
-                    min="1992"
-                    max="2100"
-                    value={eventYear}
-                    onChange={(event) =>
-                      setEventYear(Number(event.target.value))
-                    }
-                  />
-                  <select
-                    aria-label="Team 401 event"
-                    className="h-10 rounded-md border bg-transparent px-3"
-                    value={eventKey}
-                    onChange={(event) => setEventKey(event.target.value)}
-                    disabled={eventsLoading}
-                  >
-                    <option value="">
-                      {eventsLoading
-                        ? 'Loading Team 401 events…'
-                        : 'Select an event'}
+                <select
+                  aria-label="Match video to record, upload, or review"
+                  className="h-11 w-full rounded-md border bg-background px-3 text-foreground"
+                  value={selectedVideoMatchKey}
+                  disabled={videoMatches.length === 0}
+                  onChange={(event) =>
+                    setSelectedVideoMatchKey(event.target.value)
+                  }
+                >
+                  {videoMatches.map((match) => (
+                    <option value={match.key} key={match.key}>
+                      {matchLabel(match)} · {match.alliances.red.join(', ')} vs{' '}
+                      {match.alliances.blue.join(', ')}
                     </option>
-                    {eventChoices.map((event) => (
-                      <option value={event.key} key={event.key}>
-                        {event.name}
-                        {event.date ? ` · ${event.date}` : ''}
-                        {event.location ? ` · ${event.location}` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <Button
-                    disabled={
-                      configuringEvent || !online || !session || !eventKey
-                    }
-                    onClick={configureEvent}
-                  >
-                    {configuringEvent ? 'Loading…' : 'Load event pack'}
-                  </Button>
-                </div>
-                {eventMessage && (
-                  <p className="text-sm text-muted-foreground" role="status">
-                    {eventMessage}
+                  ))}
+                </select>
+                {eventPack && videoMatches.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Team {organizationTeamNumber} is not scheduled for this
+                    event.
                   </p>
                 )}
               </CardContent>
             </Card>
-            <Card>
+            <MatchVideoLibrary
+              matchId={selectedVideoMatch?.id ?? null}
+              matchLabel={
+                selectedVideoMatch
+                  ? matchLabel(selectedVideoMatch)
+                  : 'this match'
+              }
+              externalVideos={selectedVideoMatch?.videos ?? []}
+            />
+          </div>
+        )}
+        {activeView === 'Alliance' && canUseStrategy && (
+          <div className="p-2 sm:p-4">
+            {strategyLoading && strategyTeams.length === 0 ? (
+              <Card>
+                <CardContent className="p-6 text-center text-sm text-muted-foreground">
+                  Loading event teams and rankings…
+                </CardContent>
+              </Card>
+            ) : eventPack ? (
+              <PickListWorkspace
+                teams={strategyTeams.map((team) => ({
+                  ...team,
+                  name: eventPack.teams.find(
+                    (item) => item.teamNumber === team.teamNumber,
+                  )?.name,
+                }))}
+                eventKey={eventPack.event.key}
+                organizationTeamNumber={organizationTeamNumber}
+                userId={eventPack.userId}
+                initialMode="selection"
+              />
+            ) : null}
+          </div>
+        )}
+        {activeView === 'Data' && teamsSection === 'analysis' && (
+          <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
+            <TeamComparison
+              teams={strategyTeams.map((team) => ({
+                ...team,
+                name: eventPack?.teams.find(
+                  (item) => item.teamNumber === team.teamNumber,
+                )?.name,
+              }))}
+              matches={(eventPack?.matches ?? []).map((match) => ({
+                key: match.key,
+                label: matchLabel(match),
+                red: match.alliances.red,
+                blue: match.alliances.blue,
+              }))}
+            />
+            <Card className="sm:col-span-2">
               <CardHeader>
-                <CardTitle>Assignment coverage</CardTitle>
-                <Badge variant="outline">
-                  {eventPack?.assignments.length ?? 0}/{totalSlots}
-                </Badge>
+                <CardTitle>Event Data</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="coverage-track">
-                  <span
-                    style={{
-                      width: `${totalSlots ? Math.min(100, ((eventPack?.assignments.length ?? 0) / totalSlots) * 100) : 0}%`,
-                    }}
-                  />
-                </div>
-                <div className="mt-3 grid gap-1 sm:grid-cols-2">
-                  {assignmentCounts.map(({ member, count }) => (
-                    <div className="schedule-row" key={member.id}>
-                      <strong>{count}</strong>
-                      <span>{member.name}</span>
-                      <small>slots</small>
-                    </div>
+              <CardContent className="max-h-96 overflow-auto">
+                <div className="strategy-table">
+                  {rankingColumns.map(({ key, label }) => (
+                    <strong key={key}>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 uppercase"
+                        onClick={() => sortRankingBy(key)}
+                      >
+                        {label}
+                        {rankingSort.key === key &&
+                          (rankingSort.direction === 'asc' ? (
+                            <ArrowUp className="size-3" aria-hidden="true" />
+                          ) : (
+                            <ArrowDown className="size-3" aria-hidden="true" />
+                          ))}
+                      </button>
+                    </strong>
                   ))}
+                  {[...strategyTeams]
+                    .sort(
+                      (a, b) =>
+                        compareRankingValues(
+                          rankingValue(a, rankingSort.key),
+                          rankingValue(b, rankingSort.key),
+                          rankingSort.direction === 'asc' ? 1 : -1,
+                        ) || a.teamNumber - b.teamNumber,
+                    )
+                    .map((team) => (
+                      <button
+                        key={team.teamNumber}
+                        onClick={() => setSelectedTeam(team.teamNumber)}
+                        className={
+                          selectedTeam === team.teamNumber ? 'selected' : ''
+                        }
+                      >
+                        <span>{team.eventRank ?? '—'}</span>
+                        <span>
+                          {team.teamNumber}
+                          {eventPack?.teams.find(
+                            (item) => item.teamNumber === team.teamNumber,
+                          )?.name
+                            ? ` — ${eventPack.teams.find((item) => item.teamNumber === team.teamNumber)?.name}`
+                            : ''}
+                        </span>
+                        <span>{formatRankingNumber(team.xp)}</span>
+                        <span>{formatRankingNumber(team.xAuto)}</span>
+                        <span>{formatRankingNumber(team.xTele)}</span>
+                        <span>{formatRankingNumber(team.epa)}</span>
+                        <span>{team.medianPoints.toFixed(1)}</span>
+                        <span>
+                          {team.samples}/{team.scheduledMatches}
+                        </span>
+                      </button>
+                    ))}
                 </div>
-                <Button
-                  className="mt-3"
-                  variant="outline"
-                  onClick={() => {
-                    setScheduleFilter('unassigned');
-                    setAdminSection('assignments');
-                  }}
-                >
-                  Review unassigned matches
-                </Button>
               </CardContent>
             </Card>
+            <Card className="sm:col-span-2">
+              <CardHeader>
+                <CardTitle>
+                  {selectedTeam
+                    ? `Team ${selectedTeam}${eventPack?.teams.find((item) => item.teamNumber === selectedTeam)?.name ? ` — ${eventPack.teams.find((item) => item.teamNumber === selectedTeam)?.name}` : ''} summary`
+                    : 'Select a team above'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-5 lg:grid-cols-3 lg:items-start">
+                <div className="grid gap-4 sm:grid-cols-[10rem_1fr] lg:grid-cols-[8rem_1fr]">
+                  <TeamRobotPhoto
+                    teamNumber={selectedTeam}
+                    hasPitPhoto={Boolean(analysis?.pit?.photoObjectKey)}
+                    className="w-full"
+                  />
+                  <div>
+                    <p className="score-number">
+                      {analysis?.medianPoints ?? 0}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      median observed points
+                    </p>
+                    <div className="mini-stats">
+                      <span>
+                        <strong>{analysis?.medianActiveFuel ?? 0}</strong>{' '}
+                        median active FUEL
+                      </span>
+                      <span>
+                        <strong>
+                          {analysis?.pointStdDev.toFixed(1) ?? '0.0'}
+                        </strong>{' '}
+                        point deviation
+                      </span>
+                      <span>
+                        <strong>
+                          {analysis?.averageDefense.toFixed(1) ?? '0.0'}
+                        </strong>{' '}
+                        defense rating
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <section className="space-y-3">
+                  <h3 className="font-semibold">TBA and external ratings</h3>
+                  <div className="mini-stats">
+                    <span>
+                      <strong>
+                        {selectedStrategyTeam?.epa?.toFixed(1) ?? '—'}
+                      </strong>{' '}
+                      Match13 EPA
+                      {eventMetricRank(strategyTeams, selectedTeam, 'epa')
+                        ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'epa')}`
+                        : ''}
+                    </span>
+                    <span>
+                      <strong>
+                        {selectedStrategyTeam?.xp?.toFixed(1) ?? '—'}
+                      </strong>{' '}
+                      Match13 total xP
+                      {eventMetricRank(strategyTeams, selectedTeam, 'xp')
+                        ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xp')}`
+                        : ''}
+                    </span>
+                    <span>
+                      <strong>
+                        {selectedStrategyTeam?.xAuto?.toFixed(1) ?? '—'}
+                      </strong>{' '}
+                      auto xP
+                      {eventMetricRank(strategyTeams, selectedTeam, 'xAuto')
+                        ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xAuto')}`
+                        : ''}
+                    </span>
+                    <span>
+                      <strong>
+                        {selectedStrategyTeam?.xTele?.toFixed(1) ?? '—'}
+                      </strong>{' '}
+                      teleop xP
+                      {eventMetricRank(strategyTeams, selectedTeam, 'xTele')
+                        ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xTele')}`
+                        : ''}
+                    </span>
+                    <span>
+                      <strong>
+                        {selectedStrategyTeam?.xEnd?.toFixed(1) ?? '—'}
+                      </strong>{' '}
+                      endgame xP
+                      {eventMetricRank(strategyTeams, selectedTeam, 'xEnd')
+                        ? ` · ${eventMetricRank(strategyTeams, selectedTeam, 'xEnd')}`
+                        : ''}
+                    </span>
+                  </div>
+                </section>
+                <section className="space-y-3">
+                  <h3 className="font-semibold">Reliability and coverage</h3>
+                  <div className="mini-stats">
+                    <span>
+                      <strong>
+                        L1 {analysis?.towerLevelCounts.level1 ?? 0} · L2{' '}
+                        {analysis?.towerLevelCounts.level2 ?? 0} · L3{' '}
+                        {analysis?.towerLevelCounts.level3 ?? 0}
+                      </strong>{' '}
+                      tower successes
+                    </span>
+                    <span>
+                      <strong>{analysis?.disabledMatches ?? 0}</strong> disabled
+                      matches
+                    </span>
+                    <span>
+                      <strong>
+                        {analysis?.samples ?? 0}/
+                        {analysis?.scheduledMatches ?? 0}
+                      </strong>{' '}
+                      matches scouted
+                    </span>
+                    <span>
+                      <strong>{analysis?.scheduledMatches ?? 0}</strong>{' '}
+                      scheduled matches
+                    </span>
+                  </div>
+                </section>
+              </CardContent>
+            </Card>
+            <Card className="sm:col-span-2">
+              <CardHeader>
+                <CardTitle>Pit scouting</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {analysis?.pit ? (
+                  <div className="mini-stats">
+                    <span>
+                      <strong>{analysis.pit.drivetrain ?? 'Unknown'}</strong>{' '}
+                      drivetrain
+                    </span>
+                    <span>
+                      <strong>
+                        {analysis.pit.weightLbs
+                          ? `${analysis.pit.weightLbs} lb`
+                          : 'Unknown'}
+                      </strong>{' '}
+                      robot weight
+                    </span>
+                    <span>
+                      <strong>
+                        {analysis.pit.payload.shooterMount ?? 'Unknown'}
+                      </strong>{' '}
+                      shooter mount
+                    </span>
+                    <span>
+                      <strong>
+                        {analysis.pit.payload.shooterBarrels ?? 'Unknown'}
+                      </strong>{' '}
+                      shooter barrels
+                    </span>
+                    <span>
+                      <strong>
+                        {analysis.pit.payload.fieldAccess ?? 'Unknown'}
+                      </strong>{' '}
+                      field access
+                    </span>
+                    <span>
+                      <strong>
+                        {analysis.pit.payload.climbCapability ?? 'Unknown'}
+                      </strong>{' '}
+                      climb capability
+                    </span>
+                    <span>
+                      <strong>
+                        {displaySelections(
+                          analysis.pit.payload.autonomousStart,
+                        )}
+                      </strong>{' '}
+                      autonomous starts
+                    </span>
+                    <span>
+                      <strong>
+                        {analysis.pit.payload.adjustableHood ? 'Yes' : 'No'}
+                      </strong>{' '}
+                      adjustable hood
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No pit report has been submitted for this team.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+            <Card className="sm:col-span-2">
+              <CardHeader>
+                <CardTitle>
+                  {selectedTeam ? `Team ${selectedTeam} trends` : 'Team trends'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="mb-3 text-sm text-muted-foreground">
+                  Match-by-match observed points, autonomous FUEL, teleoperated
+                  FUEL, and defense rating (0–4).
+                </p>
+                <TeamTrendChart trends={analysis?.trends ?? []} />
+              </CardContent>
+            </Card>
+            <Card className="sm:col-span-2">
+              <CardHeader>
+                <CardTitle>Submitted entries</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1">
+                {analysis?.entries.map((entry) => (
+                  <div className="schedule-row" key={entry.id}>
+                    <strong>
+                      {entry.matchKey.split('_').at(-1)?.toUpperCase()}
+                    </strong>
+                    <span>
+                      {entry.scoutName}
+                      {entry.reopened ? ' · reopened' : ''}
+                    </span>
+                    {eventPack &&
+                    canReopenEntries(effectiveRole) &&
+                    !entry.reopened ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void reopenEntry(entry.id)}
+                      >
+                        Reopen
+                      </Button>
+                    ) : (
+                      <small>{entry.reopened ? 'Editable' : 'Locked'}</small>
+                    )}
+                  </div>
+                ))}
+                {analysis?.entries.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    No synchronized entries for this team yet.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+        {activeView === 'Admin' && isAdmin && adminSection === 'settings' && (
+          <div className="grid gap-4 p-4 sm:p-6">
             <GuestPassManager />
             <Card>
               <CardHeader>
                 <CardTitle>Team members and roles</CardTitle>
-                <Badge variant="outline">
-                  {eventPack?.members.length ?? 0} accounts
-                </Badge>
               </CardHeader>
               <CardContent className="space-y-1">
-                <p className="pb-3 text-sm text-muted-foreground">
-                  Accounts and passwords come from Team 401 Ops. Scouting roles
-                  and scouting access are managed here. New Ops roster members
-                  appear after the next successful sign-in.
-                </p>
-                {eventPack?.members.map((member) => (
-                  <div className="member-row" key={member.id}>
-                    <div>
-                      <strong>{member.name}</strong>
-                      <small>
-                        {member.email.endsWith('@guest.invalid')
-                          ? 'Temporary partner access'
-                          : member.email}
-                      </small>
-                      {Boolean(member.disabled) && (
-                        <Badge variant="destructive">Disabled</Badge>
-                      )}
-                    </div>
-                    {member.email.endsWith('@guest.invalid') ? (
-                      <Badge variant="outline">Guest scout</Badge>
-                    ) : member.role === 'owner' ? (
-                      <Badge>Owner</Badge>
-                    ) : (
-                      <select
-                        value={member.role}
-                        onChange={(event) =>
-                          void updateMemberRole(member.id, event.target.value)
-                        }
+                <div className="grid gap-2 pb-3 sm:grid-cols-[1fr_10rem]">
+                  <Input
+                    value={memberSearch}
+                    onChange={(event) => setMemberSearch(event.target.value)}
+                    placeholder="Search name or email"
+                    aria-label="Search team members"
+                  />
+                  <select
+                    className="h-8 rounded-lg border bg-background px-2.5 text-sm"
+                    value={memberFilter}
+                    onChange={(event) =>
+                      setMemberFilter(event.target.value as typeof memberFilter)
+                    }
+                    aria-label="Filter team members"
+                  >
+                    <option value="active">Active members</option>
+                    <option value="disabled">Disabled</option>
+                    <option value="guests">Guests</option>
+                    <option value="all">All accounts</option>
+                  </select>
+                </div>
+                <div className="member-card-grid">
+                  {filteredMembers.map((member) => {
+                    const guest = member.email.endsWith('@guest.invalid');
+                    return (
+                      <article
+                        className="member-card"
+                        data-role={guest ? 'guest' : member.role}
+                        key={member.id}
                       >
-                        <option value="admin">Admin</option>
-                        <option value="strategy">Strategy</option>
-                        <option value="scout">Scout</option>
-                        <option value="video">Video</option>
-                      </select>
-                    )}
-                    {member.role !== 'owner' && (
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            void setMemberDisabled(member.id, !member.disabled)
-                          }
-                        >
-                          {member.disabled ? 'Enable' : 'Disable'}
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                        <div className="member-card-heading">
+                          <strong>{member.name}</strong>
+                          {Boolean(member.disabled) && (
+                            <Badge variant="destructive">Disabled</Badge>
+                          )}
+                        </div>
+                        <small className="member-card-email">
+                          {guest ? 'Temporary partner access' : member.email}
+                        </small>
+                        <div className="member-card-role">
+                          <span>Scouting role</span>
+                          {guest ? (
+                            <Badge variant="outline">Guest scout</Badge>
+                          ) : member.role === 'owner' ? (
+                            <Badge>Owner</Badge>
+                          ) : (
+                            <select
+                              aria-label={`Scouting role for ${member.name}`}
+                              value={member.role}
+                              onChange={(event) =>
+                                void updateMemberRole(
+                                  member.id,
+                                  event.target.value,
+                                )
+                              }
+                            >
+                              <option value="admin">Admin</option>
+                              <option value="strategy">Strategy</option>
+                              <option value="scout">Scout</option>
+                              <option value="video">Video</option>
+                            </select>
+                          )}
+                        </div>
+                        {member.role !== 'owner' && (
+                          <div className="member-card-actions">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                void setMemberDisabled(
+                                  member.id,
+                                  !member.disabled,
+                                )
+                              }
+                            >
+                              {member.disabled ? 'Enable' : 'Disable'}
+                            </Button>
+                            {Boolean(member.disabled) && (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() =>
+                                  setMemberPendingRemoval({
+                                    id: member.id,
+                                    name: member.name,
+                                  })
+                                }
+                              >
+                                Remove
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+                {!filteredMembers.length && (
+                  <p className="py-4 text-center text-sm text-muted-foreground">
+                    No accounts match this search and filter.
+                  </p>
+                )}
                 {adminMessage && (
                   <p className="text-sm text-muted-foreground" role="status">
                     {adminMessage}
@@ -3517,64 +4398,156 @@ export default function Home() {
             </Card>
           </div>
         )}
-        {activeView === 'Settings' && (
+        {activeView === 'Account' && (
           <div className="grid gap-4 p-4 sm:p-6">
             <Card>
               <CardHeader>
-                <CardTitle>Display settings</CardTitle>
+                <CardTitle>Account</CardTitle>
               </CardHeader>
-              <CardContent className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="font-semibold">Color theme</p>
-                  <p className="text-sm text-muted-foreground">
-                    Choose the theme for this device.
-                  </p>
+              <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <strong className="block">{session.user.name}</strong>
+                  <span className="block text-sm text-muted-foreground [overflow-wrap:anywhere]">
+                    {session.user.email}
+                  </span>
                 </div>
-                <Button variant="outline" onClick={toggleTheme}>
-                  {dark ? (
-                    <>
-                      <Sun />
-                      Use light mode
-                    </>
-                  ) : (
-                    <>
-                      <Moon />
-                      Use dark mode
-                    </>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <PwaInstallButton />
+                  <Button
+                    variant="outline"
+                    disabled={signingOut}
+                    onClick={() => void signOut()}
+                  >
+                    <LogOut />
+                    {signingOut ? 'Signing out…' : 'Sign out'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+            {realIsAdmin && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Preview as</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    See the app as a team member. Actions still run as you.
+                  </p>
+                  <select
+                    aria-label="Preview as"
+                    className="h-9 rounded-md border bg-background px-3 text-sm text-foreground sm:w-56"
+                    value={previewMember?.id ?? ''}
+                    onChange={(event) => {
+                      const member = eventPack?.members.find(
+                        (item) => item.id === event.target.value,
+                      );
+                      setPreviewMember(
+                        member
+                          ? {
+                              id: member.id,
+                              name: member.name,
+                              role: member.role,
+                            }
+                          : null,
+                      );
+                    }}
+                  >
+                    <option value="">Myself</option>
+                    {eventPack?.members.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.name} ({member.role})
+                      </option>
+                    ))}
+                  </select>
+                </CardContent>
+              </Card>
+            )}
+            <Card>
+              <CardHeader>
+                <CardTitle>Change password</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form className="grid max-w-lg gap-3" onSubmit={changePassword}>
+                  <p className="text-sm text-muted-foreground">
+                    This changes your shared Team 401 password for both Scouting
+                    and Ops.
+                  </p>
+                  <Input
+                    type="password"
+                    autoComplete="current-password"
+                    aria-label="Current password"
+                    placeholder="Current password"
+                    value={currentPassword}
+                    onChange={(event) => setCurrentPassword(event.target.value)}
+                    required
+                  />
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    aria-label="New password"
+                    placeholder="New password"
+                    minLength={6}
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                    required
+                  />
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    aria-label="Confirm new password"
+                    placeholder="Confirm new password"
+                    minLength={6}
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    required
+                  />
+                  <Button type="submit" disabled={changingPassword}>
+                    <KeyRound />
+                    {changingPassword
+                      ? 'Changing password…'
+                      : 'Change password'}
+                  </Button>
+                  {passwordMessage && (
+                    <p className="text-sm text-muted-foreground" role="status">
+                      {passwordMessage}
+                    </p>
                   )}
-                </Button>
+                </form>
               </CardContent>
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>
-                  <MonitorSmartphone /> Signed-in devices
-                </CardTitle>
-                <Badge variant="outline">{accountSessions.length}</Badge>
+                <CardTitle>Other signed-in devices</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
-                {accountSessions.map((item) => (
-                  <div className="schedule-row" key={item.id}>
-                    <strong>
-                      {item.id === currentSessionId ? 'This device' : 'Session'}
-                    </strong>
-                    <span>
-                      {item.userAgent?.split(' ').slice(0, 4).join(' ') ??
-                        'Unknown device'}
-                      {item.ipAddress ? ` · ${item.ipAddress}` : ''}
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => void revokeSession(item.id)}
-                    >
-                      {item.id === currentSessionId ? 'Sign out' : 'Revoke'}
-                    </Button>
-                  </div>
-                ))}
-                {!accountSessions.length && (
+              <CardContent className="account-sessions grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                {accountSessions
+                  .filter((item) => item.id !== currentSessionId)
+                  .map((item) => (
+                    <div className="rounded-lg border p-2.5" key={item.id}>
+                      <p
+                        className="truncate text-sm font-medium"
+                        title={item.userAgent ?? undefined}
+                      >
+                        {formatDeviceName(item.userAgent)}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        {item.location ?? 'Location unavailable'}
+                      </p>
+                      <Button
+                        className="mt-2 w-full"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void revokeSession(item.id)}
+                      >
+                        Revoke
+                      </Button>
+                    </div>
+                  ))}
+                {!accountSessions.some(
+                  (item) => item.id !== currentSessionId,
+                ) && (
                   <p className="text-sm text-muted-foreground">
-                    No active sessions were found.
+                    No other active sessions were found.
                   </p>
                 )}
                 {sessionMessage && (
@@ -3584,45 +4557,111 @@ export default function Home() {
                 )}
               </CardContent>
             </Card>
-            <details className="rounded-xl border bg-card p-4 text-card-foreground">
-              <summary className="cursor-pointer font-semibold">
-                Offline QR relay
-              </summary>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Scan another scout&apos;s completed match only when their device
-                cannot upload it directly.
-              </p>
-              <div className="mt-4">
-                <QrRelay online={online} />
-              </div>
-            </details>
+          </div>
+        )}
+        {activeView === 'Offline transfer' && (
+          <div className="mx-auto grid w-full max-w-3xl gap-4 p-4 sm:p-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Receive scouting data</CardTitle>
+                {!online && (
+                  <Badge variant="destructive">Internet required</Badge>
+                )}
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  Use this when another scout completed a match without
+                  internet. Scan the QR code on their review screen to upload
+                  that match.
+                </p>
+                <p>
+                  This device has {queuedCount} local submission
+                  {queuedCount === 1 ? '' : 's'} waiting to synchronize.
+                </p>
+              </CardContent>
+            </Card>
+            <QrRelay online={online} />
           </div>
         )}
       </section>
-      <nav aria-label="Mobile navigation" className="mobile-nav">
-        {visibleNav.map(({ label, icon: Icon }) => (
+      <ConfirmActionDialog
+        open={memberPendingRemoval !== null}
+        onOpenChange={(open) => {
+          if (!open) setMemberPendingRemoval(null);
+        }}
+        title={`Remove ${memberPendingRemoval?.name ?? 'this account'}?`}
+        description="This removes their Scouting access and revokes their sessions. Historical scouting data will be kept."
+        confirmLabel="Remove account"
+        destructive
+        onConfirm={() => {
+          if (!memberPendingRemoval) return false;
+          return removeMember(memberPendingRemoval.id);
+        }}
+      />
+      {mobileMenuOpen && (
+        <>
           <button
             type="button"
-            aria-current={activeView === label ? 'page' : undefined}
-            onClick={() => navigate(label)}
-            className={activeView === label ? 'active' : ''}
-            key={label}
+            className="mobile-more-backdrop"
+            aria-label="Close more navigation"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          <div
+            className="mobile-more-menu"
+            role="dialog"
+            aria-label="Navigation and account menu"
           >
-            <Icon />
-            <span>{label}</span>
-          </button>
-        ))}
-        {isAdmin && (
-          <button
-            type="button"
-            onClick={() => navigate('Admin')}
-            className={activeView === 'Admin' ? 'active' : ''}
-          >
-            <UserCog />
-            <span>Admin</span>
-          </button>
-        )}
-      </nav>
+            <button
+              type="button"
+              className="mobile-menu-account"
+              aria-current={activeView === 'Account' ? 'page' : undefined}
+              onClick={() => navigate('Account')}
+            >
+              <CircleUserRound />
+              <div>
+                <strong>{session.user.name}</strong>
+                <span>{online ? 'Online' : 'Offline ready'}</span>
+              </div>
+              <ChevronRight aria-hidden="true" />
+            </button>
+            <div className="mobile-menu-links">
+              {visibleNav.map(({ label, icon: Icon }) => (
+                <button
+                  type="button"
+                  aria-current={activeView === label ? 'page' : undefined}
+                  onClick={() => navigate(label)}
+                  key={label}
+                >
+                  <Icon />
+                  <span>{label}</span>
+                </button>
+              ))}
+              {isAdmin && (
+                <button
+                  type="button"
+                  aria-current={activeView === 'Admin' ? 'page' : undefined}
+                  onClick={() => navigate('Admin')}
+                >
+                  <UserCog />
+                  <span>Admin</span>
+                </button>
+              )}
+            </div>
+            <PwaInstallButton className="mobile-install-app" />
+            <button
+              type="button"
+              className="mobile-theme-toggle"
+              onClick={() => {
+                toggleTheme();
+                setMobileMenuOpen(false);
+              }}
+            >
+              {dark ? <Sun /> : <Moon />}
+              <span>{dark ? 'Use light mode' : 'Use dark mode'}</span>
+            </button>
+          </div>
+        </>
+      )}
     </main>
   );
 }

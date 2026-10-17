@@ -1,0 +1,3 @@
+ALTER TABLE events ADD COLUMN start_date TEXT;
+ALTER TABLE events ADD COLUMN end_date TEXT;
+ALTER TABLE events ADD COLUMN event_type INTEGER;

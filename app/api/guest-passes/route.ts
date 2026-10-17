@@ -12,7 +12,10 @@ const createSchema = z.object({
     z.literal(168),
   ]),
 });
-const revokeSchema = z.object({ id: z.string().uuid() });
+const revokeSchema = z.object({
+  id: z.string().uuid(),
+  action: z.enum(['revoke', 'remove']).optional().default('revoke'),
+});
 
 async function getAdmin(request: Request) {
   const session = await auth.api.getSession({ headers: request.headers });
@@ -30,10 +33,14 @@ async function getAdmin(request: Request) {
 export async function GET(request: Request) {
   const actor = await getAdmin(request);
   if (!actor)
-    return Response.json({ error: 'Admin access is required.' }, { status: 403 });
+    return Response.json(
+      { error: 'Admin access is required.' },
+      { status: 403 },
+    );
   const rows = await env.DB.prepare(
     `SELECT guest_access_passes.id, guest_access_passes.user_id AS userId,
        users.name, guest_access_passes.expires_at AS expiresAt,
+       guest_access_passes.token_code AS code,
        guest_access_passes.revoked_at AS revokedAt,
        guest_access_passes.created_at AS createdAt,
        memberships.disabled AS memberDisabled,
@@ -53,10 +60,16 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const actor = await getAdmin(request);
   if (!actor)
-    return Response.json({ error: 'Admin access is required.' }, { status: 403 });
+    return Response.json(
+      { error: 'Admin access is required.' },
+      { status: 403 },
+    );
   const parsed = createSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success)
-    return Response.json({ error: 'Enter a guest name and duration.' }, { status: 400 });
+    return Response.json(
+      { error: 'Enter a partner team or group and duration.' },
+      { status: 400 },
+    );
 
   const id = crypto.randomUUID();
   const userId = `guest:${id}`;
@@ -75,13 +88,14 @@ export async function POST(request: Request) {
     ).bind(actor.membership.organizationId, userId, now, now),
     env.DB.prepare(
       `INSERT INTO guest_access_passes
-       (id, organization_id, user_id, token_hash, expires_at, created_by, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, organization_id, user_id, token_hash, token_code, expires_at, created_by, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).bind(
       id,
       actor.membership.organizationId,
       userId,
       tokenHash,
+      code,
       expiresAt,
       actor.session.user.id,
       now,
@@ -94,7 +108,10 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   const actor = await getAdmin(request);
   if (!actor)
-    return Response.json({ error: 'Admin access is required.' }, { status: 403 });
+    return Response.json(
+      { error: 'Admin access is required.' },
+      { status: 403 },
+    );
   const parsed = revokeSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success)
     return Response.json({ error: 'Invalid guest pass.' }, { status: 400 });
@@ -107,6 +124,24 @@ export async function DELETE(request: Request) {
   if (!pass)
     return Response.json({ error: 'Guest pass not found.' }, { status: 404 });
   const now = Date.now();
+  if (parsed.data.action === 'remove') {
+    await env.DB.batch([
+      env.DB.prepare(
+        'DELETE FROM sessions WHERE user_id = ? OR user_id LIKE ?',
+      ).bind(pass.userId, `guest:${parsed.data.id}:%`),
+      env.DB.prepare(
+        'DELETE FROM guest_access_passes WHERE id = ? AND organization_id = ?',
+      ).bind(parsed.data.id, actor.membership.organizationId),
+      env.DB.prepare(
+        'DELETE FROM memberships WHERE organization_id = ? AND (user_id = ? OR user_id LIKE ?)',
+      ).bind(
+        actor.membership.organizationId,
+        pass.userId,
+        `guest:${parsed.data.id}:%`,
+      ),
+    ]);
+    return Response.json({ removed: true });
+  }
   await env.DB.batch([
     env.DB.prepare(
       'UPDATE guest_access_passes SET revoked_at = ?, updated_at = ? WHERE id = ?',
@@ -114,7 +149,13 @@ export async function DELETE(request: Request) {
     env.DB.prepare(
       'UPDATE memberships SET disabled = 1, updated_at = ? WHERE organization_id = ? AND user_id = ?',
     ).bind(now, actor.membership.organizationId, pass.userId),
-    env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(pass.userId),
+    env.DB.prepare(
+      `UPDATE memberships SET disabled = 1, updated_at = ?
+       WHERE organization_id = ? AND user_id LIKE ?`,
+    ).bind(now, actor.membership.organizationId, `guest:${parsed.data.id}:%`),
+    env.DB.prepare(
+      'DELETE FROM sessions WHERE user_id = ? OR user_id LIKE ?',
+    ).bind(pass.userId, `guest:${parsed.data.id}:%`),
   ]);
   return Response.json({ revoked: true });
 }

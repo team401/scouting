@@ -4,14 +4,35 @@ import { auth } from '@/lib/auth';
 
 const planSchema = z.object({
   matchId: z.string().min(1),
-  objective: z.string().max(500),
-  autonomous: z.string().max(1000),
-  offense: z.string().max(1000),
-  defense: z.string().max(1000),
-  endgame: z.string().max(1000),
   notes: z.string().max(2000),
-  teamRoles: z.record(z.string(), z.string().max(500)),
+  absentTeams: z
+    .array(z.number().int().positive())
+    .max(6)
+    .optional()
+    .default([]),
   board: z.object({
+    robots: z
+      .array(
+        z.object({
+          team: z.number().int().positive(),
+          station: z.string().max(4),
+          alliance: z.enum(['red', 'blue']),
+          x: z.number(),
+          y: z.number(),
+        }),
+      )
+      .max(6),
+    strokes: z
+      .array(
+        z.object({
+          id: z.string().max(100),
+          color: z.string().max(20),
+          points: z.array(z.object({ x: z.number(), y: z.number() })).max(5000),
+        }),
+      )
+      .max(100),
+  }),
+  autoBoard: z.object({
     robots: z
       .array(
         z.object({
@@ -59,6 +80,14 @@ export async function GET(request: Request) {
       { error: 'Sign in to view match plans.' },
       { status: 401 },
     );
+  if (
+    user.session.user.id.startsWith('guest:') ||
+    !['owner', 'admin', 'strategy'].includes(user.role)
+  )
+    return Response.json(
+      { error: 'Strategy access is required.' },
+      { status: 403 },
+    );
   const matchId = new URL(request.url).searchParams.get('matchId');
   if (!matchId)
     return Response.json({ error: 'Choose a match.' }, { status: 400 });
@@ -93,7 +122,10 @@ export async function POST(request: Request) {
       { error: 'Sign in to save match plans.' },
       { status: 401 },
     );
-  if (!['owner', 'admin', 'strategy'].includes(user.role))
+  if (
+    user.session.user.id.startsWith('guest:') ||
+    !['owner', 'admin', 'strategy'].includes(user.role)
+  )
     return Response.json(
       {
         error: 'Only strategy, admin, or owner accounts can edit match plans.',
@@ -119,14 +151,10 @@ export async function POST(request: Request) {
   const now = Date.now();
   const id = `${user.organizationId}:${match.id}:official`;
   const plan = {
-    objective: parsed.data.objective,
-    autonomous: parsed.data.autonomous,
-    offense: parsed.data.offense,
-    defense: parsed.data.defense,
-    endgame: parsed.data.endgame,
     notes: parsed.data.notes,
-    teamRoles: parsed.data.teamRoles,
     board: parsed.data.board,
+    autoBoard: parsed.data.autoBoard,
+    absentTeams: parsed.data.absentTeams,
   };
   await env.DB.prepare(`INSERT INTO match_plans (id, organization_id, event_id, match_id, author_user_id, plan, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET author_user_id = excluded.author_user_id, plan = excluded.plan, updated_at = excluded.updated_at`)
