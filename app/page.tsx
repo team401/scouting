@@ -41,6 +41,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { toast } from '@/components/ui/toast';
 import {
   initialPlaceholderRobotMarkers,
   initialRobotMarkers,
@@ -785,7 +786,6 @@ export default function Home() {
   const [syncing, setSyncing] = useState(false);
   const [_syncMessage, setSyncMessage] = useState('');
   const [eventKey, setEventKey] = useState('');
-  const [eventMessage, setEventMessage] = useState('');
   const [configuringEvent, setConfiguringEvent] = useState(false);
   const [eventChoices, setEventChoices] = useState<TbaEventChoice[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
@@ -1268,7 +1268,6 @@ export default function Home() {
 
   const loadTeamEventChoices = useCallback(async (requestedTeam?: number) => {
     setEventsLoading(true);
-    setEventMessage('');
     const query = requestedTeam ? `?team=${requestedTeam}` : '';
     const cacheId = `team-event-choices:${requestedTeam ?? 'current'}`;
     const cached = await getCachedValue<{
@@ -1313,13 +1312,15 @@ export default function Home() {
       });
     } catch (error) {
       if (!cached) setEventChoices([]);
-      setEventMessage(
-        cached
-          ? 'Showing the event list cached on this device.'
+      toast.add({
+        type: cached ? 'info' : 'error',
+        title: cached ? 'Showing cached events' : 'Unable to load events',
+        description: cached
+          ? 'Using the event list saved on this device.'
           : error instanceof Error
             ? error.message
             : 'Unable to load Team 401 events.',
-      );
+      });
     } finally {
       setEventsLoading(false);
     }
@@ -2201,7 +2202,6 @@ export default function Home() {
 
   async function configureEvent() {
     setConfiguringEvent(true);
-    setEventMessage('');
     try {
       const response = await fetch('/api/event-pack', {
         method: 'POST',
@@ -2219,9 +2219,11 @@ export default function Home() {
       };
       if (!response.ok)
         throw new Error(result.error ?? 'Unable to load this event.');
-      setEventMessage(
-        `${result.event?.name ?? eventKey} is current. Cached ${result.matchCount ?? 0} matches.`,
-      );
+      toast.add({
+        type: 'success',
+        title: `${result.event?.name ?? eventKey} is current`,
+        description: `${result.matchCount ?? 0} matches cached.`,
+      });
       setTestTeamNumber(
         result.organizationTeamNumber !== baseTeamNumber
           ? (result.organizationTeamNumber ?? eventTeamNumber)
@@ -2229,9 +2231,12 @@ export default function Home() {
       );
       await loadEventPack();
     } catch (error) {
-      setEventMessage(
-        error instanceof Error ? error.message : 'Unable to load this event.',
-      );
+      toast.add({
+        type: 'error',
+        title: 'Unable to load this event',
+        description:
+          error instanceof Error ? error.message : 'Please try again.',
+      });
     } finally {
       setConfiguringEvent(false);
     }
@@ -2239,7 +2244,6 @@ export default function Home() {
 
   async function stopTeamTestMode() {
     setConfiguringEvent(true);
-    setEventMessage('');
     try {
       const response = await fetch('/api/event-pack', { method: 'DELETE' });
       const result = (await response.json()) as { error?: string };
@@ -2249,17 +2253,21 @@ export default function Home() {
       setEventTeamNumber(baseTeamNumber);
       setEventTeamInput(String(baseTeamNumber));
       setEventKey('');
-      setEventMessage(`Returned to Team ${baseTeamNumber}.`);
+      toast.add({
+        type: 'success',
+        title: `Returned to Team ${baseTeamNumber}`,
+      });
       await Promise.all([
         loadEventPack(),
         loadTeamEventChoices(baseTeamNumber),
       ]);
     } catch (error) {
-      setEventMessage(
-        error instanceof Error
-          ? error.message
-          : 'Unable to stop team test mode.',
-      );
+      toast.add({
+        type: 'error',
+        title: 'Unable to stop team test mode',
+        description:
+          error instanceof Error ? error.message : 'Please try again.',
+      });
     } finally {
       setConfiguringEvent(false);
     }
@@ -4098,14 +4106,6 @@ export default function Home() {
                               : `Test as Team ${eventTeamNumber}`}
                         </Button>
                       </div>
-                      {eventMessage && (
-                        <p
-                          className="text-sm text-muted-foreground"
-                          role="status"
-                        >
-                          {eventMessage}
-                        </p>
-                      )}
                       <EventTeamAliases
                         eventKey={eventPack?.event.key ?? ''}
                         eventType={eventPack?.event.eventType ?? null}
