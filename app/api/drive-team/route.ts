@@ -7,6 +7,7 @@ import {
   drivePositions,
   hasDuplicateDriveMember,
   maxExpectedMatches,
+  requiresEventRosterForDriveTeam,
 } from '@/lib/drive-team';
 import { draftSlotsWithMatches } from '@/lib/drive-team-schedule';
 import { canManageAssignments } from '@/lib/scouting-policy';
@@ -61,8 +62,8 @@ async function currentEventId(organizationId: string) {
   return event?.id ?? null;
 }
 
-// Same rules as the shift schedule (an active member, on the roster when the
-// event has one), plus the position's eligibility by ops role.
+// Students follow the shift schedule's Event Roster requirement. Ops coaches
+// are not part of that student roster, but may fill Technician or Coach.
 async function personError(
   organizationId: string,
   eventId: string,
@@ -75,6 +76,13 @@ async function personError(
     .bind(organizationId, userId)
     .first();
   if (!member) return 'That person is not an active member.';
+  const user = await env.DB.prepare(
+    'SELECT ops_role AS opsRole FROM users WHERE id = ?',
+  )
+    .bind(userId)
+    .first<{ opsRole: string | null }>();
+  if (!canFillDrivePosition(key, user?.opsRole))
+    return 'Coaches can only fill the Technician and Coach positions.';
   const attendeeCount = await env.DB.prepare(
     'SELECT COUNT(*) AS count FROM event_attendees WHERE event_id = ?',
   )
@@ -85,7 +93,10 @@ async function personError(
   )
     .bind(eventId)
     .first();
-  if (attendanceConfigured || Number(attendeeCount?.count ?? 0) > 0) {
+  if (
+    requiresEventRosterForDriveTeam(user?.opsRole) &&
+    (attendanceConfigured || Number(attendeeCount?.count ?? 0) > 0)
+  ) {
     const attendee = await env.DB.prepare(
       'SELECT 1 FROM event_attendees WHERE event_id = ? AND user_id = ?',
     )
@@ -93,13 +104,6 @@ async function personError(
       .first();
     if (!attendee) return 'That person is not on this event roster.';
   }
-  const user = await env.DB.prepare(
-    'SELECT ops_role AS opsRole FROM users WHERE id = ?',
-  )
-    .bind(userId)
-    .first<{ opsRole: string | null }>();
-  if (!canFillDrivePosition(key, user?.opsRole))
-    return 'Coaches can only fill the Technician and Coach positions.';
   return null;
 }
 
