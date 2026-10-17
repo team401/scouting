@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   canFillDrivePosition,
+  drivePositionClasses,
   drivePositions,
   matchLabel,
   maxExpectedMatches,
@@ -37,17 +38,6 @@ type PlannedSlot = DriveTeamSlotMembers & {
 const phaseTitle: Record<DrivePhase, string> = {
   qual: 'Quals',
   playoff: 'Playoffs',
-};
-
-const drivePositionClass: Record<DrivePositionKey, string> = {
-  driverUserId: 'bg-sky-200 text-sky-950 dark:bg-sky-900 dark:text-sky-100',
-  operatorUserId:
-    'bg-violet-200 text-violet-950 dark:bg-violet-900 dark:text-violet-100',
-  humanPlayerUserId:
-    'bg-emerald-200 text-emerald-950 dark:bg-emerald-900 dark:text-emerald-100',
-  technicianUserId:
-    'bg-amber-200 text-amber-950 dark:bg-amber-900 dark:text-amber-100',
-  coachUserId: 'bg-rose-200 text-rose-950 dark:bg-rose-900 dark:text-rose-100',
 };
 
 // Error responses can have empty bodies, so a failed request must not throw a
@@ -528,7 +518,7 @@ export function DriveTeamPlanner({
                           label={`${position.label}, ${phaseTitle[phase]} ${slot.slotNumber}`}
                           hasValue={slot[position.key] !== null}
                           valueName={memberName(slot[position.key])}
-                          valueClass={drivePositionClass[position.key]}
+                          valueClass={drivePositionClasses[position.key]}
                           options={pickerOptions(
                             position.key,
                             slot[position.key],
