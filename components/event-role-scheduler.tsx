@@ -18,8 +18,8 @@ import { assignmentClass } from '@/lib/assignment-class';
 import { matchLabel, plannedLabel, type DrivePhase } from '@/lib/drive-team';
 import { getCachedValue, saveCachedValue } from '@/lib/offline-db';
 import {
+  assignableEventRoles,
   eventRoleDescription,
-  eventRoles,
   type EventRole,
 } from '@/lib/event-roles';
 
@@ -146,7 +146,7 @@ export function EventRoleScheduler({
             title={eventRoleDescription[role]}
             onChange={(event) => setRole(event.target.value as EventRole)}
           >
-            {eventRoles.map(([name, description]) => (
+            {assignableEventRoles.map(([name, description]) => (
               <option value={name} title={description} key={name}>
                 {name}
               </option>
