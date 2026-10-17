@@ -1,4 +1,4 @@
-const VERSION = 'v11';
+const VERSION = 'v12';
 const SHELL_CACHE = `team401-shell-${VERSION}`;
 const PAGE_CACHE = `team401-pages-${VERSION}`;
 const ASSET_CACHE = `team401-assets-${VERSION}`;
@@ -136,6 +136,15 @@ async function putBestEffort(cache, request, response, maxEntries) {
   }
 }
 
+async function notifyVersionedAssetMissing(url) {
+  const clients = await self.clients.matchAll({
+    type: 'window',
+    includeUncontrolled: true,
+  });
+  for (const client of clients)
+    client.postMessage({ type: 'VERSIONED_ASSET_MISSING', url });
+}
+
 async function networkFirst(request, cacheName, fallbacks, timeoutMs = null) {
   const cache = await caches.open(cacheName);
   const controller = timeoutMs ? new AbortController() : null;
@@ -173,6 +182,8 @@ async function cacheFirst(request) {
       const retry = await fetch(new Request(request, { cache: 'reload' }));
       if (isCacheable(retry)) response = retry;
     }
+    if (!isCacheable(response) && [404, 503].includes(response.status))
+      await notifyVersionedAssetMissing(request.url);
     if (isCacheable(response))
       await putBestEffort(cache, request, response, CACHE_LIMITS.assets);
     return response;
