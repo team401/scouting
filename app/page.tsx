@@ -4425,14 +4425,6 @@ export default function Home() {
                   <h3 className="font-semibold">Reliability and coverage</h3>
                   <div className="mini-stats !mt-0 sm:!grid-cols-2 lg:!grid-cols-4">
                     <span>
-                      <strong>
-                        L1 {analysis?.towerLevelCounts.level1 ?? 0} · L2{' '}
-                        {analysis?.towerLevelCounts.level2 ?? 0} · L3{' '}
-                        {analysis?.towerLevelCounts.level3 ?? 0}
-                      </strong>{' '}
-                      tower successes
-                    </span>
-                    <span>
                       <strong>{analysis?.disabledMatches ?? 0}</strong> disabled
                       matches
                     </span>
@@ -4446,6 +4438,14 @@ export default function Home() {
                     <span>
                       <strong>{analysis?.scheduledMatches ?? 0}</strong>{' '}
                       scheduled matches
+                    </span>
+                    <span>
+                      <strong>
+                        L1 {analysis?.towerLevelCounts.level1 ?? 0} · L2{' '}
+                        {analysis?.towerLevelCounts.level2 ?? 0} · L3{' '}
+                        {analysis?.towerLevelCounts.level3 ?? 0}
+                      </strong>{' '}
+                      tower successes
                     </span>
                   </div>
                 </section>
