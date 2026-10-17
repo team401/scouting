@@ -65,6 +65,7 @@ import {
 } from '@/lib/offline-db';
 import { observedPoints, type ScoutingPayload } from '@/lib/scouting-metrics';
 import { isPitReportComplete } from '@/lib/pit-scouting';
+import { importWithDeploymentRecovery } from '@/lib/deployment-recovery';
 import {
   canManageAssignments,
   canReopenEntries,
@@ -72,57 +73,79 @@ import {
 } from '@/lib/scouting-policy';
 
 const PickListWorkspace = lazy(() =>
-  import('@/components/pick-list-workspace').then((module) => ({
+  importWithDeploymentRecovery(
+    () => import('@/components/pick-list-workspace'),
+  ).then((module) => ({
     default: module.PickListWorkspace,
   })),
 );
 const MatchVideoLibrary = lazy(() =>
-  import('@/components/match-video-library').then((module) => ({
+  importWithDeploymentRecovery(
+    () => import('@/components/match-video-library'),
+  ).then((module) => ({
     default: module.MatchVideoLibrary,
   })),
 );
 const TeamComparison = lazy(() =>
-  import('@/components/team-comparison').then((module) => ({
+  importWithDeploymentRecovery(
+    () => import('@/components/team-comparison'),
+  ).then((module) => ({
     default: module.TeamComparison,
   })),
 );
 const TeamStatsDialog = lazy(() =>
-  import('@/components/team-stats-dialog').then((module) => ({
+  importWithDeploymentRecovery(
+    () => import('@/components/team-stats-dialog'),
+  ).then((module) => ({
     default: module.TeamStatsDialog,
   })),
 );
 const ScoutingOperations = lazy(() =>
-  import('@/components/scouting-operations').then((module) => ({
+  importWithDeploymentRecovery(
+    () => import('@/components/scouting-operations'),
+  ).then((module) => ({
     default: module.ScoutingOperations,
   })),
 );
 const DriveTeamPlanner = lazy(() =>
-  import('@/components/drive-team-planner').then((module) => ({
+  importWithDeploymentRecovery(
+    () => import('@/components/drive-team-planner'),
+  ).then((module) => ({
     default: module.DriveTeamPlanner,
   })),
 );
 const EventScheduleBoard = lazy(() =>
-  import('@/components/event-schedule-board').then((module) => ({
+  importWithDeploymentRecovery(
+    () => import('@/components/event-schedule-board'),
+  ).then((module) => ({
     default: module.EventScheduleBoard,
   })),
 );
 const EventTeamAliases = lazy(() =>
-  import('@/components/event-team-aliases').then((module) => ({
+  importWithDeploymentRecovery(
+    () => import('@/components/event-team-aliases'),
+  ).then((module) => ({
     default: module.EventTeamAliases,
   })),
 );
 const QrRelay = lazy(() =>
-  import('@/components/qr-relay').then((module) => ({
-    default: module.QrRelay,
-  })),
+  importWithDeploymentRecovery(() => import('@/components/qr-relay')).then(
+    (module) => ({
+      default: module.QrRelay,
+    }),
+  ),
 );
 const MatchSubmissionQr = lazy(() =>
-  import('@/components/match-submission-qr').then((module) => ({
+  importWithDeploymentRecovery(
+    () => import('@/components/match-submission-qr'),
+  ).then((module) => ({
     default: module.MatchSubmissionQr,
   })),
 );
 const GuestPassManager = lazy(() =>
-  import('@/components/guest-pass-manager').then((module) => ({
+  importWithDeploymentRecovery(
+    () => import('@/components/guest-pass-manager'),
+  ).then((module) => ({
     default: module.GuestPassManager,
   })),
 );

@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react';
 import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ensureRelayDeviceRegistered } from '@/lib/qr-relay';
+import {
+  recoverChunkFailureEvent,
+  recoverFromChunkFailure,
+} from '@/lib/deployment-recovery';
 
 type InstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -11,55 +15,6 @@ type InstallPromptEvent = Event & {
 };
 
 let installPrompt: InstallPromptEvent | null = null;
-let recoveringChunkLoad = false;
-
-function chunkFailureDetails(event: Event | PromiseRejectionEvent) {
-  if (event instanceof ErrorEvent) {
-    const source =
-      event.filename ||
-      (event.target instanceof HTMLScriptElement ? event.target.src : '');
-    return `${event.message} ${source}`;
-  }
-  const reason = 'reason' in event ? event.reason : null;
-  return reason instanceof Error ? reason.message : String(reason ?? '');
-}
-
-async function recoverFromChunkFailure() {
-  if (recoveringChunkLoad || !navigator.onLine) return;
-  const lastRecovery = Number(
-    sessionStorage.getItem('team401-chunk-recovery') ?? 0,
-  );
-  if (Date.now() - lastRecovery < 30_000) return;
-  recoveringChunkLoad = true;
-  sessionStorage.setItem('team401-chunk-recovery', String(Date.now()));
-  const registrations = await navigator.serviceWorker.getRegistrations();
-  await Promise.all(
-    registrations.map((registration) => registration.unregister()),
-  );
-  const keys = await caches.keys();
-  await Promise.all(
-    keys
-      .filter(
-        (key) =>
-          key.startsWith('team401-shell-') ||
-          key.startsWith('team401-pages-') ||
-          key.startsWith('team401-assets-'),
-      )
-      .map((key) => caches.delete(key)),
-  );
-  window.location.reload();
-}
-
-function isChunkFailure(event: Event | PromiseRejectionEvent) {
-  const details = chunkFailureDetails(event);
-  return (
-    /\/_next\/static\/.*\.(?:js|css)/i.test(details) ||
-    /failed to fetch dynamically imported module|loading chunk \d* failed|chunkloaderror/i.test(
-      details,
-    )
-  );
-}
-
 function isStandalone() {
   return (
     window.matchMedia('(display-mode: standalone)').matches ||
@@ -126,25 +81,31 @@ export function ServiceWorkerRegister() {
       installPrompt = null;
       window.dispatchEvent(new Event('team401-install-changed'));
     };
-    const recoverChunk = (event: Event | PromiseRejectionEvent) => {
-      if (isChunkFailure(event))
-        void recoverFromChunkFailure().catch(() => {
-          recoveringChunkLoad = false;
-        });
+    const recoverMissingAsset = (event: MessageEvent) => {
+      if (event.data?.type === 'VERSIONED_ASSET_MISSING')
+        void recoverFromChunkFailure();
     };
 
     prepare();
     window.addEventListener('online', prepare);
     window.addEventListener('beforeinstallprompt', captureInstallPrompt);
     window.addEventListener('appinstalled', installed);
-    window.addEventListener('error', recoverChunk, true);
-    window.addEventListener('unhandledrejection', recoverChunk);
+    window.addEventListener('error', recoverChunkFailureEvent, true);
+    window.addEventListener('unhandledrejection', recoverChunkFailureEvent);
+    navigator.serviceWorker.addEventListener('message', recoverMissingAsset);
     return () => {
       window.removeEventListener('online', prepare);
       window.removeEventListener('beforeinstallprompt', captureInstallPrompt);
       window.removeEventListener('appinstalled', installed);
-      window.removeEventListener('error', recoverChunk, true);
-      window.removeEventListener('unhandledrejection', recoverChunk);
+      window.removeEventListener('error', recoverChunkFailureEvent, true);
+      window.removeEventListener(
+        'unhandledrejection',
+        recoverChunkFailureEvent,
+      );
+      navigator.serviceWorker.removeEventListener(
+        'message',
+        recoverMissingAsset,
+      );
     };
   }, []);
   return null;
