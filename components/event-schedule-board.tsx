@@ -417,6 +417,9 @@ export function EventScheduleBoard({
   const [publishing, setPublishing] = useState(false);
   const [unpublishConfirmOpen, setUnpublishConfirmOpen] = useState(false);
   const attendanceDirtyRef = useRef(false);
+  const savedAttendeeIdsRef = useRef<Set<string>>(new Set());
+  const pendingAttendeeIdsRef = useRef<Set<string> | null>(null);
+  const attendanceSavingRef = useRef(false);
   const freshLoadedRef = useRef(false);
   const [controls, setControls] = useState<EventControls>({
     scoutingEnabled: true,
@@ -536,7 +539,11 @@ export function EventScheduleBoard({
           members.some((member) => member.id === id && canSchedule(member)),
         )
       : [];
-    if (!attendanceDirtyRef.current) setAttendeeIds(new Set(loadedAttendeeIds));
+    if (!attendanceDirtyRef.current) {
+      const loadedAttendance = new Set(loadedAttendeeIds);
+      savedAttendeeIdsRef.current = loadedAttendance;
+      setAttendeeIds(loadedAttendance);
+    }
     setAttendanceLoaded(true);
     const configuredDays = daysBody.days ?? [];
     const days = configuredDays.length
@@ -594,8 +601,11 @@ export function EventScheduleBoard({
         if (!cached || cancelled || freshLoadedRef.current) return;
         setRoles(cached.roles);
         setScouting(cached.scouting);
-        if (!attendanceDirtyRef.current)
-          setAttendeeIds(new Set(cached.attendeeIds));
+        if (!attendanceDirtyRef.current) {
+          const cachedAttendance = new Set(cached.attendeeIds);
+          savedAttendeeIdsRef.current = cachedAttendance;
+          setAttendeeIds(cachedAttendance);
+        }
         setAttendanceLoaded(true);
         setScheduleDays(cached.days);
         setPublishedAt(cached.publishedAt ?? null);
@@ -920,29 +930,53 @@ export function EventScheduleBoard({
       ?.focus();
   }
 
+  function changeAttendance(next: Set<string>) {
+    attendanceDirtyRef.current = true;
+    pendingAttendeeIdsRef.current = next;
+    setAttendeeIds(next);
+    void saveAttendance();
+  }
+
   async function saveAttendance() {
-    const response = await fetch('/api/event-attendees', {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ userIds: [...attendeeIds] }),
-    });
-    const body = (await response.json()) as {
-      error?: string;
-      userIds?: string[];
-    };
-    if (!response.ok) {
-      toast.add({
-        type: 'error',
-        title: 'Could not save the Event Roster',
-        description: body.error ?? 'Please try again.',
-      });
-      return;
+    if (attendanceSavingRef.current) return;
+    attendanceSavingRef.current = true;
+    try {
+      while (pendingAttendeeIdsRef.current) {
+        const next = pendingAttendeeIdsRef.current;
+        pendingAttendeeIdsRef.current = null;
+        try {
+          const response = await fetch('/api/event-attendees', {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ userIds: [...next] }),
+          });
+          const body = await readBody<{ error?: string; userIds?: string[] }>(
+            response,
+          );
+          if (!response.ok) throw new Error(body.error ?? 'Please try again.');
+          savedAttendeeIdsRef.current = new Set(body.userIds ?? []);
+          if (!pendingAttendeeIdsRef.current) {
+            attendanceDirtyRef.current = false;
+            setAttendeeIds(new Set(savedAttendeeIdsRef.current));
+            void Promise.resolve(onChanged()).catch(() => undefined);
+          }
+        } catch (error) {
+          if (!pendingAttendeeIdsRef.current) {
+            attendanceDirtyRef.current = false;
+            setAttendeeIds(new Set(savedAttendeeIdsRef.current));
+          }
+          toast.add({
+            type: 'error',
+            title: 'Could not save the Event Roster',
+            description:
+              error instanceof Error ? error.message : 'Please try again.',
+          });
+        }
+      }
+    } finally {
+      attendanceSavingRef.current = false;
+      if (pendingAttendeeIdsRef.current) void saveAttendance();
     }
-    attendanceDirtyRef.current = false;
-    setAttendeeIds(new Set(body.userIds ?? []));
-    setRosterOpen(false);
-    toast.add({ type: 'success', title: 'Event Roster saved' });
-    await onChanged();
   }
 
   function selectScheduleDay(day: ScheduleDay) {
@@ -1102,8 +1136,7 @@ export function EventScheduleBoard({
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  attendanceDirtyRef.current = true;
-                  setAttendeeIds(
+                  changeAttendance(
                     new Set(
                       members.filter(canSchedule).map((member) => member.id),
                     ),
@@ -1115,10 +1148,7 @@ export function EventScheduleBoard({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  attendanceDirtyRef.current = true;
-                  setAttendeeIds(new Set());
-                }}
+                onClick={() => changeAttendance(new Set())}
               >
                 Clear
               </Button>
@@ -1133,15 +1163,12 @@ export function EventScheduleBoard({
                   >
                     <Checkbox
                       checked={checked}
-                      onCheckedChange={(nextChecked) =>
-                        setAttendeeIds((current) => {
-                          attendanceDirtyRef.current = true;
-                          const next = new Set(current);
-                          if (nextChecked) next.add(member.id);
-                          else next.delete(member.id);
-                          return next;
-                        })
-                      }
+                      onCheckedChange={(nextChecked) => {
+                        const next = new Set(attendeeIds);
+                        if (nextChecked) next.add(member.id);
+                        else next.delete(member.id);
+                        changeAttendance(next);
+                      }}
                     />
                     <span>{member.name}</span>
                   </label>
@@ -1153,13 +1180,6 @@ export function EventScheduleBoard({
                 No people match that search.
               </p>
             )}
-            <Button
-              className="mt-3"
-              type="button"
-              onClick={() => void saveAttendance()}
-            >
-              Save event roster
-            </Button>
           </div>
         </details>
       </Card>
