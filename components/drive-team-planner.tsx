@@ -597,11 +597,7 @@ export function DriveTeamPlanner({
             disabled={busy || (publishedAt !== null && !hasUnpublishedChanges)}
             onClick={() => void publishDriveTeams()}
           >
-            {busy
-              ? 'Working…'
-              : publishedAt
-                ? 'Publish changes'
-                : 'Publish drive teams'}
+            {busy ? 'Working…' : publishedAt ? 'Publish changes' : 'Publish'}
           </Button>
         </div>
       </CardHeader>

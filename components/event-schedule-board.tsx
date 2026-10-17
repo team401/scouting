@@ -1230,7 +1230,7 @@ export function EventScheduleBoard({
                   ? 'Working…'
                   : publishedAt
                     ? 'Publish changes'
-                    : 'Publish roles'}
+                    : 'Publish'}
               </Button>
             </div>
           </div>
