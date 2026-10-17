@@ -234,6 +234,9 @@ type ScheduleEntry = {
 
 type PersonalSchedule = { items: Assignment[]; shifts: ScoutShift[] };
 
+const personalDriveTeamClass =
+  'bg-purple-200 text-purple-950 dark:bg-purple-900 dark:text-purple-100';
+
 function ScheduleRoleBadge({ entry }: { entry: ScheduleEntry }) {
   const [open, setOpen] = useState(false);
   const usesHover = () =>
@@ -472,7 +475,7 @@ export function PersonalEventSchedule({
                   assignment.matchNumber,
                   assignment.compLevel,
                 ),
-                color: assignmentClass('Drive Team'),
+                color: personalDriveTeamClass,
                 startsAt: assignment.startsAt,
                 endsAt: null,
               },
@@ -564,7 +567,7 @@ export function PersonalEventSchedule({
             {untimedDriveTeam.map((item) => (
               <div
                 key={`${item.slotNumber}:${item.position}`}
-                className={`grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2.5 sm:grid-cols-[1fr_auto_1fr] ${assignmentClass('Drive Team')}`}
+                className={`grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2.5 sm:grid-cols-[1fr_auto_1fr] ${personalDriveTeamClass}`}
               >
                 <span className="hidden sm:block" aria-hidden="true" />
                 <span className="min-w-0 justify-self-start text-left font-semibold sm:justify-self-center sm:text-center">
