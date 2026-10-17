@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef, useState, type ReactNode } from 'react';
-import { Eraser, MousePointer2, Pencil, RotateCcw, Undo2 } from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Eraser, Hand, Pencil, RotateCcw, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export type BoardPoint = { x: number; y: number };
@@ -16,6 +16,67 @@ export type TacticalBoardData = {
   robots: RobotMarker[];
   strokes: BoardStroke[];
 };
+
+function sampledPoints(points: BoardPoint[], step = 8): BoardPoint[] {
+  if (points.length < 2) return points;
+  const sampled = [points[0]];
+  for (let index = 1; index < points.length; index += 1) {
+    const start = points[index - 1];
+    const end = points[index];
+    const distance = Math.hypot(end.x - start.x, end.y - start.y);
+    const steps = Math.max(1, Math.ceil(distance / step));
+    for (let part = 1; part <= steps; part += 1) {
+      const progress = part / steps;
+      sampled.push({
+        x: start.x + (end.x - start.x) * progress,
+        y: start.y + (end.y - start.y) * progress,
+      });
+    }
+  }
+  return sampled;
+}
+
+export function eraseStrokeParts(
+  strokes: BoardStroke[],
+  center: BoardPoint,
+  radius: number,
+): BoardStroke[] {
+  const radiusSquared = radius * radius;
+  let changed = false;
+  const nextStrokes = strokes.flatMap((stroke) => {
+    const points = sampledPoints(stroke.points);
+    if (
+      !points.some(
+        (point) =>
+          (point.x - center.x) ** 2 + (point.y - center.y) ** 2 <=
+          radiusSquared,
+      )
+    )
+      return stroke;
+    changed = true;
+
+    const segments: BoardPoint[][] = [];
+    let segment: BoardPoint[] = [];
+    for (const point of points) {
+      const erased =
+        (point.x - center.x) ** 2 + (point.y - center.y) ** 2 <= radiusSquared;
+      if (erased) {
+        if (segment.length > 1) segments.push(segment);
+        segment = [];
+      } else {
+        segment.push(point);
+      }
+    }
+    if (segment.length > 1) segments.push(segment);
+
+    return segments.map((points, index) => ({
+      ...stroke,
+      id: index === 0 ? stroke.id : crypto.randomUUID(),
+      points,
+    }));
+  });
+  return changed ? nextStrokes : strokes;
+}
 
 const colors = [
   '#ef4444',
@@ -61,22 +122,59 @@ export function TacticalBoard({
   value,
   onChange,
   readOnly = false,
+  defaultAlliance = 'red',
   toolbarStart,
   toolbarEnd,
 }: {
   value: TacticalBoardData;
   onChange: (value: TacticalBoardData) => void;
   readOnly?: boolean;
+  defaultAlliance?: 'red' | 'blue';
   // Extra controls shown at the start and end of the wrapping board toolbar.
   toolbarStart?: ReactNode;
   toolbarEnd?: ReactNode;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const valueRef = useRef(value);
   const dragRef = useRef<
-    { kind: 'robot'; team: number } | { kind: 'draw'; strokeId: string } | null
+    | { kind: 'robot'; team: number }
+    | { kind: 'draw'; strokeId: string }
+    | { kind: 'erase' }
+    | null
   >(null);
   const [mode, setMode] = useState<'move' | 'draw' | 'erase'>('move');
-  const [color, setColor] = useState(colors[0]);
+  const [color, setColor] = useState(
+    defaultAlliance === 'blue' ? colors[1] : colors[0],
+  );
+
+  useEffect(() => {
+    setColor(defaultAlliance === 'blue' ? colors[1] : colors[0]);
+  }, [defaultAlliance]);
+
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
+
+  useEffect(() => {
+    if (mode === 'erase' && value.strokes.length === 0) setMode('draw');
+  }, [mode, value.strokes.length]);
+
+  const initialRobots = value.robots.some((robot) => robot.label)
+    ? initialPlaceholderRobotMarkers()
+    : initialRobotMarkers(
+        value.robots
+          .filter((robot) => robot.alliance === 'red')
+          .map((robot) => robot.team),
+        value.robots
+          .filter((robot) => robot.alliance === 'blue')
+          .map((robot) => robot.team),
+      );
+  const robotsHaveMoved = value.robots.some((robot) => {
+    const initial = initialRobots.find(
+      (item) => item.team === robot.team && item.station === robot.station,
+    );
+    return !initial || initial.x !== robot.x || initial.y !== robot.y;
+  });
 
   function point(event: React.PointerEvent): BoardPoint {
     const rect = svgRef.current!.getBoundingClientRect();
@@ -93,8 +191,14 @@ export function TacticalBoard({
   }
 
   function startDraw(event: React.PointerEvent<SVGSVGElement>) {
-    if (readOnly || mode !== 'draw' || event.target !== event.currentTarget)
+    if (readOnly || event.target !== event.currentTarget) return;
+    if (mode === 'erase') {
+      dragRef.current = { kind: 'erase' };
+      eraseAt(point(event));
+      event.currentTarget.setPointerCapture(event.pointerId);
       return;
+    }
+    if (mode !== 'draw') return;
     const id = crypto.randomUUID();
     dragRef.current = { kind: 'draw', strokeId: id };
     onChange({
@@ -115,7 +219,7 @@ export function TacticalBoard({
           robot.team === drag.team ? { ...robot, ...next } : robot,
         ),
       });
-    else
+    else if (drag.kind === 'draw')
       onChange({
         ...value,
         strokes: value.strokes.map((stroke) =>
@@ -124,6 +228,18 @@ export function TacticalBoard({
             : stroke,
         ),
       });
+    else eraseAt(next);
+  }
+
+  function eraseAt(center: BoardPoint) {
+    const width = svgRef.current?.getBoundingClientRect().width ?? 1654;
+    const radius = (28 / width) * 1654;
+    const current = valueRef.current;
+    const strokes = eraseStrokeParts(current.strokes, center, radius);
+    if (strokes !== current.strokes) {
+      valueRef.current = { ...current, strokes };
+      onChange(valueRef.current);
+    }
   }
 
   function resetRobots() {
@@ -147,34 +263,39 @@ export function TacticalBoard({
         {toolbarStart}
         <Button
           type="button"
-          size="sm"
+          size="icon-sm"
           variant={mode === 'move' ? 'default' : 'outline'}
           disabled={readOnly}
+          aria-label="Move robots"
+          title="Move robots"
           onClick={() => setMode('move')}
         >
-          <MousePointer2 />
-          Move robots
+          <Hand />
         </Button>
         <Button
           type="button"
-          size="sm"
+          size="icon-sm"
           variant={mode === 'draw' ? 'default' : 'outline'}
           disabled={readOnly}
+          aria-label="Draw paths"
+          title="Draw paths"
           onClick={() => setMode('draw')}
         >
           <Pencil />
-          Draw paths
         </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant={mode === 'erase' ? 'default' : 'outline'}
-          disabled={readOnly || value.strokes.length === 0}
-          onClick={() => setMode('erase')}
-        >
-          <Eraser />
-          Erase a line
-        </Button>
+        {value.strokes.length > 0 && (
+          <Button
+            type="button"
+            size="icon-sm"
+            variant={mode === 'erase' ? 'default' : 'outline'}
+            disabled={readOnly}
+            aria-label="Erase ink"
+            title="Erase ink"
+            onClick={() => setMode('erase')}
+          >
+            <Eraser />
+          </Button>
+        )}
         {colors.map((item) => (
           <button
             type="button"
@@ -193,45 +314,56 @@ export function TacticalBoard({
             key={item}
           />
         ))}
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={readOnly || value.strokes.length === 0}
-          onClick={() =>
-            onChange({ ...value, strokes: value.strokes.slice(0, -1) })
-          }
-        >
-          <Undo2 />
-          Undo
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={readOnly || value.strokes.length === 0}
-          onClick={() => onChange({ ...value, strokes: [] })}
-        >
-          <Eraser />
-          Clear ink
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={readOnly}
-          onClick={resetRobots}
-        >
-          <RotateCcw />
-          Reset robots
-        </Button>
+        {value.strokes.length > 0 && (
+          <>
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="outline"
+              disabled={readOnly}
+              aria-label="Undo last line"
+              title="Undo last line"
+              onClick={() =>
+                onChange({ ...value, strokes: value.strokes.slice(0, -1) })
+              }
+            >
+              <Undo2 />
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={readOnly}
+              aria-label="Erase all ink"
+              title="Erase all ink"
+              onClick={() => onChange({ ...value, strokes: [] })}
+            >
+              <Eraser />
+              All
+            </Button>
+          </>
+        )}
+        {robotsHaveMoved && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={readOnly}
+            aria-label="Reset all robots"
+            title="Reset all robots"
+            onClick={resetRobots}
+          >
+            <RotateCcw />
+            All
+          </Button>
+        )}
         {toolbarEnd}
       </div>
       <div className="tactical-board-viewport">
         <svg
           ref={svgRef}
           viewBox="0 0 1654 800"
-          className="w-full touch-none select-none rounded-xl border bg-slate-800 shadow-inner"
+          className={`w-full touch-none select-none rounded-xl border bg-slate-800 shadow-inner ${mode === 'erase' ? 'cursor-crosshair' : ''}`}
           style={{ WebkitUserSelect: 'none' }}
           onDragStart={(event) => event.preventDefault()}
           onPointerDown={startDraw}
@@ -326,7 +458,7 @@ export function TacticalBoard({
               y="408"
               textAnchor="middle"
               fill="white"
-              fontSize="20"
+              fontSize="16"
               fontWeight="700"
             >
               Hub
@@ -354,7 +486,7 @@ export function TacticalBoard({
               y="408"
               textAnchor="middle"
               fill="white"
-              fontSize="20"
+              fontSize="16"
               fontWeight="700"
             >
               Hub
@@ -378,7 +510,7 @@ export function TacticalBoard({
                   y={y + 120}
                   textAnchor="middle"
                   fill="white"
-                  fontSize="18"
+                  fontSize="16"
                   fontWeight="700"
                 >
                   Bump
@@ -388,9 +520,9 @@ export function TacticalBoard({
             {[12, 688].map((y) => (
               <g key={`red-trench-${y}`}>
                 <rect
-                  x="364"
+                  x="347"
                   y={y}
-                  width="78"
+                  width="113"
                   height="100"
                   rx="4"
                   fill="#7f1d1d"
@@ -402,7 +534,7 @@ export function TacticalBoard({
                   y={y + 57}
                   textAnchor="middle"
                   fill="white"
-                  fontSize="14"
+                  fontSize="16"
                   fontWeight="700"
                 >
                   Trench
@@ -427,7 +559,7 @@ export function TacticalBoard({
                   y={y + 120}
                   textAnchor="middle"
                   fill="white"
-                  fontSize="18"
+                  fontSize="16"
                   fontWeight="700"
                 >
                   Bump
@@ -437,9 +569,9 @@ export function TacticalBoard({
             {[12, 688].map((y) => (
               <g key={`blue-trench-${y}`}>
                 <rect
-                  x="1212"
+                  x="1195"
                   y={y}
-                  width="78"
+                  width="113"
                   height="100"
                   rx="4"
                   fill="#1e3a8a"
@@ -451,7 +583,7 @@ export function TacticalBoard({
                   y={y + 57}
                   textAnchor="middle"
                   fill="white"
-                  fontSize="14"
+                  fontSize="16"
                   fontWeight="700"
                 >
                   Trench
@@ -462,21 +594,21 @@ export function TacticalBoard({
             {/* Alliance-wall game pieces, oriented from the official top view. */}
             <rect
               x="12"
-              y="675"
-              width="69"
-              height="106"
+              y="680"
+              width="32"
+              height="100"
               fill="#f59e0b"
               stroke="#fde68a"
-              strokeWidth="4"
+              strokeWidth="3"
             />
             <text
-              x="47"
-              y="735"
+              x="28"
+              y="730"
               textAnchor="middle"
               fill="#111827"
-              fontSize="15"
+              fontSize="16"
               fontWeight="800"
-              transform="rotate(-90 47 735)"
+              transform="rotate(-90 28 730)"
             >
               Outpost
             </text>
@@ -494,18 +626,20 @@ export function TacticalBoard({
               y="208"
               textAnchor="middle"
               fill="#111827"
-              fontSize="15"
+              fontSize="16"
               fontWeight="800"
               transform="rotate(-90 48 208)"
             >
               Depot
             </text>
-            <path
-              d="M 12 332 H 98 V 468 H 12 Z M 98 350 L 126 400 L 98 450 Z"
+            <rect
+              x="12"
+              y="332"
+              width="86"
+              height="136"
               fill="#111827"
               stroke="#e5e7eb"
               strokeWidth="5"
-              fillRule="evenodd"
             />
             <text
               x="58"
@@ -520,22 +654,22 @@ export function TacticalBoard({
             </text>
 
             <rect
-              x="1573"
-              y="19"
-              width="69"
-              height="106"
+              x="1610"
+              y="20"
+              width="32"
+              height="100"
               fill="#f59e0b"
               stroke="#fde68a"
-              strokeWidth="4"
+              strokeWidth="3"
             />
             <text
-              x="1608"
-              y="80"
+              x="1626"
+              y="70"
               textAnchor="middle"
               fill="#111827"
-              fontSize="15"
+              fontSize="16"
               fontWeight="800"
-              transform="rotate(90 1608 80)"
+              transform="rotate(90 1626 70)"
             >
               Outpost
             </text>
@@ -553,18 +687,20 @@ export function TacticalBoard({
               y="608"
               textAnchor="middle"
               fill="#111827"
-              fontSize="15"
+              fontSize="16"
               fontWeight="800"
               transform="rotate(90 1598 608)"
             >
               Depot
             </text>
-            <path
-              d="M 1642 332 H 1556 V 468 H 1642 Z M 1556 350 L 1528 400 L 1556 450 Z"
+            <rect
+              x="1556"
+              y="332"
+              width="86"
+              height="136"
               fill="#111827"
               stroke="#e5e7eb"
               strokeWidth="5"
-              fillRule="evenodd"
             />
             <text
               x="1596"
@@ -581,41 +717,16 @@ export function TacticalBoard({
           {value.strokes.map((stroke) => {
             const points = stroke.points.map((p) => `${p.x},${p.y}`).join(' ');
             return (
-              <g key={stroke.id}>
-                <polyline
-                  points={points}
-                  fill="none"
-                  stroke={stroke.color}
-                  strokeWidth="10"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  pointerEvents="none"
-                />
-                <polyline
-                  points={points}
-                  fill="none"
-                  stroke="transparent"
-                  strokeWidth="34"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  pointerEvents={
-                    mode === 'erase' && !readOnly ? 'stroke' : 'none'
-                  }
-                  className={
-                    mode === 'erase' && !readOnly ? 'cursor-pointer' : ''
-                  }
-                  onPointerDown={(event) => {
-                    if (mode !== 'erase' || readOnly) return;
-                    event.stopPropagation();
-                    onChange({
-                      ...value,
-                      strokes: value.strokes.filter(
-                        (item) => item.id !== stroke.id,
-                      ),
-                    });
-                  }}
-                />
-              </g>
+              <polyline
+                key={stroke.id}
+                points={points}
+                fill="none"
+                stroke={stroke.color}
+                strokeWidth="10"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                pointerEvents="none"
+              />
             );
           })}
           {value.robots.map((robot) => (

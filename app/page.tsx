@@ -689,16 +689,37 @@ type PlanSection = 'auto' | 'teleop' | 'metrics';
 function PlanSectionButtons({
   value,
   onChange,
+  matches,
+  selectedMatchKey,
+  onMatchChange,
 }: {
   value: PlanSection;
   onChange: (section: PlanSection) => void;
+  matches: EventMatch[];
+  selectedMatchKey: string;
+  onMatchChange: (matchKey: string) => void;
 }) {
   return (
     <div
       aria-label="Plan view"
-      className="ml-auto flex w-max max-w-full shrink-0 flex-nowrap items-center gap-1"
+      className="ml-auto flex w-full min-w-0 flex-wrap items-center justify-end gap-1 sm:flex-nowrap xl:w-auto xl:min-w-[36rem] xl:flex-1"
       role="group"
     >
+      {matches.length > 0 && (
+        <select
+          aria-label="Match to plan"
+          className="mr-1 h-8 min-w-0 basis-full rounded-md border bg-background px-2 text-sm sm:w-80 sm:flex-none sm:basis-auto"
+          value={selectedMatchKey}
+          onChange={(event) => onMatchChange(event.target.value)}
+        >
+          {matches.map((match) => (
+            <option value={match.key} key={match.key}>
+              {matchLabel(match)} · {match.alliances.red.join(', ')} vs{' '}
+              {match.alliances.blue.join(', ')}
+            </option>
+          ))}
+        </select>
+      )}
       <Button
         type="button"
         size="sm"
@@ -3664,37 +3685,6 @@ export default function Home() {
               }}
             >
               <CardContent className="flex flex-col gap-5">
-                {!planFullscreen && (
-                  <>
-                    {planningMatches.length > 0 && (
-                      <div className="flex items-center gap-3">
-                        <label
-                          className="shrink-0 font-semibold"
-                          htmlFor="plan-match"
-                        >
-                          Match
-                        </label>
-                        <select
-                          id="plan-match"
-                          aria-label="Match to plan"
-                          className="h-11 min-w-0 flex-1 rounded-md border bg-transparent px-3"
-                          value={selectedMatchKey}
-                          onChange={(event) =>
-                            setSelectedMatchKey(event.target.value)
-                          }
-                        >
-                          {planningMatches.map((match) => (
-                            <option value={match.key} key={match.key}>
-                              {matchLabel(match)} ·{' '}
-                              {match.alliances.red.join(', ')} vs{' '}
-                              {match.alliances.blue.join(', ')}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                  </>
-                )}
                 {planSection !== 'metrics' && (
                   <>
                     <div
@@ -3707,6 +3697,13 @@ export default function Home() {
                           planSection === 'auto'
                             ? matchPlan.autoBoard
                             : matchPlan.board
+                        }
+                        defaultAlliance={
+                          currentPlanningMatch?.alliances.blue.includes(
+                            eventTeamNumber,
+                          )
+                            ? 'blue'
+                            : 'red'
                         }
                         readOnly={Boolean(currentPlanningMatch && !planCanEdit)}
                         toolbarStart={
@@ -3725,10 +3722,15 @@ export default function Home() {
                           </Button>
                         }
                         toolbarEnd={
-                          <PlanSectionButtons
-                            value={planSection}
-                            onChange={setPlanSection}
-                          />
+                          !planFullscreen ? (
+                            <PlanSectionButtons
+                              value={planSection}
+                              onChange={setPlanSection}
+                              matches={planningMatches}
+                              selectedMatchKey={selectedMatchKey}
+                              onMatchChange={setSelectedMatchKey}
+                            />
+                          ) : undefined
                         }
                         onChange={(board) =>
                           setMatchPlan(
@@ -3757,15 +3759,13 @@ export default function Home() {
                         }
                         placeholder="Only details that are not clear from the field drawing"
                       />
-                      {(planMessage || planAuthor || planCanEdit) && (
+                      {(planMessage || (planAuthor && planUpdatedAt)) && (
                         <p
                           className="text-sm text-muted-foreground"
                           role="status"
                         >
                           {planMessage ||
-                            (planAuthor && planUpdatedAt
-                              ? `Saved automatically by ${planAuthor} · ${new Date(planUpdatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
-                              : 'Changes save automatically.')}
+                            `Saved automatically by ${planAuthor} · ${new Date(planUpdatedAt!).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`}
                         </p>
                       )}
                     </div>
@@ -3972,6 +3972,9 @@ export default function Home() {
                       <PlanSectionButtons
                         value={planSection}
                         onChange={setPlanSection}
+                        matches={planningMatches}
+                        selectedMatchKey={selectedMatchKey}
+                        onMatchChange={setSelectedMatchKey}
                       />
                     </div>
                   </div>
