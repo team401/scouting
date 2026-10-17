@@ -368,6 +368,13 @@ export function PersonalEventSchedule({
 
   useEffect(() => {
     let cancelled = false;
+    const driveCacheId = cacheId ? `${cacheId}:drive-team` : null;
+    if (driveCacheId)
+      void getCachedValue<DriveTeamAssignment[]>(driveCacheId)
+        .then((cached) => {
+          if (!cancelled && cached) setDriveTeam(cached);
+        })
+        .catch(() => undefined);
     const query = previewUserId
       ? `?userId=${encodeURIComponent(previewUserId)}`
       : '';
@@ -377,13 +384,20 @@ export function PersonalEventSchedule({
         const body = (await response.json()) as {
           assignments?: DriveTeamAssignment[];
         };
-        if (!cancelled) setDriveTeam(body.assignments ?? []);
+        if (!cancelled) {
+          const assignments = body.assignments ?? [];
+          setDriveTeam(assignments);
+          if (driveCacheId)
+            void saveCachedValue(driveCacheId, assignments).catch(
+              () => undefined,
+            );
+        }
       })
       .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, [previewUserId]);
+  }, [cacheId, previewUserId]);
 
   useEffect(() => {
     // Reminders are for the signed-in user, not for a previewed member.

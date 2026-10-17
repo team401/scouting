@@ -79,6 +79,10 @@ type ScheduleCache = {
   scouting: ScoutItem[];
   days: ScheduleDay[];
   attendeeIds: string[];
+  controls?: EventControls;
+  defaultControls?: EventControls;
+  publishedAt?: number | null;
+  hasUnpublishedChanges?: boolean;
 };
 
 function scheduleCacheId(eventKey: string) {
@@ -588,6 +592,21 @@ export function EventScheduleBoard({
         scouting: loadedShifts,
         days,
         attendeeIds: loadedAttendeeIds,
+        controls: days.length
+          ? {
+              scoutingEnabled: Boolean(
+                (days.find((day) => day.date === date) ?? days[0])
+                  .scoutingEnabled ?? loadedDefaults.scoutingEnabled,
+              ),
+              outreachEnabled: Boolean(
+                (days.find((day) => day.date === date) ?? days[0])
+                  .outreachEnabled ?? loadedDefaults.outreachEnabled,
+              ),
+            }
+          : loadedDefaults,
+        defaultControls: loadedDefaults,
+        publishedAt: publicationBody.publishedAt ?? null,
+        hasUnpublishedChanges: publicationBody.hasUnpublishedChanges ?? false,
       }).catch(() => undefined);
   }, [eventKey, members]);
 
@@ -605,6 +624,10 @@ export function EventScheduleBoard({
           setAttendeeIds(new Set(cached.attendeeIds));
         setAttendanceLoaded(true);
         setScheduleDays(cached.days);
+        setPublishedAt(cached.publishedAt ?? null);
+        setHasUnpublishedChanges(cached.hasUnpublishedChanges ?? false);
+        if (cached.defaultControls) setDefaultControls(cached.defaultControls);
+        if (cached.controls) setControls(cached.controls);
         const today = dateInputValue(Date.now());
         const selected =
           cached.days.find((day) => day.date === today) ?? cached.days[0];
@@ -619,6 +642,31 @@ export function EventScheduleBoard({
       cancelled = true;
     };
   }, [eventKey]);
+
+  useEffect(() => {
+    if (!eventKey || !attendanceLoaded) return;
+    void saveCachedValue<ScheduleCache>(scheduleCacheId(eventKey), {
+      roles,
+      scouting,
+      days: scheduleDays,
+      attendeeIds: [...attendeeIds],
+      controls,
+      defaultControls,
+      publishedAt,
+      hasUnpublishedChanges,
+    }).catch(() => undefined);
+  }, [
+    attendeeIds,
+    attendanceLoaded,
+    controls,
+    defaultControls,
+    eventKey,
+    hasUnpublishedChanges,
+    publishedAt,
+    roles,
+    scheduleDays,
+    scouting,
+  ]);
 
   useEffect(() => {
     const showError = (error: unknown) =>
