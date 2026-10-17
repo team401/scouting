@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef, useState, type ReactNode } from 'react';
-import { Eraser, MousePointer2, Pencil, RotateCcw, Undo2 } from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Eraser, Hand, Pencil, RotateCcw, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export type BoardPoint = { x: number; y: number };
@@ -61,12 +61,14 @@ export function TacticalBoard({
   value,
   onChange,
   readOnly = false,
+  defaultAlliance = 'red',
   toolbarStart,
   toolbarEnd,
 }: {
   value: TacticalBoardData;
   onChange: (value: TacticalBoardData) => void;
   readOnly?: boolean;
+  defaultAlliance?: 'red' | 'blue';
   // Extra controls shown at the start and end of the wrapping board toolbar.
   toolbarStart?: ReactNode;
   toolbarEnd?: ReactNode;
@@ -76,7 +78,30 @@ export function TacticalBoard({
     { kind: 'robot'; team: number } | { kind: 'draw'; strokeId: string } | null
   >(null);
   const [mode, setMode] = useState<'move' | 'draw' | 'erase'>('move');
-  const [color, setColor] = useState(colors[0]);
+  const [color, setColor] = useState(
+    defaultAlliance === 'blue' ? colors[1] : colors[0],
+  );
+
+  useEffect(() => {
+    setColor(defaultAlliance === 'blue' ? colors[1] : colors[0]);
+  }, [defaultAlliance]);
+
+  const initialRobots = value.robots.some((robot) => robot.label)
+    ? initialPlaceholderRobotMarkers()
+    : initialRobotMarkers(
+        value.robots
+          .filter((robot) => robot.alliance === 'red')
+          .map((robot) => robot.team),
+        value.robots
+          .filter((robot) => robot.alliance === 'blue')
+          .map((robot) => robot.team),
+      );
+  const robotsHaveMoved = value.robots.some((robot) => {
+    const initial = initialRobots.find(
+      (item) => item.team === robot.team && item.station === robot.station,
+    );
+    return !initial || initial.x !== robot.x || initial.y !== robot.y;
+  });
 
   function point(event: React.PointerEvent): BoardPoint {
     const rect = svgRef.current!.getBoundingClientRect();
@@ -147,33 +172,36 @@ export function TacticalBoard({
         {toolbarStart}
         <Button
           type="button"
-          size="sm"
+          size="icon-sm"
           variant={mode === 'move' ? 'default' : 'outline'}
           disabled={readOnly}
+          aria-label="Move robots"
+          title="Move robots"
           onClick={() => setMode('move')}
         >
-          <MousePointer2 />
-          Move robots
+          <Hand />
         </Button>
         <Button
           type="button"
-          size="sm"
+          size="icon-sm"
           variant={mode === 'draw' ? 'default' : 'outline'}
           disabled={readOnly}
+          aria-label="Draw paths"
+          title="Draw paths"
           onClick={() => setMode('draw')}
         >
           <Pencil />
-          Draw paths
         </Button>
         <Button
           type="button"
-          size="sm"
+          size="icon-sm"
           variant={mode === 'erase' ? 'default' : 'outline'}
           disabled={readOnly || value.strokes.length === 0}
+          aria-label="Erase a line"
+          title="Erase a line"
           onClick={() => setMode('erase')}
         >
           <Eraser />
-          Erase a line
         </Button>
         {colors.map((item) => (
           <button
@@ -195,36 +223,45 @@ export function TacticalBoard({
         ))}
         <Button
           type="button"
-          size="sm"
+          size="icon-sm"
           variant="outline"
           disabled={readOnly || value.strokes.length === 0}
+          aria-label="Undo last line"
+          title="Undo last line"
           onClick={() =>
             onChange({ ...value, strokes: value.strokes.slice(0, -1) })
           }
         >
           <Undo2 />
-          Undo
         </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={readOnly || value.strokes.length === 0}
-          onClick={() => onChange({ ...value, strokes: [] })}
-        >
-          <Eraser />
-          Clear ink
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={readOnly}
-          onClick={resetRobots}
-        >
-          <RotateCcw />
-          Reset robots
-        </Button>
+        {value.strokes.length > 0 && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={readOnly}
+            aria-label="Erase all ink"
+            title="Erase all ink"
+            onClick={() => onChange({ ...value, strokes: [] })}
+          >
+            <Eraser />
+            All
+          </Button>
+        )}
+        {robotsHaveMoved && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={readOnly}
+            aria-label="Reset all robots"
+            title="Reset all robots"
+            onClick={resetRobots}
+          >
+            <RotateCcw />
+            All
+          </Button>
+        )}
         {toolbarEnd}
       </div>
       <div className="tactical-board-viewport">

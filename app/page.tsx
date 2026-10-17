@@ -3698,6 +3698,13 @@ export default function Home() {
                             ? matchPlan.autoBoard
                             : matchPlan.board
                         }
+                        defaultAlliance={
+                          currentPlanningMatch?.alliances.blue.includes(
+                            eventTeamNumber,
+                          )
+                            ? 'blue'
+                            : 'red'
+                        }
                         readOnly={Boolean(currentPlanningMatch && !planCanEdit)}
                         toolbarStart={
                           <Button
