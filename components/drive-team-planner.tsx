@@ -312,6 +312,27 @@ export function DriveTeamPlanner({
     }).catch(() => undefined);
   }, [cacheId, cacheReady, hasUnpublishedChanges, publishedAt, slots]);
 
+  useEffect(() => {
+    if (!eventKey) return;
+    const refresh = () => {
+      if (document.visibilityState !== 'visible') return;
+      void load().catch((error: unknown) =>
+        toast.add({
+          type: 'error',
+          title: 'Could not refresh drive teams',
+          description:
+            error instanceof Error ? error.message : 'Please try again.',
+        }),
+      );
+    };
+    const timer = window.setInterval(refresh, 45_000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [eventKey, load]);
+
   // A picker lists people who can fill that position. The current person stays
   // listed so an existing assignment never shows as blank.
   function pickerOptions(

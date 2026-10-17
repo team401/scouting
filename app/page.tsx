@@ -1178,10 +1178,15 @@ export default function Home() {
 
   useEffect(() => {
     if (!session || !online) return;
-    const timer = window.setInterval(() => {
+    const refresh = () => {
       if (document.visibilityState === 'visible') void loadEventPack(true);
-    }, 45_000);
-    return () => window.clearInterval(timer);
+    };
+    const timer = window.setInterval(refresh, 45_000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
+    };
   }, [online, session]);
 
   useEffect(() => {
