@@ -1502,12 +1502,18 @@ export function EventScheduleBoard({
                     {perHour.map((have, index) => (
                       <td
                         className={`border-r border-b px-1 py-1 text-center text-xs font-semibold ${
-                          have >= target.need
-                            ? 'bg-emerald-300 text-emerald-950 dark:bg-emerald-400 dark:text-emerald-950'
-                            : 'bg-amber-300 text-amber-950 dark:bg-amber-400 dark:text-amber-950'
+                          have > target.need
+                            ? 'bg-rose-300 text-rose-950 ring-2 ring-rose-600 ring-inset dark:bg-rose-500 dark:text-rose-950 dark:ring-rose-300'
+                            : have === target.need
+                              ? 'bg-emerald-300 text-emerald-950 dark:bg-emerald-400 dark:text-emerald-950'
+                              : 'bg-amber-300 text-amber-950 dark:bg-amber-400 dark:text-amber-950'
                         }`}
                         key={hours[index]}
-                        title={`${have} of ${target.need} ${target.label.toLowerCase()}`}
+                        title={
+                          have > target.need
+                            ? `Overfilled: ${have} assigned, ${target.need} needed`
+                            : `${have} of ${target.need} ${target.label.toLowerCase()}`
+                        }
                       >
                         {have}/{target.need}
                       </td>
