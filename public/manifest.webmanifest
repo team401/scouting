@@ -9,8 +9,8 @@
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "any",
-  "background_color": "#65152f",
-  "theme_color": "#65152f",
+  "background_color": "#f3f5f7",
+  "theme_color": "#f3f5f7",
   "categories": ["sports", "productivity", "utilities"],
   "icons": [
     {
