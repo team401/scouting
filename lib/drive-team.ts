@@ -47,6 +47,14 @@ export function canFillDrivePosition(
   return opsRole !== 'coach';
 }
 
+// The Event Roster tracks attending students. Ops coaches are intentionally
+// excluded from it, but can still serve as Technician or Coach on a drive team.
+export function requiresEventRosterForDriveTeam(
+  opsRole: string | null | undefined,
+) {
+  return opsRole !== 'coach';
+}
+
 // A match as stored from the event schedule. `alliances` is the JSON text of
 // the alliances column: { red: { team_keys }, blue: { team_keys } }.
 export type ScheduleMatch = {
