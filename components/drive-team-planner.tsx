@@ -40,12 +40,14 @@ const phaseTitle: Record<DrivePhase, string> = {
 };
 
 const drivePositionClass: Record<DrivePositionKey, string> = {
-  driverUserId: 'bg-sky-500 text-white dark:bg-sky-700',
-  operatorUserId: 'bg-violet-500 text-white dark:bg-violet-700',
-  humanPlayerUserId: 'bg-emerald-500 text-white dark:bg-emerald-700',
+  driverUserId: 'bg-sky-200 text-sky-950 dark:bg-sky-900 dark:text-sky-100',
+  operatorUserId:
+    'bg-violet-200 text-violet-950 dark:bg-violet-900 dark:text-violet-100',
+  humanPlayerUserId:
+    'bg-emerald-200 text-emerald-950 dark:bg-emerald-900 dark:text-emerald-100',
   technicianUserId:
-    'bg-amber-300 text-amber-950 dark:bg-amber-600 dark:text-amber-950',
-  coachUserId: 'bg-rose-500 text-white dark:bg-rose-700',
+    'bg-amber-200 text-amber-950 dark:bg-amber-900 dark:text-amber-100',
+  coachUserId: 'bg-rose-200 text-rose-950 dark:bg-rose-900 dark:text-rose-100',
 };
 
 // Error responses can have empty bodies, so a failed request must not throw a
@@ -491,7 +493,7 @@ export function DriveTeamPlanner({
                   </th>
                   {drivePositions.map((position) => (
                     <th
-                      className={`border-r border-b border-slate-300 px-3 py-2 text-center dark:border-border ${drivePositionClass[position.key]}`}
+                      className="border-r border-b border-slate-300 px-3 py-2 text-center dark:border-border"
                       key={position.key}
                     >
                       {position.label}
