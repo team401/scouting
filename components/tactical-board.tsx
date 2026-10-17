@@ -593,7 +593,7 @@ export function TacticalBoard({
 
             {/* Alliance-wall game pieces, oriented from the official top view. */}
             <rect
-              x="-20"
+              x="12"
               y="680"
               width="32"
               height="100"
@@ -602,13 +602,13 @@ export function TacticalBoard({
               strokeWidth="3"
             />
             <text
-              x="6"
+              x="28"
               y="730"
               textAnchor="middle"
               fill="#111827"
               fontSize="16"
               fontWeight="800"
-              transform="rotate(-90 6 730)"
+              transform="rotate(-90 28 730)"
             >
               Outpost
             </text>
@@ -654,7 +654,7 @@ export function TacticalBoard({
             </text>
 
             <rect
-              x="1642"
+              x="1610"
               y="20"
               width="32"
               height="100"
@@ -663,13 +663,13 @@ export function TacticalBoard({
               strokeWidth="3"
             />
             <text
-              x="1648"
+              x="1626"
               y="70"
               textAnchor="middle"
               fill="#111827"
               fontSize="16"
               fontWeight="800"
-              transform="rotate(90 1648 70)"
+              transform="rotate(90 1626 70)"
             >
               Outpost
             </text>
