@@ -1,8 +1,15 @@
-const VERSION = 'v10';
+const VERSION = 'v11';
 const SHELL_CACHE = `team401-shell-${VERSION}`;
 const PAGE_CACHE = `team401-pages-${VERSION}`;
 const ASSET_CACHE = `team401-assets-${VERSION}`;
-const APP_CACHES = [SHELL_CACHE, PAGE_CACHE, ASSET_CACHE];
+const PHOTO_CACHE = `team401-photos-${VERSION}`;
+const APP_CACHES = [SHELL_CACHE, PAGE_CACHE, ASSET_CACHE, PHOTO_CACHE];
+const CACHE_LIMITS = {
+  shell: 20,
+  pages: 40,
+  assets: 160,
+  photos: 250,
+};
 
 const SHELL = [
   '/',
@@ -18,7 +25,23 @@ const SHELL = [
 
 async function cacheOfflineShell() {
   const cache = await caches.open(SHELL_CACHE);
-  await cache.addAll(SHELL);
+  const assetCache = await caches.open(ASSET_CACHE);
+  await Promise.all(
+    SHELL.map(async (path) => {
+      try {
+        const response = await fetch(path);
+        if (isCacheable(response))
+          await putBestEffort(
+            cache,
+            new Request(new URL(path, self.location.origin)),
+            response,
+            CACHE_LIMITS.shell,
+          );
+      } catch {
+        // A failed optional shell resource must not block a service-worker update.
+      }
+    }),
+  );
   const assets = new Set();
   await Promise.all(
     ['/', '/sign-in'].map(async (path) => {
@@ -41,7 +64,15 @@ async function cacheOfflineShell() {
   await Promise.all(
     [...assets].map(async (asset) => {
       try {
-        await cache.add(asset);
+        const request = new Request(asset);
+        const response = await fetch(request);
+        if (isCacheable(response))
+          await putBestEffort(
+            assetCache,
+            request,
+            response,
+            CACHE_LIMITS.assets,
+          );
       } catch {
         // One optional asset should not prevent the rest of the app shell caching.
       }
@@ -77,13 +108,42 @@ function isCacheable(response) {
   return response && response.ok && response.type !== 'opaque';
 }
 
+async function trimCache(cache, maxEntries) {
+  const keys = await cache.keys();
+  const excess = keys.length - maxEntries;
+  if (excess > 0)
+    await Promise.all(keys.slice(0, excess).map((key) => cache.delete(key)));
+}
+
+async function putBestEffort(cache, request, response, maxEntries) {
+  try {
+    await cache.put(request, response.clone());
+    await trimCache(cache, maxEntries);
+  } catch {
+    // Cache writes can fail under storage pressure. Never turn a successful
+    // network response into a failed fetch because offline storage is full.
+    try {
+      const keys = await cache.keys();
+      const removeCount = Math.max(1, Math.ceil(keys.length / 4));
+      await Promise.all(
+        keys.slice(0, removeCount).map((key) => cache.delete(key)),
+      );
+      await cache.put(request, response.clone());
+      await trimCache(cache, maxEntries);
+    } catch {
+      // The live response remains usable even when it cannot be cached.
+    }
+  }
+}
+
 async function networkFirst(request, cacheName, fallbacks, timeoutMs = 4000) {
   const cache = await caches.open(cacheName);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(request, { signal: controller.signal });
-    if (isCacheable(response)) await cache.put(request, response.clone());
+    if (isCacheable(response))
+      await putBestEffort(cache, request, response, CACHE_LIMITS.pages);
     return response;
   } catch {
     const exact = await cache.match(request);
@@ -100,25 +160,31 @@ async function networkFirst(request, cacheName, fallbacks, timeoutMs = 4000) {
 
 async function cacheFirst(request) {
   const cache = await caches.open(ASSET_CACHE);
-  const cached = await cache.match(request);
+  const cached = await caches.match(request);
   if (cached) return cached;
-  const response = await fetch(request);
-  if (isCacheable(response)) await cache.put(request, response.clone());
-  return response;
+  try {
+    const response = await fetch(request);
+    if (isCacheable(response))
+      await putBestEffort(cache, request, response, CACHE_LIMITS.assets);
+    return response;
+  } catch {
+    return Response.error();
+  }
 }
 
 async function staleWhileRevalidate(request, event) {
-  const cache = await caches.open(ASSET_CACHE);
+  const cache = await caches.open(PHOTO_CACHE);
   const cached = await cache.match(request);
   const update = fetch(request).then(async (response) => {
-    if (isCacheable(response)) await cache.put(request, response.clone());
+    if (isCacheable(response))
+      await putBestEffort(cache, request, response, CACHE_LIMITS.photos);
     return response;
   });
   if (cached) {
     event.waitUntil(update.catch(() => undefined));
     return cached;
   }
-  return update;
+  return update.catch(() => Response.error());
 }
 
 self.addEventListener('fetch', (event) => {
