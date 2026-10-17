@@ -3752,15 +3752,13 @@ export default function Home() {
                         }
                         placeholder="Only details that are not clear from the field drawing"
                       />
-                      {(planMessage || planAuthor || planCanEdit) && (
+                      {(planMessage || (planAuthor && planUpdatedAt)) && (
                         <p
                           className="text-sm text-muted-foreground"
                           role="status"
                         >
                           {planMessage ||
-                            (planAuthor && planUpdatedAt
-                              ? `Saved automatically by ${planAuthor} · ${new Date(planUpdatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
-                              : 'Changes save automatically.')}
+                            `Saved automatically by ${planAuthor} · ${new Date(planUpdatedAt!).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`}
                         </p>
                       )}
                     </div>
