@@ -6,7 +6,13 @@ const freshForMs = 7 * 24 * 60 * 60 * 1000;
 const missingForMs = 6 * 60 * 60 * 1000;
 const lockForMs = 30 * 1000;
 const maxBytes = 10 * 1024 * 1024;
-const imageTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const imageTypes = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/avif',
+]);
 const mediaTypes = new Set(['cdphotothread', 'imgur', 'smugmug-photo']);
 const mediaTypePriority = new Map([
   ['smugmug-photo', 0],
@@ -80,7 +86,17 @@ function parsePayload(value: string | null) {
 function extensionFor(contentType: string) {
   if (contentType === 'image/png') return 'png';
   if (contentType === 'image/webp') return 'webp';
+  if (contentType === 'image/gif') return 'gif';
+  if (contentType === 'image/avif') return 'avif';
   return 'jpg';
+}
+
+async function cacheIsComplete(payload: CachePayload) {
+  if (!payload.images?.length) return false;
+  const objects = await Promise.all(
+    payload.images.map((image) => env.FILES.head(image.objectKey)),
+  );
+  return objects.every(Boolean);
 }
 
 async function cachedResponse(payload: CachePayload, index: number) {
@@ -143,14 +159,15 @@ export async function GET(request: Request) {
   let payload = parsePayload(row.payload);
   const now = Date.now();
   const validFor = payload.missing ? missingForMs : freshForMs;
+  const completeCache = payload.missing ? true : await cacheIsComplete(payload);
   if (row.fetchedAt > now - validFor) {
     if (payload.missing) return new Response('Not found', { status: 404 });
-    if (metadataOnly)
+    if (metadataOnly && completeCache)
       return Response.json({ count: payload.images?.length ?? 0 });
     const response = await cachedResponse(payload, imageIndex);
     if (response) return response;
-    if (payload.images?.length)
-      return new Response('Photo not found', { status: 404 });
+    // D1 can outlive local or deployed object storage. A missing object makes
+    // this cache entry stale even when its timestamp is still fresh.
   }
   if (!env.TBA_AUTH_KEY)
     return new Response('TBA is not configured', { status: 503 });
@@ -162,7 +179,7 @@ export async function GET(request: Request) {
     .bind(now + lockForMs, provider, cacheKey, now)
     .run();
   if (!lock.meta.changes) {
-    if (metadataOnly && payload.images?.length)
+    if (metadataOnly && completeCache && payload.images?.length)
       return Response.json({ count: payload.images.length });
     const stale = await cachedResponse(payload, imageIndex);
     if (stale) return stale;
@@ -174,7 +191,7 @@ export async function GET(request: Request) {
 
   try {
     const headers = new Headers({ 'X-TBA-Auth-Key': env.TBA_AUTH_KEY });
-    if (row.etag) headers.set('if-none-match', row.etag);
+    if (row.etag && completeCache) headers.set('if-none-match', row.etag);
     const mediaResponse = await fetch(
       `https://www.thebluealliance.com/api/v3/team/frc${teamNumber}/media/${event.seasonYear}`,
       { headers },

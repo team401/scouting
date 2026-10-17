@@ -26,8 +26,11 @@ export function TeamRobotPhoto({
     ];
   }, [hasPitPhoto, tbaPhotoCount, teamNumber]);
   const [photoIndex, setPhotoIndex] = useState(0);
-  const [failed, setFailed] = useState(false);
+  const [failedSources, setFailedSources] = useState<Set<string>>(new Set());
   const [viewerOpen, setViewerOpen] = useState(false);
+  const availableSources = sources.filter(
+    (candidate) => !failedSources.has(candidate),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -49,29 +52,31 @@ export function TeamRobotPhoto({
   }, [teamNumber]);
 
   useEffect(() => {
-    setFailed(false);
+    setFailedSources(new Set());
     setPhotoIndex(0);
     setViewerOpen(false);
   }, [hasPitPhoto, teamNumber]);
 
   useEffect(() => {
-    if (!viewerOpen || sources.length < 2) return;
+    if (!viewerOpen || availableSources.length < 2) return;
     const timer = window.setInterval(
-      () => setPhotoIndex((current) => (current + 1) % sources.length),
+      () => setPhotoIndex((current) => (current + 1) % availableSources.length),
       5000,
     );
     return () => window.clearInterval(timer);
-  }, [sources.length, viewerOpen]);
+  }, [availableSources.length, viewerOpen]);
 
-  const source = sources[photoIndex];
+  const source = availableSources[photoIndex % availableSources.length];
 
   function movePhoto(direction: number) {
     setPhotoIndex(
-      (current) => (current + direction + sources.length) % sources.length,
+      (current) =>
+        (current + direction + availableSources.length) %
+        availableSources.length,
     );
   }
 
-  if (!source || (failed && sources.length === 1))
+  if (!source)
     return (
       <div
         className={cn(
@@ -99,9 +104,8 @@ export function TeamRobotPhoto({
           src={source}
           alt={`Team ${teamNumber} robot`}
           onError={() => {
-            if (photoIndex < sources.length - 1)
-              setPhotoIndex((current) => current + 1);
-            else setFailed(true);
+            setFailedSources((current) => new Set(current).add(source));
+            setPhotoIndex(0);
           }}
         />
         <span
@@ -130,7 +134,7 @@ export function TeamRobotPhoto({
               src={source}
               alt={`Team ${teamNumber} robot, full screen`}
             />
-            {sources.length > 1 && (
+            {availableSources.length > 1 && (
               <>
                 <button
                   type="button"
@@ -149,7 +153,7 @@ export function TeamRobotPhoto({
                   <ChevronRight aria-hidden="true" />
                 </button>
                 <div className="pointer-events-none absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-2">
-                  {sources.map((_, index) => (
+                  {availableSources.map((_, index) => (
                     <span
                       className={`size-2 rounded-full ${index === photoIndex ? 'bg-white' : 'bg-white/40'}`}
                       key={index}
