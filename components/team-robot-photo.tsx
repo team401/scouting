@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LoaderCircle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,9 @@ export function TeamRobotPhoto({
   // Wait for metadata before rendering a TBA URL. Starting metadata and image
   // requests together makes both race for the server-side cache refresh lock.
   const [tbaPhotoCount, setTbaPhotoCount] = useState(0);
+  const [photoLookupState, setPhotoLookupState] = useState<
+    'loading' | 'ready' | 'error'
+  >(teamNumber ? 'loading' : 'ready');
   const sources = useMemo(() => {
     if (!teamNumber) return [];
     return [
@@ -29,6 +32,7 @@ export function TeamRobotPhoto({
   }, [hasPitPhoto, tbaPhotoCount, teamNumber]);
   const [photoIndex, setPhotoIndex] = useState(0);
   const [failedSources, setFailedSources] = useState<Set<string>>(new Set());
+  const [imageLoading, setImageLoading] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const availableSources = sources.filter(
     (candidate) => !failedSources.has(candidate),
@@ -37,17 +41,23 @@ export function TeamRobotPhoto({
   useEffect(() => {
     let cancelled = false;
     setTbaPhotoCount(0);
+    setPhotoLookupState(teamNumber ? 'loading' : 'ready');
     if (teamNumber)
       void fetch(`/api/team-photo?team=${teamNumber}&meta=1&v=3`)
         .then(async (response) => {
-          if (!response.ok) return null;
+          if (response.status === 404) return { count: 0 };
+          if (!response.ok) throw new Error('Could not load photo metadata');
           return (await response.json()) as { count?: number };
         })
         .then((body) => {
-          if (!cancelled && body)
+          if (!cancelled) {
             setTbaPhotoCount(Math.max(0, body.count ?? 0));
+            setPhotoLookupState('ready');
+          }
         })
-        .catch(() => undefined);
+        .catch(() => {
+          if (!cancelled) setPhotoLookupState('error');
+        });
     return () => {
       cancelled = true;
     };
@@ -70,6 +80,10 @@ export function TeamRobotPhoto({
 
   const source = availableSources[photoIndex % availableSources.length];
 
+  useEffect(() => {
+    setImageLoading(Boolean(source));
+  }, [source]);
+
   function movePhoto(direction: number) {
     setPhotoIndex(
       (current) =>
@@ -78,7 +92,10 @@ export function TeamRobotPhoto({
     );
   }
 
-  if (!source)
+  if (!source) {
+    const isLoading = photoLookupState === 'loading';
+    const isUnavailable =
+      photoLookupState === 'error' || failedSources.size > 0;
     return (
       <div
         className={cn(
@@ -86,9 +103,19 @@ export function TeamRobotPhoto({
           className,
         )}
       >
-        No robot photo
+        <span className="flex items-center justify-center gap-2 px-3">
+          {isLoading && (
+            <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+          )}
+          {isLoading
+            ? 'Loading robot photo…'
+            : isUnavailable
+              ? 'Robot photo unavailable'
+              : 'No robot photo'}
+        </span>
       </div>
     );
+  }
 
   return (
     <>
@@ -105,11 +132,23 @@ export function TeamRobotPhoto({
           className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
           src={source}
           alt={`Team ${teamNumber} robot`}
+          onLoad={() => setImageLoading(false)}
           onError={() => {
             setFailedSources((current) => new Set(current).add(source));
             setPhotoIndex(0);
           }}
         />
+        {imageLoading && (
+          <span className="absolute inset-0 grid place-items-center bg-muted text-sm text-muted-foreground">
+            <span className="flex items-center gap-2">
+              <LoaderCircle
+                className="size-4 animate-spin"
+                aria-hidden="true"
+              />
+              Loading robot photo…
+            </span>
+          </span>
+        )}
         <span
           aria-hidden="true"
           className="pointer-events-none absolute right-2 bottom-2 rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white"
