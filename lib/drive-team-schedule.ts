@@ -38,7 +38,10 @@ export async function draftSlotsWithMatches(
   const [team, slots, matches] = await Promise.all([
     db
       .prepare(
-        'SELECT frc_team_number AS teamNumber FROM organizations WHERE id = ?',
+        `SELECT COALESCE(settings.test_team_number, organizations.frc_team_number) AS teamNumber
+         FROM organizations
+         LEFT JOIN organization_settings settings ON settings.organization_id = organizations.id
+         WHERE organizations.id = ?`,
       )
       .bind(organizationId)
       .first<{ teamNumber: number | null }>(),

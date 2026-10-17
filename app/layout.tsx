@@ -3,6 +3,7 @@ import Script from 'next/script';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { ServiceWorkerRegister } from '@/components/service-worker-register';
+import { Toaster } from '@/components/ui/toast';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -58,7 +59,7 @@ export default function RootLayout({
             {`(async()=>{try{const registrations=await navigator.serviceWorker?.getRegistrations?.()??[];const hadRegistrations=registrations.length>0;await Promise.all(registrations.map(r=>r.unregister()));const keys=await caches.keys();await Promise.all(keys.filter(k=>k.startsWith('team401-')).map(k=>caches.delete(k)));if(hadRegistrations&&!sessionStorage.getItem('team401-dev-sw-cleaned')){sessionStorage.setItem('team401-dev-sw-cleaned','1');location.reload()}}catch{}})()`}
           </Script>
         )}
-        {children}
+        <Toaster>{children}</Toaster>
         <ServiceWorkerRegister />
         <Script id="team401-theme" strategy="beforeInteractive">
           {`try{const saved=localStorage.getItem('team401-theme');const theme=saved==='light'||saved==='dark'?saved:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.classList.toggle('dark',theme==='dark');const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.setAttribute('content',theme==='dark'?'#24282b':'#65152f')}catch{}`}

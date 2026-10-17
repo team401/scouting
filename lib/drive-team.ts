@@ -40,6 +40,7 @@ export const drivePhases = ['qual', 'playoff'] as const;
 export type DrivePhase = (typeof drivePhases)[number];
 
 export const maxExpectedMatches = 200;
+export const defaultPlayoffMatches = 6;
 
 export function emptyDriveTeamMembers(): DriveTeamSlotMembers {
   return {

@@ -12,10 +12,12 @@ type EventTeam = {
 };
 
 export function EventTeamAliases({
+  eventKey,
   eventType,
   teams,
   onChanged,
 }: {
+  eventKey: string;
   eventType: number | null;
   teams: EventTeam[];
   onChanged: () => void | Promise<void>;
@@ -47,7 +49,7 @@ export function EventTeamAliases({
       const response = await fetch('/api/event-team-aliases', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ teamNumber: team.teamNumber, name }),
+        body: JSON.stringify({ eventKey, teamNumber: team.teamNumber, name }),
       });
       const body = (await response.json()) as { error?: string };
       if (!response.ok)
