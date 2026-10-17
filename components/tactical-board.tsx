@@ -17,6 +17,67 @@ export type TacticalBoardData = {
   strokes: BoardStroke[];
 };
 
+function sampledPoints(points: BoardPoint[], step = 8): BoardPoint[] {
+  if (points.length < 2) return points;
+  const sampled = [points[0]];
+  for (let index = 1; index < points.length; index += 1) {
+    const start = points[index - 1];
+    const end = points[index];
+    const distance = Math.hypot(end.x - start.x, end.y - start.y);
+    const steps = Math.max(1, Math.ceil(distance / step));
+    for (let part = 1; part <= steps; part += 1) {
+      const progress = part / steps;
+      sampled.push({
+        x: start.x + (end.x - start.x) * progress,
+        y: start.y + (end.y - start.y) * progress,
+      });
+    }
+  }
+  return sampled;
+}
+
+export function eraseStrokeParts(
+  strokes: BoardStroke[],
+  center: BoardPoint,
+  radius: number,
+): BoardStroke[] {
+  const radiusSquared = radius * radius;
+  let changed = false;
+  const nextStrokes = strokes.flatMap((stroke) => {
+    const points = sampledPoints(stroke.points);
+    if (
+      !points.some(
+        (point) =>
+          (point.x - center.x) ** 2 + (point.y - center.y) ** 2 <=
+          radiusSquared,
+      )
+    )
+      return stroke;
+    changed = true;
+
+    const segments: BoardPoint[][] = [];
+    let segment: BoardPoint[] = [];
+    for (const point of points) {
+      const erased =
+        (point.x - center.x) ** 2 + (point.y - center.y) ** 2 <= radiusSquared;
+      if (erased) {
+        if (segment.length > 1) segments.push(segment);
+        segment = [];
+      } else {
+        segment.push(point);
+      }
+    }
+    if (segment.length > 1) segments.push(segment);
+
+    return segments.map((points, index) => ({
+      ...stroke,
+      id: index === 0 ? stroke.id : crypto.randomUUID(),
+      points,
+    }));
+  });
+  return changed ? nextStrokes : strokes;
+}
+
 const colors = [
   '#ef4444',
   '#3b82f6',
@@ -74,8 +135,12 @@ export function TacticalBoard({
   toolbarEnd?: ReactNode;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const valueRef = useRef(value);
   const dragRef = useRef<
-    { kind: 'robot'; team: number } | { kind: 'draw'; strokeId: string } | null
+    | { kind: 'robot'; team: number }
+    | { kind: 'draw'; strokeId: string }
+    | { kind: 'erase' }
+    | null
   >(null);
   const [mode, setMode] = useState<'move' | 'draw' | 'erase'>('move');
   const [color, setColor] = useState(
@@ -85,6 +150,10 @@ export function TacticalBoard({
   useEffect(() => {
     setColor(defaultAlliance === 'blue' ? colors[1] : colors[0]);
   }, [defaultAlliance]);
+
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
 
   useEffect(() => {
     if (mode === 'erase' && value.strokes.length === 0) setMode('draw');
@@ -122,8 +191,14 @@ export function TacticalBoard({
   }
 
   function startDraw(event: React.PointerEvent<SVGSVGElement>) {
-    if (readOnly || mode !== 'draw' || event.target !== event.currentTarget)
+    if (readOnly || event.target !== event.currentTarget) return;
+    if (mode === 'erase') {
+      dragRef.current = { kind: 'erase' };
+      eraseAt(point(event));
+      event.currentTarget.setPointerCapture(event.pointerId);
       return;
+    }
+    if (mode !== 'draw') return;
     const id = crypto.randomUUID();
     dragRef.current = { kind: 'draw', strokeId: id };
     onChange({
@@ -144,7 +219,7 @@ export function TacticalBoard({
           robot.team === drag.team ? { ...robot, ...next } : robot,
         ),
       });
-    else
+    else if (drag.kind === 'draw')
       onChange({
         ...value,
         strokes: value.strokes.map((stroke) =>
@@ -153,6 +228,18 @@ export function TacticalBoard({
             : stroke,
         ),
       });
+    else eraseAt(next);
+  }
+
+  function eraseAt(center: BoardPoint) {
+    const width = svgRef.current?.getBoundingClientRect().width ?? 1654;
+    const radius = (28 / width) * 1654;
+    const current = valueRef.current;
+    const strokes = eraseStrokeParts(current.strokes, center, radius);
+    if (strokes !== current.strokes) {
+      valueRef.current = { ...current, strokes };
+      onChange(valueRef.current);
+    }
   }
 
   function resetRobots() {
@@ -202,8 +289,8 @@ export function TacticalBoard({
             size="icon-sm"
             variant={mode === 'erase' ? 'default' : 'outline'}
             disabled={readOnly}
-            aria-label="Erase a line"
-            title="Erase a line"
+            aria-label="Erase ink"
+            title="Erase ink"
             onClick={() => setMode('erase')}
           >
             <Eraser />
@@ -276,7 +363,7 @@ export function TacticalBoard({
         <svg
           ref={svgRef}
           viewBox="0 0 1654 800"
-          className="w-full touch-none select-none rounded-xl border bg-slate-800 shadow-inner"
+          className={`w-full touch-none select-none rounded-xl border bg-slate-800 shadow-inner ${mode === 'erase' ? 'cursor-crosshair' : ''}`}
           style={{ WebkitUserSelect: 'none' }}
           onDragStart={(event) => event.preventDefault()}
           onPointerDown={startDraw}
@@ -626,41 +713,16 @@ export function TacticalBoard({
           {value.strokes.map((stroke) => {
             const points = stroke.points.map((p) => `${p.x},${p.y}`).join(' ');
             return (
-              <g key={stroke.id}>
-                <polyline
-                  points={points}
-                  fill="none"
-                  stroke={stroke.color}
-                  strokeWidth="10"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  pointerEvents="none"
-                />
-                <polyline
-                  points={points}
-                  fill="none"
-                  stroke="transparent"
-                  strokeWidth="34"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  pointerEvents={
-                    mode === 'erase' && !readOnly ? 'stroke' : 'none'
-                  }
-                  className={
-                    mode === 'erase' && !readOnly ? 'cursor-pointer' : ''
-                  }
-                  onPointerDown={(event) => {
-                    if (mode !== 'erase' || readOnly) return;
-                    event.stopPropagation();
-                    onChange({
-                      ...value,
-                      strokes: value.strokes.filter(
-                        (item) => item.id !== stroke.id,
-                      ),
-                    });
-                  }}
-                />
-              </g>
+              <polyline
+                key={stroke.id}
+                points={points}
+                fill="none"
+                stroke={stroke.color}
+                strokeWidth="10"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                pointerEvents="none"
+              />
             );
           })}
           {value.robots.map((robot) => (
