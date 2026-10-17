@@ -225,6 +225,7 @@ type ScheduleEntry = {
   id: string;
   role?: EventRole;
   label: string;
+  detail?: string;
   color: string;
   startsAt: number;
   // Null for a single-time entry, such as a match start.
@@ -466,7 +467,11 @@ export function PersonalEventSchedule({
           : [
               {
                 id: `drive:${assignment.slotNumber}:${assignment.position}`,
-                label: `${assignment.position} · ${matchLabel(assignment.matchNumber, assignment.compLevel)}`,
+                label: assignment.position,
+                detail: matchLabel(
+                  assignment.matchNumber,
+                  assignment.compLevel,
+                ),
                 color: assignmentClass('Drive Team'),
                 startsAt: assignment.startsAt,
                 endsAt: null,
@@ -532,9 +537,11 @@ export function PersonalEventSchedule({
                       )}
                     </div>
                     <span className="justify-self-end text-sm whitespace-nowrap opacity-75 tabular-nums">
-                      {entry.endsAt === null
-                        ? formatTime(entry.startsAt)
-                        : `${formatTime(entry.startsAt)}–${formatTime(entry.endsAt)}`}
+                      {entry.detail
+                        ? `${entry.detail} · ${formatTime(entry.startsAt)}`
+                        : entry.endsAt === null
+                          ? formatTime(entry.startsAt)
+                          : `${formatTime(entry.startsAt)}–${formatTime(entry.endsAt)}`}
                     </span>
                   </div>
                 ))}
@@ -565,7 +572,7 @@ export function PersonalEventSchedule({
                 </span>
                 <span className="justify-self-end text-sm whitespace-nowrap opacity-75">
                   {item.matchNumber === null
-                    ? `${plannedLabel(item.phase, item.slotNumber)} · not released yet`
+                    ? plannedLabel(item.phase, item.slotNumber)
                     : `${matchLabel(item.matchNumber, item.compLevel)} · time TBA`}
                 </span>
               </div>
