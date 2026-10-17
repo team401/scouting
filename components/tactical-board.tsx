@@ -86,6 +86,10 @@ export function TacticalBoard({
     setColor(defaultAlliance === 'blue' ? colors[1] : colors[0]);
   }, [defaultAlliance]);
 
+  useEffect(() => {
+    if (mode === 'erase' && value.strokes.length === 0) setMode('draw');
+  }, [mode, value.strokes.length]);
+
   const initialRobots = value.robots.some((robot) => robot.label)
     ? initialPlaceholderRobotMarkers()
     : initialRobotMarkers(
@@ -192,17 +196,19 @@ export function TacticalBoard({
         >
           <Pencil />
         </Button>
-        <Button
-          type="button"
-          size="icon-sm"
-          variant={mode === 'erase' ? 'default' : 'outline'}
-          disabled={readOnly || value.strokes.length === 0}
-          aria-label="Erase a line"
-          title="Erase a line"
-          onClick={() => setMode('erase')}
-        >
-          <Eraser />
-        </Button>
+        {value.strokes.length > 0 && (
+          <Button
+            type="button"
+            size="icon-sm"
+            variant={mode === 'erase' ? 'default' : 'outline'}
+            disabled={readOnly}
+            aria-label="Erase a line"
+            title="Erase a line"
+            onClick={() => setMode('erase')}
+          >
+            <Eraser />
+          </Button>
+        )}
         {colors.map((item) => (
           <button
             type="button"
@@ -221,32 +227,34 @@ export function TacticalBoard({
             key={item}
           />
         ))}
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="outline"
-          disabled={readOnly || value.strokes.length === 0}
-          aria-label="Undo last line"
-          title="Undo last line"
-          onClick={() =>
-            onChange({ ...value, strokes: value.strokes.slice(0, -1) })
-          }
-        >
-          <Undo2 />
-        </Button>
         {value.strokes.length > 0 && (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={readOnly}
-            aria-label="Erase all ink"
-            title="Erase all ink"
-            onClick={() => onChange({ ...value, strokes: [] })}
-          >
-            <Eraser />
-            All
-          </Button>
+          <>
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="outline"
+              disabled={readOnly}
+              aria-label="Undo last line"
+              title="Undo last line"
+              onClick={() =>
+                onChange({ ...value, strokes: value.strokes.slice(0, -1) })
+              }
+            >
+              <Undo2 />
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={readOnly}
+              aria-label="Erase all ink"
+              title="Erase all ink"
+              onClick={() => onChange({ ...value, strokes: [] })}
+            >
+              <Eraser />
+              All
+            </Button>
+          </>
         )}
         {robotsHaveMoved && (
           <Button
