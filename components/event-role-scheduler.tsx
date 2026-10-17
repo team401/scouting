@@ -249,9 +249,7 @@ function ScheduleRoleBadge({ entry }: { entry: ScheduleEntry }) {
           if (usesHover()) setOpen(false);
         }}
       >
-        <PopoverTrigger
-          className="text-left text-sm font-semibold underline decoration-dotted underline-offset-4 sm:text-center"
-        >
+        <PopoverTrigger className="text-left text-sm font-semibold underline decoration-dotted underline-offset-4 sm:text-center">
           {entry.label}
         </PopoverTrigger>
         <PopoverContent align="start" className="max-w-72">
