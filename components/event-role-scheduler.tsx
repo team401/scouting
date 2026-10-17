@@ -15,7 +15,12 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { assignmentClass } from '@/lib/assignment-class';
-import { matchLabel, plannedLabel, type DrivePhase } from '@/lib/drive-team';
+import {
+  drivePositionClassForLabel,
+  matchLabel,
+  plannedLabel,
+  type DrivePhase,
+} from '@/lib/drive-team';
 import { getCachedValue, saveCachedValue } from '@/lib/offline-db';
 import {
   assignableEventRoles,
@@ -233,9 +238,6 @@ type ScheduleEntry = {
 };
 
 type PersonalSchedule = { items: Assignment[]; shifts: ScoutShift[] };
-
-const personalDriveTeamClass =
-  'bg-purple-200 text-purple-950 dark:bg-purple-900 dark:text-purple-100';
 
 function ScheduleRoleBadge({ entry }: { entry: ScheduleEntry }) {
   const [open, setOpen] = useState(false);
@@ -475,7 +477,7 @@ export function PersonalEventSchedule({
                   assignment.matchNumber,
                   assignment.compLevel,
                 ),
-                color: personalDriveTeamClass,
+                color: drivePositionClassForLabel(assignment.position),
                 startsAt: assignment.startsAt,
                 endsAt: null,
               },
@@ -567,7 +569,7 @@ export function PersonalEventSchedule({
             {untimedDriveTeam.map((item) => (
               <div
                 key={`${item.slotNumber}:${item.position}`}
-                className={`grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2.5 sm:grid-cols-[1fr_auto_1fr] ${personalDriveTeamClass}`}
+                className={`grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2.5 sm:grid-cols-[1fr_auto_1fr] ${drivePositionClassForLabel(item.position)}`}
               >
                 <span className="hidden sm:block" aria-hidden="true" />
                 <span className="min-w-0 justify-self-start text-left font-semibold sm:justify-self-center sm:text-center">

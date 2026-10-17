@@ -3,6 +3,8 @@ import test from 'node:test';
 import {
   autoMapDriveTeamMatches,
   canFillDrivePosition,
+  drivePositionClasses,
+  drivePositionClassForLabel,
   drivePositions,
   emptyDriveTeamMembers,
   hasDuplicateDriveMember,
@@ -153,6 +155,17 @@ void test('positions follow the drive team sheet order and include Coach', () =>
     drivePositions.map((position) => position.label),
     ['Driver', 'Operator', 'Human Player', 'Technician', 'Coach'],
   );
+});
+
+void test('personal schedules reuse each drive position color', () => {
+  for (const position of drivePositions) {
+    assert.equal(
+      drivePositionClassForLabel(position.label),
+      drivePositionClasses[position.key],
+    );
+  }
+
+  assert.match(drivePositionClassForLabel('Unknown position'), /purple/);
 });
 
 void test('duplicate people in one planned match are detected, including the coach slot', () => {
