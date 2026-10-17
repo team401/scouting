@@ -593,22 +593,22 @@ export function TacticalBoard({
 
             {/* Alliance-wall game pieces, oriented from the official top view. */}
             <rect
-              x="12"
-              y="675"
-              width="69"
-              height="106"
+              x="2"
+              y="722"
+              width="44"
+              height="58"
               fill="#f59e0b"
               stroke="#fde68a"
-              strokeWidth="4"
+              strokeWidth="3"
             />
             <text
-              x="47"
-              y="735"
+              x="24"
+              y="754"
               textAnchor="middle"
               fill="#111827"
-              fontSize="15"
+              fontSize="11"
               fontWeight="800"
-              transform="rotate(-90 47 735)"
+              transform="rotate(-90 24 754)"
             >
               Outpost
             </text>
@@ -632,12 +632,14 @@ export function TacticalBoard({
             >
               Depot
             </text>
-            <path
-              d="M 12 332 H 98 V 468 H 12 Z M 98 350 L 126 400 L 98 450 Z"
+            <rect
+              x="12"
+              y="332"
+              width="86"
+              height="136"
               fill="#111827"
               stroke="#e5e7eb"
               strokeWidth="5"
-              fillRule="evenodd"
             />
             <text
               x="58"
@@ -652,22 +654,22 @@ export function TacticalBoard({
             </text>
 
             <rect
-              x="1573"
-              y="19"
-              width="69"
-              height="106"
+              x="1608"
+              y="20"
+              width="44"
+              height="58"
               fill="#f59e0b"
               stroke="#fde68a"
-              strokeWidth="4"
+              strokeWidth="3"
             />
             <text
-              x="1608"
-              y="80"
+              x="1630"
+              y="52"
               textAnchor="middle"
               fill="#111827"
-              fontSize="15"
+              fontSize="11"
               fontWeight="800"
-              transform="rotate(90 1608 80)"
+              transform="rotate(90 1630 52)"
             >
               Outpost
             </text>
@@ -691,12 +693,14 @@ export function TacticalBoard({
             >
               Depot
             </text>
-            <path
-              d="M 1642 332 H 1556 V 468 H 1642 Z M 1556 350 L 1528 400 L 1556 450 Z"
+            <rect
+              x="1556"
+              y="332"
+              width="86"
+              height="136"
               fill="#111827"
               stroke="#e5e7eb"
               strokeWidth="5"
-              fillRule="evenodd"
             />
             <text
               x="1596"
