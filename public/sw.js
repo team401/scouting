@@ -81,7 +81,7 @@ async function cacheOfflineShell() {
 }
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(cacheOfflineShell());
+  event.waitUntil(Promise.all([cacheOfflineShell(), self.skipWaiting()]));
 });
 
 self.addEventListener('activate', (event) => {
@@ -136,12 +136,17 @@ async function putBestEffort(cache, request, response, maxEntries) {
   }
 }
 
-async function networkFirst(request, cacheName, fallbacks, timeoutMs = 4000) {
+async function networkFirst(request, cacheName, fallbacks, timeoutMs = null) {
   const cache = await caches.open(cacheName);
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const controller = timeoutMs ? new AbortController() : null;
+  const timeout = controller
+    ? setTimeout(() => controller.abort(), timeoutMs)
+    : null;
   try {
-    const response = await fetch(request, { signal: controller.signal });
+    const response = await fetch(
+      request,
+      controller ? { signal: controller.signal } : undefined,
+    );
     if (isCacheable(response))
       await putBestEffort(cache, request, response, CACHE_LIMITS.pages);
     return response;
@@ -154,7 +159,7 @@ async function networkFirst(request, cacheName, fallbacks, timeoutMs = 4000) {
     }
     return Response.error();
   } finally {
-    clearTimeout(timeout);
+    if (timeout) clearTimeout(timeout);
   }
 }
 
@@ -163,7 +168,11 @@ async function cacheFirst(request) {
   const cached = await caches.match(request);
   if (cached) return cached;
   try {
-    const response = await fetch(request);
+    let response = await fetch(request);
+    if (!isCacheable(response) && [404, 503].includes(response.status)) {
+      const retry = await fetch(new Request(request, { cache: 'reload' }));
+      if (isCacheable(retry)) response = retry;
+    }
     if (isCacheable(response))
       await putBestEffort(cache, request, response, CACHE_LIMITS.assets);
     return response;
