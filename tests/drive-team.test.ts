@@ -8,6 +8,7 @@ import {
   hasDuplicateDriveMember,
   matchLabel,
   plannedLabel,
+  requiresEventRosterForDriveTeam,
   teamMatchesInOrder,
   teamNumbersInAlliances,
   type ScheduleMatch,
@@ -183,6 +184,12 @@ void test('Driver, Operator, and Human Player exclude coaches', () => {
     assert.equal(canFillDrivePosition(key, 'student'), true);
     assert.equal(canFillDrivePosition(key, null), true);
   }
+});
+
+void test('only students must belong to the Event Roster for drive teams', () => {
+  assert.equal(requiresEventRosterForDriveTeam('coach'), false);
+  assert.equal(requiresEventRosterForDriveTeam('student'), true);
+  assert.equal(requiresEventRosterForDriveTeam(null), true);
 });
 
 void test('match labels describe qualification and playoff matches', () => {
