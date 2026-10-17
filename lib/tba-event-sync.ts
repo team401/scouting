@@ -123,6 +123,10 @@ export async function syncTbaEvent(organizationId: string, eventKey: string) {
          VALUES (?, ?, ?, ?)`,
       ).bind(eventId, day.date, day.startHour, day.endHour),
     ),
+    // The conflict update deliberately leaves name_override untouched. That
+    // value belongs to this event-team row, so revisiting or refreshing an
+    // event keeps its B-team mapping while another event may use a different
+    // name for the same demo number.
     ...teams.map((team) =>
       env.DB.prepare(`INSERT INTO event_teams (organization_id, event_id, team_number, name, updated_at)
         VALUES (?, ?, ?, ?, ?) ON CONFLICT(organization_id, event_id, team_number) DO UPDATE SET

@@ -4107,6 +4107,7 @@ export default function Home() {
                         </p>
                       )}
                       <EventTeamAliases
+                        eventKey={eventPack?.event.key ?? ''}
                         eventType={eventPack?.event.eventType ?? null}
                         teams={eventPack?.teams ?? []}
                         onChanged={() => loadEventPack(false, true)}

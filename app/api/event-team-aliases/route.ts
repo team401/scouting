@@ -8,6 +8,7 @@ import {
 } from '@/lib/event-team-aliases';
 
 const updateSchema = z.object({
+  eventKey: z.string().trim().min(1).max(50),
   teamNumber: z.number().int().min(FRC_DEMO_TEAM_MIN).max(FRC_DEMO_TEAM_MAX),
   name: z.string().trim().max(100).nullable(),
 });
@@ -41,13 +42,13 @@ export async function PATCH(request: Request) {
 
   const event = await env.DB.prepare(
     `SELECT id, event_type AS eventType FROM events
-     WHERE organization_id = ? AND is_current = 1 LIMIT 1`,
+     WHERE organization_id = ? AND tba_event_key = ? LIMIT 1`,
   )
-    .bind(membership.organizationId)
+    .bind(membership.organizationId, parsed.data.eventKey)
     .first<{ id: string; eventType: number | null }>();
   if (!event)
     return Response.json(
-      { error: 'No current event is loaded.' },
+      { error: 'That event is not available.' },
       { status: 404 },
     );
   if (!isOffseasonDemoTeam(event.eventType, parsed.data.teamNumber))
