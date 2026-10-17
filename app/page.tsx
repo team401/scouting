@@ -41,6 +41,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { toast } from '@/components/ui/toast';
 import {
   initialPlaceholderRobotMarkers,
   initialRobotMarkers,
@@ -64,6 +65,7 @@ import {
 } from '@/lib/offline-db';
 import { observedPoints, type ScoutingPayload } from '@/lib/scouting-metrics';
 import { isPitReportComplete } from '@/lib/pit-scouting';
+import { importWithDeploymentRecovery } from '@/lib/deployment-recovery';
 import {
   canManageAssignments,
   canReopenEntries,
@@ -71,57 +73,79 @@ import {
 } from '@/lib/scouting-policy';
 
 const PickListWorkspace = lazy(() =>
-  import('@/components/pick-list-workspace').then((module) => ({
+  importWithDeploymentRecovery(
+    () => import('@/components/pick-list-workspace'),
+  ).then((module) => ({
     default: module.PickListWorkspace,
   })),
 );
 const MatchVideoLibrary = lazy(() =>
-  import('@/components/match-video-library').then((module) => ({
+  importWithDeploymentRecovery(
+    () => import('@/components/match-video-library'),
+  ).then((module) => ({
     default: module.MatchVideoLibrary,
   })),
 );
 const TeamComparison = lazy(() =>
-  import('@/components/team-comparison').then((module) => ({
+  importWithDeploymentRecovery(
+    () => import('@/components/team-comparison'),
+  ).then((module) => ({
     default: module.TeamComparison,
   })),
 );
 const TeamStatsDialog = lazy(() =>
-  import('@/components/team-stats-dialog').then((module) => ({
+  importWithDeploymentRecovery(
+    () => import('@/components/team-stats-dialog'),
+  ).then((module) => ({
     default: module.TeamStatsDialog,
   })),
 );
 const ScoutingOperations = lazy(() =>
-  import('@/components/scouting-operations').then((module) => ({
+  importWithDeploymentRecovery(
+    () => import('@/components/scouting-operations'),
+  ).then((module) => ({
     default: module.ScoutingOperations,
   })),
 );
 const DriveTeamPlanner = lazy(() =>
-  import('@/components/drive-team-planner').then((module) => ({
+  importWithDeploymentRecovery(
+    () => import('@/components/drive-team-planner'),
+  ).then((module) => ({
     default: module.DriveTeamPlanner,
   })),
 );
 const EventScheduleBoard = lazy(() =>
-  import('@/components/event-schedule-board').then((module) => ({
+  importWithDeploymentRecovery(
+    () => import('@/components/event-schedule-board'),
+  ).then((module) => ({
     default: module.EventScheduleBoard,
   })),
 );
 const EventTeamAliases = lazy(() =>
-  import('@/components/event-team-aliases').then((module) => ({
+  importWithDeploymentRecovery(
+    () => import('@/components/event-team-aliases'),
+  ).then((module) => ({
     default: module.EventTeamAliases,
   })),
 );
 const QrRelay = lazy(() =>
-  import('@/components/qr-relay').then((module) => ({
-    default: module.QrRelay,
-  })),
+  importWithDeploymentRecovery(() => import('@/components/qr-relay')).then(
+    (module) => ({
+      default: module.QrRelay,
+    }),
+  ),
 );
 const MatchSubmissionQr = lazy(() =>
-  import('@/components/match-submission-qr').then((module) => ({
+  importWithDeploymentRecovery(
+    () => import('@/components/match-submission-qr'),
+  ).then((module) => ({
     default: module.MatchSubmissionQr,
   })),
 );
 const GuestPassManager = lazy(() =>
-  import('@/components/guest-pass-manager').then((module) => ({
+  importWithDeploymentRecovery(
+    () => import('@/components/guest-pass-manager'),
+  ).then((module) => ({
     default: module.GuestPassManager,
   })),
 );
@@ -688,16 +712,37 @@ type PlanSection = 'auto' | 'teleop' | 'metrics';
 function PlanSectionButtons({
   value,
   onChange,
+  matches,
+  selectedMatchKey,
+  onMatchChange,
 }: {
   value: PlanSection;
   onChange: (section: PlanSection) => void;
+  matches: EventMatch[];
+  selectedMatchKey: string;
+  onMatchChange: (matchKey: string) => void;
 }) {
   return (
     <div
       aria-label="Plan view"
-      className="ml-auto flex w-max max-w-full shrink-0 flex-nowrap items-center gap-1"
+      className="ml-auto flex w-full min-w-0 flex-wrap items-center justify-end gap-1 sm:flex-nowrap xl:w-auto xl:min-w-[36rem] xl:flex-1"
       role="group"
     >
+      {matches.length > 0 && (
+        <select
+          aria-label="Match to plan"
+          className="mr-1 h-8 min-w-0 basis-full rounded-md border bg-background px-2 text-sm sm:w-80 sm:flex-none sm:basis-auto"
+          value={selectedMatchKey}
+          onChange={(event) => onMatchChange(event.target.value)}
+        >
+          {matches.map((match) => (
+            <option value={match.key} key={match.key}>
+              {matchLabel(match)} · {match.alliances.red.join(', ')} vs{' '}
+              {match.alliances.blue.join(', ')}
+            </option>
+          ))}
+        </select>
+      )}
       <Button
         type="button"
         size="sm"
@@ -785,7 +830,6 @@ export default function Home() {
   const [syncing, setSyncing] = useState(false);
   const [_syncMessage, setSyncMessage] = useState('');
   const [eventKey, setEventKey] = useState('');
-  const [eventMessage, setEventMessage] = useState('');
   const [configuringEvent, setConfiguringEvent] = useState(false);
   const [eventChoices, setEventChoices] = useState<TbaEventChoice[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
@@ -1178,10 +1222,15 @@ export default function Home() {
 
   useEffect(() => {
     if (!session || !online) return;
-    const timer = window.setInterval(() => {
+    const refresh = () => {
       if (document.visibilityState === 'visible') void loadEventPack(true);
-    }, 45_000);
-    return () => window.clearInterval(timer);
+    };
+    const timer = window.setInterval(refresh, 45_000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
+    };
   }, [online, session]);
 
   useEffect(() => {
@@ -1268,7 +1317,6 @@ export default function Home() {
 
   const loadTeamEventChoices = useCallback(async (requestedTeam?: number) => {
     setEventsLoading(true);
-    setEventMessage('');
     const query = requestedTeam ? `?team=${requestedTeam}` : '';
     const cacheId = `team-event-choices:${requestedTeam ?? 'current'}`;
     const cached = await getCachedValue<{
@@ -1313,13 +1361,15 @@ export default function Home() {
       });
     } catch (error) {
       if (!cached) setEventChoices([]);
-      setEventMessage(
-        cached
-          ? 'Showing the event list cached on this device.'
+      toast.add({
+        type: cached ? 'info' : 'error',
+        title: cached ? 'Showing cached events' : 'Unable to load events',
+        description: cached
+          ? 'Using the event list saved on this device.'
           : error instanceof Error
             ? error.message
             : 'Unable to load Team 401 events.',
-      );
+      });
     } finally {
       setEventsLoading(false);
     }
@@ -2201,7 +2251,6 @@ export default function Home() {
 
   async function configureEvent() {
     setConfiguringEvent(true);
-    setEventMessage('');
     try {
       const response = await fetch('/api/event-pack', {
         method: 'POST',
@@ -2219,9 +2268,11 @@ export default function Home() {
       };
       if (!response.ok)
         throw new Error(result.error ?? 'Unable to load this event.');
-      setEventMessage(
-        `${result.event?.name ?? eventKey} is current. Cached ${result.matchCount ?? 0} matches.`,
-      );
+      toast.add({
+        type: 'success',
+        title: `${result.event?.name ?? eventKey} is current`,
+        description: `${result.matchCount ?? 0} matches cached.`,
+      });
       setTestTeamNumber(
         result.organizationTeamNumber !== baseTeamNumber
           ? (result.organizationTeamNumber ?? eventTeamNumber)
@@ -2229,9 +2280,12 @@ export default function Home() {
       );
       await loadEventPack();
     } catch (error) {
-      setEventMessage(
-        error instanceof Error ? error.message : 'Unable to load this event.',
-      );
+      toast.add({
+        type: 'error',
+        title: 'Unable to load this event',
+        description:
+          error instanceof Error ? error.message : 'Please try again.',
+      });
     } finally {
       setConfiguringEvent(false);
     }
@@ -2239,7 +2293,6 @@ export default function Home() {
 
   async function stopTeamTestMode() {
     setConfiguringEvent(true);
-    setEventMessage('');
     try {
       const response = await fetch('/api/event-pack', { method: 'DELETE' });
       const result = (await response.json()) as { error?: string };
@@ -2249,17 +2302,21 @@ export default function Home() {
       setEventTeamNumber(baseTeamNumber);
       setEventTeamInput(String(baseTeamNumber));
       setEventKey('');
-      setEventMessage(`Returned to Team ${baseTeamNumber}.`);
+      toast.add({
+        type: 'success',
+        title: `Returned to Team ${baseTeamNumber}`,
+      });
       await Promise.all([
         loadEventPack(),
         loadTeamEventChoices(baseTeamNumber),
       ]);
     } catch (error) {
-      setEventMessage(
-        error instanceof Error
-          ? error.message
-          : 'Unable to stop team test mode.',
-      );
+      toast.add({
+        type: 'error',
+        title: 'Unable to stop team test mode',
+        description:
+          error instanceof Error ? error.message : 'Please try again.',
+      });
     } finally {
       setConfiguringEvent(false);
     }
@@ -3651,37 +3708,6 @@ export default function Home() {
               }}
             >
               <CardContent className="flex flex-col gap-5">
-                {!planFullscreen && (
-                  <>
-                    {planningMatches.length > 0 && (
-                      <div className="flex items-center gap-3">
-                        <label
-                          className="shrink-0 font-semibold"
-                          htmlFor="plan-match"
-                        >
-                          Match
-                        </label>
-                        <select
-                          id="plan-match"
-                          aria-label="Match to plan"
-                          className="h-11 min-w-0 flex-1 rounded-md border bg-transparent px-3"
-                          value={selectedMatchKey}
-                          onChange={(event) =>
-                            setSelectedMatchKey(event.target.value)
-                          }
-                        >
-                          {planningMatches.map((match) => (
-                            <option value={match.key} key={match.key}>
-                              {matchLabel(match)} ·{' '}
-                              {match.alliances.red.join(', ')} vs{' '}
-                              {match.alliances.blue.join(', ')}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                  </>
-                )}
                 {planSection !== 'metrics' && (
                   <>
                     <div
@@ -3694,6 +3720,13 @@ export default function Home() {
                           planSection === 'auto'
                             ? matchPlan.autoBoard
                             : matchPlan.board
+                        }
+                        defaultAlliance={
+                          currentPlanningMatch?.alliances.blue.includes(
+                            eventTeamNumber,
+                          )
+                            ? 'blue'
+                            : 'red'
                         }
                         readOnly={Boolean(currentPlanningMatch && !planCanEdit)}
                         toolbarStart={
@@ -3712,10 +3745,15 @@ export default function Home() {
                           </Button>
                         }
                         toolbarEnd={
-                          <PlanSectionButtons
-                            value={planSection}
-                            onChange={setPlanSection}
-                          />
+                          !planFullscreen ? (
+                            <PlanSectionButtons
+                              value={planSection}
+                              onChange={setPlanSection}
+                              matches={planningMatches}
+                              selectedMatchKey={selectedMatchKey}
+                              onMatchChange={setSelectedMatchKey}
+                            />
+                          ) : undefined
                         }
                         onChange={(board) =>
                           setMatchPlan(
@@ -3744,15 +3782,13 @@ export default function Home() {
                         }
                         placeholder="Only details that are not clear from the field drawing"
                       />
-                      {(planMessage || planAuthor || planCanEdit) && (
+                      {(planMessage || (planAuthor && planUpdatedAt)) && (
                         <p
                           className="text-sm text-muted-foreground"
                           role="status"
                         >
                           {planMessage ||
-                            (planAuthor && planUpdatedAt
-                              ? `Saved automatically by ${planAuthor} · ${new Date(planUpdatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
-                              : 'Changes save automatically.')}
+                            `Saved automatically by ${planAuthor} · ${new Date(planUpdatedAt!).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`}
                         </p>
                       )}
                     </div>
@@ -3959,6 +3995,9 @@ export default function Home() {
                       <PlanSectionButtons
                         value={planSection}
                         onChange={setPlanSection}
+                        matches={planningMatches}
+                        selectedMatchKey={selectedMatchKey}
+                        onMatchChange={setSelectedMatchKey}
                       />
                     </div>
                   </div>
@@ -4098,15 +4137,8 @@ export default function Home() {
                               : `Test as Team ${eventTeamNumber}`}
                         </Button>
                       </div>
-                      {eventMessage && (
-                        <p
-                          className="text-sm text-muted-foreground"
-                          role="status"
-                        >
-                          {eventMessage}
-                        </p>
-                      )}
                       <EventTeamAliases
+                        eventKey={eventPack?.event.key ?? ''}
                         eventType={eventPack?.event.eventType ?? null}
                         teams={eventPack?.teams ?? []}
                         onChanged={() => loadEventPack(false, true)}

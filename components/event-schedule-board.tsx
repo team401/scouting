@@ -12,6 +12,7 @@ import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { toast } from '@/components/ui/toast';
 import {
   Popover,
   PopoverContent,
@@ -406,18 +407,19 @@ export function EventScheduleBoard({
   const [scheduleDays, setScheduleDays] = useState<ScheduleDay[]>([]);
   const [roles, setRoles] = useState<RoleItem[]>([]);
   const [scouting, setScouting] = useState<ScoutItem[]>([]);
-  const [message, setMessage] = useState('');
   const [busyCell, setBusyCell] = useState('');
   const [attendeeIds, setAttendeeIds] = useState<Set<string>>(new Set());
   const [attendanceLoaded, setAttendanceLoaded] = useState(false);
   const [rosterOpen, setRosterOpen] = useState(false);
   const [rosterSearch, setRosterSearch] = useState('');
-  const [rosterMessage, setRosterMessage] = useState('');
   const [publishedAt, setPublishedAt] = useState<number | null>(null);
   const [hasUnpublishedChanges, setHasUnpublishedChanges] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [unpublishConfirmOpen, setUnpublishConfirmOpen] = useState(false);
   const attendanceDirtyRef = useRef(false);
+  const savedAttendeeIdsRef = useRef<Set<string>>(new Set());
+  const pendingAttendeeIdsRef = useRef<Set<string> | null>(null);
+  const attendanceSavingRef = useRef(false);
   const freshLoadedRef = useRef(false);
   const [controls, setControls] = useState<EventControls>({
     scoutingEnabled: true,
@@ -455,9 +457,12 @@ export function EventScheduleBoard({
       );
     } catch (error) {
       setControls(previous);
-      setMessage(
-        error instanceof Error ? error.message : 'Could not save day settings.',
-      );
+      toast.add({
+        type: 'error',
+        title: 'Could not save day settings',
+        description:
+          error instanceof Error ? error.message : 'Please try again.',
+      });
     }
   }
 
@@ -534,7 +539,11 @@ export function EventScheduleBoard({
           members.some((member) => member.id === id && canSchedule(member)),
         )
       : [];
-    if (!attendanceDirtyRef.current) setAttendeeIds(new Set(loadedAttendeeIds));
+    if (!attendanceDirtyRef.current) {
+      const loadedAttendance = new Set(loadedAttendeeIds);
+      savedAttendeeIdsRef.current = loadedAttendance;
+      setAttendeeIds(loadedAttendance);
+    }
     setAttendanceLoaded(true);
     const configuredDays = daysBody.days ?? [];
     const days = configuredDays.length
@@ -592,8 +601,11 @@ export function EventScheduleBoard({
         if (!cached || cancelled || freshLoadedRef.current) return;
         setRoles(cached.roles);
         setScouting(cached.scouting);
-        if (!attendanceDirtyRef.current)
-          setAttendeeIds(new Set(cached.attendeeIds));
+        if (!attendanceDirtyRef.current) {
+          const cachedAttendance = new Set(cached.attendeeIds);
+          savedAttendeeIdsRef.current = cachedAttendance;
+          setAttendeeIds(cachedAttendance);
+        }
         setAttendanceLoaded(true);
         setScheduleDays(cached.days);
         setPublishedAt(cached.publishedAt ?? null);
@@ -642,9 +654,12 @@ export function EventScheduleBoard({
 
   useEffect(() => {
     const showError = (error: unknown) =>
-      setMessage(
-        error instanceof Error ? error.message : 'Could not load the schedule.',
-      );
+      toast.add({
+        type: 'error',
+        title: 'Could not load the schedule',
+        description:
+          error instanceof Error ? error.message : 'Please try again.',
+      });
     // One quiet retry covers a transient connection drop before showing an error.
     void load().catch(() => {
       window.setTimeout(() => void load().catch(showError), 1500);
@@ -777,7 +792,6 @@ export function EventScheduleBoard({
     const existing = memberItems[member.guestSlot ?? 0];
     const key = `${member.scheduleRowKey}:${startsAt}`;
     setBusyCell(key);
-    setMessage('');
     try {
       if (existing) {
         const endpoint =
@@ -860,11 +874,12 @@ export function EventScheduleBoard({
       setHasUnpublishedChanges(true);
     } catch (error) {
       await load().catch(() => undefined);
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : 'Could not update the schedule.',
-      );
+      toast.add({
+        type: 'error',
+        title: 'Could not update the schedule',
+        description:
+          error instanceof Error ? error.message : 'Please try again.',
+      });
     } finally {
       setBusyCell('');
     }
@@ -892,7 +907,7 @@ export function EventScheduleBoard({
         const label = rows[rowOffset][columnOffset].trim();
         const value = label ? scheduleValue(label, choices) : '';
         if (label && !value) {
-          setMessage(invalidRoleMessage(label));
+          toast.add({ type: 'warning', title: invalidRoleMessage(label) });
           return;
         }
         await changeCell(member, hour, value ?? '');
@@ -915,24 +930,53 @@ export function EventScheduleBoard({
       ?.focus();
   }
 
+  function changeAttendance(next: Set<string>) {
+    attendanceDirtyRef.current = true;
+    pendingAttendeeIdsRef.current = next;
+    setAttendeeIds(next);
+    void saveAttendance();
+  }
+
   async function saveAttendance() {
-    setRosterMessage('');
-    const response = await fetch('/api/event-attendees', {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ userIds: [...attendeeIds] }),
-    });
-    const body = (await response.json()) as {
-      error?: string;
-      userIds?: string[];
-    };
-    if (!response.ok)
-      return setRosterMessage(body.error ?? 'Could not save event attendance.');
-    attendanceDirtyRef.current = false;
-    setAttendeeIds(new Set(body.userIds ?? []));
-    setRosterMessage('Saved');
-    setRosterOpen(false);
-    await onChanged();
+    if (attendanceSavingRef.current) return;
+    attendanceSavingRef.current = true;
+    try {
+      while (pendingAttendeeIdsRef.current) {
+        const next = pendingAttendeeIdsRef.current;
+        pendingAttendeeIdsRef.current = null;
+        try {
+          const response = await fetch('/api/event-attendees', {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ userIds: [...next] }),
+          });
+          const body = await readBody<{ error?: string; userIds?: string[] }>(
+            response,
+          );
+          if (!response.ok) throw new Error(body.error ?? 'Please try again.');
+          savedAttendeeIdsRef.current = new Set(body.userIds ?? []);
+          if (!pendingAttendeeIdsRef.current) {
+            attendanceDirtyRef.current = false;
+            setAttendeeIds(new Set(savedAttendeeIdsRef.current));
+            void Promise.resolve(onChanged()).catch(() => undefined);
+          }
+        } catch (error) {
+          if (!pendingAttendeeIdsRef.current) {
+            attendanceDirtyRef.current = false;
+            setAttendeeIds(new Set(savedAttendeeIdsRef.current));
+          }
+          toast.add({
+            type: 'error',
+            title: 'Could not save the Event Roster',
+            description:
+              error instanceof Error ? error.message : 'Please try again.',
+          });
+        }
+      }
+    } finally {
+      attendanceSavingRef.current = false;
+      if (pendingAttendeeIdsRef.current) void saveAttendance();
+    }
   }
 
   function selectScheduleDay(day: ScheduleDay) {
@@ -950,7 +994,6 @@ export function EventScheduleBoard({
   }
 
   async function saveScheduleDay() {
-    setMessage('');
     const response = await fetch('/api/event-schedule-days', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
@@ -961,7 +1004,11 @@ export function EventScheduleBoard({
       error?: string;
     };
     if (!response.ok || !body.day) {
-      setMessage(body.error ?? 'Could not save this event day.');
+      toast.add({
+        type: 'error',
+        title: 'Could not save this event day',
+        description: body.error ?? 'Please try again.',
+      });
       return;
     }
     setScheduleDays((current) =>
@@ -969,12 +1016,11 @@ export function EventScheduleBoard({
         (a, b) => a.date.localeCompare(b.date),
       ),
     );
-    setMessage('Event day saved.');
+    toast.add({ type: 'success', title: 'Event day saved' });
   }
 
   async function publishSchedule() {
     setPublishing(true);
-    setMessage('');
     const response = await fetch('/api/event-schedule-publish', {
       method: 'POST',
     });
@@ -985,48 +1031,65 @@ export function EventScheduleBoard({
     }>(response);
     setPublishing(false);
     if (!response.ok || !body.publishedAt) {
-      setMessage(body.error ?? 'Could not publish the schedule.');
+      toast.add({
+        type: 'error',
+        title: 'Could not publish roles',
+        description: body.error ?? 'Please try again.',
+      });
       return;
     }
     setPublishedAt(body.publishedAt);
     setHasUnpublishedChanges(false);
-    setMessage('Shifts published to the team.');
     await onChanged();
   }
 
   async function unpublishSchedule() {
     setPublishing(true);
-    setMessage('');
     const response = await fetch('/api/event-schedule-publish', {
       method: 'DELETE',
     });
     const body = await readBody<{ error?: string }>(response);
     setPublishing(false);
     if (!response.ok) {
-      setMessage(body.error ?? 'Could not unpublish the schedule.');
+      toast.add({
+        type: 'error',
+        title: 'Could not unpublish roles',
+        description: body.error ?? 'Please try again.',
+      });
       return false;
     }
     setPublishedAt(null);
     setHasUnpublishedChanges(true);
-    setMessage('Shifts unpublished. Your draft is still available.');
+    toast.add({
+      type: 'success',
+      title: 'Roles unpublished',
+      description: 'Your draft is still available.',
+    });
     await onChanged();
   }
 
   async function removeScheduleDay(day: string) {
-    setMessage('');
     const response = await fetch(
       `/api/event-schedule-days?date=${encodeURIComponent(day)}`,
       { method: 'DELETE' },
     );
     const body = await readBody<{ error?: string }>(response);
     if (!response.ok) {
-      setMessage(body.error ?? 'Could not remove this event day.');
+      toast.add({
+        type: 'error',
+        title: 'Could not remove this event day',
+        description: body.error ?? 'Please try again.',
+      });
       return;
     }
     const remaining = scheduleDays.filter((item) => item.date !== day);
     setScheduleDays(remaining);
     if (remaining.length) selectScheduleDay(remaining[0]);
-    setMessage('Event day removed. Existing assignments were preserved.');
+    toast.add({
+      type: 'success',
+      title: 'Event day removed',
+      description: 'Existing assignments were preserved.',
+    });
   }
 
   // Update day is needed only when the displayed hours differ from the saved window.
@@ -1051,11 +1114,6 @@ export function EventScheduleBoard({
               Event Roster · {activeMembers.length}{' '}
               {activeMembers.length === 1 ? 'person' : 'people'}
             </span>
-            {rosterMessage && (
-              <span className="font-normal text-muted-foreground">
-                {rosterMessage}
-              </span>
-            )}
             <span className="ml-auto flex items-center gap-1 text-sm font-normal text-muted-foreground">
               {rosterOpen ? 'Hide' : 'Show'}
               <ChevronDown
@@ -1078,8 +1136,7 @@ export function EventScheduleBoard({
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  attendanceDirtyRef.current = true;
-                  setAttendeeIds(
+                  changeAttendance(
                     new Set(
                       members.filter(canSchedule).map((member) => member.id),
                     ),
@@ -1091,10 +1148,7 @@ export function EventScheduleBoard({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  attendanceDirtyRef.current = true;
-                  setAttendeeIds(new Set());
-                }}
+                onClick={() => changeAttendance(new Set())}
               >
                 Clear
               </Button>
@@ -1103,24 +1157,20 @@ export function EventScheduleBoard({
               {rosterMembers.map((member) => {
                 const checked = attendanceLoaded && attendeeIds.has(member.id);
                 return (
-                  <label
-                    className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors ${checked ? 'border-primary/50 bg-primary/10' : 'hover:bg-muted/60'}`}
+                  <button
+                    type="button"
+                    aria-pressed={checked}
+                    className={`flex min-h-10 w-full cursor-pointer items-center justify-center rounded-md border px-3 py-2 text-center font-medium transition-colors ${checked ? 'border-primary bg-primary/15 text-primary' : 'hover:bg-muted/60'}`}
                     key={member.id}
+                    onClick={() => {
+                      const next = new Set(attendeeIds);
+                      if (checked) next.delete(member.id);
+                      else next.add(member.id);
+                      changeAttendance(next);
+                    }}
                   >
-                    <Checkbox
-                      checked={checked}
-                      onCheckedChange={(nextChecked) =>
-                        setAttendeeIds((current) => {
-                          attendanceDirtyRef.current = true;
-                          const next = new Set(current);
-                          if (nextChecked) next.add(member.id);
-                          else next.delete(member.id);
-                          return next;
-                        })
-                      }
-                    />
                     <span>{member.name}</span>
-                  </label>
+                  </button>
                 );
               })}
             </div>
@@ -1129,13 +1179,6 @@ export function EventScheduleBoard({
                 No people match that search.
               </p>
             )}
-            <Button
-              className="mt-3"
-              type="button"
-              onClick={() => void saveAttendance()}
-            >
-              Save event roster
-            </Button>
           </div>
         </details>
       </Card>
@@ -1170,17 +1213,23 @@ export function EventScheduleBoard({
                 ))}
               </div>
             )}
-            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-              <p className="text-right text-xs text-muted-foreground">
+            <div className="ml-auto flex flex-nowrap items-center justify-end gap-2">
+              <p className="shrink-0 text-right text-xs whitespace-nowrap text-muted-foreground">
                 {publishedAt
                   ? hasUnpublishedChanges
-                    ? 'Unpublished changes'
-                    : `Published ${new Date(publishedAt).toLocaleString()}`
+                    ? 'Changes not published'
+                    : new Date(publishedAt).toLocaleString([], {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })
                   : 'Not published yet'}
               </p>
               {publishedAt && (
                 <Button
                   type="button"
+                  size="sm"
                   variant="destructive"
                   disabled={publishing}
                   onClick={() => setUnpublishConfirmOpen(true)}
@@ -1188,19 +1237,20 @@ export function EventScheduleBoard({
                   Unpublish
                 </Button>
               )}
-              <Button
-                type="button"
-                disabled={
-                  publishing || (!hasUnpublishedChanges && publishedAt !== null)
-                }
-                onClick={() => void publishSchedule()}
-              >
-                {publishing
-                  ? 'Working…'
-                  : publishedAt
-                    ? 'Publish shift changes'
-                    : 'Publish roles'}
-              </Button>
+              {(!publishedAt || hasUnpublishedChanges) && (
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={publishing}
+                  onClick={() => void publishSchedule()}
+                >
+                  {publishing
+                    ? 'Working…'
+                    : publishedAt
+                      ? 'Publish changes'
+                      : 'Publish'}
+                </Button>
+              )}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b px-3 py-2 text-sm">
@@ -1432,7 +1482,10 @@ export function EventScheduleBoard({
                               void changeCell(member, hour, value)
                             }
                             onInvalid={(text) =>
-                              setMessage(invalidRoleMessage(text))
+                              toast.add({
+                                type: 'warning',
+                                title: invalidRoleMessage(text),
+                              })
                             }
                             onNavigate={(rowDelta, columnDelta) =>
                               focusCell(
@@ -1468,12 +1521,18 @@ export function EventScheduleBoard({
                     {perHour.map((have, index) => (
                       <td
                         className={`border-r border-b px-1 py-1 text-center text-xs font-semibold ${
-                          have >= target.need
-                            ? 'bg-emerald-300 text-emerald-950 dark:bg-emerald-400 dark:text-emerald-950'
-                            : 'bg-amber-300 text-amber-950 dark:bg-amber-400 dark:text-amber-950'
+                          have > target.need
+                            ? 'bg-rose-300 text-rose-950 ring-2 ring-rose-600 ring-inset dark:bg-rose-500 dark:text-rose-950 dark:ring-rose-300'
+                            : have === target.need
+                              ? 'bg-emerald-300 text-emerald-950 dark:bg-emerald-400 dark:text-emerald-950'
+                              : 'bg-amber-300 text-amber-950 dark:bg-amber-400 dark:text-amber-950'
                         }`}
                         key={hours[index]}
-                        title={`${have} of ${target.need} ${target.label.toLowerCase()}`}
+                        title={
+                          have > target.need
+                            ? `Overfilled: ${have} assigned, ${target.need} needed`
+                            : `${have} of ${target.need} ${target.label.toLowerCase()}`
+                        }
                       >
                         {have}/{target.need}
                       </td>
@@ -1484,11 +1543,6 @@ export function EventScheduleBoard({
               </tfoot>
             </table>
           </div>
-          {message && (
-            <p className="px-3 text-sm text-destructive" role="status">
-              {message}
-            </p>
-          )}
           <ConfirmActionDialog
             open={unpublishConfirmOpen}
             onOpenChange={setUnpublishConfirmOpen}

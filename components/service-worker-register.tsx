@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react';
 import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ensureRelayDeviceRegistered } from '@/lib/qr-relay';
+import {
+  recoverChunkFailureEvent,
+  recoverFromChunkFailure,
+} from '@/lib/deployment-recovery';
 
 type InstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -11,7 +15,6 @@ type InstallPromptEvent = Event & {
 };
 
 let installPrompt: InstallPromptEvent | null = null;
-
 function isStandalone() {
   return (
     window.matchMedia('(display-mode: standalone)').matches ||
@@ -78,15 +81,31 @@ export function ServiceWorkerRegister() {
       installPrompt = null;
       window.dispatchEvent(new Event('team401-install-changed'));
     };
+    const recoverMissingAsset = (event: MessageEvent) => {
+      if (event.data?.type === 'VERSIONED_ASSET_MISSING')
+        void recoverFromChunkFailure();
+    };
 
     prepare();
     window.addEventListener('online', prepare);
     window.addEventListener('beforeinstallprompt', captureInstallPrompt);
     window.addEventListener('appinstalled', installed);
+    window.addEventListener('error', recoverChunkFailureEvent, true);
+    window.addEventListener('unhandledrejection', recoverChunkFailureEvent);
+    navigator.serviceWorker.addEventListener('message', recoverMissingAsset);
     return () => {
       window.removeEventListener('online', prepare);
       window.removeEventListener('beforeinstallprompt', captureInstallPrompt);
       window.removeEventListener('appinstalled', installed);
+      window.removeEventListener('error', recoverChunkFailureEvent, true);
+      window.removeEventListener(
+        'unhandledrejection',
+        recoverChunkFailureEvent,
+      );
+      navigator.serviceWorker.removeEventListener(
+        'message',
+        recoverMissingAsset,
+      );
     };
   }, []);
   return null;

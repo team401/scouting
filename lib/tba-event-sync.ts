@@ -1,4 +1,8 @@
 import { env } from 'cloudflare:workers';
+import {
+  normalizeQualificationSchedule,
+  type FrcScheduleResponse,
+} from '@/lib/frc-events';
 import { reconcileShiftAssignments } from '@/lib/scout-shifts';
 
 type TbaEvent = {
@@ -9,6 +13,7 @@ type TbaEvent = {
   start_date: string | null;
   end_date: string | null;
   event_type: number | null;
+  first_event_code?: string | null;
 };
 type TbaAlliance = { team_keys: string[]; score: number };
 type TbaMatch = {
@@ -69,14 +74,71 @@ export async function syncTbaEvent(organizationId: string, eventKey: string) {
     fetch(`${base}/matches`, { headers }),
     fetch(`${base}/teams/simple`, { headers }),
   ]);
-  if (!eventResponse.ok || !matchesResponse.ok || !teamsResponse.ok)
+  if (!eventResponse.ok || !teamsResponse.ok)
     throw new Error(
       `TBA refresh failed (${eventResponse.status}/${matchesResponse.status}/${teamsResponse.status}).`,
     );
 
   const event = (await eventResponse.json()) as TbaEvent;
-  const matches = (await matchesResponse.json()) as TbaMatch[];
+  const tbaMatches = matchesResponse.ok
+    ? ((await matchesResponse.json()) as TbaMatch[])
+    : [];
   const teams = (await teamsResponse.json()) as TbaTeam[];
+  let frcMatches: TbaMatch[] = [];
+  if (
+    env.FRC_EVENTS_USERNAME &&
+    env.FRC_EVENTS_AUTH_KEY &&
+    event.first_event_code
+  ) {
+    try {
+      const authorization = btoa(
+        `${env.FRC_EVENTS_USERNAME}:${env.FRC_EVENTS_AUTH_KEY}`,
+      );
+      const scheduleResponse = await fetch(
+        `https://frc-api.firstinspires.org/v3.0/${event.year}/schedule/${encodeURIComponent(event.first_event_code)}?tournamentLevel=qual`,
+        {
+          headers: {
+            Accept: 'application/json',
+            Authorization: `Basic ${authorization}`,
+            'User-Agent': 'Team401-Scouting/1.0',
+          },
+        },
+      );
+      if (scheduleResponse.ok)
+        frcMatches = normalizeQualificationSchedule(
+          event.key,
+          event.timezone,
+          (await scheduleResponse.json()) as FrcScheduleResponse,
+        );
+      else
+        console.warn(
+          JSON.stringify({
+            level: 'warning',
+            source: 'frc-events-refresh',
+            message: 'FIRST qualification schedule request failed',
+            eventKey,
+            status: scheduleResponse.status,
+          }),
+        );
+    } catch (error) {
+      console.warn(
+        JSON.stringify({
+          level: 'warning',
+          source: 'frc-events-refresh',
+          message: 'FIRST qualification schedule refresh failed',
+          eventKey,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    }
+  }
+  if (!matchesResponse.ok && !frcMatches.length)
+    throw new Error(`TBA match refresh failed (${matchesResponse.status}).`);
+  const tbaKeys = new Set(tbaMatches.map((match) => match.key));
+  const matches = [
+    ...tbaMatches,
+    ...frcMatches.filter((match) => !tbaKeys.has(match.key)),
+  ];
   const eventId = `${organizationId}:${event.key}`;
   const now = Date.now();
   const scheduleDayCount = await env.DB.prepare(
@@ -123,6 +185,10 @@ export async function syncTbaEvent(organizationId: string, eventKey: string) {
          VALUES (?, ?, ?, ?)`,
       ).bind(eventId, day.date, day.startHour, day.endHour),
     ),
+    // The conflict update deliberately leaves name_override untouched. That
+    // value belongs to this event-team row, so revisiting or refreshing an
+    // event keeps its B-team mapping while another event may use a different
+    // name for the same demo number.
     ...teams.map((team) =>
       env.DB.prepare(`INSERT INTO event_teams (organization_id, event_id, team_number, name, updated_at)
         VALUES (?, ?, ?, ?, ?) ON CONFLICT(organization_id, event_id, team_number) DO UPDATE SET

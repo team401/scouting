@@ -705,6 +705,11 @@ select option {
   border-radius: 8px;
   background: var(--background);
   padding: 0 8px;
+  text-align: center;
+  text-align-last: center;
+}
+.member-card-role select option {
+  text-align: center;
 }
 .member-card-role [data-slot='badge'] {
   width: fit-content;
@@ -714,6 +719,7 @@ select option {
   width: 100%;
   height: 36px;
   align-items: center;
+  justify-content: center;
   border: 1px solid color-mix(in srgb, var(--primary) 65%, var(--border));
   border-radius: 8px;
   background: color-mix(in srgb, var(--primary) 18%, var(--background));
@@ -721,6 +727,7 @@ select option {
   color: var(--foreground);
   font-size: 0.875rem;
   font-weight: 650;
+  text-align: center;
 }
 .member-card-actions {
   display: flex;

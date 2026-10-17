@@ -51,7 +51,7 @@ export default defineConfig(async ({ mode }) => {
       },
     ],
     triggers: {
-      crons: ['*/15 * * * *'],
+      crons: ['* * * * *'],
     },
     observability: {
       enabled: true,

@@ -4,8 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ConfirmActionDialog } from '@/components/confirm-action-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from '@/components/ui/toast';
 import {
   canFillDrivePosition,
+  defaultPlayoffMatches,
   drivePositionClasses,
   drivePositions,
   matchLabel,
@@ -216,27 +218,21 @@ export function DriveTeamPlanner({
   eventKey: string;
 }) {
   const [slots, setSlots] = useState<PlannedSlot[]>([]);
-  const [expectedInput, setExpectedInput] = useState<
-    Record<DrivePhase, string>
-  >({ qual: '', playoff: '' });
+  const [expectedInput, setExpectedInput] = useState('');
   const [publishedAt, setPublishedAt] = useState<number | null>(null);
   const [hasUnpublishedChanges, setHasUnpublishedChanges] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
   const [unpublishConfirmOpen, setUnpublishConfirmOpen] = useState(false);
   const [cacheReady, setCacheReady] = useState(false);
   const cacheId = eventKey ? `drive-team-planner:${eventKey}` : null;
 
   const applyCache = useCallback((cached: DrivePlannerCache) => {
     setSlots(cached.slots);
-    setExpectedInput({
-      qual: cached.slots.some((slot) => slot.phase === 'qual')
+    setExpectedInput(
+      cached.slots.some((slot) => slot.phase === 'qual')
         ? String(cached.slots.filter((slot) => slot.phase === 'qual').length)
         : '',
-      playoff: cached.slots.some((slot) => slot.phase === 'playoff')
-        ? String(cached.slots.filter((slot) => slot.phase === 'playoff').length)
-        : '',
-    });
+    );
     setPublishedAt(cached.publishedAt);
     setHasUnpublishedChanges(cached.hasUnpublishedChanges);
   }, []);
@@ -295,11 +291,12 @@ export function DriveTeamPlanner({
       await load();
     })().catch((error: unknown) => {
       if (!cancelled)
-        setMessage(
-          error instanceof Error
-            ? error.message
-            : 'Could not load drive teams.',
-        );
+        toast.add({
+          type: 'error',
+          title: 'Could not load drive teams',
+          description:
+            error instanceof Error ? error.message : 'Please try again.',
+        });
     });
     return () => {
       cancelled = true;
@@ -314,6 +311,27 @@ export function DriveTeamPlanner({
       hasUnpublishedChanges,
     }).catch(() => undefined);
   }, [cacheId, cacheReady, hasUnpublishedChanges, publishedAt, slots]);
+
+  useEffect(() => {
+    if (!eventKey) return;
+    const refresh = () => {
+      if (document.visibilityState !== 'visible') return;
+      void load().catch((error: unknown) =>
+        toast.add({
+          type: 'error',
+          title: 'Could not refresh drive teams',
+          description:
+            error instanceof Error ? error.message : 'Please try again.',
+        }),
+      );
+    };
+    const timer = window.setInterval(refresh, 45_000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [eventKey, load]);
 
   // A picker lists people who can fill that position. The current person stays
   // listed so an existing assignment never shows as blank.
@@ -343,7 +361,6 @@ export function DriveTeamPlanner({
           : slot,
       ),
     );
-    setMessage('');
     const response = await fetch('/api/drive-team', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
@@ -360,41 +377,51 @@ export function DriveTeamPlanner({
     const body = await readBody<{ error?: string }>(response);
     if (!response.ok) {
       setSlots(previous);
-      setMessage(body.error ?? 'Could not save this planned match.');
+      toast.add({
+        type: 'error',
+        title: 'Could not save the assignment',
+        description: body.error ?? 'Please try again.',
+      });
       return;
     }
     setHasUnpublishedChanges(true);
   }
 
-  async function setExpectedMatches(phase: DrivePhase) {
-    const count = Number(expectedInput[phase]);
+  async function setExpectedMatches() {
+    const count = Number(expectedInput);
     if (!Number.isInteger(count) || count < 1 || count > maxExpectedMatches) {
-      setMessage(`Choose between 1 and ${maxExpectedMatches} matches.`);
+      toast.add({
+        type: 'warning',
+        title: `Choose between 1 and ${maxExpectedMatches} matches`,
+      });
       return;
     }
     setBusy(true);
-    setMessage('');
     const response = await fetch('/api/drive-team', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ phase, expectedMatches: count }),
+      body: JSON.stringify({ phase: 'qual', expectedMatches: count }),
     });
     const body = await readBody<{ error?: string }>(response);
     if (!response.ok) {
       setBusy(false);
-      setMessage(body.error ?? 'Could not set the expected matches.');
+      toast.add({
+        type: 'error',
+        title: 'Could not set the match count',
+        description: body.error ?? 'Please try again.',
+      });
       return;
     }
     await load();
     setBusy(false);
-    setMessage(
-      `Planning ${count} ${phase === 'playoff' ? 'playoff' : 'qualification'} matches.`,
-    );
+    toast.add({
+      type: 'success',
+      title: `Planning ${count} qualification matches`,
+    });
   }
 
   async function publishDriveTeams() {
     setBusy(true);
-    setMessage('');
     const response = await fetch('/api/drive-team-publish', { method: 'POST' });
     const body = await readBody<{
       publishedAt?: number;
@@ -403,72 +430,89 @@ export function DriveTeamPlanner({
     }>(response);
     setBusy(false);
     if (!response.ok || !body.publishedAt) {
-      setMessage(body.error ?? 'Could not publish drive teams.');
+      toast.add({
+        type: 'error',
+        title: 'Could not publish drive teams',
+        description: body.error ?? 'Please try again.',
+      });
       return;
     }
     setPublishedAt(body.publishedAt);
     setHasUnpublishedChanges(false);
-    setMessage('Drive teams published to the team.');
   }
 
   async function unpublishDriveTeams() {
     setBusy(true);
-    setMessage('');
     const response = await fetch('/api/drive-team-publish', {
       method: 'DELETE',
     });
     const body = await readBody<{ error?: string }>(response);
     setBusy(false);
     if (!response.ok) {
-      setMessage(body.error ?? 'Could not unpublish drive teams.');
+      toast.add({
+        type: 'error',
+        title: 'Could not unpublish drive teams',
+        description: body.error ?? 'Please try again.',
+      });
       return false;
     }
     setPublishedAt(null);
     setHasUnpublishedChanges(true);
-    setMessage('Drive teams unpublished. Your plan is still saved.');
+    toast.add({
+      type: 'success',
+      title: 'Drive teams unpublished',
+      description: 'Your plan is still saved.',
+    });
     return true;
   }
 
   function renderSection(phase: DrivePhase) {
     const phaseSlots = slots.filter((slot) => slot.phase === phase);
+    const savedExpectedCount = phaseSlots.length
+      ? String(phaseSlots.length)
+      : '';
     return (
       <section className="space-y-2" key={phase}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="font-semibold">{phaseTitle[phase]}</h3>
-          <div className="flex items-center gap-2">
-            <label className="flex items-center gap-2 text-sm font-medium">
-              Expected matches
-              <input
-                aria-label={`Expected ${phaseTitle[phase]} matches`}
-                className="h-9 w-24 rounded-md border bg-background px-2 text-center text-sm tabular-nums"
-                type="number"
-                min={1}
-                max={maxExpectedMatches}
-                inputMode="numeric"
-                value={expectedInput[phase]}
-                onChange={(event) =>
-                  setExpectedInput((current) => ({
-                    ...current,
-                    [phase]: event.target.value,
-                  }))
-                }
-              />
-            </label>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={busy}
-              onClick={() => void setExpectedMatches(phase)}
-            >
-              Set count
-            </Button>
-          </div>
+          {phase === 'qual' ? (
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                Expected matches
+                <input
+                  aria-label="Expected qualification matches"
+                  className="h-9 w-24 rounded-md border bg-background px-2 text-center text-sm tabular-nums"
+                  type="number"
+                  min={1}
+                  max={maxExpectedMatches}
+                  inputMode="numeric"
+                  value={expectedInput}
+                  onChange={(event) => setExpectedInput(event.target.value)}
+                />
+              </label>
+              {expectedInput !== savedExpectedCount && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => void setExpectedMatches()}
+                >
+                  Set count
+                </Button>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {defaultPlayoffMatches} planned matches
+            </p>
+          )}
         </div>
 
         {phaseSlots.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Set the expected {phase === 'playoff' ? 'playoff' : 'qualification'}{' '}
-            matches to create rows.
+            {phase === 'playoff'
+              ? 'Preparing playoff matches…'
+              : 'Set the expected qualification matches to create rows.'}
           </p>
         ) : (
           <div
@@ -549,17 +593,23 @@ export function DriveTeamPlanner({
     <Card className="mb-4">
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
         <CardTitle>Drive Team</CardTitle>
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-          <p className="text-right text-xs text-muted-foreground">
+        <div className="ml-auto flex flex-nowrap items-center justify-end gap-2">
+          <p className="shrink-0 text-right text-xs whitespace-nowrap text-muted-foreground">
             {publishedAt
               ? hasUnpublishedChanges
-                ? 'Unpublished changes'
-                : `Published ${new Date(publishedAt).toLocaleString()}`
+                ? 'Changes not published'
+                : new Date(publishedAt).toLocaleString([], {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  })
               : 'Not published yet'}
           </p>
           {publishedAt && (
             <Button
               type="button"
+              size="sm"
               variant="destructive"
               disabled={busy}
               onClick={() => setUnpublishConfirmOpen(true)}
@@ -567,26 +617,19 @@ export function DriveTeamPlanner({
               Unpublish
             </Button>
           )}
-          <Button
-            type="button"
-            disabled={busy || (publishedAt !== null && !hasUnpublishedChanges)}
-            onClick={() => void publishDriveTeams()}
-          >
-            {busy
-              ? 'Working…'
-              : publishedAt
-                ? 'Publish drive team changes'
-                : 'Publish drive teams'}
-          </Button>
+          {(!publishedAt || hasUnpublishedChanges) && (
+            <Button
+              type="button"
+              size="sm"
+              disabled={busy}
+              onClick={() => void publishDriveTeams()}
+            >
+              {busy ? 'Working…' : publishedAt ? 'Publish changes' : 'Publish'}
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {message && (
-          <p className="text-sm text-muted-foreground" role="status">
-            {message}
-          </p>
-        )}
-
         {renderSection('qual')}
         {renderSection('playoff')}
       </CardContent>
