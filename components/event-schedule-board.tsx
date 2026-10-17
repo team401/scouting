@@ -12,6 +12,7 @@ import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { toast } from '@/components/ui/toast';
 import {
   Popover,
   PopoverContent,
@@ -406,13 +407,11 @@ export function EventScheduleBoard({
   const [scheduleDays, setScheduleDays] = useState<ScheduleDay[]>([]);
   const [roles, setRoles] = useState<RoleItem[]>([]);
   const [scouting, setScouting] = useState<ScoutItem[]>([]);
-  const [message, setMessage] = useState('');
   const [busyCell, setBusyCell] = useState('');
   const [attendeeIds, setAttendeeIds] = useState<Set<string>>(new Set());
   const [attendanceLoaded, setAttendanceLoaded] = useState(false);
   const [rosterOpen, setRosterOpen] = useState(false);
   const [rosterSearch, setRosterSearch] = useState('');
-  const [rosterMessage, setRosterMessage] = useState('');
   const [publishedAt, setPublishedAt] = useState<number | null>(null);
   const [hasUnpublishedChanges, setHasUnpublishedChanges] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -455,9 +454,12 @@ export function EventScheduleBoard({
       );
     } catch (error) {
       setControls(previous);
-      setMessage(
-        error instanceof Error ? error.message : 'Could not save day settings.',
-      );
+      toast.add({
+        type: 'error',
+        title: 'Could not save day settings',
+        description:
+          error instanceof Error ? error.message : 'Please try again.',
+      });
     }
   }
 
@@ -642,9 +644,12 @@ export function EventScheduleBoard({
 
   useEffect(() => {
     const showError = (error: unknown) =>
-      setMessage(
-        error instanceof Error ? error.message : 'Could not load the schedule.',
-      );
+      toast.add({
+        type: 'error',
+        title: 'Could not load the schedule',
+        description:
+          error instanceof Error ? error.message : 'Please try again.',
+      });
     // One quiet retry covers a transient connection drop before showing an error.
     void load().catch(() => {
       window.setTimeout(() => void load().catch(showError), 1500);
@@ -777,7 +782,6 @@ export function EventScheduleBoard({
     const existing = memberItems[member.guestSlot ?? 0];
     const key = `${member.scheduleRowKey}:${startsAt}`;
     setBusyCell(key);
-    setMessage('');
     try {
       if (existing) {
         const endpoint =
@@ -860,11 +864,12 @@ export function EventScheduleBoard({
       setHasUnpublishedChanges(true);
     } catch (error) {
       await load().catch(() => undefined);
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : 'Could not update the schedule.',
-      );
+      toast.add({
+        type: 'error',
+        title: 'Could not update the schedule',
+        description:
+          error instanceof Error ? error.message : 'Please try again.',
+      });
     } finally {
       setBusyCell('');
     }
@@ -892,7 +897,7 @@ export function EventScheduleBoard({
         const label = rows[rowOffset][columnOffset].trim();
         const value = label ? scheduleValue(label, choices) : '';
         if (label && !value) {
-          setMessage(invalidRoleMessage(label));
+          toast.add({ type: 'warning', title: invalidRoleMessage(label) });
           return;
         }
         await changeCell(member, hour, value ?? '');
@@ -916,7 +921,6 @@ export function EventScheduleBoard({
   }
 
   async function saveAttendance() {
-    setRosterMessage('');
     const response = await fetch('/api/event-attendees', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
@@ -926,12 +930,18 @@ export function EventScheduleBoard({
       error?: string;
       userIds?: string[];
     };
-    if (!response.ok)
-      return setRosterMessage(body.error ?? 'Could not save event attendance.');
+    if (!response.ok) {
+      toast.add({
+        type: 'error',
+        title: 'Could not save the Event Roster',
+        description: body.error ?? 'Please try again.',
+      });
+      return;
+    }
     attendanceDirtyRef.current = false;
     setAttendeeIds(new Set(body.userIds ?? []));
-    setRosterMessage('Saved');
     setRosterOpen(false);
+    toast.add({ type: 'success', title: 'Event Roster saved' });
     await onChanged();
   }
 
@@ -950,7 +960,6 @@ export function EventScheduleBoard({
   }
 
   async function saveScheduleDay() {
-    setMessage('');
     const response = await fetch('/api/event-schedule-days', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
@@ -961,7 +970,11 @@ export function EventScheduleBoard({
       error?: string;
     };
     if (!response.ok || !body.day) {
-      setMessage(body.error ?? 'Could not save this event day.');
+      toast.add({
+        type: 'error',
+        title: 'Could not save this event day',
+        description: body.error ?? 'Please try again.',
+      });
       return;
     }
     setScheduleDays((current) =>
@@ -969,12 +982,11 @@ export function EventScheduleBoard({
         (a, b) => a.date.localeCompare(b.date),
       ),
     );
-    setMessage('Event day saved.');
+    toast.add({ type: 'success', title: 'Event day saved' });
   }
 
   async function publishSchedule() {
     setPublishing(true);
-    setMessage('');
     const response = await fetch('/api/event-schedule-publish', {
       method: 'POST',
     });
@@ -985,48 +997,65 @@ export function EventScheduleBoard({
     }>(response);
     setPublishing(false);
     if (!response.ok || !body.publishedAt) {
-      setMessage(body.error ?? 'Could not publish the schedule.');
+      toast.add({
+        type: 'error',
+        title: 'Could not publish roles',
+        description: body.error ?? 'Please try again.',
+      });
       return;
     }
     setPublishedAt(body.publishedAt);
     setHasUnpublishedChanges(false);
-    setMessage('Shifts published to the team.');
     await onChanged();
   }
 
   async function unpublishSchedule() {
     setPublishing(true);
-    setMessage('');
     const response = await fetch('/api/event-schedule-publish', {
       method: 'DELETE',
     });
     const body = await readBody<{ error?: string }>(response);
     setPublishing(false);
     if (!response.ok) {
-      setMessage(body.error ?? 'Could not unpublish the schedule.');
+      toast.add({
+        type: 'error',
+        title: 'Could not unpublish roles',
+        description: body.error ?? 'Please try again.',
+      });
       return false;
     }
     setPublishedAt(null);
     setHasUnpublishedChanges(true);
-    setMessage('Shifts unpublished. Your draft is still available.');
+    toast.add({
+      type: 'success',
+      title: 'Roles unpublished',
+      description: 'Your draft is still available.',
+    });
     await onChanged();
   }
 
   async function removeScheduleDay(day: string) {
-    setMessage('');
     const response = await fetch(
       `/api/event-schedule-days?date=${encodeURIComponent(day)}`,
       { method: 'DELETE' },
     );
     const body = await readBody<{ error?: string }>(response);
     if (!response.ok) {
-      setMessage(body.error ?? 'Could not remove this event day.');
+      toast.add({
+        type: 'error',
+        title: 'Could not remove this event day',
+        description: body.error ?? 'Please try again.',
+      });
       return;
     }
     const remaining = scheduleDays.filter((item) => item.date !== day);
     setScheduleDays(remaining);
     if (remaining.length) selectScheduleDay(remaining[0]);
-    setMessage('Event day removed. Existing assignments were preserved.');
+    toast.add({
+      type: 'success',
+      title: 'Event day removed',
+      description: 'Existing assignments were preserved.',
+    });
   }
 
   // Update day is needed only when the displayed hours differ from the saved window.
@@ -1051,11 +1080,6 @@ export function EventScheduleBoard({
               Event Roster · {activeMembers.length}{' '}
               {activeMembers.length === 1 ? 'person' : 'people'}
             </span>
-            {rosterMessage && (
-              <span className="font-normal text-muted-foreground">
-                {rosterMessage}
-              </span>
-            )}
             <span className="ml-auto flex items-center gap-1 text-sm font-normal text-muted-foreground">
               {rosterOpen ? 'Hide' : 'Show'}
               <ChevronDown
@@ -1170,17 +1194,23 @@ export function EventScheduleBoard({
                 ))}
               </div>
             )}
-            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-              <p className="text-right text-xs text-muted-foreground">
+            <div className="ml-auto flex flex-nowrap items-center justify-end gap-2">
+              <p className="shrink-0 text-right text-xs whitespace-nowrap text-muted-foreground">
                 {publishedAt
                   ? hasUnpublishedChanges
-                    ? 'Unpublished changes'
-                    : `Published ${new Date(publishedAt).toLocaleString()}`
+                    ? 'Changes not published'
+                    : new Date(publishedAt).toLocaleString([], {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })
                   : 'Not published yet'}
               </p>
               {publishedAt && (
                 <Button
                   type="button"
+                  size="sm"
                   variant="destructive"
                   disabled={publishing}
                   onClick={() => setUnpublishConfirmOpen(true)}
@@ -1190,6 +1220,7 @@ export function EventScheduleBoard({
               )}
               <Button
                 type="button"
+                size="sm"
                 disabled={
                   publishing || (!hasUnpublishedChanges && publishedAt !== null)
                 }
@@ -1198,7 +1229,7 @@ export function EventScheduleBoard({
                 {publishing
                   ? 'Working…'
                   : publishedAt
-                    ? 'Publish shift changes'
+                    ? 'Publish changes'
                     : 'Publish roles'}
               </Button>
             </div>
@@ -1432,7 +1463,10 @@ export function EventScheduleBoard({
                               void changeCell(member, hour, value)
                             }
                             onInvalid={(text) =>
-                              setMessage(invalidRoleMessage(text))
+                              toast.add({
+                                type: 'warning',
+                                title: invalidRoleMessage(text),
+                              })
                             }
                             onNavigate={(rowDelta, columnDelta) =>
                               focusCell(
@@ -1484,11 +1518,6 @@ export function EventScheduleBoard({
               </tfoot>
             </table>
           </div>
-          {message && (
-            <p className="px-3 text-sm text-destructive" role="status">
-              {message}
-            </p>
-          )}
           <ConfirmActionDialog
             open={unpublishConfirmOpen}
             onOpenChange={setUnpublishConfirmOpen}
