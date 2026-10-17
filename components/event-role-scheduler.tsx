@@ -250,7 +250,7 @@ function ScheduleRoleBadge({ entry }: { entry: ScheduleEntry }) {
         }}
       >
         <PopoverTrigger
-          className={`rounded-md px-2.5 py-1 text-left text-sm font-semibold underline decoration-dotted underline-offset-4 ${entry.color}`}
+          className="text-left text-sm font-semibold underline decoration-dotted underline-offset-4 sm:text-center"
         >
           {entry.label}
         </PopoverTrigger>
@@ -517,22 +517,23 @@ export function PersonalEventSchedule({
               <h3 className="pt-4 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase first:pt-0">
                 {day}
               </h3>
-              <div className="divide-y">
+              <div className="space-y-2">
                 {entries.map((entry) => (
                   <div
                     key={entry.id}
-                    className="flex items-center justify-between gap-3 py-2.5"
+                    className={`grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2.5 sm:grid-cols-[1fr_auto_1fr] ${entry.color}`}
                   >
-                    {entry.role ? (
-                      <ScheduleRoleBadge entry={entry} />
-                    ) : (
-                      <span
-                        className={`rounded-md px-2.5 py-1 text-sm font-semibold ${entry.color}`}
-                      >
-                        {entry.label}
-                      </span>
-                    )}
-                    <span className="shrink-0 text-sm whitespace-nowrap text-muted-foreground tabular-nums">
+                    <span className="hidden sm:block" aria-hidden="true" />
+                    <div className="min-w-0 justify-self-start text-left sm:justify-self-center sm:text-center">
+                      {entry.role ? (
+                        <ScheduleRoleBadge entry={entry} />
+                      ) : (
+                        <span className="text-sm font-semibold">
+                          {entry.label}
+                        </span>
+                      )}
+                    </div>
+                    <span className="justify-self-end text-sm whitespace-nowrap opacity-75 tabular-nums">
                       {entry.endsAt === null
                         ? formatTime(entry.startsAt)
                         : `${formatTime(entry.startsAt)}–${formatTime(entry.endsAt)}`}
