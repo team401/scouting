@@ -225,6 +225,7 @@ type ScheduleEntry = {
   id: string;
   role?: EventRole;
   label: string;
+  detail?: string;
   color: string;
   startsAt: number;
   // Null for a single-time entry, such as a match start.
@@ -232,6 +233,9 @@ type ScheduleEntry = {
 };
 
 type PersonalSchedule = { items: Assignment[]; shifts: ScoutShift[] };
+
+const personalDriveTeamClass =
+  'bg-purple-200 text-purple-950 dark:bg-purple-900 dark:text-purple-100';
 
 function ScheduleRoleBadge({ entry }: { entry: ScheduleEntry }) {
   const [open, setOpen] = useState(false);
@@ -466,8 +470,12 @@ export function PersonalEventSchedule({
           : [
               {
                 id: `drive:${assignment.slotNumber}:${assignment.position}`,
-                label: `${assignment.position} · ${matchLabel(assignment.matchNumber, assignment.compLevel)}`,
-                color: assignmentClass('Drive Team'),
+                label: assignment.position,
+                detail: matchLabel(
+                  assignment.matchNumber,
+                  assignment.compLevel,
+                ),
+                color: personalDriveTeamClass,
                 startsAt: assignment.startsAt,
                 endsAt: null,
               },
@@ -532,9 +540,11 @@ export function PersonalEventSchedule({
                       )}
                     </div>
                     <span className="justify-self-end text-sm whitespace-nowrap opacity-75 tabular-nums">
-                      {entry.endsAt === null
-                        ? formatTime(entry.startsAt)
-                        : `${formatTime(entry.startsAt)}–${formatTime(entry.endsAt)}`}
+                      {entry.detail
+                        ? `${entry.detail} · ${formatTime(entry.startsAt)}`
+                        : entry.endsAt === null
+                          ? formatTime(entry.startsAt)
+                          : `${formatTime(entry.startsAt)}–${formatTime(entry.endsAt)}`}
                     </span>
                   </div>
                 ))}
@@ -557,7 +567,7 @@ export function PersonalEventSchedule({
             {untimedDriveTeam.map((item) => (
               <div
                 key={`${item.slotNumber}:${item.position}`}
-                className={`grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2.5 sm:grid-cols-[1fr_auto_1fr] ${assignmentClass('Drive Team')}`}
+                className={`grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2.5 sm:grid-cols-[1fr_auto_1fr] ${personalDriveTeamClass}`}
               >
                 <span className="hidden sm:block" aria-hidden="true" />
                 <span className="min-w-0 justify-self-start text-left font-semibold sm:justify-self-center sm:text-center">
@@ -565,7 +575,7 @@ export function PersonalEventSchedule({
                 </span>
                 <span className="justify-self-end text-sm whitespace-nowrap opacity-75">
                   {item.matchNumber === null
-                    ? `${plannedLabel(item.phase, item.slotNumber)} · not released yet`
+                    ? plannedLabel(item.phase, item.slotNumber)
                     : `${matchLabel(item.matchNumber, item.compLevel)} · time TBA`}
                 </span>
               </div>
