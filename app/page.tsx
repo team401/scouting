@@ -2440,8 +2440,10 @@ export default function Home() {
     document.documentElement.classList.toggle('dark', next);
     localStorage.setItem('team401-theme', next ? 'dark' : 'light');
     document
-      .querySelector('meta[name="theme-color"]')
-      ?.setAttribute('content', next ? '#24282b' : '#65152f');
+      .querySelectorAll('meta[name="theme-color"]')
+      .forEach((meta) =>
+        meta.setAttribute('content', next ? '#24282b' : '#f3f5f7'),
+      );
     setDark(next);
   }
 
