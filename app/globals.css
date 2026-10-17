@@ -709,6 +709,19 @@ select option {
 .member-card-role [data-slot='badge'] {
   width: fit-content;
 }
+.member-owner-role {
+  display: flex;
+  width: 100%;
+  height: 36px;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--primary) 65%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--primary) 18%, var(--background));
+  padding: 0 8px;
+  color: var(--foreground);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
 .member-card-actions {
   display: flex;
   gap: 6px;

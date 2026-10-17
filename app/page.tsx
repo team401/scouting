@@ -2655,7 +2655,7 @@ export default function Home() {
 
               {scoutingPhase === 'auto' && (
                 <Card className="py-0">
-                  <CardContent className="divide-y divide-border p-0">
+                  <CardContent className="p-0">
                     <Counter
                       label="Fuel scored"
                       value={autoFuel}
@@ -2719,7 +2719,7 @@ export default function Home() {
 
               {scoutingPhase === 'tele' && (
                 <Card className="py-0">
-                  <CardContent className="divide-y divide-border p-0">
+                  <CardContent className="p-0">
                     <Counter
                       label="Fuel scored"
                       value={activeFuel}
@@ -2745,125 +2745,107 @@ export default function Home() {
               )}
 
               {scoutingPhase === 'post' && (
-                <>
-                  {noShow ? (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>No-show report</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
+                <Card>
+                  <CardContent className="space-y-5">
+                    {noShow ? (
+                      <section className="space-y-2">
+                        <h2 className="font-semibold">No-show report</h2>
                         <p>
                           This report will submit with match observations set to
                           zero.
                         </p>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <>
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Field movement</CardTitle>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-3 gap-2">
-                          {['Trench', 'Bump', 'Both'].map((item) => (
-                            <button
-                              key={item}
-                              onClick={() => setPath(item)}
-                              className={
-                                path === item ? 'choice selected' : 'choice'
-                              }
-                            >
-                              {path === item && <Check />}
-                              {item}
-                            </button>
-                          ))}
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Played defense</CardTitle>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                          {[
-                            { value: null, label: 'N/A' },
-                            { value: 1, label: 'Ineffective' },
-                            { value: 2, label: 'Some impact' },
-                            { value: 3, label: 'Effective' },
-                            { value: 4, label: 'Dominant' },
-                          ].map(({ value, label }) => (
-                            <button
-                              type="button"
-                              onClick={() => setDefenseRating(value)}
-                              aria-pressed={defenseRating === value}
-                              className={
-                                defenseRating === value
-                                  ? 'choice selected min-h-16 flex-col gap-1 px-2 text-center text-sm'
-                                  : 'choice min-h-16 flex-col gap-1 px-2 text-center text-sm'
-                              }
-                              key={label}
-                            >
-                              <strong className="text-lg">{value}</strong>
-                              <span>{label}</span>
-                            </button>
-                          ))}
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardHeader className="border-b">
-                          <CardTitle>Scoring profile</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4 pt-4">
-                          <div>
-                            <p className="mb-2 font-semibold">
-                              Typical shooting range
-                            </p>
-                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                              {['Near', 'Midfield', 'Far', 'Mixed'].map(
-                                (item) => (
-                                  <button
-                                    className={
-                                      shootingRange === item
-                                        ? 'choice selected'
-                                        : 'choice'
-                                    }
-                                    onClick={() => setShootingRange(item)}
-                                    key={item}
-                                  >
-                                    {shootingRange === item && <Check />}
-                                    {item}
-                                  </button>
-                                ),
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardHeader className="border-b">
-                          <CardTitle>Endgame tower</CardTitle>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                          {['None', 'Level 1', 'Level 2', 'Level 3'].map(
-                            (item) => (
+                      </section>
+                    ) : (
+                      <>
+                        <section className="space-y-2">
+                          <h2 className="font-semibold">Field movement</h2>
+                          <div className="grid grid-cols-3 gap-2">
+                            {['Trench', 'Bump', 'Both'].map((item) => (
                               <button
-                                onClick={() => setTower(item)}
                                 key={item}
+                                onClick={() => setPath(item)}
                                 className={
-                                  tower === item ? 'choice selected' : 'choice'
+                                  path === item ? 'choice selected' : 'choice'
                                 }
                               >
-                                {tower === item && <Check />}
+                                {path === item && <Check />}
                                 {item}
                               </button>
-                            ),
-                          )}
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Reliability and notes</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
+                            ))}
+                          </div>
+                        </section>
+                        <section className="space-y-2">
+                          <h2 className="font-semibold">Played defense</h2>
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                            {[
+                              { value: null, label: 'N/A' },
+                              { value: 1, label: 'Ineffective' },
+                              { value: 2, label: 'Some impact' },
+                              { value: 3, label: 'Effective' },
+                              { value: 4, label: 'Dominant' },
+                            ].map(({ value, label }) => (
+                              <button
+                                type="button"
+                                onClick={() => setDefenseRating(value)}
+                                aria-pressed={defenseRating === value}
+                                className={
+                                  defenseRating === value
+                                    ? 'choice selected min-h-16 flex-col gap-1 px-2 text-center text-sm'
+                                    : 'choice min-h-16 flex-col gap-1 px-2 text-center text-sm'
+                                }
+                                key={label}
+                              >
+                                <strong className="text-lg">{value}</strong>
+                                <span>{label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </section>
+                        <section>
+                          <p className="mb-2 font-semibold">
+                            Typical shooting range
+                          </p>
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            {['Near', 'Midfield', 'Far', 'Mixed'].map(
+                              (item) => (
+                                <button
+                                  className={
+                                    shootingRange === item
+                                      ? 'choice selected'
+                                      : 'choice'
+                                  }
+                                  onClick={() => setShootingRange(item)}
+                                  key={item}
+                                >
+                                  {shootingRange === item && <Check />}
+                                  {item}
+                                </button>
+                              ),
+                            )}
+                          </div>
+                        </section>
+                        <section>
+                          <p className="mb-2 font-semibold">Endgame tower</p>
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            {['None', 'Level 1', 'Level 2', 'Level 3'].map(
+                              (item) => (
+                                <button
+                                  onClick={() => setTower(item)}
+                                  key={item}
+                                  className={
+                                    tower === item
+                                      ? 'choice selected'
+                                      : 'choice'
+                                  }
+                                >
+                                  {tower === item && <Check />}
+                                  {item}
+                                </button>
+                              ),
+                            )}
+                          </div>
+                        </section>
+                        <section className="space-y-3">
                           <div>
                             <p className="mb-2 font-semibold">
                               Robot reliability
@@ -2896,11 +2878,11 @@ export default function Home() {
                             onChange={(event) => setNotes(event.target.value)}
                             placeholder="Strategy-relevant observations, failure details, defense quality…"
                           />
-                        </CardContent>
-                      </Card>
-                    </>
-                  )}
-                </>
+                        </section>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
               )}
 
               <div className="grid grid-cols-2 gap-2">
@@ -3005,7 +2987,7 @@ export default function Home() {
             <div className="pit-mobile-picker min-w-0">
               <select
                 aria-label="Team to pit scout"
-                className="h-11 w-full min-w-0 max-w-full truncate rounded-md border bg-background px-3 text-center text-foreground"
+                className="h-11 w-full min-w-0 max-w-full truncate rounded-md border bg-background px-3 text-center text-foreground [text-align-last:center]"
                 value={pitTeam ?? ''}
                 onChange={(event) =>
                   setPitTeam(
@@ -3047,18 +3029,24 @@ export default function Home() {
                       onClick={() => setPitTeam(team)}
                       key={team}
                     >
-                      <strong>
-                        Team {team}
+                      <strong>Team {team}</strong>
+                      <span className="pit-queue-status">
                         {eventPack?.teams.find(
                           (item) => item.teamNumber === team,
-                        )?.name
-                          ? ` — ${eventPack.teams.find((item) => item.teamNumber === team)?.name}`
-                          : ''}
-                      </strong>
-                      <span className="pit-queue-status">
-                        {entry
-                          ? `${complete ? `Scouted by ${entry.scoutName}` : `In Progress · ${entry.scoutName}`} · ${new Date(entry.updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
-                          : 'Needs scouting'}
+                        )?.name && (
+                          <span className="block truncate text-muted-foreground">
+                            {
+                              eventPack.teams.find(
+                                (item) => item.teamNumber === team,
+                              )?.name
+                            }
+                          </span>
+                        )}
+                        <span className="block">
+                          {entry
+                            ? `${complete ? `Scouted by ${entry.scoutName}` : `In Progress · ${entry.scoutName}`} · ${new Date(entry.updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
+                            : 'Needs scouting'}
+                        </span>
                       </span>
                       {complete ? <Check /> : <ChevronRight />}
                     </button>
@@ -3073,8 +3061,8 @@ export default function Home() {
               </CardContent>
             </Card>
             <Card>
-              <CardHeader>
-                <CardTitle className="w-full justify-center text-center">
+              <CardHeader className="text-center">
+                <CardTitle className="w-full text-center">
                   {pitTeam
                     ? `Team ${pitTeam}${eventPack?.teams.find((item) => item.teamNumber === pitTeam)?.name ? ` — ${eventPack.teams.find((item) => item.teamNumber === pitTeam)?.name}` : ''}`
                     : 'Choose a team'}
@@ -4487,7 +4475,7 @@ export default function Home() {
                           {guest ? (
                             <Badge variant="outline">Guest scout</Badge>
                           ) : member.role === 'owner' ? (
-                            <Badge>Owner</Badge>
+                            <div className="member-owner-role">Owner</div>
                           ) : (
                             <select
                               aria-label={`Scouting role for ${member.name}`}
@@ -4555,7 +4543,7 @@ export default function Home() {
           </div>
         )}
         {activeView === 'Account' && (
-          <div className="grid gap-4 p-4 sm:p-6">
+          <div className="grid items-start gap-4 p-4 sm:p-6 lg:grid-cols-3">
             <Card>
               <CardHeader>
                 <CardTitle>Account</CardTitle>
@@ -4671,7 +4659,7 @@ export default function Home() {
                 </form>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="lg:col-span-3">
               <CardHeader>
                 <CardTitle>Other signed-in devices</CardTitle>
               </CardHeader>
@@ -4679,18 +4667,23 @@ export default function Home() {
                 {accountSessions
                   .filter((item) => item.id !== currentSessionId)
                   .map((item) => (
-                    <div className="rounded-lg border p-2.5" key={item.id}>
-                      <p
-                        className="truncate text-sm font-medium"
-                        title={item.userAgent ?? undefined}
-                      >
-                        {formatDeviceName(item.userAgent)}
-                      </p>
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {item.location ?? 'Location unavailable'}
-                      </p>
+                    <div
+                      className="flex min-w-0 items-center gap-3 rounded-lg border p-2.5"
+                      key={item.id}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className="truncate text-sm font-medium"
+                          title={item.userAgent ?? undefined}
+                        >
+                          {formatDeviceName(item.userAgent)}
+                        </p>
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                          {item.location ?? 'Location unavailable'}
+                        </p>
+                      </div>
                       <Button
-                        className="mt-2 w-full"
+                        className="shrink-0"
                         size="sm"
                         variant="outline"
                         onClick={() => void revokeSession(item.id)}

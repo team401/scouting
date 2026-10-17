@@ -1373,7 +1373,7 @@ export function EventScheduleBoard({
                     }
                     key={member.scheduleRowKey}
                   >
-                    <th className="sticky left-0 z-20 whitespace-nowrap border-r border-b border-slate-300 bg-inherit px-3 py-2 text-left font-medium dark:border-border">
+                    <th className="sticky left-0 z-20 whitespace-nowrap border-r border-b border-slate-300 bg-inherit px-3 py-2 text-left align-middle font-medium dark:border-border">
                       {scheduleMemberName(member)}
                       {isGuestMember(member) && (
                         <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal">
@@ -1395,7 +1395,7 @@ export function EventScheduleBoard({
                       const key = `${member.scheduleRowKey}:${startsAt}`;
                       return (
                         <td
-                          className="h-11 border-r border-b border-slate-300 p-1 dark:border-border"
+                          className="h-11 border-r border-b border-slate-300 p-1 align-middle dark:border-border"
                           key={hour}
                           style={{ minWidth: hourColumnWidth }}
                         >

@@ -448,14 +448,14 @@ export function DriveTeamPlanner({ members }: { members: PlannerMember[] }) {
                     }
                     key={`${slot.phase}:${slot.slotNumber}`}
                   >
-                    <th className="border-r border-b border-slate-300 bg-inherit px-3 py-2 text-center align-top font-medium tabular-nums dark:border-border">
+                    <th className="border-r border-b border-slate-300 bg-inherit px-3 py-2 text-center align-middle font-medium tabular-nums dark:border-border">
                       {phase === 'playoff'
                         ? `Playoff ${slot.slotNumber}`
                         : slot.slotNumber}
                     </th>
                     {drivePositions.map((position) => (
                       <td
-                        className="border-r border-b border-slate-300 px-2 py-1 align-top dark:border-border"
+                        className="border-r border-b border-slate-300 px-2 py-1 align-middle dark:border-border"
                         key={position.key}
                       >
                         <DrivePersonInput
@@ -473,7 +473,7 @@ export function DriveTeamPlanner({ members }: { members: PlannerMember[] }) {
                         />
                       </td>
                     ))}
-                    <td className="border-b border-slate-300 bg-inherit px-3 py-2 text-center align-top whitespace-nowrap text-muted-foreground tabular-nums dark:border-border">
+                    <td className="border-b border-slate-300 bg-inherit px-3 py-2 text-center align-middle whitespace-nowrap text-muted-foreground tabular-nums dark:border-border">
                       {slot.official
                         ? `${matchLabel(slot.official.matchNumber, slot.official.compLevel)}${matchTime(slot.official.startsAt)}`
                         : 'Not released yet'}
