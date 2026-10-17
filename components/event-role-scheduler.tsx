@@ -14,7 +14,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { assignmentClass } from '@/components/event-schedule-board';
+import { assignmentClass } from '@/lib/assignment-class';
 import { matchLabel, plannedLabel, type DrivePhase } from '@/lib/drive-team';
 import { getCachedValue, saveCachedValue } from '@/lib/offline-db';
 import {

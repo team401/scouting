@@ -1,6 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   ArrowDown,
   ArrowUp,
@@ -39,20 +47,9 @@ import {
   TacticalBoard,
   type TacticalBoardData,
 } from '@/components/tactical-board';
-import { PickListWorkspace } from '@/components/pick-list-workspace';
-import { MatchVideoLibrary } from '@/components/match-video-library';
-import { TeamComparison } from '@/components/team-comparison';
-import { TeamStatsDialog } from '@/components/team-stats-dialog';
 import { TeamRobotPhoto } from '@/components/team-robot-photo';
 import { TeamTrendChart, type TeamTrend } from '@/components/team-trend-chart';
-import { ScoutingOperations } from '@/components/scouting-operations';
 import { PersonalEventSchedule } from '@/components/event-role-scheduler';
-import { DriveTeamPlanner } from '@/components/drive-team-planner';
-import { EventScheduleBoard } from '@/components/event-schedule-board';
-import { EventTeamAliases } from '@/components/event-team-aliases';
-import { QrRelay } from '@/components/qr-relay';
-import { MatchSubmissionQr } from '@/components/match-submission-qr';
-import { GuestPassManager } from '@/components/guest-pass-manager';
 import { ConfirmActionDialog } from '@/components/confirm-action-dialog';
 import { PwaInstallButton } from '@/components/service-worker-register';
 import {
@@ -72,6 +69,79 @@ import {
   canReopenEntries,
   scoutEntryMutationId,
 } from '@/lib/scouting-policy';
+
+const PickListWorkspace = lazy(() =>
+  import('@/components/pick-list-workspace').then((module) => ({
+    default: module.PickListWorkspace,
+  })),
+);
+const MatchVideoLibrary = lazy(() =>
+  import('@/components/match-video-library').then((module) => ({
+    default: module.MatchVideoLibrary,
+  })),
+);
+const TeamComparison = lazy(() =>
+  import('@/components/team-comparison').then((module) => ({
+    default: module.TeamComparison,
+  })),
+);
+const TeamStatsDialog = lazy(() =>
+  import('@/components/team-stats-dialog').then((module) => ({
+    default: module.TeamStatsDialog,
+  })),
+);
+const ScoutingOperations = lazy(() =>
+  import('@/components/scouting-operations').then((module) => ({
+    default: module.ScoutingOperations,
+  })),
+);
+const DriveTeamPlanner = lazy(() =>
+  import('@/components/drive-team-planner').then((module) => ({
+    default: module.DriveTeamPlanner,
+  })),
+);
+const EventScheduleBoard = lazy(() =>
+  import('@/components/event-schedule-board').then((module) => ({
+    default: module.EventScheduleBoard,
+  })),
+);
+const EventTeamAliases = lazy(() =>
+  import('@/components/event-team-aliases').then((module) => ({
+    default: module.EventTeamAliases,
+  })),
+);
+const QrRelay = lazy(() =>
+  import('@/components/qr-relay').then((module) => ({
+    default: module.QrRelay,
+  })),
+);
+const MatchSubmissionQr = lazy(() =>
+  import('@/components/match-submission-qr').then((module) => ({
+    default: module.MatchSubmissionQr,
+  })),
+);
+const GuestPassManager = lazy(() =>
+  import('@/components/guest-pass-manager').then((module) => ({
+    default: module.GuestPassManager,
+  })),
+);
+
+function DeferredSection({ children }: { children: ReactNode }) {
+  return (
+    <Suspense
+      fallback={
+        <div
+          className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground"
+          role="status"
+        >
+          Loading…
+        </div>
+      }
+    >
+      {children}
+    </Suspense>
+  );
+}
 
 type View =
   | 'Home'
@@ -2525,13 +2595,15 @@ export default function Home() {
                       allowFullScreen
                     />
                   ) : (
-                    <MatchVideoLibrary
-                      matchId={currentMatch?.id ?? null}
-                      matchLabel={
-                        currentMatch ? matchLabel(currentMatch) : 'this match'
-                      }
-                      playbackOnly
-                    />
+                    <DeferredSection>
+                      <MatchVideoLibrary
+                        matchId={currentMatch?.id ?? null}
+                        matchLabel={
+                          currentMatch ? matchLabel(currentMatch) : 'this match'
+                        }
+                        playbackOnly
+                      />
+                    </DeferredSection>
                   )}
                   <p className="text-sm text-muted-foreground">
                     Play, pause, and scrub the match while completing the normal
@@ -3008,12 +3080,14 @@ export default function Home() {
                 submissionStatus === 'synchronized') && (
                 <>
                   {submittedMatchMutation && eventPack && (
-                    <MatchSubmissionQr
-                      mutation={submittedMatchMutation}
-                      organizationId={eventPack.organizationId}
-                      eventKey={eventPack.event.key}
-                      online={online}
-                    />
+                    <DeferredSection>
+                      <MatchSubmissionQr
+                        mutation={submittedMatchMutation}
+                        organizationId={eventPack.organizationId}
+                        eventKey={eventPack.event.key}
+                        online={online}
+                      />
+                    </DeferredSection>
                   )}
                   <Button
                     className="h-12 w-full text-base"
@@ -3893,22 +3967,25 @@ export default function Home() {
             </Card>
           </div>
         )}
-        <TeamStatsDialog
-          teamNumber={planStatsTeam}
-          teamName={
-            eventPack?.teams.find((team) => team.teamNumber === planStatsTeam)
-              ?.name
-          }
-          summary={
-            planStatsTeam
-              ? planStats.find((team) => team.teamNumber === planStatsTeam)
-              : undefined
-          }
-          eventSummaries={planStats}
-          onOpenChange={(open) => {
-            if (!open) setPlanStatsTeam(null);
-          }}
-        />
+        {planStatsTeam && (
+          <DeferredSection>
+            <TeamStatsDialog
+              teamNumber={planStatsTeam}
+              teamName={
+                eventPack?.teams.find(
+                  (team) => team.teamNumber === planStatsTeam,
+                )?.name
+              }
+              summary={planStats.find(
+                (team) => team.teamNumber === planStatsTeam,
+              )}
+              eventSummaries={planStats}
+              onOpenChange={(open) => {
+                if (!open) setPlanStatsTeam(null);
+              }}
+            />
+          </DeferredSection>
+        )}
         {activeView === 'Admin' && isAdmin && (
           <div className="section-tabs flex gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
             <Button
@@ -3928,117 +4005,121 @@ export default function Home() {
         {activeView === 'Admin' &&
           isAdmin &&
           adminSection === 'assignments' && (
-            <div className="grid gap-4 p-4 sm:p-6">
-              <EventScheduleBoard
-                members={eventPack?.members ?? []}
-                eventKey={eventPack?.event.key ?? ''}
-                onChanged={() => loadEventPack(false, true)}
-                eventPicker={
-                  <>
-                    {testTeamNumber && (
-                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-400/60 bg-amber-100 px-3 py-2 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">
-                        <strong>Testing as Team {testTeamNumber}</strong>
+            <DeferredSection>
+              <div className="grid gap-4 p-4 sm:p-6">
+                <EventScheduleBoard
+                  members={eventPack?.members ?? []}
+                  eventKey={eventPack?.event.key ?? ''}
+                  onChanged={() => loadEventPack(false, true)}
+                  eventPicker={
+                    <>
+                      {testTeamNumber && (
+                        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-400/60 bg-amber-100 px-3 py-2 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">
+                          <strong>Testing as Team {testTeamNumber}</strong>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={configuringEvent}
+                            onClick={() => void stopTeamTestMode()}
+                          >
+                            Return to Team {baseTeamNumber}
+                          </Button>
+                        </div>
+                      )}
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <label className="flex items-center gap-2 text-sm font-medium">
+                          Team
+                          <Input
+                            className="w-24"
+                            min={1}
+                            max={99999}
+                            inputMode="numeric"
+                            type="number"
+                            value={eventTeamInput}
+                            onChange={(event) =>
+                              setEventTeamInput(event.target.value)
+                            }
+                          />
+                        </label>
                         <Button
                           type="button"
-                          size="sm"
                           variant="outline"
-                          disabled={configuringEvent}
-                          onClick={() => void stopTeamTestMode()}
+                          disabled={
+                            eventsLoading ||
+                            !online ||
+                            !Number.isInteger(Number(eventTeamInput)) ||
+                            Number(eventTeamInput) <= 0
+                          }
+                          onClick={() => {
+                            const teamNumber = Number(eventTeamInput);
+                            setEventKey('');
+                            void loadTeamEventChoices(teamNumber);
+                          }}
                         >
-                          Return to Team {baseTeamNumber}
+                          Find events
+                        </Button>
+                        <label className="flex min-w-0 items-center gap-3 text-sm font-medium">
+                          Event
+                          <select
+                            aria-label={`Team ${eventTeamNumber} event`}
+                            className="h-10 truncate rounded-md border bg-background px-3"
+                            value={eventKey}
+                            onChange={(event) =>
+                              setEventKey(event.target.value)
+                            }
+                            disabled={eventsLoading}
+                          >
+                            <option value="">
+                              {eventsLoading
+                                ? 'Loading events…'
+                                : 'Select an event'}
+                            </option>
+                            {eventChoices.map((event) => (
+                              <option value={event.key} key={event.key}>
+                                {event.name}
+                                {event.date ? ` · ${event.date}` : ''}
+                                {event.location ? ` · ${event.location}` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <Button
+                          className="w-full sm:w-auto"
+                          disabled={
+                            configuringEvent || !online || !session || !eventKey
+                          }
+                          onClick={configureEvent}
+                        >
+                          {configuringEvent
+                            ? 'Loading event…'
+                            : eventTeamNumber === baseTeamNumber
+                              ? 'Use this event'
+                              : `Test as Team ${eventTeamNumber}`}
                         </Button>
                       </div>
-                    )}
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                      <label className="flex items-center gap-2 text-sm font-medium">
-                        Team
-                        <Input
-                          className="w-24"
-                          min={1}
-                          max={99999}
-                          inputMode="numeric"
-                          type="number"
-                          value={eventTeamInput}
-                          onChange={(event) =>
-                            setEventTeamInput(event.target.value)
-                          }
-                        />
-                      </label>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={
-                          eventsLoading ||
-                          !online ||
-                          !Number.isInteger(Number(eventTeamInput)) ||
-                          Number(eventTeamInput) <= 0
-                        }
-                        onClick={() => {
-                          const teamNumber = Number(eventTeamInput);
-                          setEventKey('');
-                          void loadTeamEventChoices(teamNumber);
-                        }}
-                      >
-                        Find events
-                      </Button>
-                      <label className="flex min-w-0 items-center gap-3 text-sm font-medium">
-                        Event
-                        <select
-                          aria-label={`Team ${eventTeamNumber} event`}
-                          className="h-10 truncate rounded-md border bg-background px-3"
-                          value={eventKey}
-                          onChange={(event) => setEventKey(event.target.value)}
-                          disabled={eventsLoading}
+                      {eventMessage && (
+                        <p
+                          className="text-sm text-muted-foreground"
+                          role="status"
                         >
-                          <option value="">
-                            {eventsLoading
-                              ? 'Loading events…'
-                              : 'Select an event'}
-                          </option>
-                          {eventChoices.map((event) => (
-                            <option value={event.key} key={event.key}>
-                              {event.name}
-                              {event.date ? ` · ${event.date}` : ''}
-                              {event.location ? ` · ${event.location}` : ''}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <Button
-                        className="w-full sm:w-auto"
-                        disabled={
-                          configuringEvent || !online || !session || !eventKey
-                        }
-                        onClick={configureEvent}
-                      >
-                        {configuringEvent
-                          ? 'Loading event…'
-                          : eventTeamNumber === baseTeamNumber
-                            ? 'Use this event'
-                            : `Test as Team ${eventTeamNumber}`}
-                      </Button>
-                    </div>
-                    {eventMessage && (
-                      <p
-                        className="text-sm text-muted-foreground"
-                        role="status"
-                      >
-                        {eventMessage}
-                      </p>
-                    )}
-                    <EventTeamAliases
-                      eventType={eventPack?.event.eventType ?? null}
-                      teams={eventPack?.teams ?? []}
-                      onChanged={() => loadEventPack(false, true)}
-                    />
-                  </>
-                }
-              />
-              <DriveTeamPlanner
-                members={eventPack?.members ?? []}
-                eventKey={eventPack?.event.key ?? ''}
-              />
-            </div>
+                          {eventMessage}
+                        </p>
+                      )}
+                      <EventTeamAliases
+                        eventType={eventPack?.event.eventType ?? null}
+                        teams={eventPack?.teams ?? []}
+                        onChanged={() => loadEventPack(false, true)}
+                      />
+                    </>
+                  }
+                />
+                <DriveTeamPlanner
+                  members={eventPack?.members ?? []}
+                  eventKey={eventPack?.event.key ?? ''}
+                />
+              </div>
+            </DeferredSection>
           )}
         {activeView === 'Data' && (
           <div className="section-tabs flex gap-2 px-4 pt-4 sm:px-6 sm:pt-6">
@@ -4069,18 +4150,20 @@ export default function Home() {
           teamsSection === 'picklist' && (
             <div className="p-4 sm:p-6">
               {eventPack && (
-                <PickListWorkspace
-                  teams={strategyTeams.map((team) => ({
-                    ...team,
-                    name: eventPack.teams.find(
-                      (item) => item.teamNumber === team.teamNumber,
-                    )?.name,
-                  }))}
-                  eventKey={eventPack.event.key}
-                  organizationTeamNumber={organizationTeamNumber}
-                  userId={eventPack.userId}
-                  initialMode="personal"
-                />
+                <DeferredSection>
+                  <PickListWorkspace
+                    teams={strategyTeams.map((team) => ({
+                      ...team,
+                      name: eventPack.teams.find(
+                        (item) => item.teamNumber === team.teamNumber,
+                      )?.name,
+                    }))}
+                    eventKey={eventPack.event.key}
+                    organizationTeamNumber={organizationTeamNumber}
+                    userId={eventPack.userId}
+                    initialMode="personal"
+                  />
+                </DeferredSection>
               )}
             </div>
           )}
@@ -4088,10 +4171,12 @@ export default function Home() {
           canUseStrategy &&
           teamsSection === 'review' && (
             <div className="grid gap-4 p-4 sm:p-6">
-              <ScoutingOperations
-                mode="review"
-                onVideoReview={startVideoReview}
-              />
+              <DeferredSection>
+                <ScoutingOperations
+                  mode="review"
+                  onVideoReview={startVideoReview}
+                />
+              </DeferredSection>
             </div>
           )}
         {activeView === 'Video' && (
@@ -4125,15 +4210,17 @@ export default function Home() {
                 )}
               </CardContent>
             </Card>
-            <MatchVideoLibrary
-              matchId={selectedVideoMatch?.id ?? null}
-              matchLabel={
-                selectedVideoMatch
-                  ? matchLabel(selectedVideoMatch)
-                  : 'this match'
-              }
-              externalVideos={selectedVideoMatch?.videos ?? []}
-            />
+            <DeferredSection>
+              <MatchVideoLibrary
+                matchId={selectedVideoMatch?.id ?? null}
+                matchLabel={
+                  selectedVideoMatch
+                    ? matchLabel(selectedVideoMatch)
+                    : 'this match'
+                }
+                externalVideos={selectedVideoMatch?.videos ?? []}
+              />
+            </DeferredSection>
           </div>
         )}
         {activeView === 'Alliance' && canUseStrategy && (
@@ -4145,37 +4232,41 @@ export default function Home() {
                 </CardContent>
               </Card>
             ) : eventPack ? (
-              <PickListWorkspace
-                teams={strategyTeams.map((team) => ({
-                  ...team,
-                  name: eventPack.teams.find(
-                    (item) => item.teamNumber === team.teamNumber,
-                  )?.name,
-                }))}
-                eventKey={eventPack.event.key}
-                organizationTeamNumber={organizationTeamNumber}
-                userId={eventPack.userId}
-                initialMode="selection"
-              />
+              <DeferredSection>
+                <PickListWorkspace
+                  teams={strategyTeams.map((team) => ({
+                    ...team,
+                    name: eventPack.teams.find(
+                      (item) => item.teamNumber === team.teamNumber,
+                    )?.name,
+                  }))}
+                  eventKey={eventPack.event.key}
+                  organizationTeamNumber={organizationTeamNumber}
+                  userId={eventPack.userId}
+                  initialMode="selection"
+                />
+              </DeferredSection>
             ) : null}
           </div>
         )}
         {activeView === 'Data' && teamsSection === 'analysis' && (
           <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
-            <TeamComparison
-              teams={strategyTeams.map((team) => ({
-                ...team,
-                name: eventPack?.teams.find(
-                  (item) => item.teamNumber === team.teamNumber,
-                )?.name,
-              }))}
-              matches={(eventPack?.matches ?? []).map((match) => ({
-                key: match.key,
-                label: matchLabel(match),
-                red: match.alliances.red,
-                blue: match.alliances.blue,
-              }))}
-            />
+            <DeferredSection>
+              <TeamComparison
+                teams={strategyTeams.map((team) => ({
+                  ...team,
+                  name: eventPack?.teams.find(
+                    (item) => item.teamNumber === team.teamNumber,
+                  )?.name,
+                }))}
+                matches={(eventPack?.matches ?? []).map((match) => ({
+                  key: match.key,
+                  label: matchLabel(match),
+                  red: match.alliances.red,
+                  blue: match.alliances.blue,
+                }))}
+              />
+            </DeferredSection>
             <Card className="sm:col-span-2">
               <CardHeader>
                 <CardTitle>Event Data</CardTitle>
@@ -4479,7 +4570,9 @@ export default function Home() {
         )}
         {activeView === 'Admin' && isAdmin && adminSection === 'settings' && (
           <div className="grid gap-4 p-4 sm:p-6">
-            <GuestPassManager />
+            <DeferredSection>
+              <GuestPassManager />
+            </DeferredSection>
             <Card>
               <CardHeader>
                 <CardTitle>Team members and roles</CardTitle>
@@ -4782,7 +4875,9 @@ export default function Home() {
                 </p>
               </CardContent>
             </Card>
-            <QrRelay online={online} />
+            <DeferredSection>
+              <QrRelay online={online} />
+            </DeferredSection>
           </div>
         )}
       </section>
