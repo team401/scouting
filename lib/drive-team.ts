@@ -13,6 +13,26 @@ export const drivePositions = [
 
 export type DrivePositionKey = (typeof drivePositions)[number]['key'];
 
+export const drivePositionClasses: Record<DrivePositionKey, string> = {
+  driverUserId: 'bg-sky-200 text-sky-950 dark:bg-sky-900 dark:text-sky-100',
+  operatorUserId:
+    'bg-violet-200 text-violet-950 dark:bg-violet-900 dark:text-violet-100',
+  humanPlayerUserId:
+    'bg-emerald-200 text-emerald-950 dark:bg-emerald-900 dark:text-emerald-100',
+  technicianUserId:
+    'bg-amber-200 text-amber-950 dark:bg-amber-900 dark:text-amber-100',
+  coachUserId: 'bg-rose-200 text-rose-950 dark:bg-rose-900 dark:text-rose-100',
+};
+
+export function drivePositionClassForLabel(label: string) {
+  const position = drivePositions.find(
+    (candidate) => candidate.label === label,
+  );
+  return position
+    ? drivePositionClasses[position.key]
+    : 'bg-purple-200 text-purple-950 dark:bg-purple-900 dark:text-purple-100';
+}
+
 export type DriveTeamSlotMembers = Record<DrivePositionKey, string | null>;
 
 // Qualification rows are numbered; playoff rows are a separate block.
