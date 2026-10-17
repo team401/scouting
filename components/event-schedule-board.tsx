@@ -1218,20 +1218,20 @@ export function EventScheduleBoard({
                   Unpublish
                 </Button>
               )}
-              <Button
-                type="button"
-                size="sm"
-                disabled={
-                  publishing || (!hasUnpublishedChanges && publishedAt !== null)
-                }
-                onClick={() => void publishSchedule()}
-              >
-                {publishing
-                  ? 'Working…'
-                  : publishedAt
-                    ? 'Publish changes'
-                    : 'Publish'}
-              </Button>
+              {(!publishedAt || hasUnpublishedChanges) && (
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={publishing}
+                  onClick={() => void publishSchedule()}
+                >
+                  {publishing
+                    ? 'Working…'
+                    : publishedAt
+                      ? 'Publish changes'
+                      : 'Publish'}
+                </Button>
+              )}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b px-3 py-2 text-sm">

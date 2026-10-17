@@ -468,6 +468,9 @@ export function DriveTeamPlanner({
 
   function renderSection(phase: DrivePhase) {
     const phaseSlots = slots.filter((slot) => slot.phase === phase);
+    const savedExpectedCount = phaseSlots.length
+      ? String(phaseSlots.length)
+      : '';
     return (
       <section className="space-y-2" key={phase}>
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -487,14 +490,16 @@ export function DriveTeamPlanner({
                   onChange={(event) => setExpectedInput(event.target.value)}
                 />
               </label>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy}
-                onClick={() => void setExpectedMatches()}
-              >
-                Set count
-              </Button>
+              {expectedInput !== savedExpectedCount && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => void setExpectedMatches()}
+                >
+                  Set count
+                </Button>
+              )}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
@@ -612,14 +617,16 @@ export function DriveTeamPlanner({
               Unpublish
             </Button>
           )}
-          <Button
-            type="button"
-            size="sm"
-            disabled={busy || (publishedAt !== null && !hasUnpublishedChanges)}
-            onClick={() => void publishDriveTeams()}
-          >
-            {busy ? 'Working…' : publishedAt ? 'Publish changes' : 'Publish'}
-          </Button>
+          {(!publishedAt || hasUnpublishedChanges) && (
+            <Button
+              type="button"
+              size="sm"
+              disabled={busy}
+              onClick={() => void publishDriveTeams()}
+            >
+              {busy ? 'Working…' : publishedAt ? 'Publish changes' : 'Publish'}
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
